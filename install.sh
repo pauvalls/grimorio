@@ -266,22 +266,16 @@ configure_opencode_mcp() {
         return 0
     fi
 
-    log "Adding grimorio MCP to opencode.json..."
+    log "Configuring grimorio MCP in opencode.json..."
 
-    # Check if grimorio MCP is already configured
-    if command_exists jq && jq -e '.mcp.grimorio' "$OPENCODE_CONFIG" > /dev/null 2>&1; then
-        log "grimorio MCP already configured in opencode.json"
-        return 0
-    fi
-
-    # Use jq if available
+    # Always update (not just add) to ensure latest config
     if command_exists jq; then
-        # Add grimorio to the mcp section using jq
         jq '.mcp.grimorio = {
             "command": ["'"$OPENCODE_PLUGIN_DIR/grimorio"'"],
             "type": "local",
             "enabled": true
         }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio MCP configured in opencode.json"
     else
         warn "jq not found. Please manually add grimorio to your opencode.json mcp section:"
         warn '{
@@ -293,8 +287,6 @@ configure_opencode_mcp() {
 }'
         return 1
     fi
-
-    success "grimorio MCP added to opencode.json"
 }
 
 configure_opencode_command() {
@@ -305,45 +297,37 @@ configure_opencode_command() {
         return 0
     fi
 
-    # Add grimorio-architect agent if not present
+    # Always update agent (not just add) to ensure latest prompt
     log "Configuring grimorio-architect agent..."
     if command_exists jq; then
-        if ! jq -e '.agent["grimorio-architect"]' "$OPENCODE_CONFIG" > /dev/null 2>&1; then
-            jq '.agent["grimorio-architect"] = {
-                "description": "Expert Dungeon Master agent for D&D 5e campaign generation",
-                "mode": "primary",
-                "prompt": "You are an expert Dungeon Master and campaign designer. Your job is to:\n1. Ask the user clarifying questions about their campaign idea (level, tone, duration, name)\n2. After gathering all requirements, use subagents to generate each component\n3. When all subagents complete, compile the final PDF\n\nDO NOT edit files in the main thread. Always delegate generation work to subagents.",
-                "tools": {
-                    "bash": true,
-                    "delegate": true,
-                    "delegation_list": true,
-                    "delegation_read": true,
-                    "edit": true,
-                    "read": true,
-                    "write": true
-                },
-                "options": {}
-            }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-            success "grimorio-architect agent added to opencode.json"
-        else
-            log "grimorio-architect agent already configured"
-        fi
+        jq '.agent["grimorio-architect"] = {
+            "description": "Expert Dungeon Master agent for D&D 5e campaign generation",
+            "mode": "primary",
+            "prompt": "You are an expert Dungeon Master and campaign designer. Your job is to:\n1. Ask the user clarifying questions about their campaign idea (level, tone, duration, name)\n2. After gathering all requirements, use subagents to generate each component\n3. When all subagents complete, compile the final PDF\n\nDO NOT edit files in the main thread. Always delegate generation work to subagents.",
+            "tools": {
+                "bash": true,
+                "delegate": true,
+                "delegation_list": true,
+                "delegation_read": true,
+                "edit": true,
+                "read": true,
+                "write": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-architect agent configured"
     fi
 
-    # Add grimorio command if not present
+    # Always update command (not just add) to ensure latest template with image generation
     log "Configuring grimorio command..."
     if command_exists jq; then
-        if ! jq -e '.command.grimorio' "$OPENCODE_CONFIG" > /dev/null 2>&1; then
-            jq '.command.grimorio = {
-                "description": "Generate a complete D&D 5e campaign or one-shot from an idea",
-                "agent": "grimorio-architect",
-                "subtask": false,
-                "template": "Generate a D&D 5e campaign or one-shot from the user'\''s idea.\n\n## Workflow\n\n### Phase 1: Gather Requirements\nAsk the user these questions (one at a time, interactively):\n1. What'\''s the campaign name? (kebab-case, e.g. \"sunken-city\")\n2. One-shot or full campaign?\n3. Player level? (1-3, 4-6, 7-10, 11-15, 16-20)\n4. Desired tone? (heroic, dark, humorous, political intrigue)\n5. Duration? (one-shot, 3-5 sessions, long campaign)\n\n### Phase 2: Create Campaign Structure\nUse the grimorio MCP tool `create_campaign` to create the structure.\n\n### Phase 3: Generate Content via Subagents\nLaunch subagents in PARALLEL using `delegate` for each of these tasks:\n- Delegate lore generation: generate world backstory, setting, conflict\n- Delegate acts generation: generate act 1, act 2, act 3\n- Delegate NPCs generation: generate 5+ NPCs with factions\n- Delegate bestiary generation: generate 3-5 monsters with stat blocks\n- Delegate encounters generation: generate 3-5 encounters\n- Delegate maps generation: generate scene descriptions\n\nEach subagent must use the grimorio MCP tools to save their output.\n\n### Phase 4: Compile PDF\nAfter ALL subagents complete, use grimorio MCP tool `compile_pdf` to generate the final PDF.\n\n### Phase 5: Report\nTell the user where the PDF and markdown files were saved."
-            }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-            success "grimorio command added to opencode.json"
-        else
-            log "grimorio command already configured"
-        fi
+        jq '.command.grimorio = {
+            "description": "Generate a complete D&D 5e campaign or one-shot from an idea",
+            "agent": "grimorio-architect",
+            "subtask": false,
+            "template": "Generate a D&D 5e campaign or one-shot from the user'\''s idea.\n\n## Workflow\n\n### Phase 1: Gather Requirements\nAsk the user these questions (one at a time, interactively):\n1. What'\''s the campaign name? (kebab-case, e.g. \"sunken-city\")\n2. One-shot or full campaign?\n3. Player level? (1-3, 4-6, 7-10, 11-15, 16-20)\n4. Desired tone? (heroic, dark, humorous, political intrigue)\n5. Duration? (one-shot, 3-5 sessions, long campaign)\n\n### Phase 2: Create Campaign Structure\nUse the grimorio MCP tool `create_campaign` to create the structure.\n\n### Phase 3: Generate Content via Subagents\nLaunch subagents in PARALLEL using `delegate` for each of these tasks:\n- Delegate lore generation: generate world backstory, setting, conflict\n- Delegate acts generation: generate act 1, act 2, act 3\n- Delegate NPCs generation: generate 5+ NPCs with factions\n- Delegate bestiary generation: generate 3-5 monsters with stat blocks\n- Delegate encounters generation: generate 3-5 encounters\n- Delegate maps generation: generate scene descriptions\n\nEach subagent must use the grimorio MCP tools to save their output.\n\n### Phase 4: Generate Visuals\nAfter content is generated, use grimorio MCP tools for visuals:\n- Use `generate_map` for each encounter/map (SVG procedural, 100% local, no API key)\n  - Styles: dungeon, landscape, city\n  - Reference the generated SVG in markdown: `![Map name](assets/filename.svg)`\n- Use `generate_divider` for section separators (SVG, ornate style)\n- If OPENAI_API_KEY is set, use `generate_image` for:\n  - Cover art (type: cover)\n  - Key NPC portraits (type: portrait)\n  - Scene illustrations (type: scene)\n\n### Phase 5: Compile PDF\nAfter ALL content and visuals are ready, use grimorio MCP tool `compile_pdf` to generate the final PDF.\n\n### Phase 6: Report\nTell the user where the PDF and markdown files were saved, and which images were generated."
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio command configured"
     else
         warn "jq not found. Please manually configure grimorio in opencode.json"
         return 1
