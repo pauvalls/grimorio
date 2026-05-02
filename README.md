@@ -27,7 +27,7 @@ AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into 
 ### Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/paupena/grimorio/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/Grimorio/main/install.sh | bash
 ```
 
 ### Usage with OpenCode
@@ -139,7 +139,7 @@ Generador de campañas y one-shots de D&D 5e impulsado por IA. Convierte una ide
 ### Instalación Rápida
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/paupena/grimorio/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/Grimorio/main/install.sh | bash
 ```
 
 ### Uso con OpenCode
