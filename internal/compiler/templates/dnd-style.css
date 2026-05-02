@@ -45,6 +45,21 @@ body {
   margin: 0;
 }
 
+.cover-image {
+  margin: 20px auto;
+  max-width: 100%;
+  text-align: center;
+}
+
+.cover-image img {
+  max-width: 80%;
+  max-height: 400px;
+  height: auto;
+  border: 3px solid #c9ad6a;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
 /* TOC */
 .toc {
   column-span: all;
@@ -335,28 +350,4 @@ tbody tr:nth-child(odd) {
   font-family: 'Courier New', monospace;
   font-size: 9pt;
   color: #1a1a1a;
-}
-
-/* Assets Gallery — for unreferenced images */
-.assets-gallery {
-  column-span: all;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  margin: 16px 0;
-}
-
-.assets-gallery .campaign-image {
-  flex: 1 1 45%;
-  min-width: 200px;
-  margin: 0;
-}
-
-.assets-gallery img,
-.assets-gallery svg {
-  max-width: 100%;
-  height: auto;
-  border: 2px solid #c9ad6a;
-  border-radius: 4px;
 }
