@@ -222,6 +222,23 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 	inBlockquote := false
 	var blockquoteLines []string
 
+	// Code block state
+	inCodeBlock := false
+	var codeBlockLines []string
+
+	flushCodeBlock := func() {
+		if len(codeBlockLines) == 0 {
+			return
+		}
+		code := strings.Join(codeBlockLines, "\n")
+		codeBlockLines = nil
+		if code == "" {
+			return
+		}
+		escaped := html.EscapeString(code)
+		out = append(out, fmt.Sprintf(`<pre class="code-block"><code>%s</code></pre>`, escaped))
+	}
+
 	flushBlockquote := func() {
 		if len(blockquoteLines) == 0 {
 			return
@@ -349,6 +366,31 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			continue
 		}
 
+		// Handle code blocks (```)
+		if strings.HasPrefix(trimmed, "```") {
+			if inCodeBlock {
+				// End code block
+				flushCodeBlock()
+				inCodeBlock = false
+			} else {
+				// Start code block
+				flushParagraph()
+				flushBlockquote()
+				if inList {
+					out = append(out, "</ul>")
+					inList = false
+				}
+				inCodeBlock = true
+			}
+			continue
+		}
+
+		// If we're inside a code block, collect lines
+		if inCodeBlock {
+			codeBlockLines = append(codeBlockLines, line) // Keep original line, not trimmed
+			continue
+		}
+
 		// Handle blockquotes (read-aloud text)
 		if bqMatch := blockquoteRe.FindStringSubmatch(trimmed); bqMatch != nil {
 			flushParagraph()
@@ -458,6 +500,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 	flushParagraph()
 	flushTable()
 	flushBlockquote()
+	flushCodeBlock()
 	if inList {
 		out = append(out, "</ul>")
 	}

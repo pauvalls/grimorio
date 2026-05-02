@@ -309,3 +309,26 @@ tbody tr:nth-child(odd) {
   border: 1px dashed #c9ad6a;
   margin: 8px 0;
 }
+
+.code-block {
+  background: #2c1e14;
+  color: #c9ad6a;
+  border: 2px solid #5a3d2b;
+  border-left: 4px solid #c9ad6a;
+  padding: 12px 16px;
+  margin: 10px 0;
+  font-family: 'Courier New', monospace;
+  font-size: 8pt;
+  line-height: 1.4;
+  white-space: pre;
+  overflow-x: auto;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
+  border-radius: 0 4px 4px 0;
+}
+
+.code-block code {
+  font-family: 'Courier New', monospace;
+  font-size: 8pt;
+  color: #f5f0e6;
+}
