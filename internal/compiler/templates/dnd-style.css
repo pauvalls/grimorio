@@ -12,7 +12,7 @@ body {
   padding: 10px;
 }
 
-/* Cover — exactly 1 page, minimal padding */
+/* Cover — fill entire page */
 .cover-wrapper {
   page-break-after: always;
   page-break-inside: avoid;
@@ -22,9 +22,9 @@ body {
   color: #f5f0e6;
   border: 6px double #c9ad6a;
   text-align: center;
-  padding: 60px 20px 40px 20px;
+  padding: 200px 40px 200px 40px;
   overflow: hidden;
-  min-height: 200px;
+  min-height: 700px;
 }
 
 .cover-wrapper h1 {
@@ -313,7 +313,7 @@ tbody tr:nth-child(odd) {
   margin: 8px 0;
 }
 
-/* Code blocks — light background for ASCII art readability */
+/* Code blocks — span both columns for ASCII art */
 .code-block {
   background: #f0ebe0;
   color: #1a1a1a;
@@ -322,10 +322,11 @@ tbody tr:nth-child(odd) {
   padding: 10px 12px;
   margin: 10px 0;
   font-family: 'Courier New', monospace;
-  font-size: 9pt;
-  line-height: 1.3;
+  font-size: 7pt;
+  line-height: 1.2;
   white-space: pre;
   overflow-x: auto;
+  column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
 }
