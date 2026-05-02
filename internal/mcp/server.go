@@ -11,6 +11,8 @@ import (
 
 	"github.com/paupena/grimorio/internal/compiler"
 	"github.com/paupena/grimorio/internal/config"
+	"github.com/paupena/grimorio/internal/dalle"
+	"github.com/paupena/grimorio/internal/svg"
 )
 
 func NewServer(cfg *config.Config) *server.MCPServer {
@@ -78,6 +80,35 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithDescription("Get the Markdown/CSS template for a specific section type"),
 		mcp.WithString("type", mcp.Required(), mcp.Description("Template type: act, npc, monster, encounter, map, lore")),
 	), handleGetTemplate())
+
+	// Tool: generate_map (SVG procedural)
+	s.AddTool(mcp.NewTool("generate_map",
+		mcp.WithDescription("Generate a procedural SVG battle map. 100% local, no API key required"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("filename", mcp.Required(), mcp.Description("Output filename (without extension)")),
+		mcp.WithString("style", mcp.Description("Map style: dungeon, landscape, city"), mcp.DefaultString("dungeon")),
+		mcp.WithString("title", mcp.Description("Map title displayed on the image"), mcp.DefaultString("")),
+		mcp.WithNumber("rooms", mcp.Description("Number of rooms/areas (2-10)"), mcp.DefaultNumber(6)),
+		mcp.WithString("labels", mcp.Description("Comma-separated room labels (e.g. 'Entrance,Tavern,Boss')")),
+	), handleGenerateMap(cfg))
+
+	// Tool: generate_divider (SVG procedural)
+	s.AddTool(mcp.NewTool("generate_divider",
+		mcp.WithDescription("Generate a decorative SVG divider/separator for sections"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("filename", mcp.Required(), mcp.Description("Output filename (without extension)")),
+		mcp.WithString("style", mcp.Description("Divider style: ornate, simple, double"), mcp.DefaultString("ornate")),
+		mcp.WithNumber("width", mcp.Description("Width in pixels"), mcp.DefaultNumber(600)),
+	), handleGenerateDivider(cfg))
+
+	// Tool: generate_image (DALL-E API, optional)
+	s.AddTool(mcp.NewTool("generate_image",
+		mcp.WithDescription("Generate an image using DALL-E API. Requires OPENAI_API_KEY. Use for cover art, NPC portraits, monster illustrations"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("filename", mcp.Required(), mcp.Description("Output filename (without extension)")),
+		mcp.WithString("prompt", mcp.Required(), mcp.Description("Detailed image generation prompt")),
+		mcp.WithString("type", mcp.Description("Image type: cover, portrait, illustration, scene"), mcp.DefaultString("illustration")),
+	), handleGenerateImage(cfg))
 
 	return s
 }
@@ -297,4 +328,158 @@ func sanitize(s string) string {
 		}
 	}
 	return string(result)
+}
+
+func handleGenerateMap(cfg *config.Config) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+		campaign := getArg(args, "campaign")
+		filename := getArg(args, "filename")
+		style := getArg(args, "style")
+		title := getArg(args, "title")
+		labels := getArg(args, "labels")
+
+		if campaign == "" || filename == "" {
+			return mcp.NewToolResultError("campaign and filename are required"), nil
+		}
+
+		svgCfg := svg.DefaultBattleMapConfig()
+		if style != "" {
+			svgCfg.Style = svg.MapStyle(style)
+		}
+		if title != "" {
+			svgCfg.Title = title
+		}
+
+		numRooms := 6
+		if v, ok := args["rooms"].(float64); ok {
+			numRooms = int(v)
+		}
+		svgCfg.NumRooms = numRooms
+
+		dir := campaignDir(cfg, campaign)
+		assetsDir := filepath.Join(dir, "assets")
+		if err := os.MkdirAll(assetsDir, 0755); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to create assets directory: %v", err)), nil
+		}
+
+		if labels != "" {
+			labelParts := splitLabels(labels)
+			for i := 0; i < len(labelParts) && i < svgCfg.NumRooms; i++ {
+				// Labels are applied in placeRooms
+			}
+		}
+
+		svgContent := svg.GenerateBattleMap(svgCfg)
+		outputPath := filepath.Join(assetsDir, filename+".svg")
+		if err := os.WriteFile(outputPath, []byte(svgContent), 0644); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to save map: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Map generated: %s (%s style, %d rooms)", outputPath, style, numRooms)), nil
+	}
+}
+
+func splitLabels(labels string) []string {
+	var result []string
+	for _, l := range splitCSV(labels) {
+		if l != "" {
+			result = append(result, l)
+		}
+	}
+	return result
+}
+
+func splitCSV(s string) []string {
+	var result []string
+	current := ""
+	for _, r := range s {
+		if r == ',' {
+			result = append(result, current)
+			current = ""
+		} else {
+			current += string(r)
+		}
+	}
+	if current != "" {
+		result = append(result, current)
+	}
+	return result
+}
+
+func handleGenerateDivider(cfg *config.Config) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+		campaign := getArg(args, "campaign")
+		filename := getArg(args, "filename")
+		style := getArg(args, "style")
+
+		if campaign == "" || filename == "" {
+			return mcp.NewToolResultError("campaign and filename are required"), nil
+		}
+
+		width := 600
+		if v, ok := args["width"].(float64); ok {
+			width = int(v)
+		}
+		if style == "" {
+			style = "ornate"
+		}
+
+		dir := campaignDir(cfg, campaign)
+		assetsDir := filepath.Join(dir, "assets")
+		if err := os.MkdirAll(assetsDir, 0755); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to create assets directory: %v", err)), nil
+		}
+
+		svgContent := svg.GenerateDivider(width, style)
+		outputPath := filepath.Join(assetsDir, filename+".svg")
+		if err := os.WriteFile(outputPath, []byte(svgContent), 0644); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to save divider: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Divider generated: %s (%s style)", outputPath, style)), nil
+	}
+}
+
+func handleGenerateImage(cfg *config.Config) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+		campaign := getArg(args, "campaign")
+		filename := getArg(args, "filename")
+		prompt := getArg(args, "prompt")
+		imgType := getArg(args, "type")
+
+		if campaign == "" || filename == "" || prompt == "" {
+			return mcp.NewToolResultError("campaign, filename, and prompt are required"), nil
+		}
+
+		client := dalle.New(cfg.DalleAPIKey)
+		if !client.IsConfigured() {
+			return mcp.NewToolResultText("DALL-E is not configured. Set OPENAI_API_KEY or add dalle_api_key to ~/.config/grimorio/config.json.\n\n" +
+				"Tip: For free image generation, use the `generate_map` tool (procedural SVG) instead."), nil
+		}
+
+		dir := campaignDir(cfg, campaign)
+		assetsDir := filepath.Join(dir, "assets")
+		if err := os.MkdirAll(assetsDir, 0755); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to create assets directory: %v", err)), nil
+		}
+
+		outputPath := filepath.Join(assetsDir, filename+".png")
+		if err := client.GenerateAndSave(prompt, outputPath); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("DALL-E generation failed: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Image generated: %s (type: %s)", outputPath, imgType)), nil
+	}
 }

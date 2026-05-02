@@ -109,8 +109,44 @@ OpenCode / Claude Code
          ├─ save_bestiary    → Saves stat blocks
          ├─ save_encounters  → Saves encounters
          ├─ save_maps        → Saves scenes
-         └─ compile_pdf      → Generates D&D-styled PDF
+         ├─ generate_map     → Procedural SVG battle maps (100% local)
+         ├─ generate_divider → Decorative SVG section dividers (100% local)
+         ├─ generate_image   → DALL-E API images (optional, requires API key)
+         └─ compile_pdf      → Generates D&D-styled PDF with embedded images
 ```
+
+### Image Generation
+
+Grimorio supports two modes of image generation:
+
+#### Procedural SVG (Default — 100% local, free)
+
+No API key needed. Generates maps and dividers on the fly:
+
+| Tool | Purpose | Example |
+|------|---------|---------|
+| `generate_map` | Battle maps, dungeon layouts, city maps | `![Dungeon Map](assets/dungeon-map.svg)` |
+| `generate_divider` | Decorative section separators | `![Divider](assets/ornate-divider.svg)` |
+
+**Map styles:** `dungeon`, `landscape`, `city`
+
+#### DALL-E API (Optional — requires OpenAI API key)
+
+For cover art, NPC portraits, and monster illustrations:
+
+```bash
+# Set your API key
+export OPENAI_API_KEY="sk-..."
+
+# Or add to config
+echo '{"dalle_api_key": "sk-..."}' > ~/.config/grimorio/config.json
+```
+
+| Tool | Purpose | Cost |
+|------|---------|------|
+| `generate_image` | Cover art, portraits, illustrations | ~$0.04-0.08/image (DALL-E 3) |
+
+> **Tip:** OpenAI gives $5 free credit to new accounts (~60-120 images).
 
 ### Plugin Structure
 
@@ -399,6 +435,39 @@ El servidor MCP expone templates estructurados para cada tipo de contenido:
 | `encounter` | Encuentro con balance de dificultad        |
 | `map`       | Descripción de escena con áreas            |
 | `lore`      | Ambientación y conflictos                  |
+
+### Generación de Imágenes
+
+Grimorio soporta dos modos de generación de imágenes:
+
+#### SVG Procedural (Por defecto — 100% local, gratis)
+
+Sin API key. Genera mapas y divisores al vuelo:
+
+| Herramienta | Propósito | Ejemplo |
+|------------|-----------|---------|
+| `generate_map` | Mapas de batalla, mazmorras, ciudades | `![Mapa Mazmorra](assets/dungeon-map.svg)` |
+| `generate_divider` | Divisores decorativos de sección | `![Divisor](assets/ornate-divider.svg)` |
+
+**Estilos de mapa:** `dungeon`, `landscape`, `city`
+
+#### DALL-E API (Opcional — requiere API key de OpenAI)
+
+Para arte de portada, retratos de NPCs e ilustraciones:
+
+```bash
+# Configurar API key
+export OPENAI_API_KEY="sk-..."
+
+# O agregar al config
+echo '{"dalle_api_key": "sk-..."}' > ~/.config/grimorio/config.json
+```
+
+| Herramienta | Propósito | Costo |
+|------------|-----------|-------|
+| `generate_image` | Portada, retratos, ilustraciones | ~$0.04-0.08/imagen (DALL-E 3) |
+
+> **Tip:** OpenAI da $5 de crédito gratis a cuentas nuevas (~60-120 imágenes).
 
 ### Desarrollo
 
