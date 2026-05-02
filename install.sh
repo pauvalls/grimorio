@@ -182,6 +182,11 @@ setup_plugin() {
     cp -rf "$INSTALL_DIR/skills" "$CLAUDE_PLUGIN_DIR/"
     cp -f "$BINARY_DIR/grimorio" "$CLAUDE_PLUGIN_DIR/"
 
+    # Copy new cartographer agent if it exists in repo but not in plugin
+    if [ -f "$INSTALL_DIR/agents/grimorio-cartographer.md" ]; then
+        cp -f "$INSTALL_DIR/agents/grimorio-cartographer.md" "$CLAUDE_PLUGIN_DIR/agents/"
+    fi
+
     # Fix .mcp.json for Claude Code (uses ${CLAUDE_PLUGIN_ROOT})
     cat > "$CLAUDE_PLUGIN_DIR/.mcp.json" << 'EOF'
 {
@@ -204,6 +209,11 @@ EOF
     cp -rf "$INSTALL_DIR/agents" "$OPENCODE_PLUGIN_DIR/"
     cp -rf "$INSTALL_DIR/skills" "$OPENCODE_PLUGIN_DIR/"
     cp -f "$BINARY_DIR/grimorio" "$OPENCODE_PLUGIN_DIR/"
+
+    # Copy new cartographer agent if it exists in repo but not in plugin
+    if [ -f "$INSTALL_DIR/agents/grimorio-cartographer.md" ]; then
+        cp -f "$INSTALL_DIR/agents/grimorio-cartographer.md" "$OPENCODE_PLUGIN_DIR/agents/"
+    fi
 
     # Fix .mcp.json for OpenCode (uses absolute path, not ${CLAUDE_PLUGIN_ROOT})
     cat > "$OPENCODE_PLUGIN_DIR/.mcp.json" << EOF

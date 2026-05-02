@@ -98,6 +98,7 @@ Phase 5: Report generated files location
 OpenCode / Claude Code
     │
     ├─ Agent grimorio-architect → Q&A + orchestrates generation
+    ├─ Agent grimorio-cartographer → Battle maps, SVGs, images (subagent)
     ├─ Command /grimorio        → Triggers the workflow above
     └─ Skill dnd-5e-srd         → D&D 5e rules context
          │
@@ -162,7 +163,8 @@ echo '{"dalle_api_key": "sk-..."}' > ~/.config/grimorio/config.json
     ├─ commands/
     │   └─ grimorio.md                   # /grimorio slash command
     ├─ agents/
-    │   └─ grimorio-architect.md         # Campaign designer agent
+    │   ├─ grimorio-architect.md         # Campaign designer agent
+    │   └─ grimorio-cartographer.md      # Maps, SVGs, images subagent
     └─ skills/
         └─ dnd-5e-srd/SKILL.md           # D&D 5e rules reference
 
@@ -373,6 +375,7 @@ Fase 5: Mostrar ubicación de archivos generados
 OpenCode / Claude Code
     │
     ├─ Agente grimorio-architect → Q&A + orquesta la generación
+    ├─ Agente grimorio-cartographer → Mapas, SVGs, imágenes (subagente)
     ├─ Comando /grimorio         → Dispara el flujo de arriba
     └─ Skill dnd-5e-srd          → Contexto de reglas D&D 5e
          │
@@ -404,7 +407,8 @@ OpenCode / Claude Code
     ├─ commands/
     │   └─ grimorio.md                   # Comando slash /grimorio
     ├─ agents/
-    │   └─ grimorio-architect.md         # Agente diseñador de campañas
+    │   ├─ grimorio-architect.md         # Agente diseñador de campañas
+    │   └─ grimorio-cartographer.md      # Subagente mapas, SVGs, imágenes
     └─ skills/
         └─ dnd-5e-srd/SKILL.md           # Referencia de reglas D&D 5e
 
