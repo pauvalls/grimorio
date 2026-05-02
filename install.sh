@@ -325,7 +325,58 @@ configure_opencode_command() {
             "description": "Generate a complete D&D 5e campaign or one-shot from an idea",
             "agent": "grimorio-architect",
             "subtask": false,
-            "template": "Generate a D&D 5e campaign or one-shot from the user'\''s idea.\n\n## Workflow\n\n### Phase 1: Gather Requirements\nAsk the user these questions (one at a time, interactively):\n1. What'\''s the campaign name? (kebab-case, e.g. \"sunken-city\")\n2. One-shot or full campaign?\n3. Player level? (1-3, 4-6, 7-10, 11-15, 16-20)\n4. Desired tone? (heroic, dark, humorous, political intrigue)\n5. Duration? (one-shot, 3-5 sessions, long campaign)\n\n### Phase 2: Create Campaign Structure\nUse the grimorio MCP tool `create_campaign` to create the structure.\n\n### Phase 3: Generate Content via Subagents\nLaunch subagents in PARALLEL using `delegate` for each of these tasks:\n- Delegate lore generation: generate world backstory, setting, conflict\n- Delegate acts generation: generate act 1, act 2, act 3\n  - Each act MUST include scenes with map references: `![Mapa](assets/actX-sceneY-name.svg)`\n  - Each scene MUST have a \"Zonas del mapa\" section describing each zone/room\n- Delegate NPCs generation: generate 5+ NPCs with factions\n- Delegate bestiary generation: generate 3-5 monsters with stat blocks\n- Delegate encounters generation: generate 3-5 encounters\n- Delegate maps generation: generate scene descriptions with zone breakdowns\n\nEach subagent must use the grimorio MCP tools to save their output.\n\n### Phase 4: Generate Visuals\nAfter content is generated, use grimorio MCP tools for visuals:\n- Use `generate_map` for EACH scene in each act (SVG procedural, 100% local, no API key)\n  - Styles: dungeon, landscape, city\n  - Use `labels` parameter to name each zone (e.g. \"Entrance,Bar,Basement,Boss\")\n  - After generating, UPDATE the act file to include:\n    - The map image reference\n    - A \"Zonas del mapa\" section with description for EACH zone\n    - Link zones to story elements (NPCs, secrets, combat)\n- Use `generate_divider` for section separators (SVG, ornate style)\n- Use `generate_image` for AI images (FREE via Pollinations.ai by default):\n  - Cover art (type: cover)\n  - Key NPC portraits (type: portrait)\n  - Scene illustrations (type: scene)\n\n### Phase 5: Compile PDF\nAfter ALL content and visuals are ready, use grimorio MCP tool `compile_pdf` to generate the final PDF.\n\n### Phase 6: Report\nTell the user where the PDF and markdown files were saved, and which images were generated."
+            "template": "Generate a D&D 5e campaign or one-shot from the user's idea.
+
+## Workflow
+
+### Phase 1: Gather Requirements
+Ask the user these questions (one at a time, interactively):
+1. What's the campaign name? (kebab-case, e.g. "sunken-city")
+2. One-shot or full campaign?
+3. Player level? (1-3, 4-6, 7-10, 11-15, 16-20)
+4. Desired tone? (heroic, dark, humorous, political intrigue)
+5. Duration? (one-shot, 3-5 sessions, long campaign)
+
+### Phase 2: Create Campaign Structure
+Use the grimorio MCP tool `create_campaign` to create the structure.
+
+### Phase 3: Generate Content via Subagents
+Launch subagents in PARALLEL using `delegate` for each of these tasks:
+- Delegate lore generation: generate world backstory, setting, conflict
+- Delegate acts generation: generate act 1, act 2, act 3
+  - Each act MUST include scenes with:
+    - Map references: `![Mapa](assets/actX-sceneY-name.svg)`
+    - Scene illustrations: `![Escena](assets/scene-actX-sceneY-name.png)` for pivotal scenes
+    - A "Zonas del mapa" section describing each zone/room
+- Delegate NPCs generation: generate 5+ NPCs with factions
+- Delegate bestiary generation: generate 3-5 monsters with stat blocks
+- Delegate encounters generation: generate 3-5 encounters
+- Delegate maps generation: generate scene descriptions with zone breakdowns
+
+Each subagent must use the grimorio MCP tools to save their output.
+
+### Phase 4: Generate Visuals (DELEGATE to grimorio-cartographer)
+After content is generated, launch subagents in PARALLEL:
+- Delegate battle maps to grimorio-cartographer:
+  - Use `generate_map` for EACH scene in each act (SVG procedural, 100% local, no API key)
+    - Styles: dungeon, landscape, city
+    - Use `labels` parameter to name each zone (e.g. "Entrance,Bar,Basement,Boss")
+    - After generating, UPDATE the act file to include:
+      - The map image reference
+      - A "Zonas del mapa" section with description for EACH zone
+      - Link zones to story elements (NPCs, secrets, combat)
+  - Use `generate_divider` for section separators (SVG, ornate style)
+- Delegate AI images to grimorio-cartographer (FREE via Pollinations.ai):
+  - Cover art (type: cover, filename: cover-art)
+  - NPC portraits (type: portrait, filename: npc-{name}) for ALL major NPCs
+  - Scene illustrations (type: scene, filename: scene-{act}-{scene}-{name}) for pivotal scenes
+  - After generating each image, UPDATE the corresponding markdown file with the image reference
+
+### Phase 5: Compile PDF
+After ALL content and visuals are ready, use grimorio MCP tool `compile_pdf` to generate the final PDF.
+
+### Phase 6: Report
+Tell the user where the PDF and markdown files were saved, and which images were generated."
         }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
         success "grimorio command configured"
     else

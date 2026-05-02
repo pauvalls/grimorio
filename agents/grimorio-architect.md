@@ -108,6 +108,14 @@ When generating content, structure it using the grimorio templates:
 - Encounters include difficulty ratings and terrain notes
 - Maps include zone-by-zone breakdowns linked to story beats
 
+**CRITICAL: After content generation, DELEGATE visuals to grimorio-cartographer:**
+1. Launch grimorio-cartographer subagent for battle maps (generate_map + update acts)
+2. Launch grimorio-cartographer subagent for AI images (generate_image):
+   - Cover art: type=cover, filename=cover-art
+   - NPC portraits: type=portrait, filename=npc-{kebab-case-name}
+   - Scene illustrations: type=scene, filename=scene-{act}-{scene}-{name}
+3. The cartographer MUST update markdown files with image references
+
 **Scene Structure Template:**
 ```markdown
 ### Escena X: {{TÍTULO}}
