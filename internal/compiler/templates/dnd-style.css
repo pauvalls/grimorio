@@ -13,24 +13,26 @@ body {
 }
 
 /* Cover — exactly 1 page */
-.cover {
+.cover-wrapper {
   column-span: all;
+  page-break-after: always;
+  page-break-inside: avoid;
+  page-break-before: avoid;
+  margin: -10px -10px 0 -10px;
+}
+
+.cover {
   text-align: center;
   background: linear-gradient(135deg, #2c1e14 0%, #5a3d2b 100%);
   color: #f5f0e6;
   border: 8px double #c9ad6a;
-  margin: 0;
-  padding: 120px 40px 80px 40px;
-  page-break-after: always;
-  page-break-inside: avoid;
-  page-break-before: avoid;
-  height: auto;
+  padding: 100px 30px 60px 30px;
   overflow: hidden;
 }
 
 .cover h1 {
   font-family: 'Cinzel', serif;
-  font-size: 22pt;
+  font-size: 20pt;
   font-weight: 700;
   margin: 0 0 8px 0;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
