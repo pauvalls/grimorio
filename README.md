@@ -20,8 +20,9 @@ AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into 
 
 - **Full campaign generation** — Lore, acts, NPCs, monsters, encounters, and maps
 - **Interactive Q&A flow** — `/grimorio` asks questions first, then generates via parallel subagents
+- **Image generation** — Procedural SVG maps (free) + DALL-E 3 cover art/portraits (optional)
 - **Multi-provider LLM** — Works with OpenAI, Anthropic, Groq, Ollama (via OpenCode / Claude Code)
-- **D&D-styled PDF** — Professional layout with CSS Paged Media and wkhtmltopdf
+- **D&D-styled PDF** — Professional layout with CSS Paged Media and wkhtmltopdf, with embedded images
 - **MCP Server** — Native integration with OpenCode and Claude Code as MCP tools
 - **Zero cloud dependencies** — Runs 100% locally, no servers required
 
@@ -81,9 +82,10 @@ Phase 3: Parallel subagents (delegate)
   ├─ NPCs subagent: 5+ NPCs + factions (MCP: get_template + save_npcs)
   ├─ Bestiary subagent: 3-5 monsters (MCP: get_template + save_bestiary)
   ├─ Encounters subagent: balanced fights (MCP: get_template + save_encounters)
-  └─ Maps subagent: scene descriptions (MCP: get_template + save_maps)
+  ├─ Maps subagent: scene descriptions + battle maps (MCP: save_maps + generate_map)
+  └─ Images subagent: cover art, portraits (MCP: generate_image, optional)
 
-Phase 4: Compile PDF (MCP: compile_pdf)
+Phase 4: Compile PDF (MCP: compile_pdf) — embeds all images
 
 Phase 5: Report generated files location
 ```
@@ -163,6 +165,17 @@ echo '{"dalle_api_key": "sk-..."}' > ~/.config/grimorio/config.json
     │   └─ grimorio-architect.md         # Campaign designer agent
     └─ skills/
         └─ dnd-5e-srd/SKILL.md           # D&D 5e rules reference
+
+Source code structure:
+    │
+    ├─ cmd/grimorio/                     # Entry point (stdio MCP server)
+    ├─ internal/
+    │   ├── mcp/server.go                # MCP tool definitions + handlers
+    │   ├── compiler/compiler.go         # Markdown → HTML → PDF pipeline
+    │   ├── svg/svg.go                   # Procedural SVG generator (maps, dividers)
+    │   ├── dalle/dalle.go               # DALL-E 3 API client
+    │   └── config/config.go             # Configuration management
+    └─ internal/compiler/templates/      # Embedded CSS + Markdown templates
 ```
 
 ### OpenCode Configuration
@@ -215,8 +228,12 @@ Every generated campaign lives in its own directory:
     │   └── encounters.md
     ├── maps/
     │   └── maps_and_scenes.md
+    ├── assets/
+    │   ├── dungeon-map.svg          ← Procedural battle maps
+    │   ├── ornate-divider.svg       ← Decorative section dividers
+    │   └── cover-art.png            ← DALL-E generated images (optional)
     ├── campaign.html
-    └── campaign.pdf
+    └── campaign.pdf                 ← Final PDF with embedded images
 ```
 
 ### Available Templates
@@ -231,6 +248,24 @@ The MCP server exposes structured templates for each content type:
 | `encounter`| Encounter with difficulty balancing      |
 | `map`      | Scene description with areas             |
 | `lore`     | World-building and conflicts             |
+
+### MCP Tools
+
+All tools available through the MCP server:
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `create_campaign` | File | Creates campaign directory structure |
+| `get_template` | Template | Returns structured Markdown template |
+| `save_act` | File | Saves act as Markdown file |
+| `save_npcs` | File | Saves NPCs and factions |
+| `save_bestiary` | File | Saves monster stat blocks |
+| `save_encounters` | File | Saves combat encounters |
+| `save_maps` | File | Saves scene descriptions |
+| `generate_map` | SVG | Procedural battle map generator (free) |
+| `generate_divider` | SVG | Decorative section dividers (free) |
+| `generate_image` | DALL-E | AI image generation (requires API key) |
+| `compile_pdf` | PDF | Compiles all content into styled PDF |
 
 ### Development
 
@@ -260,8 +295,9 @@ Generador de campañas y one-shots de D&D 5e impulsado por IA. Convierte una ide
 
 - **Generación completa de campañas** — Lore, actos, NPCs, monstruos, encuentros y mapas
 - **Flujo interactivo Q&A** — `/grimorio` pregunta primero, después genera con subagentes en paralelo
+- **Generación de imágenes** — Mapas SVG procedurales (gratis) + portadas/retratos DALL-E 3 (opcional)
 - **Múltiples proveedores LLM** — Funciona con OpenAI, Anthropic, Groq, Ollama (vía OpenCode / Claude Code)
-- **PDF estilo D&D** — Maquetación profesional con CSS Paged Media y wkhtmltopdf
+- **PDF estilo D&D** — Maquetación profesional con CSS Paged Media y wkhtmltopdf, con imágenes embebidas
 - **Servidor MCP** — Integración nativa con OpenCode y Claude Code como herramientas MCP
 - **Sin dependencias de nube** — Funciona 100% local, sin servidores
 
@@ -321,9 +357,10 @@ Fase 3: Subagentes en paralelo (delegate)
   ├─ Subagente NPCs: 5+ NPCs + facciones (MCP: get_template + save_npcs)
   ├─ Subagente bestiario: 3-5 monstruos (MCP: get_template + save_bestiary)
   ├─ Subagente encuentros: combates balanceados (MCP: get_template + save_encounters)
-  └─ Subagente mapas: descripciones de escenas (MCP: get_template + save_maps)
+  ├─ Subagente mapas: escenas + mapas de batalla (MCP: save_maps + generate_map)
+  └─ Subagente imágenes: portada, retratos (MCP: generate_image, opcional)
 
-Fase 4: Compilar PDF (MCP: compile_pdf)
+Fase 4: Compilar PDF (MCP: compile_pdf) — embebe todas las imágenes
 
 Fase 5: Mostrar ubicación de archivos generados
 ```
@@ -349,7 +386,10 @@ OpenCode / Claude Code
          ├─ save_bestiary    → Guarda stat blocks
          ├─ save_encounters  → Guarda encuentros
          ├─ save_maps        → Guarda escenas
-         └─ compile_pdf      → Genera PDF estilo D&D
+         ├─ generate_map     → Mapas SVG procedurales (100% local)
+         ├─ generate_divider → Divisores decorativos SVG (100% local)
+         ├─ generate_image   → Imágenes DALL-E API (opcional, requiere API key)
+         └─ compile_pdf      → Genera PDF estilo D&D con imágenes embebidas
 ```
 
 ### Estructura del Plugin
@@ -367,6 +407,17 @@ OpenCode / Claude Code
     │   └─ grimorio-architect.md         # Agente diseñador de campañas
     └─ skills/
         └─ dnd-5e-srd/SKILL.md           # Referencia de reglas D&D 5e
+
+Estructura del código fuente:
+    │
+    ├─ cmd/grimorio/                     # Punto de entrada (servidor MCP stdio)
+    ├─ internal/
+    │   ├── mcp/server.go                # Definiciones de herramientas MCP + handlers
+    │   ├── compiler/compiler.go         # Pipeline Markdown → HTML → PDF
+    │   ├── svg/svg.go                   # Generador SVG procedural (mapas, divisores)
+    │   ├── dalle/dalle.go               # Cliente API DALL-E 3
+    │   └── config/config.go             # Gestión de configuración
+    └─ internal/compiler/templates/      # CSS + templates Markdown embebidos
 ```
 
 ### Configuración de OpenCode
@@ -419,8 +470,12 @@ Cada campaña generada vive en su propio directorio:
     │   └── encounters.md
     ├── maps/
     │   └── maps_and_scenes.md
+    ├── assets/
+    │   ├── dungeon-map.svg          ← Mapas de batalla procedurales
+    │   ├── ornate-divider.svg       ← Divisores decorativos
+    │   └── cover-art.png            ← Imágenes DALL-E (opcional)
     ├── campaign.html
-    └── campaign.pdf
+    └── campaign.pdf                 ← PDF final con imágenes embebidas
 ```
 
 ### Templates Disponibles
@@ -435,6 +490,24 @@ El servidor MCP expone templates estructurados para cada tipo de contenido:
 | `encounter` | Encuentro con balance de dificultad        |
 | `map`       | Descripción de escena con áreas            |
 | `lore`      | Ambientación y conflictos                  |
+
+### Herramientas MCP
+
+Todas las herramientas disponibles a través del servidor MCP:
+
+| Herramienta | Tipo | Descripción |
+|------------|------|-------------|
+| `create_campaign` | Archivo | Crea estructura de directorios |
+| `get_template` | Template | Devuelve template Markdown estructurado |
+| `save_act` | Archivo | Guarda acto como archivo Markdown |
+| `save_npcs` | Archivo | Guarda NPCs y facciones |
+| `save_bestiary` | Archivo | Guarda stat blocks de monstruos |
+| `save_encounters` | Archivo | Guarda encuentros de combate |
+| `save_maps` | Archivo | Guarda descripciones de escenas |
+| `generate_map` | SVG | Generador de mapas procedurales (gratis) |
+| `generate_divider` | SVG | Divisores decorativos (gratis) |
+| `generate_image` | DALL-E | Generación de imágenes IA (requiere API key) |
+| `compile_pdf` | PDF | Compila todo en PDF estilizado |
 
 ### Generación de Imágenes
 

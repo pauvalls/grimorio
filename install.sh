@@ -138,7 +138,9 @@ setup_repo() {
     if [ -d "$INSTALL_DIR" ]; then
         log "Updating existing installation..."
         cd "$INSTALL_DIR"
-        git pull origin main 2>/dev/null || true
+        git fetch origin main 2>/dev/null || true
+        git reset --hard origin/main 2>/dev/null || true
+        log "Updated to latest version"
     else
         log "Cloning repository..."
         if command_exists git; then
@@ -174,11 +176,11 @@ setup_plugin() {
     log "Setting up Claude Code plugin..."
     mkdir -p "$CLAUDE_PLUGIN_DIR"
 
-    cp -r "$INSTALL_DIR/.claude-plugin" "$CLAUDE_PLUGIN_DIR/"
-    cp -r "$INSTALL_DIR/commands" "$CLAUDE_PLUGIN_DIR/"
-    cp -r "$INSTALL_DIR/agents" "$CLAUDE_PLUGIN_DIR/"
-    cp -r "$INSTALL_DIR/skills" "$CLAUDE_PLUGIN_DIR/"
-    cp "$BINARY_DIR/grimorio" "$CLAUDE_PLUGIN_DIR/"
+    cp -rf "$INSTALL_DIR/.claude-plugin" "$CLAUDE_PLUGIN_DIR/"
+    cp -rf "$INSTALL_DIR/commands" "$CLAUDE_PLUGIN_DIR/"
+    cp -rf "$INSTALL_DIR/agents" "$CLAUDE_PLUGIN_DIR/"
+    cp -rf "$INSTALL_DIR/skills" "$CLAUDE_PLUGIN_DIR/"
+    cp -f "$BINARY_DIR/grimorio" "$CLAUDE_PLUGIN_DIR/"
 
     # Fix .mcp.json for Claude Code (uses ${CLAUDE_PLUGIN_ROOT})
     cat > "$CLAUDE_PLUGIN_DIR/.mcp.json" << 'EOF'
@@ -197,11 +199,11 @@ EOF
     log "Setting up OpenCode plugin..."
     mkdir -p "$OPENCODE_PLUGIN_DIR"
 
-    cp -r "$INSTALL_DIR/.claude-plugin" "$OPENCODE_PLUGIN_DIR/"
-    cp -r "$INSTALL_DIR/commands" "$OPENCODE_PLUGIN_DIR/"
-    cp -r "$INSTALL_DIR/agents" "$OPENCODE_PLUGIN_DIR/"
-    cp -r "$INSTALL_DIR/skills" "$OPENCODE_PLUGIN_DIR/"
-    cp "$BINARY_DIR/grimorio" "$OPENCODE_PLUGIN_DIR/"
+    cp -rf "$INSTALL_DIR/.claude-plugin" "$OPENCODE_PLUGIN_DIR/"
+    cp -rf "$INSTALL_DIR/commands" "$OPENCODE_PLUGIN_DIR/"
+    cp -rf "$INSTALL_DIR/agents" "$OPENCODE_PLUGIN_DIR/"
+    cp -rf "$INSTALL_DIR/skills" "$OPENCODE_PLUGIN_DIR/"
+    cp -f "$BINARY_DIR/grimorio" "$OPENCODE_PLUGIN_DIR/"
 
     # Fix .mcp.json for OpenCode (uses absolute path, not ${CLAUDE_PLUGIN_ROOT})
     cat > "$OPENCODE_PLUGIN_DIR/.mcp.json" << EOF
@@ -369,6 +371,9 @@ print_instructions() {
     echo -e "6. ${YELLOW}Image generation:${NC}"
     echo -e "   • SVG maps & dividers → ${GREEN}100% local, no API key needed${NC}"
     echo -e "   • DALL-E images     → Set OPENAI_API_KEY for cover art/portraits"
+    echo ""
+    echo -e "7. ${YELLOW}Update grimorio later:${NC}"
+    echo -e "   Just re-run: ${GREEN}curl -sSL ${REPO_URL}/raw/main/install.sh | bash${NC}"
     echo ""
     echo -e "${BLUE}Manual usage (without AI tools):${NC}"
     echo -e "   ${GREEN}grimorio${NC} - Runs the MCP server"
