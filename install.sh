@@ -178,12 +178,22 @@ setup_plugin() {
     cp -r "$INSTALL_DIR/commands" "$CLAUDE_PLUGIN_DIR/"
     cp -r "$INSTALL_DIR/agents" "$CLAUDE_PLUGIN_DIR/"
     cp -r "$INSTALL_DIR/skills" "$CLAUDE_PLUGIN_DIR/"
-    cp "$INSTALL_DIR/.mcp.json" "$CLAUDE_PLUGIN_DIR/"
     cp "$BINARY_DIR/grimorio" "$CLAUDE_PLUGIN_DIR/"
+
+    # Fix .mcp.json for Claude Code (uses ${CLAUDE_PLUGIN_ROOT})
+    cat > "$CLAUDE_PLUGIN_DIR/.mcp.json" << 'EOF'
+{
+  "grimorio": {
+    "command": "${CLAUDE_PLUGIN_ROOT}/grimorio",
+    "args": [],
+    "env": {}
+  }
+}
+EOF
 
     success "Plugin installed to $CLAUDE_PLUGIN_DIR"
 
-    # Install for OpenCode if config dir exists or always create it
+    # Install for OpenCode
     log "Setting up OpenCode plugin..."
     mkdir -p "$OPENCODE_PLUGIN_DIR"
 
@@ -191,10 +201,23 @@ setup_plugin() {
     cp -r "$INSTALL_DIR/commands" "$OPENCODE_PLUGIN_DIR/"
     cp -r "$INSTALL_DIR/agents" "$OPENCODE_PLUGIN_DIR/"
     cp -r "$INSTALL_DIR/skills" "$OPENCODE_PLUGIN_DIR/"
-    cp "$INSTALL_DIR/.mcp.json" "$OPENCODE_PLUGIN_DIR/"
     cp "$BINARY_DIR/grimorio" "$OPENCODE_PLUGIN_DIR/"
 
+    # Fix .mcp.json for OpenCode (uses absolute path, not ${CLAUDE_PLUGIN_ROOT})
+    cat > "$OPENCODE_PLUGIN_DIR/.mcp.json" << EOF
+{
+  "grimorio": {
+    "command": "$OPENCODE_PLUGIN_DIR/grimorio",
+    "args": [],
+    "env": {}
+  }
+}
+EOF
+
     success "Plugin installed to $OPENCODE_PLUGIN_DIR"
+
+    # Configure grimorio in opencode.json for versions that don't support .mcp.json
+    configure_opencode_mcp
 }
 
 configure_shell() {
@@ -223,28 +246,124 @@ configure_shell() {
     success "Shell configured"
 }
 
+configure_opencode_mcp() {
+    local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
+
+    if [ ! -f "$OPENCODE_CONFIG" ]; then
+        log "No opencode.json found, skipping MCP config"
+        return 0
+    fi
+
+    log "Adding grimorio MCP to opencode.json..."
+
+    # Check if grimorio MCP is already configured
+    if command_exists jq && jq -e '.mcp.grimorio' "$OPENCODE_CONFIG" > /dev/null 2>&1; then
+        log "grimorio MCP already configured in opencode.json"
+        return 0
+    fi
+
+    # Use jq if available
+    if command_exists jq; then
+        # Add grimorio to the mcp section using jq
+        jq '.mcp.grimorio = {
+            "command": ["'"$OPENCODE_PLUGIN_DIR/grimorio"'"],
+            "type": "local",
+            "enabled": true
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+    else
+        warn "jq not found. Please manually add grimorio to your opencode.json mcp section:"
+        warn '{
+  "grimorio": {
+    "command": ["'"$OPENCODE_PLUGIN_DIR/grimorio"'"],
+    "type": "local",
+    "enabled": true
+  }
+}'
+        return 1
+    fi
+
+    success "grimorio MCP added to opencode.json"
+}
+
+configure_opencode_command() {
+    local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
+
+    if [ ! -f "$OPENCODE_CONFIG" ]; then
+        log "No opencode.json found, skipping command config"
+        return 0
+    fi
+
+    # Add grimorio-architect agent if not present
+    log "Configuring grimorio-architect agent..."
+    if command_exists jq; then
+        if ! jq -e '.agent["grimorio-architect"]' "$OPENCODE_CONFIG" > /dev/null 2>&1; then
+            jq '.agent["grimorio-architect"] = {
+                "description": "Expert Dungeon Master agent for D&D 5e campaign generation",
+                "mode": "primary",
+                "prompt": "You are an expert Dungeon Master and campaign designer. Your job is to:\n1. Ask the user clarifying questions about their campaign idea (level, tone, duration, name)\n2. After gathering all requirements, use subagents to generate each component\n3. When all subagents complete, compile the final PDF\n\nDO NOT edit files in the main thread. Always delegate generation work to subagents.",
+                "tools": {
+                    "bash": true,
+                    "delegate": true,
+                    "delegation_list": true,
+                    "delegation_read": true,
+                    "edit": true,
+                    "read": true,
+                    "write": true
+                },
+                "options": {}
+            }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+            success "grimorio-architect agent added to opencode.json"
+        else
+            log "grimorio-architect agent already configured"
+        fi
+    fi
+
+    # Add grimorio command if not present
+    log "Configuring grimorio command..."
+    if command_exists jq; then
+        if ! jq -e '.command.grimorio' "$OPENCODE_CONFIG" > /dev/null 2>&1; then
+            jq '.command.grimorio = {
+                "description": "Generate a complete D&D 5e campaign or one-shot from an idea",
+                "agent": "grimorio-architect",
+                "subtask": false,
+                "template": "Generate a D&D 5e campaign or one-shot from the user'\''s idea.\n\n## Workflow\n\n### Phase 1: Gather Requirements\nAsk the user these questions (one at a time, interactively):\n1. What'\''s the campaign name? (kebab-case, e.g. \"sunken-city\")\n2. One-shot or full campaign?\n3. Player level? (1-3, 4-6, 7-10, 11-15, 16-20)\n4. Desired tone? (heroic, dark, humorous, political intrigue)\n5. Duration? (one-shot, 3-5 sessions, long campaign)\n\n### Phase 2: Create Campaign Structure\nUse the grimorio MCP tool `create_campaign` to create the structure.\n\n### Phase 3: Generate Content via Subagents\nLaunch subagents in PARALLEL using `delegate` for each of these tasks:\n- Delegate lore generation: generate world backstory, setting, conflict\n- Delegate acts generation: generate act 1, act 2, act 3\n- Delegate NPCs generation: generate 5+ NPCs with factions\n- Delegate bestiary generation: generate 3-5 monsters with stat blocks\n- Delegate encounters generation: generate 3-5 encounters\n- Delegate maps generation: generate scene descriptions\n\nEach subagent must use the grimorio MCP tools to save their output.\n\n### Phase 4: Compile PDF\nAfter ALL subagents complete, use grimorio MCP tool `compile_pdf` to generate the final PDF.\n\n### Phase 5: Report\nTell the user where the PDF and markdown files were saved."
+            }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+            success "grimorio command added to opencode.json"
+        else
+            log "grimorio command already configured"
+        fi
+    else
+        warn "jq not found. Please manually configure grimorio in opencode.json"
+        return 1
+    fi
+}
+
 print_instructions() {
     echo ""
-    echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║         Grimorio Installed Successfully!                   ║${NC}"
     echo -e "${GREEN}║         D&D One-shot & Campaign Generator                  ║${NC}"
-    echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo -e "${BLUE}What's next:${NC}"
     echo ""
     echo -e "1. ${YELLOW}Restart your terminal${NC} or run:"
     echo -e "   ${GREEN}source ~/.bashrc${NC} (or ~/.zshrc)"
     echo ""
-    echo -e "2. ${YELLOW}Enable the plugin:${NC}"
-    echo -e "   • Claude Code: ${GREEN}${CLAUDE_PLUGIN_DIR}${NC}"
-    echo -e "   • OpenCode: ${GREEN}${OPENCODE_PLUGIN_DIR}${NC}"
-    echo -e "   Both should auto-discover it."
+    echo -e "2. ${YELLOW}Plugin installed for:${NC}"
+    echo -e "   • Claude Code → ${GREEN}${CLAUDE_PLUGIN_DIR}${NC}"
+    echo -e "   • OpenCode    → ${GREEN}${OPENCODE_PLUGIN_DIR}${NC}"
     echo ""
-    echo -e "3. ${YELLOW}Generate your first campaign:${NC}"
-    echo -e "   In your AI tool, type:"
+    echo -e "3. ${YELLOW}OpenCode auto-configured:${NC}"
+    echo -e "   • MCP server  → ${GREEN}~/.config/opencode/opencode.json${NC} (mcp section)"
+    echo -e "   • Agent       → grimorio-architect (with delegate/subagent support)"
+    echo -e "   • Command     → /grimorio (interactive Q&A + parallel subagents)"
+    echo ""
+    echo -e "4. ${YELLOW}Generate your first campaign:${NC}"
+    echo -e "   Type in OpenCode or Claude Code:"
     echo -e "   ${GREEN}/grimorio A sunken city where the nobles are aquatic vampires${NC}"
     echo ""
-    echo -e "4. ${YELLOW}Campaigns are saved to:${NC}"
+    echo -e "5. ${YELLOW}Campaigns are saved to:${NC}"
     echo -e "   ${GREEN}~/campaigns/${NC}"
     echo ""
     echo -e "${BLUE}Manual usage (without AI tools):${NC}"
@@ -275,6 +394,7 @@ main() {
     build_binary
     setup_plugin
     configure_shell
+    configure_opencode_command
 
     success "Installation complete!"
     print_instructions

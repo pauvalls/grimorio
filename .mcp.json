@@ -1,6 +1,6 @@
 {
   "grimorio": {
-    "command": "${CLAUDE_PLUGIN_ROOT}/grimorio",
+    "command": "/home/pau/.config/opencode/plugins/grimorio/grimorio",
     "args": [],
     "env": {}
   }
