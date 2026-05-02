@@ -4,7 +4,7 @@ set -e
 # Grimorio - One Command Installer
 # Usage: curl -sSL https://raw.githubusercontent.com/paupena/grimorio/main/install.sh | bash
 
-REPO_URL="https://github.com/paupena/grimorio"
+REPO_URL="https://github.com/pauvalls/Grimorio"
 INSTALL_DIR="${HOME}/.local/share/grimorio"
 PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
 BINARY_DIR="${HOME}/.local/bin"
