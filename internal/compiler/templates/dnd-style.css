@@ -12,11 +12,11 @@ body {
   padding: 10px;
 }
 
+/* Cover — exactly 1 page */
 .cover {
   column-span: all;
   text-align: center;
-  padding: 60px 40px;
-  height: 100vh;
+  padding: 80px 40px;
   page-break-after: always;
   page-break-inside: avoid;
   display: flex;
@@ -31,9 +31,9 @@ body {
 
 .cover h1 {
   font-family: 'Cinzel', serif;
-  font-size: 32pt;
+  font-size: 28pt;
   font-weight: 700;
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
   color: #f5f0e6;
   text-align: center;
@@ -43,11 +43,12 @@ body {
 .cover .subtitle {
   font-family: 'Lora', serif;
   font-style: italic;
-  font-size: 13pt;
+  font-size: 12pt;
   color: #c9ad6a;
   margin: 0;
 }
 
+/* TOC — single page */
 .toc {
   column-span: all;
   page-break-after: always;
@@ -72,10 +73,10 @@ body {
 }
 
 .toc li {
-  padding: 6px 0;
+  padding: 5px 0;
   border-bottom: 1px dotted #c9ad6a;
   font-family: 'Cinzel', serif;
-  font-size: 11pt;
+  font-size: 10.5pt;
   display: flex;
   justify-content: space-between;
 }
@@ -87,6 +88,14 @@ body {
 
 .toc li .page-ref::after {
   content: target-counter(attr(href), page);
+}
+
+/* Section break — soft break, not forced page */
+.section-break {
+  column-span: all;
+  margin: 10px 0;
+  border-bottom: 1px solid #c9ad6a;
+  page-break-after: auto;
 }
 
 h1 {
@@ -111,6 +120,7 @@ h2 {
   padding-bottom: 4px;
   margin-top: 16px;
   margin-bottom: 8px;
+  page-break-after: avoid;
 }
 
 h3 {
@@ -120,6 +130,7 @@ h3 {
   color: #8b0000;
   margin-top: 12px;
   margin-bottom: 4px;
+  page-break-after: avoid;
 }
 
 h4 {
@@ -129,6 +140,7 @@ h4 {
   color: #5a3d2b;
   margin-top: 10px;
   margin-bottom: 4px;
+  page-break-after: avoid;
 }
 
 h5 {
@@ -138,6 +150,7 @@ h5 {
   color: #5a3d2b;
   margin-top: 8px;
   margin-bottom: 4px;
+  page-break-after: avoid;
 }
 
 p {
@@ -167,11 +180,12 @@ li {
   line-height: 1.4;
 }
 
+/* Tables — proper styling */
 table {
   width: 100%;
   border-collapse: collapse;
   margin: 10px 0;
-  font-size: 9.5pt;
+  font-size: 9pt;
   column-break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -190,6 +204,7 @@ tbody td {
   padding: 5px 8px;
   border: 1px solid #c9ad6a;
   vertical-align: top;
+  line-height: 1.4;
 }
 
 tbody tr:nth-child(even) {
@@ -268,17 +283,13 @@ tbody tr:nth-child(odd) {
   background: #f5f0e6;
 }
 
-.page-break {
-  page-break-after: always;
-  column-span: all;
-}
-
 .campaign-image {
   display: block;
   margin: 12px auto;
   max-width: 100%;
   text-align: center;
   column-break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .campaign-image img {
