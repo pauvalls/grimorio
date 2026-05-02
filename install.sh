@@ -6,7 +6,8 @@ set -e
 
 REPO_URL="https://github.com/pauvalls/Grimorio"
 INSTALL_DIR="${HOME}/.local/share/grimorio"
-PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
+CLAUDE_PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
+OPENCODE_PLUGIN_DIR="${HOME}/.config/opencode/plugins/grimorio"
 BINARY_DIR="${HOME}/.local/bin"
 
 # Colors
@@ -169,19 +170,31 @@ build_binary() {
 }
 
 setup_plugin() {
+    # Install for Claude Code
+    log "Setting up Claude Code plugin..."
+    mkdir -p "$CLAUDE_PLUGIN_DIR"
+
+    cp -r "$INSTALL_DIR/.claude-plugin" "$CLAUDE_PLUGIN_DIR/"
+    cp -r "$INSTALL_DIR/commands" "$CLAUDE_PLUGIN_DIR/"
+    cp -r "$INSTALL_DIR/agents" "$CLAUDE_PLUGIN_DIR/"
+    cp -r "$INSTALL_DIR/skills" "$CLAUDE_PLUGIN_DIR/"
+    cp "$INSTALL_DIR/.mcp.json" "$CLAUDE_PLUGIN_DIR/"
+    cp "$BINARY_DIR/grimorio" "$CLAUDE_PLUGIN_DIR/"
+
+    success "Plugin installed to $CLAUDE_PLUGIN_DIR"
+
+    # Install for OpenCode if config dir exists or always create it
     log "Setting up OpenCode plugin..."
+    mkdir -p "$OPENCODE_PLUGIN_DIR"
 
-    mkdir -p "$PLUGIN_DIR"
+    cp -r "$INSTALL_DIR/.claude-plugin" "$OPENCODE_PLUGIN_DIR/"
+    cp -r "$INSTALL_DIR/commands" "$OPENCODE_PLUGIN_DIR/"
+    cp -r "$INSTALL_DIR/agents" "$OPENCODE_PLUGIN_DIR/"
+    cp -r "$INSTALL_DIR/skills" "$OPENCODE_PLUGIN_DIR/"
+    cp "$INSTALL_DIR/.mcp.json" "$OPENCODE_PLUGIN_DIR/"
+    cp "$BINARY_DIR/grimorio" "$OPENCODE_PLUGIN_DIR/"
 
-    cp -r "$INSTALL_DIR/.claude-plugin" "$PLUGIN_DIR/"
-    cp -r "$INSTALL_DIR/commands" "$PLUGIN_DIR/"
-    cp -r "$INSTALL_DIR/agents" "$PLUGIN_DIR/"
-    cp -r "$INSTALL_DIR/skills" "$PLUGIN_DIR/"
-    cp "$INSTALL_DIR/.mcp.json" "$PLUGIN_DIR/"
-
-    cp "$BINARY_DIR/grimorio" "$PLUGIN_DIR/"
-
-    success "Plugin installed to $PLUGIN_DIR"
+    success "Plugin installed to $OPENCODE_PLUGIN_DIR"
 }
 
 configure_shell() {
@@ -219,22 +232,23 @@ print_instructions() {
     echo ""
     echo -e "${BLUE}What's next:${NC}"
     echo ""
-    echo "1. ${YELLOW}Restart your terminal${NC} or run:"
-    echo "   ${GREEN}source ~/.bashrc${NC} (or ~/.zshrc)"
+    echo -e "1. ${YELLOW}Restart your terminal${NC} or run:"
+    echo -e "   ${GREEN}source ~/.bashrc${NC} (or ~/.zshrc)"
     echo ""
-    echo "2. ${YELLOW}Enable the plugin in OpenCode:${NC}"
-    echo "   The plugin is installed at: ${GREEN}${PLUGIN_DIR}${NC}"
-    echo "   OpenCode should auto-discover it."
+    echo -e "2. ${YELLOW}Enable the plugin:${NC}"
+    echo -e "   • Claude Code: ${GREEN}${CLAUDE_PLUGIN_DIR}${NC}"
+    echo -e "   • OpenCode: ${GREEN}${OPENCODE_PLUGIN_DIR}${NC}"
+    echo -e "   Both should auto-discover it."
     echo ""
-    echo "3. ${YELLOW}Generate your first campaign:${NC}"
-    echo "   In OpenCode, type:"
-    echo "   ${GREEN}/grimorio A sunken city where the nobles are aquatic vampires${NC}"
+    echo -e "3. ${YELLOW}Generate your first campaign:${NC}"
+    echo -e "   In your AI tool, type:"
+    echo -e "   ${GREEN}/grimorio A sunken city where the nobles are aquatic vampires${NC}"
     echo ""
-    echo "4. ${YELLOW}Campaigns are saved to:${NC}"
-    echo "   ${GREEN}~/campaigns/${NC}"
+    echo -e "4. ${YELLOW}Campaigns are saved to:${NC}"
+    echo -e "   ${GREEN}~/campaigns/${NC}"
     echo ""
-    echo -e "${BLUE}Manual usage (without OpenCode):${NC}"
-    echo "   ${GREEN}grimorio${NC} - Runs the MCP server (used by OpenCode)"
+    echo -e "${BLUE}Manual usage (without AI tools):${NC}"
+    echo -e "   ${GREEN}grimorio${NC} - Runs the MCP server"
     echo ""
     echo -e "${YELLOW}Need help?${NC} Check the README at: ${GREEN}${INSTALL_DIR}/README.md${NC}"
     echo ""
@@ -242,14 +256,14 @@ print_instructions() {
 
 main() {
     echo -e "${GREEN}"
-    echo "   ____                _       _    ___ "
-    echo "  / ___| _   _ _ __ __| | __ _| |  |_ _|"
-    echo " | |  _ | | | | '_ \(_)/ _\` | |   | | "
-    echo " | |_| || |_| | | | | | (_| | |   | | "
-    echo "  \____| \__, |_| |_| |_|\__,_|_|  |___|"
-    echo "         |___/                          "
+    echo -e "   ____                _       _    ___ "
+    echo -e "  / ___| _   _ _ __ __| | __ _| |  |_ _|"
+    echo -e " | |  _ | | | | '_ \(_)/ _\` | |   | | "
+    echo -e " | |_| || |_| | | | | | (_| | |   | | "
+    echo -e "  \____| \__, |_| |_| |_|\__,_|_|  |___|"
+    echo -e "         |___/                          "
     echo -e "${NC}"
-    echo "       D&D One-shot & Campaign Generator"
+    echo -e "       D&D One-shot & Campaign Generator"
     echo ""
 
     log "Starting installation..."
