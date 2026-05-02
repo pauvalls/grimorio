@@ -15,16 +15,16 @@ body {
 .cover {
   column-span: all;
   text-align: center;
-  vertical-align: middle;
-  padding: 100px 40px;
-  min-height: 90vh;
+  padding: 60px 40px;
+  height: 100vh;
+  page-break-after: always;
+  page-break-inside: avoid;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   background: linear-gradient(135deg, #2c1e14 0%, #5a3d2b 100%);
   color: #f5f0e6;
-  page-break-after: always;
   border: 8px double #c9ad6a;
   margin: -10px -10px 0 -10px;
 }
@@ -51,6 +51,7 @@ body {
 .toc {
   column-span: all;
   page-break-after: always;
+  page-break-inside: avoid;
   padding: 20px;
   background: #fff;
   border: 2px solid #c9ad6a;
@@ -75,6 +76,17 @@ body {
   border-bottom: 1px dotted #c9ad6a;
   font-family: 'Cinzel', serif;
   font-size: 11pt;
+  display: flex;
+  justify-content: space-between;
+}
+
+.toc li a {
+  text-decoration: none;
+  color: #5a3d2b;
+}
+
+.toc li .page-ref::after {
+  content: target-counter(attr(href), page);
 }
 
 h1 {
@@ -153,6 +165,39 @@ ul {
 li {
   margin-bottom: 2px;
   line-height: 1.4;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 9.5pt;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+thead th {
+  background: #5a3d2b;
+  color: #f5f0e6;
+  padding: 6px 8px;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  text-align: left;
+  border: 1px solid #3d2e1f;
+}
+
+tbody td {
+  padding: 5px 8px;
+  border: 1px solid #c9ad6a;
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) {
+  background: #e8e0d0;
+}
+
+tbody tr:nth-child(odd) {
+  background: #f5f0e6;
 }
 
 .stat-block {
