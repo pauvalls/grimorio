@@ -243,13 +243,13 @@ func renderSVG(cfg BattleMapConfig, rooms []Room, corridors []Corridor) string {
 
 	// Title
 	if cfg.Title != "" {
-		sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" font-family="Cinzel, serif" font-size="20" fill="#c9ad6a" text-anchor="middle" font-weight="bold">%s</text>`,
+		sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#c9ad6a" text-anchor="middle" font-weight="bold">%s</text>`,
 			cfg.Width/2, 30, cfg.Title))
 	}
 
 	// Room count info
 	if len(rooms) > 0 {
-		sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" font-family="Lora, serif" font-size="9" fill="#c9ad6a" text-anchor="end" opacity="0.7">%d zonas</text>`,
+		sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" font-family="Arial, sans-serif" font-size="11" fill="#c9ad6a" text-anchor="end" opacity="0.7">%d zonas</text>`,
 			cfg.Width-10, cfg.Height-10, len(rooms)))
 	}
 
@@ -396,15 +396,15 @@ func renderRoomLabel(room Room, gs int) string {
 	}
 	
 	// Background for text readability
-	textWidth := len(room.Label) * 7
-	if textWidth < 40 {
-		textWidth = 40
+	textWidth := len(room.Label) * 8
+	if textWidth < 50 {
+		textWidth = 50
 	}
 	
-	sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="18" fill="#2c1e14" opacity="0.7" rx="3"/>`,
-		x+w/2-textWidth/2, y+h/2-9, textWidth))
+	sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="20" fill="#1a1a1a" opacity="0.8" rx="4"/>`,
+		x+w/2-textWidth/2, y+h/2-10, textWidth))
 	
-	sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" font-family="Cinzel, serif" font-size="10" fill="#f5f0e6" text-anchor="middle" dominant-baseline="central" font-weight="bold">%s</text>`,
+	sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#f5f0e6" text-anchor="middle" dominant-baseline="central" font-weight="bold">%s</text>`,
 		x+w/2, y+h/2, room.Label))
 	
 	return sb.String()
