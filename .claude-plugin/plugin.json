@@ -1,0 +1,9 @@
+{
+  "name": "grimorio",
+  "version": "1.0.0",
+  "description": "D&D 5e one-shot and campaign generator with lore, NPCs, bestiary, encounters, and styled PDF output",
+  "author": {
+    "name": "Grimorio Team"
+  },
+  "keywords": ["dnd", "rpg", "campaign", "oneshot", "pdf", "generator"]
+}

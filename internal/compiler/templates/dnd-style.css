@@ -1,0 +1,189 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
+
+body {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 10.5pt;
+  line-height: 1.6;
+  color: #1a1a1a;
+  background: #f5f0e6;
+  column-count: 2;
+  column-gap: 30px;
+  column-rule: 1px solid #c9ad6a;
+  padding: 20px;
+}
+
+.cover {
+  column-span: all;
+  text-align: center;
+  padding: 80px 40px;
+  background: linear-gradient(135deg, #2c1e14 0%, #5a3d2b 100%);
+  color: #f5f0e6;
+  page-break-after: always;
+  border: 8px double #c9ad6a;
+  margin: -20px -20px 40px -20px;
+}
+
+.cover h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 36pt;
+  margin-bottom: 20px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  color: #f5f0e6;
+}
+
+.cover .subtitle {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 14pt;
+  color: #c9ad6a;
+}
+
+.toc {
+  column-span: all;
+  page-break-after: always;
+  padding: 20px;
+  background: #fff;
+  border: 2px solid #c9ad6a;
+  margin-bottom: 30px;
+}
+
+.toc h2 {
+  font-family: 'Cinzel', serif;
+  color: #5a3d2b;
+  border-bottom: 2px solid #c9ad6a;
+  padding-bottom: 10px;
+}
+
+.toc ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.toc li {
+  padding: 8px 0;
+  border-bottom: 1px dotted #c9ad6a;
+  font-family: 'Cinzel', serif;
+}
+
+h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 20pt;
+  color: #5a3d2b;
+  border-bottom: 3px solid #c9ad6a;
+  padding-bottom: 8px;
+  margin-top: 0;
+  column-span: all;
+  page-break-before: always;
+}
+
+h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 14pt;
+  color: #5a3d2b;
+  border-bottom: 2px solid #c9ad6a;
+  padding-bottom: 5px;
+  margin-top: 20px;
+}
+
+h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 11pt;
+  color: #8b0000;
+  margin-top: 15px;
+  margin-bottom: 5px;
+}
+
+p {
+  text-align: justify;
+  margin: 8px 0;
+  orphans: 3;
+  widows: 3;
+}
+
+ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+li {
+  margin-bottom: 4px;
+}
+
+.stat-block {
+  background: #fdf1dc;
+  border: 2px solid #c9ad6a;
+  border-top: 4px solid #c9ad6a;
+  border-bottom: 4px solid #c9ad6a;
+  padding: 15px;
+  margin: 15px 0;
+  column-break-inside: avoid;
+}
+
+.stat-block h3 {
+  color: #5a3d2b;
+  border-bottom: 1px solid #c9ad6a;
+  margin-top: 0;
+}
+
+.read-aloud {
+  background: #e8e4dc;
+  border-left: 4px solid #5a3d2b;
+  padding: 12px 15px;
+  margin: 12px 0;
+  font-style: italic;
+  column-break-inside: avoid;
+}
+
+.read-aloud::before {
+  content: "";
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.map-description {
+  background: #f0ebe0;
+  border: 1px dashed #c9ad6a;
+  padding: 10px;
+  margin: 10px 0;
+  text-align: center;
+  font-style: italic;
+  color: #666;
+  column-break-inside: avoid;
+}
+
+.encounter-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 9pt;
+  column-break-inside: avoid;
+}
+
+.encounter-table th {
+  background: #5a3d2b;
+  color: #f5f0e6;
+  padding: 6px;
+  font-family: 'Cinzel', serif;
+  text-align: left;
+}
+
+.encounter-table td {
+  padding: 5px;
+  border-bottom: 1px solid #c9ad6a;
+}
+
+.encounter-table tr:nth-child(even) {
+  background: #f5f0e6;
+}
+
+.page-break {
+  page-break-after: always;
+  column-span: all;
+}
+
+br {
+  display: block;
+  content: "";
+  margin-top: 8px;
+}
