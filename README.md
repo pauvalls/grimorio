@@ -20,9 +20,9 @@ AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into 
 
 - **Full campaign generation** — Lore, acts, NPCs, monsters, encounters, and maps
 - **Interactive Q&A flow** — `/grimorio` asks questions first, then generates via parallel subagents
-- **Image generation** — Procedural SVG maps (free) + DALL-E 3 cover art/portraits (optional)
+- **Image generation** — Procedural SVG maps (free) + AI cover art/portraits via Pollinations.ai (FREE, no API key) or DALL-E 3 (optional)
 - **Multi-provider LLM** — Works with OpenAI, Anthropic, Groq, Ollama (via OpenCode / Claude Code)
-- **D&D-styled PDF** — Professional layout with CSS Paged Media and wkhtmltopdf, with embedded images
+- **D&D-styled PDF** — Professional layout with CSS Paged Media and wkhtmltopdf, with embedded images (maps, AI art, portraits)
 - **MCP Server** — Native integration with OpenCode and Claude Code as MCP tools
 - **Zero cloud dependencies** — Runs 100% locally, no servers required
 
@@ -83,7 +83,7 @@ Phase 3: Parallel subagents (delegate)
   ├─ Bestiary subagent: 3-5 monsters (MCP: get_template + save_bestiary)
   ├─ Encounters subagent: balanced fights (MCP: get_template + save_encounters)
   ├─ Maps subagent: scene descriptions + battle maps (MCP: save_maps + generate_map)
-  └─ Images subagent: cover art, portraits (MCP: generate_image, optional)
+  └─ Images subagent: cover art, portraits (MCP: generate_image, FREE via Pollinations.ai)
 
 Phase 4: Compile PDF (MCP: compile_pdf) — embeds all images
 
@@ -114,15 +114,23 @@ OpenCode / Claude Code
          ├─ save_maps        → Saves scenes
          ├─ generate_map     → Procedural SVG battle maps (100% local)
          ├─ generate_divider → Decorative SVG section dividers (100% local)
-         ├─ generate_image   → DALL-E API images (optional, requires API key)
+          ├─ generate_image   → AI images via Pollinations.ai (FREE) or DALL-E (optional)
          └─ compile_pdf      → Generates D&D-styled PDF with embedded images
 ```
 
 ### Image Generation
 
-Grimorio supports two modes of image generation:
+Grimorio supports three modes of image generation:
 
-#### Procedural SVG (Default — 100% local, free)
+#### AI Images (Default — FREE via Pollinations.ai)
+
+No API key needed. Generates cover art, NPC portraits, and illustrations using Pollinations.ai (FLUX model):
+
+| Tool | Purpose | Cost |
+|------|---------|------|
+| `generate_image` | Cover art, portraits, illustrations | **FREE** |
+
+#### Procedural SVG (100% local, free)
 
 No API key needed. Generates maps and dividers on the fly:
 
@@ -133,16 +141,16 @@ No API key needed. Generates maps and dividers on the fly:
 
 **Map styles:** `dungeon`, `landscape`, `city`
 
-#### DALL-E API (Optional — requires OpenAI API key)
+#### DALL-E API (Optional — higher quality, paid)
 
-For cover art, NPC portraits, and monster illustrations:
+For premium image quality, switch to DALL-E 3:
 
 ```bash
 # Set your API key
 export OPENAI_API_KEY="sk-..."
 
 # Or add to config
-echo '{"dalle_api_key": "sk-..."}' > ~/.config/grimorio/config.json
+echo '{"image_provider": "dalle", "dalle_api_key": "sk-..."}' > ~/.config/grimorio/config.json
 ```
 
 | Tool | Purpose | Cost |
@@ -150,6 +158,13 @@ echo '{"dalle_api_key": "sk-..."}' > ~/.config/grimorio/config.json
 | `generate_image` | Cover art, portraits, illustrations | ~$0.04-0.08/image (DALL-E 3) |
 
 > **Tip:** OpenAI gives $5 free credit to new accounts (~60-120 images).
+
+**PDF Image Embedding:**
+
+All images (SVG maps, AI-generated PNGs, dividers) are automatically embedded into the PDF:
+- Images referenced in Markdown with `![alt](assets/file.png)` appear inline
+- All images in `assets/` are included in a "Campaign Visuals" gallery at the end
+- SVGs are embedded as vector graphics, PNGs as base64
 
 ### Plugin Structure
 
@@ -175,7 +190,7 @@ Source code structure:
     │   ├── mcp/server.go                # MCP tool definitions + handlers
     │   ├── compiler/compiler.go         # Markdown → HTML → PDF pipeline
     │   ├── svg/svg.go                   # Procedural SVG generator (maps, dividers)
-    │   ├── dalle/dalle.go               # DALL-E 3 API client
+    │   ├── image/                       # Image provider abstraction (Pollinations.ai, DALL-E)
     │   └── config/config.go             # Configuration management
     └─ internal/compiler/templates/      # Embedded CSS + Markdown templates
 ```
@@ -233,7 +248,7 @@ Every generated campaign lives in its own directory:
     ├── assets/
     │   ├── dungeon-map.svg          ← Procedural battle maps
     │   ├── ornate-divider.svg       ← Decorative section dividers
-    │   └── cover-art.png            ← DALL-E generated images (optional)
+    │   └── cover-art.png            ← AI generated images (Pollinations.ai or DALL-E)
     ├── campaign.html
     └── campaign.pdf                 ← Final PDF with embedded images
 ```
@@ -266,7 +281,7 @@ All tools available through the MCP server:
 | `save_maps` | File | Saves scene descriptions |
 | `generate_map` | SVG | Procedural battle map generator (free) |
 | `generate_divider` | SVG | Decorative section dividers (free) |
-| `generate_image` | DALL-E | AI image generation (requires API key) |
+| `generate_image` | AI | Image generation via Pollinations.ai (FREE) or DALL-E (optional) |
 | `compile_pdf` | PDF | Compiles all content into styled PDF |
 
 ### Development
@@ -297,9 +312,9 @@ Generador de campañas y one-shots de D&D 5e impulsado por IA. Convierte una ide
 
 - **Generación completa de campañas** — Lore, actos, NPCs, monstruos, encuentros y mapas
 - **Flujo interactivo Q&A** — `/grimorio` pregunta primero, después genera con subagentes en paralelo
-- **Generación de imágenes** — Mapas SVG procedurales (gratis) + portadas/retratos DALL-E 3 (opcional)
+- **Generación de imágenes** — Mapas SVG procedurales (gratis) + portadas/retratos IA vía Pollinations.ai (GRATIS, sin API key) o DALL-E 3 (opcional)
 - **Múltiples proveedores LLM** — Funciona con OpenAI, Anthropic, Groq, Ollama (vía OpenCode / Claude Code)
-- **PDF estilo D&D** — Maquetación profesional con CSS Paged Media y wkhtmltopdf, con imágenes embebidas
+- **PDF estilo D&D** — Maquetación profesional con CSS Paged Media y wkhtmltopdf, con imágenes embebidas (mapas, arte IA, retratos)
 - **Servidor MCP** — Integración nativa con OpenCode y Claude Code como herramientas MCP
 - **Sin dependencias de nube** — Funciona 100% local, sin servidores
 
@@ -360,7 +375,7 @@ Fase 3: Subagentes en paralelo (delegate)
   ├─ Subagente bestiario: 3-5 monstruos (MCP: get_template + save_bestiary)
   ├─ Subagente encuentros: combates balanceados (MCP: get_template + save_encounters)
   ├─ Subagente mapas: escenas + mapas de batalla (MCP: save_maps + generate_map)
-  └─ Subagente imágenes: portada, retratos (MCP: generate_image, opcional)
+  └─ Subagente imágenes: portada, retratos (MCP: generate_image, GRATIS vía Pollinations.ai)
 
 Fase 4: Compilar PDF (MCP: compile_pdf) — embebe todas las imágenes
 
@@ -391,7 +406,7 @@ OpenCode / Claude Code
          ├─ save_maps        → Guarda escenas
          ├─ generate_map     → Mapas SVG procedurales (100% local)
          ├─ generate_divider → Divisores decorativos SVG (100% local)
-         ├─ generate_image   → Imágenes DALL-E API (opcional, requiere API key)
+          ├─ generate_image   → Imágenes IA vía Pollinations.ai (GRATIS) o DALL-E (opcional)
          └─ compile_pdf      → Genera PDF estilo D&D con imágenes embebidas
 ```
 
@@ -419,7 +434,7 @@ Estructura del código fuente:
     │   ├── mcp/server.go                # Definiciones de herramientas MCP + handlers
     │   ├── compiler/compiler.go         # Pipeline Markdown → HTML → PDF
     │   ├── svg/svg.go                   # Generador SVG procedural (mapas, divisores)
-    │   ├── dalle/dalle.go               # Cliente API DALL-E 3
+    │   ├── image/                       # Abstracción de proveedores de imagen (Pollinations.ai, DALL-E)
     │   └── config/config.go             # Gestión de configuración
     └─ internal/compiler/templates/      # CSS + templates Markdown embebidos
 ```
@@ -477,7 +492,7 @@ Cada campaña generada vive en su propio directorio:
     ├── assets/
     │   ├── dungeon-map.svg          ← Mapas de batalla procedurales
     │   ├── ornate-divider.svg       ← Divisores decorativos
-    │   └── cover-art.png            ← Imágenes DALL-E (opcional)
+    │   └── cover-art.png            ← Imágenes IA generadas (Pollinations.ai o DALL-E)
     ├── campaign.html
     └── campaign.pdf                 ← PDF final con imágenes embebidas
 ```
@@ -510,14 +525,22 @@ Todas las herramientas disponibles a través del servidor MCP:
 | `save_maps` | Archivo | Guarda descripciones de escenas |
 | `generate_map` | SVG | Generador de mapas procedurales (gratis) |
 | `generate_divider` | SVG | Divisores decorativos (gratis) |
-| `generate_image` | DALL-E | Generación de imágenes IA (requiere API key) |
+| `generate_image` | IA | Generación de imágenes vía Pollinations.ai (GRATIS) o DALL-E (opcional) |
 | `compile_pdf` | PDF | Compila todo en PDF estilizado |
 
 ### Generación de Imágenes
 
-Grimorio soporta dos modos de generación de imágenes:
+Grimorio soporta tres modos de generación de imágenes:
 
-#### SVG Procedural (Por defecto — 100% local, gratis)
+#### Imágenes IA (Por defecto — GRATIS vía Pollinations.ai)
+
+Sin API key. Genera portadas, retratos de NPCs e ilustraciones usando Pollinations.ai (modelo FLUX):
+
+| Herramienta | Propósito | Costo |
+|------------|-----------|-------|
+| `generate_image` | Portada, retratos, ilustraciones | **GRATIS** |
+
+#### SVG Procedural (100% local, gratis)
 
 Sin API key. Genera mapas y divisores al vuelo:
 
@@ -528,16 +551,16 @@ Sin API key. Genera mapas y divisores al vuelo:
 
 **Estilos de mapa:** `dungeon`, `landscape`, `city`
 
-#### DALL-E API (Opcional — requiere API key de OpenAI)
+#### DALL-E API (Opcional — mayor calidad, de pago)
 
-Para arte de portada, retratos de NPCs e ilustraciones:
+Para calidad premium, cambia a DALL-E 3:
 
 ```bash
 # Configurar API key
 export OPENAI_API_KEY="sk-..."
 
 # O agregar al config
-echo '{"dalle_api_key": "sk-..."}' > ~/.config/grimorio/config.json
+echo '{"image_provider": "dalle", "dalle_api_key": "sk-..."}' > ~/.config/grimorio/config.json
 ```
 
 | Herramienta | Propósito | Costo |
@@ -545,6 +568,13 @@ echo '{"dalle_api_key": "sk-..."}' > ~/.config/grimorio/config.json
 | `generate_image` | Portada, retratos, ilustraciones | ~$0.04-0.08/imagen (DALL-E 3) |
 
 > **Tip:** OpenAI da $5 de crédito gratis a cuentas nuevas (~60-120 imágenes).
+
+**Imágenes en el PDF:**
+
+Todas las imágenes (mapas SVG, PNGs generados por IA, divisores) se embeben automáticamente en el PDF:
+- Las imágenes referenciadas en Markdown con `![alt](assets/archivo.png)` aparecen inline
+- Todas las imágenes en `assets/` se incluyen en una galería "Visuales de la Campaña" al final
+- Los SVGs se embeben como gráficos vectoriales, los PNGs como base64
 
 ### Desarrollo
 

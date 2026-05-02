@@ -152,6 +152,32 @@ func (c *Compiler) Compile(title string) (string, error) {
 		}
 	}
 
+	// Add unreferenced images from assets/ directory
+	assetsDir := filepath.Join(c.CampaignDir, "assets")
+	if entries, err := os.ReadDir(assetsDir); err == nil {
+		var unreferenced []string
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			ext := strings.ToLower(filepath.Ext(name))
+			if ext == ".svg" || ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".webp" {
+				unreferenced = append(unreferenced, name)
+			}
+		}
+		if len(unreferenced) > 0 {
+			htmlParts = append(htmlParts, `<div class="section-break"></div>`)
+			htmlParts = append(htmlParts, `<h2 id="assets-gallery">Campaign Visuals</h2>`)
+			htmlParts = append(htmlParts, `<div class="assets-gallery">`)
+			for _, name := range unreferenced {
+				imgPath := filepath.Join(assetsDir, name)
+				htmlParts = append(htmlParts, embedImage(imgPath, name, c.CampaignDir))
+			}
+			htmlParts = append(htmlParts, `</div>`)
+		}
+	}
+
 	htmlParts = append(htmlParts, "</body></html>")
 
 	htmlPath := filepath.Join(c.CampaignDir, "campaign.html")

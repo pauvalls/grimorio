@@ -11,7 +11,7 @@ import (
 
 	"github.com/paupena/grimorio/internal/compiler"
 	"github.com/paupena/grimorio/internal/config"
-	"github.com/paupena/grimorio/internal/dalle"
+	"github.com/paupena/grimorio/internal/image"
 	"github.com/paupena/grimorio/internal/svg"
 )
 
@@ -101,9 +101,9 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithNumber("width", mcp.Description("Width in pixels"), mcp.DefaultNumber(600)),
 	), handleGenerateDivider(cfg))
 
-	// Tool: generate_image (DALL-E API, optional)
+	// Tool: generate_image (AI image generation — free by default via Pollinations.ai)
 	s.AddTool(mcp.NewTool("generate_image",
-		mcp.WithDescription("Generate an image using DALL-E API. Requires OPENAI_API_KEY. Use for cover art, NPC portraits, monster illustrations"),
+		mcp.WithDescription("Generate an image using AI. Free by default via Pollinations.ai (no API key required). Optional: set image_provider to 'dalle' and OPENAI_API_KEY for higher quality. Use for cover art, NPC portraits, monster illustrations"),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithString("filename", mcp.Required(), mcp.Description("Output filename (without extension)")),
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("Detailed image generation prompt")),
@@ -367,10 +367,7 @@ func handleGenerateMap(cfg *config.Config) server.ToolHandlerFunc {
 		}
 
 		if labels != "" {
-			labelParts := splitLabels(labels)
-			for i := 0; i < len(labelParts) && i < svgCfg.NumRooms; i++ {
-				// Labels are applied in placeRooms
-			}
+			svgCfg.Labels = splitLabels(labels)
 		}
 
 		svgContent := svg.GenerateBattleMap(svgCfg)
@@ -463,10 +460,9 @@ func handleGenerateImage(cfg *config.Config) server.ToolHandlerFunc {
 			return mcp.NewToolResultError("campaign, filename, and prompt are required"), nil
 		}
 
-		client := dalle.New(cfg.DalleAPIKey)
-		if !client.IsConfigured() {
-			return mcp.NewToolResultText("DALL-E is not configured. Set OPENAI_API_KEY or add dalle_api_key to ~/.config/grimorio/config.json.\n\n" +
-				"Tip: For free image generation, use the `generate_map` tool (procedural SVG) instead."), nil
+		provider, err := image.NewProvider(cfg.Config)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to initialize image provider: %v", err)), nil
 		}
 
 		dir := campaignDir(cfg, campaign)
@@ -476,10 +472,10 @@ func handleGenerateImage(cfg *config.Config) server.ToolHandlerFunc {
 		}
 
 		outputPath := filepath.Join(assetsDir, filename+".png")
-		if err := client.GenerateAndSave(prompt, outputPath); err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("DALL-E generation failed: %v", err)), nil
+		if err := image.GenerateAndSave(provider, prompt, outputPath); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("%s generation failed: %v", provider.Name(), err)), nil
 		}
 
-		return mcp.NewToolResultText(fmt.Sprintf("Image generated: %s (type: %s)", outputPath, imgType)), nil
+		return mcp.NewToolResultText(fmt.Sprintf("Image generated via %s: %s (type: %s)", provider.Name(), outputPath, imgType)), nil
 	}
 }

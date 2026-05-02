@@ -336,3 +336,27 @@ tbody tr:nth-child(odd) {
   font-size: 9pt;
   color: #1a1a1a;
 }
+
+/* Assets Gallery — for unreferenced images */
+.assets-gallery {
+  column-span: all;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.assets-gallery .campaign-image {
+  flex: 1 1 45%;
+  min-width: 200px;
+  margin: 0;
+}
+
+.assets-gallery img,
+.assets-gallery svg {
+  max-width: 100%;
+  height: auto;
+  border: 2px solid #c9ad6a;
+  border-radius: 4px;
+}
