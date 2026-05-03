@@ -349,17 +349,17 @@ Launch subagents in PARALLEL:
 - Delegate encounters generation: generate 3-5 encounters
 - Delegate maps generation: generate scene descriptions with zone breakdowns
 
-**Images (optional, slowest — runs in background):**
-- Delegate to grimorio-cartographer for AI images (FREE via Pollinations.ai):
-  - Cover art (type: cover, filename: cover-art)
-  - NPC portraits (type: portrait, filename: npc-{name}) for ALL major NPCs
-  - Scene illustrations (type: scene, filename: scene-{act}-{scene}-{name}) for pivotal scenes
-  - Battle maps using `generate_map` (SVG procedural, 100% local)
+**Images (in parallel):**
+- Delegate to grimorio-cartographer for visuals:
+  - **Cover art** (MANDATORY — always generate): type=cover, filename=cover-art
+  - **Battle maps** (MANDATORY — SVG procedural, 100% local): use `generate_map`
     - Styles: dungeon, landscape, city
     - Use `labels` parameter to name each zone
+  - **NPC portraits** (optional): type=portrait, filename=npc-{name}
+  - **Scene illustrations** (optional): type=scene, filename=scene-{act}-{scene}-{name}
   - After generating, UPDATE markdown files with image references
 
-> **Note:** Image generation is OPTIONAL and runs in parallel. If images are slow or fail, continue without them. The campaign is still valid.
+> **Note:** Cover art and battle maps are ALWAYS generated. NPC portraits and scene illustrations are optional — if slow or failing, skip them. The campaign is still valid without optional images.
 
 ### Phase 4: Generate Acts (LAST — integrates everything)
 Acts are generated LAST, after ALL other content exists:

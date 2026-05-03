@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -179,8 +180,15 @@ func handleSaveAct(cfg *config.Config) server.ToolHandlerFunc {
 		dir := campaignDir(cfg, campaign)
 		filename := filepath.Join(dir, "acts", fmt.Sprintf("act_%s_%s.md", actNum, sanitize(title)))
 		
-		header := fmt.Sprintf("# Acto %s: %s\n\n", actNum, title)
-		if err := os.WriteFile(filename, []byte(header+content), 0644); err != nil {
+		// Only add header if content doesn't already start with a heading
+		var fileContent string
+		if strings.HasPrefix(strings.TrimSpace(content), "# ") {
+			fileContent = content
+		} else {
+			header := fmt.Sprintf("# Acto %s: %s\n\n", actNum, title)
+			fileContent = header + content
+		}
+		if err := os.WriteFile(filename, []byte(fileContent), 0644); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to save act: %v", err)), nil
 		}
 
