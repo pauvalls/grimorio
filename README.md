@@ -76,39 +76,42 @@ Phase 1: Interactive Q&A
 
 Phase 2: Create campaign structure (MCP: create_campaign)
 
-Phase 3: Launch Orchestrator (single delegate)
-  └─ grimorio-orchestrator coordinates internally:
-      Phase 3a: Content subagents (PARALLEL)
-        ├─ Lore subagent: world, setting, conflict (MCP: save)
-        ├─ NPCs subagent: 5+ NPCs + factions (MCP: save_npcs)
-        ├─ Bestiary subagent: 3-5 monsters (MCP: save_bestiary)
-        ├─ Encounters subagent: balanced fights (MCP: save_encounters)
-        └─ Maps subagent: scene descriptions (MCP: save_maps)
-      Phase 3b: Acts subagent (uses [SCENE: ...] placeholders)
-        └─ Acts: 3 acts referencing NPCs, monsters, encounters (MCP: save_act)
-      Phase 3c: Visual assets (PARALLEL)
+Phase 3-13: End-to-end orchestration by grimorio-architect
+  └─ grimorio-architect coordinates directly:
+      Phase 3: Content subagents (PARALLEL delegate)
+        ├─ Lore: world, setting, conflict (MCP: save)
+        ├─ NPCs: 5+ NPCs + factions (MCP: save_npcs)
+        ├─ Bestiary: 3-5 monsters (MCP: save_bestiary)
+        ├─ Encounters: balanced fights (MCP: save_encounters)
+        └─ Maps: scene descriptions (MCP: save_maps)
+      Phase 4: Report content status to user
+      Phase 5: Acts subagent (uses [SCENE: ...] placeholders)
+        └─ Acts: referencing NPCs, monsters, encounters (MCP: save_act)
+      Phase 6: Report acts status to user
+      Phase 7: Visual assets (PARALLEL delegate)
         ├─ grimorio-cartographer: battle maps, dividers (MCP: generate_map + generate_divider)
         └─ grimorio-artist: prepares batch-spec.json with all image prompts
-      Phase 3d: AI Image Generation (orchestrator calls MCP directly)
-        ├─ generate_images_batch: ALL AI images in parallel (cover, NPCs, monsters, scenes)
-        └─ Fallback: retry failed images individually with generate_image
-      Phase 3e: Update References
-        └─ grimorio-artist: replaces [SCENE: ...] placeholders with actual image references
+      Phase 8: Report SVGs status to user
+      Phase 9: AI Image Generation (architect calls MCP directly, SEQUENTIAL)
+        ├─ One by one via generate_image (3s delay between each)
+        └─ Fallback: retry failed images individually
+      Phase 10: Update References (delegate to grimorio-artist)
+        └─ Updates markdown files with actual image references
+      Phase 11: Report references status to user
+      Phase 12: Compile PDF (MCP: compile_pdf) — embeds all images
+      Phase 13: Final report to user
 
-Phase 4: Compile PDF (MCP: compile_pdf) — embeds all images
-
-Phase 5: Report generated files location
 ```
 
-> **Important:** The main agent only asks questions and launches the orchestrator with a single `delegate` call. The orchestrator handles all subagent coordination internally — the main thread does zero polling.
+> **Important:** The grimorio-architect agent does everything end-to-end: gathers requirements, creates structure, delegates content subagents, generates images directly via MCP, and compiles the PDF. The architect reports progress to the user after every phase.
 
 ### Architecture
 
 ```
 OpenCode / Claude Code
     │
-    ├─ Agent grimorio-architect → Q&A + single delegate to orchestrator
-    ├─ Agent grimorio-orchestrator → Coordinates subagents + calls MCP tools directly
+    ├─ Agent grimorio-architect → End-to-end orchestration (all phases)
+    ├─ Agent grimorio-orchestrator → DEPRECATED (architect handles this now)
     ├─ Agent grimorio-artist → Prepares image specs + updates markdown references
     ├─ Agent grimorio-cartographer → SVG battle maps + decorative dividers
     ├─ Command /grimorio        → Triggers the workflow above
@@ -203,8 +206,8 @@ All images (SVG maps, AI-generated PNGs, dividers) are automatically embedded in
     ├─ commands/
     │   └─ grimorio.md                   # /grimorio slash command
     ├─ agents/
-    │   ├─ grimorio-architect.md         # Campaign designer agent (Q&A + single delegate)
-    │   ├─ grimorio-orchestrator.md      # Coordinator (subagents + MCP tools for images/PDF)
+    │   ├─ grimorio-architect.md         # Campaign designer agent (end-to-end orchestration)
+    │   ├─ grimorio-orchestrator.md      # DEPRECATED — architect handles this now
     │   ├─ grimorio-artist.md            # Image specs + markdown reference updates
     │   └─ grimorio-cartographer.md      # SVG battle maps + decorative dividers
     └─ skills/
@@ -400,39 +403,41 @@ Fase 1: Preguntas interactivas
 
 Fase 2: Crear estructura (MCP: create_campaign)
 
-Fase 3: Lanzar Orquestador (delegate único)
-  └─ grimorio-orchestrator coordina internamente:
-      Fase 3a: Subagentes de contenido (PARALELO)
-        ├─ Subagente lore: mundo, ambientación, conflicto (MCP: save)
-        ├─ Subagente NPCs: 5+ NPCs + facciones (MCP: save_npcs)
-        ├─ Subagente bestiario: 3-5 monstruos (MCP: save_bestiary)
-        ├─ Subagente encuentros: combates balanceados (MCP: save_encounters)
-        └─ Subagente mapas: descripciones de escenas (MCP: save_maps)
-      Fase 3b: Subagente de actos (usa placeholders [ESCENA: ...])
-        └─ Actos: 3 actos referenciando NPCs, monstruos, encuentros (MCP: save_act)
-      Fase 3c: Assets visuales (PARALELO)
+Fase 3-13: Orquestación completa por grimorio-architect
+  └─ grimorio-architect coordina directamente:
+      Fase 3: Subagentes de contenido (PARALELO delegate)
+        ├─ Lore: mundo, ambientación, conflicto (MCP: save)
+        ├─ NPCs: 5+ NPCs + facciones (MCP: save_npcs)
+        ├─ Bestiario: 3-5 monstruos (MCP: save_bestiary)
+        ├─ Encuentros: combates balanceados (MCP: save_encounters)
+        └─ Mapas: descripciones de escenas (MCP: save_maps)
+      Fase 4: Reportar estado del contenido al usuario
+      Fase 5: Subagente de actos (usa placeholders [ESCENA: ...])
+        └─ Actos: referenciando NPCs, monstruos, encuentros (MCP: save_act)
+      Fase 6: Reportar estado de los actos al usuario
+      Fase 7: Assets visuales (PARALELO delegate)
         ├─ grimorio-cartographer: mapas de batalla, divisores (MCP: generate_map + generate_divider)
         └─ grimorio-artist: prepara batch-spec.json con todos los prompts de imágenes
-      Fase 3d: Generación de imágenes AI (orquestador llama MCP directamente)
-        ├─ generate_images_batch: TODAS las imágenes en paralelo (portada, NPCs, monstruos, escenas)
-        └─ Fallback: reintenta imágenes fallidas individualmente con generate_image
-      Fase 3e: Actualizar referencias
-        └─ grimorio-artist: reemplaza placeholders [ESCENA: ...] con referencias reales
-
-Fase 4: Compilar PDF (MCP: compile_pdf) — embebe todas las imágenes
-
-Fase 5: Mostrar ubicación de archivos generados
+      Fase 8: Reportar estado de SVGs al usuario
+      Fase 9: Generación de imágenes AI (architect llama MCP directamente, SECUENCIAL)
+        ├─ Una por una con generate_image (3s de delay entre cada una)
+        └─ Fallback: reintenta imágenes fallidas individualmente
+      Fase 10: Actualizar referencias (delegate a grimorio-artist)
+        └─ Actualiza archivos markdown con referencias reales de imágenes
+      Fase 11: Reportar estado de referencias al usuario
+      Fase 12: Compilar PDF (MCP: compile_pdf) — embebe todas las imágenes
+      Fase 13: Reporte final al usuario
 ```
 
-> **Importante:** El agente principal solo hace preguntas y lanza el orquestador con un único `delegate`. El orquestador coordina todos los subagentes internamente — el hilo principal no hace polling.
+> **Importante:** El agente grimorio-architect hace todo de principio a fin: recopila requisitos, crea la estructura, delega subagentes de contenido, genera imágenes directamente via MCP, y compila el PDF. El architect reporta progreso al usuario después de cada fase.
 
 ### Arquitectura
 
 ```
 OpenCode / Claude Code
     │
-    ├─ Agente grimorio-architect → Q&A + delegate único al orquestador
-    ├─ Agente grimorio-orchestrator → Coordina subagentes + llama herramientas MCP directamente
+    ├─ Agente grimorio-architect → Orquestación completa (todas las fases)
+    ├─ Agente grimorio-orchestrator → DEPRECATED (architect lo maneja ahora)
     ├─ Agente grimorio-artist → Especificaciones de imágenes + actualiza referencias markdown
     ├─ Agente grimorio-cartographer → Mapas de batalla SVG + divisores decorativos
     ├─ Comando /grimorio         → Dispara el flujo de arriba
@@ -467,8 +472,8 @@ OpenCode / Claude Code
     ├─ commands/
     │   └─ grimorio.md                   # Comando slash /grimorio
     ├─ agents/
-    │   ├─ grimorio-architect.md         # Agente diseñador (Q&A + delegate único)
-    │   ├─ grimorio-orchestrator.md      # Coordinador (subagentes + herramientas MCP para imágenes/PDF)
+    │   ├─ grimorio-architect.md         # Agente diseñador (orquestación completa)
+    │   ├─ grimorio-orchestrator.md      # DEPRECATED — architect lo maneja ahora
     │   ├─ grimorio-artist.md            # Especificaciones de imágenes + actualización de referencias
     │   └─ grimorio-cartographer.md      # Mapas de batalla SVG + divisores decorativos
     └─ skills/

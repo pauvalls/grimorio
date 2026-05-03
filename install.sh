@@ -192,11 +192,6 @@ setup_plugin() {
         cp -f "$INSTALL_DIR/agents/grimorio-cartographer.md" "$CLAUDE_PLUGIN_DIR/agents/"
     fi
 
-    # Copy orchestrator agent
-    if [ -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" ]; then
-        cp -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" "$CLAUDE_PLUGIN_DIR/agents/"
-    fi
-
     # Copy artist agent
     if [ -f "$INSTALL_DIR/agents/grimorio-artist.md" ]; then
         cp -f "$INSTALL_DIR/agents/grimorio-artist.md" "$CLAUDE_PLUGIN_DIR/agents/"
@@ -233,11 +228,6 @@ EOF
     # Copy new cartographer agent if it exists in repo but not in plugin
     if [ -f "$INSTALL_DIR/agents/grimorio-cartographer.md" ]; then
         cp -f "$INSTALL_DIR/agents/grimorio-cartographer.md" "$OPENCODE_PLUGIN_DIR/agents/"
-    fi
-
-    # Copy orchestrator agent
-    if [ -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" ]; then
-        cp -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" "$OPENCODE_PLUGIN_DIR/agents/"
     fi
 
     # Copy artist agent
@@ -348,7 +338,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-architect"] = {
             "description": "Expert Dungeon Master agent for D&D 5e campaign generation",
             "mode": "primary",
-            "prompt": "You are an expert Dungeon Master and campaign designer. Your job is to:\n1. Ask the user clarifying questions about their campaign idea (level, tone, duration, name)\n2. After gathering all requirements, launch grimorio-orchestrator with a single delegate call\n3. Report the final result to the user\n\nDO NOT edit files in the main thread. Always delegate to grimorio-orchestrator.",
+            "prompt": "You are an expert Dungeon Master and campaign designer. Your job is to:\n1. Ask the user clarifying questions about their campaign idea (level, tone, duration, name)\n2. After gathering all requirements, create the campaign structure and orchestrate ALL phases directly via delegate and MCP tools\n3. Report progress to the user after each phase\n4. Report the final result\n\nDO NOT edit files in the main thread. Always use delegate for content generation.",
             "tools": {
                 "bash": true,
                 "delegate": true,
@@ -359,32 +349,6 @@ configure_opencode_command() {
             "options": {}
         }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
         success "grimorio-architect agent configured"
-    fi
-
-    # Configure grimorio-orchestrator subagent
-    log "Configuring grimorio-orchestrator agent..."
-    if command_exists jq; then
-        jq '.agent["grimorio-orchestrator"] = {
-            "description": "Internal coordinator for grimorio campaigns with MCP tool access",
-            "mode": "subagent",
-            "prompt": "You are the Grimorio Orchestrator. Your ONLY job is to coordinate subagent execution.\n\nWorkflow:\n1. Launch content subagents (lore, NPCs, bestiary, encounters, maps) in parallel\n2. Monitor completion via delegation_list\n3. Launch acts subagent (uses [SCENE: ...] placeholders)\n4. Launch cartographer (SVGs) + artist (batch-spec.json) in parallel\n5. Use generate_images_batch MCP tool to generate ALL AI images at once\n6. Retry failed images individually with generate_image\n7. Launch artist again to update markdown references\n8. Compile PDF with compile_pdf\n9. Report to parent",
-            "tools": {
-                "bash": true,
-                "delegate": true,
-                "delegation_list": true,
-                "delegation_read": true,
-                "edit": true,
-                "read": true,
-                "write": true,
-                "generate_image": true,
-                "generate_images_batch": true,
-                "generate_map": true,
-                "generate_divider": true,
-                "compile_pdf": true
-            },
-            "options": {}
-        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-        success "grimorio-orchestrator agent configured"
     fi
 
     # Configure grimorio-artist subagent
@@ -433,9 +397,9 @@ configure_opencode_command() {
         cat > "$TEMPLATE_FILE" << 'TEMPLATE_EOF'
 Generate a D&D 5e campaign or one-shot from the user's idea.
 
-## IMPORTANT: Use `delegate` tool to launch ALL subagents. NEVER do the work yourself.
+## IMPORTANT: Use the grimorio-architect agent. It handles everything end-to-end.
 
-## Workflow
+## Workflow (followed by grimorio-architect)
 
 ### Phase 1: Gather Requirements
 Ask the user these questions (one at a time, interactively):
@@ -448,35 +412,18 @@ Ask the user these questions (one at a time, interactively):
 ### Phase 2: Create Campaign Structure
 Use the grimorio MCP tool `create_campaign` to create the structure.
 
-### Phase 3: Launch Orchestrator (SINGLE delegate call)
-Launch the **grimorio-orchestrator** subagent with ALL campaign parameters.
+### Phase 3-13: End-to-End Orchestration
+The architect handles everything: parallel delegate calls for content (lore, NPCs, bestiary, encounters, maps), acts generation, SVGs via cartographer, AI images via MCP, reference updates, and PDF compilation.
 
-You MUST pass these parameters in the prompt:
-- `campaign_path` — the full path returned by create_campaign
-- `campaign_name` — the kebab-case campaign name
-- `setting` — the campaign description/setting
-- `level_range` — e.g., "1-3", "4-6"
-- `tone` — e.g., "heroic", "dark"
-- `duration` — e.g., "one-shot", "3-5 sessions"
-- `is_oneshot` — true if one-shot, false if campaign
+The architect reports progress to the user after each phase.
 
-Example:
-```
-delegate(
-  agent="grimorio-orchestrator",
-  prompt="Coordinate campaign generation for 'sunken-city'.\n\ncampaign_path: /home/pau/campaigns/sunken-city\ncampaign_name: sunken-city\nsetting: A sunken city where nobles are aquatic vampires...\nlevel_range: 4-6\ntone: dark\nduration: 3-5 sessions\nis_oneshot: false"
-)
-```
-
-**CRITICAL:** This is the ONLY `delegate` call you make. The orchestrator handles ALL other subagents internally. Do NOT launch any other subagents from this thread.
-
-### Phase 4: Report
-After the orchestrator completes, report to the user:
+### Final: Report
+After completion, report to the user:
 - Where the PDF was saved
 - What content was generated
 - Any issues encountered
 
-**DO NOT call `delegation_list` repeatedly. Launch the orchestrator once and wait for it to complete.**
+**DO NOT launch subagents from the command thread — the architect manages all delegation internally.**
 TEMPLATE_EOF
 
         # Read template and escape for JSON
@@ -516,7 +463,7 @@ print_instructions() {
     echo -e "3. ${YELLOW}OpenCode auto-configured:${NC}"
     echo -e "   • MCP server  → ${GREEN}~/.config/opencode/opencode.json${NC} (mcp section)"
     echo -e "   • Architect   → grimorio-architect (handles user Q&A)"
-    echo -e "   • Orchestrator→ grimorio-orchestrator (coordinates all subagents + MCP tools)"
+    echo -e "   • The orchestrator is now DIRECTLY handled by grimorio-architect (end-to-end)"
     echo -e "   • Artist      → grimorio-artist (prepares image specs + updates references)"
     echo -e "   • Cartographer→ grimorio-cartographer (SVG maps + dividers)"
     echo -e "   • Command     → /grimorio (single delegate, zero polling)"
