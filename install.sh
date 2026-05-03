@@ -2,9 +2,9 @@
 set -e
 
 # Grimorio - One Command Installer
-# Usage: curl -sSL https://raw.githubusercontent.com/paupena/grimorio/main/install.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
 
-REPO_URL="https://github.com/pauvalls/Grimorio"
+REPO_URL="https://github.com/pauvalls/grimorio"
 INSTALL_DIR="${HOME}/.local/share/grimorio"
 CLAUDE_PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
 OPENCODE_PLUGIN_DIR="${HOME}/.config/opencode/plugins/grimorio"
@@ -197,6 +197,11 @@ setup_plugin() {
         cp -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" "$CLAUDE_PLUGIN_DIR/agents/"
     fi
 
+    # Copy artist agent
+    if [ -f "$INSTALL_DIR/agents/grimorio-artist.md" ]; then
+        cp -f "$INSTALL_DIR/agents/grimorio-artist.md" "$CLAUDE_PLUGIN_DIR/agents/"
+    fi
+
     # Fix .mcp.json for Claude Code (uses ${CLAUDE_PLUGIN_ROOT})
     cat > "$CLAUDE_PLUGIN_DIR/.mcp.json" << 'EOF'
 {
@@ -233,6 +238,11 @@ EOF
     # Copy orchestrator agent
     if [ -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" ]; then
         cp -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" "$OPENCODE_PLUGIN_DIR/agents/"
+    fi
+
+    # Copy artist agent
+    if [ -f "$INSTALL_DIR/agents/grimorio-artist.md" ]; then
+        cp -f "$INSTALL_DIR/agents/grimorio-artist.md" "$OPENCODE_PLUGIN_DIR/agents/"
     fi
 
     # Fix .mcp.json for OpenCode (uses absolute path, not ${CLAUDE_PLUGIN_ROOT})
@@ -355,9 +365,9 @@ configure_opencode_command() {
     log "Configuring grimorio-orchestrator agent..."
     if command_exists jq; then
         jq '.agent["grimorio-orchestrator"] = {
-            "description": "Internal coordinator for grimorio campaigns",
+            "description": "Internal coordinator for grimorio campaigns with MCP tool access",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Orchestrator. Your ONLY job is to coordinate subagent execution.\n\n1. Launch cartographer + content subagents in parallel using delegate\n2. Monitor completion via delegation_list\n3. Launch acts when foundation is done\n4. Compile PDF\n5. Report to parent",
+            "prompt": "You are the Grimorio Orchestrator. Your ONLY job is to coordinate subagent execution.\n\nWorkflow:\n1. Launch content subagents (lore, NPCs, bestiary, encounters, maps) in parallel\n2. Monitor completion via delegation_list\n3. Launch acts subagent (uses [SCENE: ...] placeholders)\n4. Launch cartographer (SVGs) + artist (batch-spec.json) in parallel\n5. Use generate_images_batch MCP tool to generate ALL AI images at once\n6. Retry failed images individually with generate_image\n7. Launch artist again to update markdown references\n8. Compile PDF with compile_pdf\n9. Report to parent",
             "tools": {
                 "bash": true,
                 "delegate": true,
@@ -365,11 +375,54 @@ configure_opencode_command() {
                 "delegation_read": true,
                 "edit": true,
                 "read": true,
-                "write": true
+                "write": true,
+                "generate_image": true,
+                "generate_images_batch": true,
+                "generate_map": true,
+                "generate_divider": true,
+                "compile_pdf": true
             },
             "options": {}
         }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
         success "grimorio-orchestrator agent configured"
+    fi
+
+    # Configure grimorio-artist subagent
+    log "Configuring grimorio-artist agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-artist"] = {
+            "description": "Campaign artist — prepares image specs and updates markdown references",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Artist. Prepare image batch specifications and update markdown references.\n\nPhase A: Read NPCs, bestiary, and acts. Create batch-spec.json with all image prompts.\nPhase B: After images are generated, update all markdown files with ![alt](assets/filename.png) references.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-artist agent configured"
+    fi
+
+    # Configure grimorio-cartographer subagent
+    log "Configuring grimorio-cartographer agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-cartographer"] = {
+            "description": "Campaign cartographer — generates SVG battle maps and decorative dividers",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Cartographer. Generate ALL SVG assets for a campaign: battle maps, decorative dividers, and stat block borders. Use generate_map and generate_divider tools. Reference all SVGs in markdown files.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-cartographer agent configured"
     fi
 
     # Always update command (not just add) to ensure latest template with image generation
@@ -463,7 +516,9 @@ print_instructions() {
     echo -e "3. ${YELLOW}OpenCode auto-configured:${NC}"
     echo -e "   • MCP server  → ${GREEN}~/.config/opencode/opencode.json${NC} (mcp section)"
     echo -e "   • Architect   → grimorio-architect (handles user Q&A)"
-    echo -e "   • Orchestrator→ grimorio-orchestrator (coordinates all subagents internally)"
+    echo -e "   • Orchestrator→ grimorio-orchestrator (coordinates all subagents + MCP tools)"
+    echo -e "   • Artist      → grimorio-artist (prepares image specs + updates references)"
+    echo -e "   • Cartographer→ grimorio-cartographer (SVG maps + dividers)"
     echo -e "   • Command     → /grimorio (single delegate, zero polling)"
     echo ""
     echo -e "4. ${YELLOW}Generate your first campaign:${NC}"

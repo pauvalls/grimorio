@@ -29,7 +29,7 @@ AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into 
 ### Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/pauvalls/Grimorio/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
 ```
 
 **What the installer does:**
@@ -78,13 +78,22 @@ Phase 2: Create campaign structure (MCP: create_campaign)
 
 Phase 3: Launch Orchestrator (single delegate)
   └─ grimorio-orchestrator coordinates internally:
-      ├─ grimorio-cartographer: cover art, battle maps, portraits (MCP: generate_image + generate_map)
-      ├─ Lore subagent: world, setting, conflict (MCP: save)
-      ├─ NPCs subagent: 5+ NPCs + factions (MCP: save_npcs)
-      ├─ Bestiary subagent: 3-5 monsters (MCP: save_bestiary)
-      ├─ Encounters subagent: balanced fights (MCP: save_encounters)
-      ├─ Maps subagent: scene descriptions (MCP: save_maps)
-      └─ Acts subagent: 3 acts with scenes (MCP: save_act)
+      Phase 3a: Content subagents (PARALLEL)
+        ├─ Lore subagent: world, setting, conflict (MCP: save)
+        ├─ NPCs subagent: 5+ NPCs + factions (MCP: save_npcs)
+        ├─ Bestiary subagent: 3-5 monsters (MCP: save_bestiary)
+        ├─ Encounters subagent: balanced fights (MCP: save_encounters)
+        └─ Maps subagent: scene descriptions (MCP: save_maps)
+      Phase 3b: Acts subagent (uses [SCENE: ...] placeholders)
+        └─ Acts: 3 acts referencing NPCs, monsters, encounters (MCP: save_act)
+      Phase 3c: Visual assets (PARALLEL)
+        ├─ grimorio-cartographer: battle maps, dividers (MCP: generate_map + generate_divider)
+        └─ grimorio-artist: prepares batch-spec.json with all image prompts
+      Phase 3d: AI Image Generation (orchestrator calls MCP directly)
+        ├─ generate_images_batch: ALL AI images in parallel (cover, NPCs, monsters, scenes)
+        └─ Fallback: retry failed images individually with generate_image
+      Phase 3e: Update References
+        └─ grimorio-artist: replaces [SCENE: ...] placeholders with actual image references
 
 Phase 4: Compile PDF (MCP: compile_pdf) — embeds all images
 
@@ -99,8 +108,9 @@ Phase 5: Report generated files location
 OpenCode / Claude Code
     │
     ├─ Agent grimorio-architect → Q&A + single delegate to orchestrator
-    ├─ Agent grimorio-orchestrator → Coordinates all subagents internally
-    ├─ Agent grimorio-cartographer → Battle maps, SVGs, images (subagent)
+    ├─ Agent grimorio-orchestrator → Coordinates subagents + calls MCP tools directly
+    ├─ Agent grimorio-artist → Prepares image specs + updates markdown references
+    ├─ Agent grimorio-cartographer → SVG battle maps + decorative dividers
     ├─ Command /grimorio        → Triggers the workflow above
     └─ Skill dnd-5e-srd         → D&D 5e rules context
          │
@@ -114,11 +124,11 @@ OpenCode / Claude Code
          ├─ save_bestiary    → Saves stat blocks
          ├─ save_encounters  → Saves encounters
          ├─ save_maps        → Saves scenes
-          ├─ generate_map     → Procedural SVG battle maps (100% local)
-          ├─ generate_divider → Decorative SVG section dividers (100% local)
-          ├─ generate_image   → AI images via Pollinations.ai (FREE) or DALL-E (optional)
-          ├─ generate_images_batch → Generate multiple AI images in parallel (bulk NPC portraits, scenes)
-          └─ compile_pdf      → Generates D&D-styled PDF with embedded images
+         ├─ generate_map     → Procedural SVG battle maps (100% local)
+         ├─ generate_divider → Decorative SVG section dividers (100% local)
+         ├─ generate_image   → AI images via Pollinations.ai (FREE) or DALL-E (optional)
+         ├─ generate_images_batch → Generate multiple AI images in parallel (bulk NPC portraits, scenes)
+         └─ compile_pdf      → Generates D&D-styled PDF with embedded images
 ```
 
 ### Image Generation
@@ -184,8 +194,9 @@ All images (SVG maps, AI-generated PNGs, dividers) are automatically embedded in
     │   └─ grimorio.md                   # /grimorio slash command
     ├─ agents/
     │   ├─ grimorio-architect.md         # Campaign designer agent (Q&A + single delegate)
-    │   ├─ grimorio-orchestrator.md      # Internal coordinator (handles all subagents)
-    │   └─ grimorio-cartographer.md      # Maps, SVGs, images subagent
+    │   ├─ grimorio-orchestrator.md      # Coordinator (subagents + MCP tools for images/PDF)
+    │   ├─ grimorio-artist.md            # Image specs + markdown reference updates
+    │   └─ grimorio-cartographer.md      # SVG battle maps + decorative dividers
     └─ skills/
         └─ dnd-5e-srd/SKILL.md           # D&D 5e rules reference
 
@@ -332,7 +343,7 @@ Generador de campañas y one-shots de D&D 5e impulsado por IA. Convierte una ide
 ### Instalación Rápida
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/pauvalls/Grimorio/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
 ```
 
 **Qué hace el instalador:**
@@ -381,13 +392,22 @@ Fase 2: Crear estructura (MCP: create_campaign)
 
 Fase 3: Lanzar Orquestador (delegate único)
   └─ grimorio-orchestrator coordina internamente:
-      ├─ grimorio-cartographer: portada, mapas de batalla, retratos (MCP: generate_image + generate_map)
-      ├─ Subagente lore: mundo, ambientación, conflicto (MCP: save)
-      ├─ Subagente NPCs: 5+ NPCs + facciones (MCP: save_npcs)
-      ├─ Subagente bestiario: 3-5 monstruos (MCP: save_bestiary)
-      ├─ Subagente encuentros: combates balanceados (MCP: save_encounters)
-      ├─ Subagente mapas: descripciones de escenas (MCP: save_maps)
-      └─ Subagente actos: 3 actos con escenas (MCP: save_act)
+      Fase 3a: Subagentes de contenido (PARALELO)
+        ├─ Subagente lore: mundo, ambientación, conflicto (MCP: save)
+        ├─ Subagente NPCs: 5+ NPCs + facciones (MCP: save_npcs)
+        ├─ Subagente bestiario: 3-5 monstruos (MCP: save_bestiary)
+        ├─ Subagente encuentros: combates balanceados (MCP: save_encounters)
+        └─ Subagente mapas: descripciones de escenas (MCP: save_maps)
+      Fase 3b: Subagente de actos (usa placeholders [ESCENA: ...])
+        └─ Actos: 3 actos referenciando NPCs, monstruos, encuentros (MCP: save_act)
+      Fase 3c: Assets visuales (PARALELO)
+        ├─ grimorio-cartographer: mapas de batalla, divisores (MCP: generate_map + generate_divider)
+        └─ grimorio-artist: prepara batch-spec.json con todos los prompts de imágenes
+      Fase 3d: Generación de imágenes AI (orquestador llama MCP directamente)
+        ├─ generate_images_batch: TODAS las imágenes en paralelo (portada, NPCs, monstruos, escenas)
+        └─ Fallback: reintenta imágenes fallidas individualmente con generate_image
+      Fase 3e: Actualizar referencias
+        └─ grimorio-artist: reemplaza placeholders [ESCENA: ...] con referencias reales
 
 Fase 4: Compilar PDF (MCP: compile_pdf) — embebe todas las imágenes
 
@@ -402,8 +422,9 @@ Fase 5: Mostrar ubicación de archivos generados
 OpenCode / Claude Code
     │
     ├─ Agente grimorio-architect → Q&A + delegate único al orquestador
-    ├─ Agente grimorio-orchestrator → Coordina todos los subagentes internamente
-    ├─ Agente grimorio-cartographer → Mapas, SVGs, imágenes (subagente)
+    ├─ Agente grimorio-orchestrator → Coordina subagentes + llama herramientas MCP directamente
+    ├─ Agente grimorio-artist → Especificaciones de imágenes + actualiza referencias markdown
+    ├─ Agente grimorio-cartographer → Mapas de batalla SVG + divisores decorativos
     ├─ Comando /grimorio         → Dispara el flujo de arriba
     └─ Skill dnd-5e-srd          → Contexto de reglas D&D 5e
          │
@@ -417,11 +438,11 @@ OpenCode / Claude Code
          ├─ save_bestiary    → Guarda stat blocks
          ├─ save_encounters  → Guarda encuentros
          ├─ save_maps        → Guarda escenas
-          ├─ generate_map     → Mapas SVG procedurales (100% local)
-          ├─ generate_divider → Divisores decorativos SVG (100% local)
-          ├─ generate_image   → Imágenes IA vía Pollinations.ai (GRATIS) o DALL-E (opcional)
-          ├─ generate_images_batch → Genera múltiples imágenes IA en paralelo (retratos NPCs, escenas)
-          └─ compile_pdf      → Genera PDF estilo D&D con imágenes embebidas
+         ├─ generate_map     → Mapas SVG procedurales (100% local)
+         ├─ generate_divider → Divisores decorativos SVG (100% local)
+         ├─ generate_image   → Imágenes IA vía Pollinations.ai (GRATIS) o DALL-E (opcional)
+         ├─ generate_images_batch → Genera múltiples imágenes IA en paralelo (retratos NPCs, escenas)
+         └─ compile_pdf      → Genera PDF estilo D&D con imágenes embebidas
 ```
 
 ### Estructura del Plugin
@@ -437,8 +458,9 @@ OpenCode / Claude Code
     │   └─ grimorio.md                   # Comando slash /grimorio
     ├─ agents/
     │   ├─ grimorio-architect.md         # Agente diseñador (Q&A + delegate único)
-    │   ├─ grimorio-orchestrator.md      # Coordinador interno (maneja todos los subagentes)
-    │   └─ grimorio-cartographer.md      # Subagente mapas, SVGs, imágenes
+    │   ├─ grimorio-orchestrator.md      # Coordinador (subagentes + herramientas MCP para imágenes/PDF)
+    │   ├─ grimorio-artist.md            # Especificaciones de imágenes + actualización de referencias
+    │   └─ grimorio-cartographer.md      # Mapas de batalla SVG + divisores decorativos
     └─ skills/
         └─ dnd-5e-srd/SKILL.md           # Referencia de reglas D&D 5e
 
