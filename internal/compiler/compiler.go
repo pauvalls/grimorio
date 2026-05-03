@@ -37,6 +37,7 @@ var loreTemplate string
 type Compiler struct {
 	CampaignDir string
 	PDFEngine   string
+	seenImages  map[string]bool
 }
 
 func New(campaignDir, pdfEngine string) *Compiler {
@@ -46,6 +47,7 @@ func New(campaignDir, pdfEngine string) *Compiler {
 	return &Compiler{
 		CampaignDir: campaignDir,
 		PDFEngine:   pdfEngine,
+		seenImages:  make(map[string]bool),
 	}
 }
 
@@ -101,7 +103,7 @@ func (c *Compiler) Compile(title string) (string, error) {
 	// Insert cover art if exists
 	coverPath := filepath.Join(c.CampaignDir, "assets", "cover-art.png")
 	if _, err := os.Stat(coverPath); err == nil {
-		htmlParts = append(htmlParts, fmt.Sprintf(`<div class="cover-image">%s</div>`, embedImage(coverPath, "Cover Art", c.CampaignDir)))
+		htmlParts = append(htmlParts, fmt.Sprintf(`<div class="cover-image">%s</div>`, embedImage(coverPath, "Cover Art", c.CampaignDir, c.seenImages)))
 	}
 	
 	htmlParts = append(htmlParts, `</div>`)
@@ -136,7 +138,7 @@ func (c *Compiler) Compile(title string) (string, error) {
 						continue
 					}
 					sectionID := "sec-" + sanitizeID(sec.name+"-"+f.Name())
-					htmlResult := markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter)
+					htmlResult := markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages)
 					if strings.TrimSpace(htmlResult) != "" {
 						htmlParts = append(htmlParts, htmlResult)
 						hasContent = true
@@ -152,7 +154,7 @@ func (c *Compiler) Compile(title string) (string, error) {
 				continue
 			}
 			sectionID := "sec-" + sanitizeID(sec.name)
-			htmlResult := markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter)
+			htmlResult := markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages)
 			if strings.TrimSpace(htmlResult) != "" {
 				htmlParts = append(htmlParts, htmlResult)
 			}
@@ -215,7 +217,7 @@ var (
 	codeAssetRegex  = regexp.MustCompile("`assets/([\\w\\-]+\\.(svg|png|jpg|jpeg|gif|webp))`")
 )
 
-func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int) string {
+func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool) string {
 	lines := strings.Split(md, "\n")
 	var out []string
 	inList := false
@@ -259,7 +261,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		escaped := html.EscapeString(text)
 		escaped = boldRegex.ReplaceAllString(escaped, "<strong>$1</strong>")
 		escaped = italicRegex.ReplaceAllString(escaped, "<em>$1</em>")
-		escaped = processImages(escaped, baseDir)
+		escaped = processImages(escaped, baseDir, seenImages)
 		out = append(out, fmt.Sprintf(`<div class="read-aloud">%s</div>`, escaped))
 	}
 
@@ -275,7 +277,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		escaped := html.EscapeString(text)
 		escaped = boldRegex.ReplaceAllString(escaped, "<strong>$1</strong>")
 		escaped = italicRegex.ReplaceAllString(escaped, "<em>$1</em>")
-		escaped = processImages(escaped, baseDir)
+		escaped = processImages(escaped, baseDir, seenImages)
 		out = append(out, fmt.Sprintf("<p>%s</p>", escaped))
 	}
 
@@ -335,6 +337,11 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
+
+		// Skip horizontal rules (---, ***, ___, - - -)
+		if trimmed == "---" || trimmed == "***" || trimmed == "___" || trimmed == "- - -" {
+			continue
+		}
 
 		// Skip empty lines inside table
 		if inTable && trimmed == "" {
@@ -481,7 +488,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			escaped := html.EscapeString(text)
 			escaped = boldRegex.ReplaceAllString(escaped, "<strong>$1</strong>")
 			escaped = italicRegex.ReplaceAllString(escaped, "<em>$1</em>")
-			escaped = processImages(escaped, baseDir)
+			escaped = processImages(escaped, baseDir, seenImages)
 			out = append(out, fmt.Sprintf("<li>%s</li>", escaped))
 		} else if trimmed == "" {
 			flushParagraph()
@@ -495,7 +502,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				out = append(out, "</ul>")
 				inList = false
 			}
-			out = append(out, processImages(trimmed, baseDir))
+			out = append(out, processImages(trimmed, baseDir, seenImages))
 		} else {
 			if inList {
 				out = append(out, "</ul>")
@@ -570,10 +577,11 @@ func parseTableAlign(row string) []string {
 
 func markdownToHTML(md string, baseDir string) string {
 	counter := 0
-	return markdownToHTMLWithID(md, baseDir, "content", &counter)
+	seen := make(map[string]bool)
+	return markdownToHTMLWithID(md, baseDir, "content", &counter, seen)
 }
 
-func processImages(text string, baseDir string) string {
+func processImages(text string, baseDir string, seenImages map[string]bool) string {
 	text = imageRegex.ReplaceAllStringFunc(text, func(match string) string {
 		matches := imageRegex.FindStringSubmatch(match)
 		if len(matches) < 3 {
@@ -593,7 +601,7 @@ func processImages(text string, baseDir string) string {
 			imgPath = filepath.Join(baseDir, imgPath)
 		}
 
-		return embedImage(imgPath, alt, baseDir)
+		return embedImage(imgPath, alt, baseDir, seenImages)
 	})
 
 	// Detect code-formatted asset refs: `assets/filename.ext`
@@ -604,13 +612,19 @@ func processImages(text string, baseDir string) string {
 		}
 		filename := matches[1]
 		imgPath := filepath.Join(baseDir, "assets", filename)
-		return embedImage(imgPath, filename, baseDir)
+		return embedImage(imgPath, filename, baseDir, seenImages)
 	})
 
 	return text
 }
 
-func embedImage(imgPath, alt, baseDir string) string {
+func embedImage(imgPath, alt, baseDir string, seenImages map[string]bool) string {
+	// Deduplicate: skip if same image path already embedded
+	if seenImages[imgPath] {
+		return ""
+	}
+	seenImages[imgPath] = true
+
 	data, err := os.ReadFile(imgPath)
 	if err != nil {
 		return fmt.Sprintf(`<span class="image-missing">[Image: %s]</span>`, html.EscapeString(alt))
