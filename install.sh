@@ -238,6 +238,21 @@ EOF
 
     success "Plugin installed to $OPENCODE_PLUGIN_DIR"
 
+    # Clean up stale grimorio.md files from old installation locations
+    log "Cleaning up stale template files..."
+    local stale_files=(
+        "${HOME}/.config/opencode/commands/grimorio.md"
+        "${HOME}/.local/share/grimorio/.opencode/commands/grimorio.md"
+        "${HOME}/.local/share/grimorio/commands/grimorio.md"
+        "${HOME}/Grimorio/.opencode/commands/grimorio.md"
+    )
+    for stale in "${stale_files[@]}"; do
+        if [ -f "$stale" ]; then
+            rm -f "$stale"
+            log "Removed stale file: $stale"
+        fi
+    done
+
     # Configure grimorio in opencode.json for versions that don't support .mcp.json
     configure_opencode_mcp
 }
