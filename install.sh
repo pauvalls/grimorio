@@ -326,6 +326,8 @@ configure_opencode_command() {
         cat > "$TEMPLATE_FILE" << 'TEMPLATE_EOF'
 Generate a D&D 5e campaign or one-shot from the user's idea.
 
+## IMPORTANT: Use `delegate` tool to launch ALL subagents. NEVER do the work yourself.
+
 ## Workflow
 
 ### Phase 1: Gather Requirements
@@ -339,46 +341,41 @@ Ask the user these questions (one at a time, interactively):
 ### Phase 2: Create Campaign Structure
 Use the grimorio MCP tool `create_campaign` to create the structure.
 
-### Phase 3: Generate Content + Images (Parallel)
-Launch subagents in PARALLEL:
+### Phase 3: Launch ALL Subagents in PARALLEL (using `delegate`)
+You MUST use the `delegate` tool to launch these subagents. Do NOT generate content yourself.
 
-**Text Content (fast):**
-- Delegate lore generation: generate world backstory, setting, conflict
-- Delegate NPCs generation: generate 5+ NPCs with factions
-- Delegate bestiary generation: generate 3-5 monsters with stat blocks
-- Delegate encounters generation: generate 3-5 encounters
-- Delegate maps generation: generate scene descriptions with zone breakdowns
+**FIRST — Launch grimorio-cartographer (images and maps):**
+- Use `delegate` with agent="grimorio-cartographer"
+- The cartographer WILL generate:
+  - Cover art: `generate_image` (type: cover, filename: cover-art)
+  - Battle maps for EVERY scene: `generate_map` (style: dungeon/landscape/city, use labels parameter)
+  - NPC portraits: `generate_image` (type: portrait, filename: npc-{name})
+  - Scene illustrations: `generate_image` (type: scene, filename: scene-{act}-{scene}-{name})
+- The cartographer WILL update markdown files with image references
+- **THIS IS MANDATORY — never skip the cartographer**
 
-**Images (in parallel):**
-- Delegate to grimorio-cartographer for visuals:
-  - **Cover art** (MANDATORY — always generate): type=cover, filename=cover-art
-  - **Battle maps** (MANDATORY — SVG procedural, 100% local): use `generate_map`
-    - Styles: dungeon, landscape, city
-    - Use `labels` parameter to name each zone
-  - **NPC portraits** (optional): type=portrait, filename=npc-{name}
-  - **Scene illustrations** (optional): type=scene, filename=scene-{act}-{scene}-{name}
-  - After generating, UPDATE markdown files with image references
+**IN PARALLEL — Launch text content subagents:**
+- `delegate` lore generation: world backstory, setting, conflict
+- `delegate` NPCs generation: 5+ NPCs with factions
+- `delegate` bestiary generation: 3-5 monsters with stat blocks
+- `delegate` encounters generation: 3-5 encounters
+- `delegate` maps generation: scene descriptions with zone breakdowns
 
-> **Note:** Cover art and battle maps are ALWAYS generated. NPC portraits and scene illustrations are optional — if slow or failing, skip them. The campaign is still valid without optional images.
-
-### Phase 4: Generate Acts (LAST — integrates everything)
-Acts are generated LAST, after ALL other content exists:
-- Delegate acts generation: generate act 1, act 2, act 3
-  - Acts MUST integrate all previously generated content:
-    - Reference NPCs by name from npcs_and_factions.md
-    - Reference monsters from bestiary.md
-    - Use encounter structures from encounters.md
-    - Link to existing maps: `![Mapa](assets/actX-sceneY-name.svg)`
-    - Include scene illustrations if generated: `![Escena](assets/scene-actX-sceneY-name.png)`
-    - Add "Zonas del mapa" with descriptions linking to story elements
-
-> **Important:** Acts reference content generated in Phase 3. This ensures consistency.
+### Phase 4: Generate Acts (LAST — after ALL other content exists)
+- `delegate` acts generation: generate act 1, act 2, act 3
+  - Acts MUST reference existing content by name:
+    - NPCs from npcs_and_factions.md
+    - Monsters from bestiary.md
+    - Encounters from encounters.md
+    - Maps: `![Mapa](assets/actX-sceneY-name.svg)`
+    - Illustrations if generated: `![Escena](assets/scene-actX-sceneY-name.png)`
+    - "Zonas del mapa" linking zones to story elements
 
 ### Phase 5: Compile PDF
-After ALL content is ready (images are optional), use grimorio MCP tool `compile_pdf` to generate the final PDF.
+Use grimorio MCP tool `compile_pdf` to generate the final PDF.
 
 ### Phase 6: Report
-Tell the user where the PDF and markdown files were saved. Mention which images were generated (if any) and which were skipped.
+Tell the user where the PDF and markdown files were saved. Report which images were generated.
 TEMPLATE_EOF
 
         # Read template and escape for JSON
