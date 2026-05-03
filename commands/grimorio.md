@@ -6,6 +6,8 @@ subtask: false
 
 Generate a D&D 5e campaign or one-shot from the user's idea.
 
+## IMPORTANT: Use `delegate` tool to launch ALL subagents. NEVER do the work yourself.
+
 ## Workflow
 
 ### Phase 1: Gather Requirements
@@ -19,19 +21,38 @@ Ask the user these questions (one at a time, interactively):
 ### Phase 2: Create Campaign Structure
 Use the grimorio MCP tool `create_campaign` to create the structure.
 
-### Phase 3: Generate Content via Subagents
-Launch subagents in PARALLEL using `delegate` for each of these tasks:
-- Delegate lore generation: generate world backstory, setting, conflict
-- Delegate acts generation: generate act 1, act 2, act 3
-- Delegate NPCs generation: generate 5+ NPCs with factions
-- Delegate bestiary generation: generate 3-5 monsters with stat blocks
-- Delegate encounters generation: generate 3-5 encounters
-- Delegate maps generation: generate scene descriptions
+### Phase 3: Launch ALL Subagents in PARALLEL (using `delegate`)
+You MUST use the `delegate` tool to launch these subagents. Do NOT generate content yourself.
 
-Each subagent must use the grimorio MCP tools to save their output.
+**FIRST — Launch grimorio-cartographer (images and maps):**
+- Use `delegate` with agent="grimorio-cartographer"
+- The cartographer WILL generate:
+  - Cover art: `generate_image` (type: cover, filename: cover-art)
+  - Battle maps for EVERY scene: `generate_map` (style: dungeon/landscape/city, use labels parameter)
+  - NPC portraits: `generate_image` (type: portrait, filename: npc-{name})
+  - Scene illustrations: `generate_image` (type: scene, filename: scene-{act}-{scene}-{name})
+- The cartographer WILL update markdown files with image references
+- **THIS IS MANDATORY — never skip the cartographer**
 
-### Phase 4: Compile PDF
-After ALL subagents complete, use grimorio MCP tool `compile_pdf` to generate the final PDF.
+**IN PARALLEL — Launch text content subagents:**
+- `delegate` lore generation: world backstory, setting, conflict
+- `delegate` NPCs generation: 5+ NPCs with factions
+- `delegate` bestiary generation: 3-5 monsters with stat blocks
+- `delegate` encounters generation: 3-5 encounters
+- `delegate` maps generation: scene descriptions with zone breakdowns
 
-### Phase 5: Report
-Tell the user where the PDF and markdown files were saved.
+### Phase 4: Generate Acts (LAST — after ALL other content exists)
+- `delegate` acts generation: generate act 1, act 2, act 3
+  - Acts MUST reference existing content by name:
+    - NPCs from npcs_and_factions.md
+    - Monsters from bestiary.md
+    - Encounters from encounters.md
+    - Maps: `![Mapa](assets/actX-sceneY-name.svg)`
+    - Illustrations if generated: `![Escena](assets/scene-actX-sceneY-name.png)`
+    - "Zonas del mapa" linking zones to story elements
+
+### Phase 5: Compile PDF
+Use grimorio MCP tool `compile_pdf` to generate the final PDF.
+
+### Phase 6: Report
+Tell the user where the PDF and markdown files were saved. Report which images were generated.
