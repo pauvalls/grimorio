@@ -339,47 +339,44 @@ Ask the user these questions (one at a time, interactively):
 ### Phase 2: Create Campaign Structure
 Use the grimorio MCP tool `create_campaign` to create the structure.
 
-### Phase 3: Generate Foundation Content (in order)
-Generate these components FIRST (they provide context for acts):
+### Phase 3: Generate Content + Images (Parallel)
+Launch subagents in PARALLEL:
 
-**Step 1 - Lore (first, sets the world):**
+**Text Content (fast):**
 - Delegate lore generation: generate world backstory, setting, conflict
-
-**Step 2 - NPCs and Maps (second, characters and places):**
 - Delegate NPCs generation: generate 5+ NPCs with factions
-- Delegate maps generation: generate scene descriptions with zone breakdowns
-  - Generate SVG maps using `generate_map` for EACH location
-  - Use `labels` parameter to name each zone
-  - Save maps to assets/
-
-**Step 3 - Bestiary and Encounters (third, mechanical content):**
 - Delegate bestiary generation: generate 3-5 monsters with stat blocks
 - Delegate encounters generation: generate 3-5 encounters
+- Delegate maps generation: generate scene descriptions with zone breakdowns
 
-### Phase 4: Generate Acts (LAST, integrates everything)
-After ALL foundation content is ready, generate acts:
+**Images (optional, slowest — runs in background):**
+- Delegate to grimorio-cartographer for AI images (FREE via Pollinations.ai):
+  - Cover art (type: cover, filename: cover-art)
+  - NPC portraits (type: portrait, filename: npc-{name}) for ALL major NPCs
+  - Scene illustrations (type: scene, filename: scene-{act}-{scene}-{name}) for pivotal scenes
+  - Battle maps using `generate_map` (SVG procedural, 100% local)
+    - Styles: dungeon, landscape, city
+    - Use `labels` parameter to name each zone
+  - After generating, UPDATE markdown files with image references
+
+> **Note:** Image generation is OPTIONAL and runs in parallel. If images are slow or fail, continue without them. The campaign is still valid.
+
+### Phase 4: Generate Acts (integrates everything)
+After foundation content is ready, generate acts:
 - Delegate acts generation: generate act 1, act 2, act 3
   - Acts MUST integrate all previously generated content:
     - Reference NPCs by name from npcs_and_factions.md
     - Reference monsters from bestiary.md
     - Use encounter structures from encounters.md
     - Link to existing maps: `![Mapa](assets/actX-sceneY-name.svg)`
-    - Include scene illustrations: `![Escena](assets/scene-actX-sceneY-name.png)`
+    - Include scene illustrations if generated: `![Escena](assets/scene-actX-sceneY-name.png)`
     - Add "Zonas del mapa" with descriptions linking to story elements
 
-### Phase 5: Generate Visuals (DELEGATE to grimorio-cartographer)
-After content is generated, launch subagents in PARALLEL:
-- Delegate AI images to grimorio-cartographer (FREE via Pollinations.ai):
-  - Cover art (type: cover, filename: cover-art)
-  - NPC portraits (type: portrait, filename: npc-{name}) for ALL major NPCs
-  - Scene illustrations (type: scene, filename: scene-{act}-{scene}-{name}) for pivotal scenes
-  - After generating each image, UPDATE the corresponding markdown file with the image reference
-
 ### Phase 5: Compile PDF
-After ALL content and visuals are ready, use grimorio MCP tool `compile_pdf` to generate the final PDF.
+After ALL content is ready (images are optional), use grimorio MCP tool `compile_pdf` to generate the final PDF.
 
 ### Phase 6: Report
-Tell the user where the PDF and markdown files were saved, and which images were generated.
+Tell the user where the PDF and markdown files were saved. Mention which images were generated (if any) and which were skipped.
 TEMPLATE_EOF
 
         # Read template and escape for JSON
