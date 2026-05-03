@@ -64,24 +64,19 @@ Use `grimorio_create_campaign` with the gathered parameters.
 Take note of the `campaign_path` returned.
 
 ### Phase 3: Batch 1 — Contenido Base (PARALLEL)
-Lore, NPCs, Bestiary y Maps son INDEPENDIENTES entre sí. Lanzalos todos juntos:
+NPCs, Bestiary y Maps se generan con la premisa base de la campaña (tone, level, setting):
 
-**1. Lore — Agent: grimorio-lore**
-```
-delegate(agent="grimorio-lore", prompt="Generate LORE for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
-```
-
-**2. NPCs — Agent: grimorio-npc**
+**1. NPCs — Agent: grimorio-npc**
 ```
 delegate(agent="grimorio-npc", prompt="Generate NPCS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
 ```
 
-**3. Bestiary — Agent: grimorio-bestiary**
+**2. Bestiary — Agent: grimorio-bestiary**
 ```
 delegate(agent="grimorio-bestiary", prompt="Generate BESTIARY for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
 ```
 
-**4. Maps — Agent: grimorio-maps**
+**3. Maps — Agent: grimorio-maps**
 ```
 delegate(agent="grimorio-maps", prompt="Generate MAP DESCRIPTIONS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}")
 ```
@@ -100,16 +95,20 @@ WHILE any subagent in Batch 1 is still running:
 ```
 ## Batch 1 Completado — Contenido Base
 
-✅ Lore
 ✅ NPCs
 ✅ Bestiary
 ✅ Maps
 ```
 
-### Phase 4: Batch 2 — Contenido Derivado (PARALLEL)
-Quests (necesita lore + NPCs), Encounters (necesita bestiary + maps), y Characters (necesita lore + NPCs) lanzalos juntos:
+### Phase 4: Batch 2 — Contenido + Lore (PARALLEL)
+Lore se genera junto con quests (necesita NPCs), encounters (necesita bestiary + maps), y characters (necesita NPCs):
 
-**1. Quests — Agent: grimorio-quests**
+**1. Lore — Agent: grimorio-lore**
+```
+delegate(agent="grimorio-lore", prompt="Generate LORE for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
+```
+
+**2. Quests — Agent: grimorio-quests**
 ```
 delegate(agent="grimorio-quests", prompt="Generate PERSONAL QUESTS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}")
 ```
@@ -136,8 +135,9 @@ WHILE any subagent in Batch 2 is still running:
 ### Phase 4c: Report Batch 2
 
 ```
-## Batch 2 Completado — Contenido Derivado
+## Batch 2 Completado — Contenido + Lore
 
+✅ Lore
 ✅ Quests
 ✅ Encounters
 ✅ Characters
@@ -332,7 +332,7 @@ PDF Final: {campaign_path}/campaign.pdf
    - `grimorio-encounters` for combat and exploration challenges
    - `grimorio-characters` for pre-generated character sheets
    - `grimorio-acts` for narrative acts and scenes
-9. **Execution order is CRITICAL**: Batch 1 (lore, npcs, bestiary, maps) → Batch 2 (quests, encounters, characters) → Batch 3 (SVG maps, acts) → Artist → Images → PDF
+9. **Execution order is CRITICAL**: Batch 1 (NPCs, bestiary, maps) → Batch 2 (lore, quests, encounters, characters) → Batch 3 (SVG maps, acts) → Artist → Images → PDF
 9. **Use `grimorio-cartographer` agent type** for SVG generation.
 10. **Use `grimorio-artist` agent type** for image batch specs and reference updates.
 11. You can make multiple `delegate` calls simultaneously when phases say PARALLEL.
