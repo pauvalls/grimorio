@@ -64,31 +64,31 @@ Use `grimorio_create_campaign` with the gathered parameters.
 Take note of the `campaign_path` returned.
 
 ### Phase 3: Launch Content Subagents (PARALLEL)
-Launch ALL of these simultaneously using `delegate` with agent type `general`:
+Launch ALL of these simultaneously using `delegate` with the specific agent type for each content domain:
 
-**1. Lore**
+**1. Lore — Agent: grimorio-lore**
 ```
-delegate(agent="general", prompt="Generate LORE for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nUse grimorio_save_lore tool. Include: world backstory, current conflict, key locations, factions.")
-```
-
-**2. NPCs**
-```
-delegate(agent="general", prompt="Generate NPCS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nUse grimorio_save_npcs tool. Create 5+ NPCs with: personality, motivation, secret, faction, stat block for important NPCs.")
+delegate(agent="grimorio-lore", prompt="Generate LORE for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
 ```
 
-**3. Bestiary**
+**2. NPCs — Agent: grimorio-npc**
 ```
-delegate(agent="general", prompt="Generate BESTIARY for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nUse grimorio_save_bestiary tool. Create 3-5 monsters with full D&D 5e stat blocks, tactics, and lore.")
-```
-
-**4. Encounters**
-```
-delegate(agent="general", prompt="Generate ENCOUNTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nUse grimorio_save_encounters tool. Create 3-5 encounters with difficulty ratings, terrain, and tactical notes.")
+delegate(agent="grimorio-npc", prompt="Generate NPCS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
 ```
 
-**5. Maps**
+**3. Bestiary — Agent: grimorio-bestiary**
 ```
-delegate(agent="general", prompt="Generate MAP DESCRIPTIONS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nUse grimorio_save_maps tool. Describe each major location with zones, atmosphere, and connections to story elements.")
+delegate(agent="grimorio-bestiary", prompt="Generate BESTIARY for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
+```
+
+**4. Encounters — Agent: grimorio-encounters**
+```
+delegate(agent="grimorio-encounters", prompt="Generate ENCOUNTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
+```
+
+**5. Maps — Agent: grimorio-maps**
+```
+delegate(agent="grimorio-maps", prompt="Generate MAP DESCRIPTIONS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}")
 ```
 
 ### Phase 4: Monitor Content Completion
@@ -124,31 +124,47 @@ Once all content subagents finish, call `delegation_read` on EACH one and output
 Iniciando Fase 5: Generación de Acts...
 ```
 
-### Phase 5: Launch Acts Subagent
+### Phase 5: Launch Acts Subagent — Agent: grimorio-acts
 
 ```
-delegate(agent="general", prompt="Generate ACTS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nCRITICAL: Read these files FIRST:\n- {campaign_path}/lore.md\n- {campaign_path}/npcs/npcs_and_factions.md\n- {campaign_path}/bestiary/bestiary.md\n- {campaign_path}/encounters/encounters.md\n- {campaign_path}/maps/maps.md\n\nGenerate {act_count} acts. Each act must:\n1. Reference NPCs by name from npcs/npcs_and_factions.md\n2. Reference monsters by name from bestiary/bestiary.md\n3. Reference encounters by name from encounters/encounters.md\n4. Use [SCENE: brief-description] placeholders for pivotal moments (boss fights, key discoveries, dramatic moments)\n5. Have 'Zonas del mapa' sections linking zones to story\n6. Do NOT include actual image references — use [SCENE: ...] placeholders instead\n\nWrite to act_1.md, act_2.md, etc. using grimorio_save_act.")
+delegate(agent="grimorio-acts", prompt="Generate ACTS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nGenerate {act_count} acts.")
 ```
 
 `act_count` = 1 if `is_oneshot` else 3
 
-### Phase 6: Monitor Acts Completion
+### Phase 5b: Launch Quests + Characters (PARALLEL)
+
+Launch both simultaneously:
+
+**1. Quests — Agent: grimorio-quests**
+```
+delegate(agent="grimorio-quests", prompt="Generate PERSONAL QUESTS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}")
+```
+
+**2. Characters — Agent: grimorio-characters**
+```
+delegate(agent="grimorio-characters", prompt="Generate PRE-GENERATED CHARACTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
+```
+
+### Phase 6: Monitor Acts + Quests + Characters Completion
 
 ```
-WHILE acts subagent is running:
+WHILE acts, quests, and characters subagents are running:
   delegation_list
   IF completed:
     delegation_read(id)
 ```
 
-**Do NOT proceed until acts are done.**
+**Do NOT proceed until acts, quests, and characters are all done.**
 
-### Phase 6b: Report Acts Status to User
+### Phase 6b: Report Acts + Quests + Characters Status to User
 
 ```
-## Fase 5 Completada — Acts Generados
+## Fase 5 Completada — Acts, Misiones y Personajes Generados
 
 ✅ Acts generados: {act_count}
+✅ Quests: {cuántas misiones}
+✅ Characters: {cuántos personajes pregenerados}
 📄 Archivos creados: {lista de act_*.md}
 🎭 NPCs referenciados: {nombres clave}
 👹 Monstruos referenciados: {nombres de bestias}
@@ -318,7 +334,15 @@ PDF Final: {campaign_path}/campaign.pdf
 5. **Handle failures gracefully.** If one subagent fails, report the error but continue.
 6. **Do NOT compile PDF until ALL references are updated.**
 7. **Use MCP tools directly** for image generation (sequential, 3s delay), maps, dividers, and PDF compilation.
-8. **Use `general` agent type** for content generation delegates (lore, NPCs, bestiary, encounters, maps, acts).
+8. **Use the SPECIFIC agent type** for each content domain:
+   - `grimorio-lore` for world lore and backstory
+   - `grimorio-npc` for NPCs and factions
+   - `grimorio-bestiary` for monster stat blocks
+   - `grimorio-encounters` for combat and exploration challenges
+   - `grimorio-maps` for location and zone descriptions
+   - `grimorio-acts` for narrative acts and scenes
+   - `grimorio-quests` for personal quests and side missions
+   - `grimorio-characters` for pre-generated character sheets
 9. **Use `grimorio-cartographer` agent type** for SVG generation.
 10. **Use `grimorio-artist` agent type** for image batch specs and reference updates.
 11. You can make multiple `delegate` calls simultaneously when phases say PARALLEL.

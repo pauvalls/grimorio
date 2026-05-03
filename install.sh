@@ -394,6 +394,158 @@ configure_opencode_command() {
         success "grimorio-cartographer agent configured"
     fi
 
+    # Configure grimorio-lore subagent
+    log "Configuring grimorio-lore agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-lore"] = {
+            "description": "Campaign lore writer — world backstory, setting, history, and atmosphere",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Lore Master. Generate world lore, backstory, setting, and atmosphere for a D&D 5e campaign. Use grimorio_save_lore tool.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-lore agent configured"
+    fi
+
+    # Configure grimorio-npc subagent
+    log "Configuring grimorio-npc agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-npc"] = {
+            "description": "Campaign NPC designer — characters, factions, and social relationships",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio NPC Designer. Generate NPCs, factions, and social entities for a D&D 5e campaign. Use grimorio_save_npcs tool.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-npc agent configured"
+    fi
+
+    # Configure grimorio-bestiary subagent
+    log "Configuring grimorio-bestiary agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-bestiary"] = {
+            "description": "Campaign bestiary designer — monster stat blocks, abilities, and tactics",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Bestiary Designer. Generate monsters, creatures, and stat blocks for a D&D 5e campaign. Use grimorio_save_bestiary tool.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-bestiary agent configured"
+    fi
+
+    # Configure grimorio-encounters subagent
+    log "Configuring grimorio-encounters agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-encounters"] = {
+            "description": "Campaign encounter designer — combat, social, exploration challenges",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Encounter Designer. Generate balanced encounters and challenges for a D&D 5e campaign. Use grimorio_save_encounters tool.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-encounters agent configured"
+    fi
+
+    # Configure grimorio-acts subagent
+    log "Configuring grimorio-acts agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-acts"] = {
+            "description": "Campaign story architect — narrative acts, scenes, and session structure",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Story Architect. Generate narrative acts and scenes for a D&D 5e campaign. Use grimorio_save_act tool.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-acts agent configured"
+    fi
+
+    # Configure grimorio-quests subagent
+    log "Configuring grimorio-quests agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-quests"] = {
+            "description": "Campaign quest designer — personal quests, side missions, narrative hooks",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Quest Designer. Generate personal quests, side missions, and narrative hooks for a D&D 5e campaign. Use grimorio_create_personal_quest tool.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-quests agent configured"
+    fi
+
+    # Configure grimorio-maps subagent
+    log "Configuring grimorio-maps agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-maps"] = {
+            "description": "Campaign map describer — location details, zone breakdowns, scene layouts",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Map Describer. Generate location descriptions and zone breakdowns for a D&D 5e campaign. Use grimorio_save_maps tool.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-maps agent configured"
+    fi
+
+    # Configure grimorio-characters subagent
+    log "Configuring grimorio-characters agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-characters"] = {
+            "description": "Campaign character builder — pre-generated player character sheets and backstories",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Character Builder. Generate pre-generated player characters with backstories for a D&D 5e campaign. Write to characters/ directory.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-characters agent configured"
+    fi
+
     # Always update command (not just add) to ensure latest template with image generation
     log "Configuring grimorio command..."
     if command_exists jq; then

@@ -8,13 +8,17 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 type DalleProvider struct {
 	APIKey string
 	Model  string
 	Size   string
+	client *http.Client
 }
+
+const dalleTimeout = 5 * time.Minute
 
 func NewDalleProvider(apiKey, model string) (*DalleProvider, error) {
 	if apiKey == "" {
@@ -30,6 +34,7 @@ func NewDalleProvider(apiKey, model string) (*DalleProvider, error) {
 		APIKey: apiKey,
 		Model:  model,
 		Size:   "1024x1024",
+		client: &http.Client{Timeout: dalleTimeout},
 	}, nil
 }
 
@@ -78,8 +83,7 @@ func (d *DalleProvider) Generate(prompt string) ([]byte, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+d.APIKey)
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := d.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -113,7 +117,8 @@ func (d *DalleProvider) Generate(prompt string) ([]byte, error) {
 }
 
 func downloadImage(url string) ([]byte, error) {
-	resp, err := http.Get(url)
+	client := &http.Client{Timeout: dalleTimeout}
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download image: %w", err)
 	}

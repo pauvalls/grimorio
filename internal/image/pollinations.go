@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type PollinationsProvider struct {
@@ -13,7 +14,10 @@ type PollinationsProvider struct {
 	Height  int
 	Seed    int
 	Model   string
+	client  *http.Client
 }
+
+const pollinationsTimeout = 5 * time.Minute
 
 func NewPollinationsProvider(width, height, seed int) *PollinationsProvider {
 	if width <= 0 {
@@ -28,6 +32,7 @@ func NewPollinationsProvider(width, height, seed int) *PollinationsProvider {
 		Height:  height,
 		Seed:    seed,
 		Model:   "flux",
+		client:  &http.Client{Timeout: pollinationsTimeout},
 	}
 }
 
@@ -53,7 +58,7 @@ func (p *PollinationsProvider) Generate(prompt string) ([]byte, error) {
 		apiURL += fmt.Sprintf("&model=%s", p.Model)
 	}
 
-	resp, err := http.Get(apiURL)
+	resp, err := p.client.Get(apiURL)
 	if err != nil {
 		return nil, fmt.Errorf("pollinations request failed: %w", err)
 	}
