@@ -182,6 +182,11 @@ setup_plugin() {
     cp -rf "$INSTALL_DIR/skills" "$CLAUDE_PLUGIN_DIR/"
     cp -f "$BINARY_DIR/grimorio" "$CLAUDE_PLUGIN_DIR/"
 
+    # Always update commands/grimorio.md to latest version
+    if [ -f "$INSTALL_DIR/commands/grimorio.md" ]; then
+        cp -f "$INSTALL_DIR/commands/grimorio.md" "$CLAUDE_PLUGIN_DIR/commands/"
+    fi
+
     # Copy new cartographer agent if it exists in repo but not in plugin
     if [ -f "$INSTALL_DIR/agents/grimorio-cartographer.md" ]; then
         cp -f "$INSTALL_DIR/agents/grimorio-cartographer.md" "$CLAUDE_PLUGIN_DIR/agents/"
@@ -209,6 +214,11 @@ EOF
     cp -rf "$INSTALL_DIR/agents" "$OPENCODE_PLUGIN_DIR/"
     cp -rf "$INSTALL_DIR/skills" "$OPENCODE_PLUGIN_DIR/"
     cp -f "$BINARY_DIR/grimorio" "$OPENCODE_PLUGIN_DIR/"
+
+    # Always update commands/grimorio.md to latest version
+    if [ -f "$INSTALL_DIR/commands/grimorio.md" ]; then
+        cp -f "$INSTALL_DIR/commands/grimorio.md" "$OPENCODE_PLUGIN_DIR/commands/"
+    fi
 
     # Copy new cartographer agent if it exists in repo but not in plugin
     if [ -f "$INSTALL_DIR/agents/grimorio-cartographer.md" ]; then
