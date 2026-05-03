@@ -339,32 +339,36 @@ Ask the user these questions (one at a time, interactively):
 ### Phase 2: Create Campaign Structure
 Use the grimorio MCP tool `create_campaign` to create the structure.
 
-### Phase 3: Generate Content via Subagents
-Launch subagents in PARALLEL using `delegate` for each of these tasks:
+### Phase 3: Generate Foundation Content (in order)
+Generate these components FIRST (they provide context for acts):
+
+**Step 1 - Lore (first, sets the world):**
 - Delegate lore generation: generate world backstory, setting, conflict
-- Delegate acts generation: generate act 1, act 2, act 3
-  - Each act MUST include scenes with:
-    - Map references: `![Mapa](assets/actX-sceneY-name.svg)`
-    - Scene illustrations: `![Escena](assets/scene-actX-sceneY-name.png)` for pivotal scenes
-    - A "Zonas del mapa" section describing each zone/room
+
+**Step 2 - NPCs and Maps (second, characters and places):**
 - Delegate NPCs generation: generate 5+ NPCs with factions
+- Delegate maps generation: generate scene descriptions with zone breakdowns
+  - Generate SVG maps using `generate_map` for EACH location
+  - Use `labels` parameter to name each zone
+  - Save maps to assets/
+
+**Step 3 - Bestiary and Encounters (third, mechanical content):**
 - Delegate bestiary generation: generate 3-5 monsters with stat blocks
 - Delegate encounters generation: generate 3-5 encounters
-- Delegate maps generation: generate scene descriptions with zone breakdowns
 
-Each subagent must use the grimorio MCP tools to save their output.
+### Phase 4: Generate Acts (LAST, integrates everything)
+After ALL foundation content is ready, generate acts:
+- Delegate acts generation: generate act 1, act 2, act 3
+  - Acts MUST integrate all previously generated content:
+    - Reference NPCs by name from npcs_and_factions.md
+    - Reference monsters from bestiary.md
+    - Use encounter structures from encounters.md
+    - Link to existing maps: `![Mapa](assets/actX-sceneY-name.svg)`
+    - Include scene illustrations: `![Escena](assets/scene-actX-sceneY-name.png)`
+    - Add "Zonas del mapa" with descriptions linking to story elements
 
-### Phase 4: Generate Visuals (DELEGATE to grimorio-cartographer)
+### Phase 5: Generate Visuals (DELEGATE to grimorio-cartographer)
 After content is generated, launch subagents in PARALLEL:
-- Delegate battle maps to grimorio-cartographer:
-  - Use `generate_map` for EACH scene in each act (SVG procedural, 100% local, no API key)
-    - Styles: dungeon, landscape, city
-    - Use `labels` parameter to name each zone (e.g. "Entrance,Bar,Basement,Boss")
-    - After generating, UPDATE the act file to include:
-      - The map image reference
-      - A "Zonas del mapa" section with description for EACH zone
-      - Link zones to story elements (NPCs, secrets, combat)
-  - Use `generate_divider` for section separators (SVG, ornate style)
 - Delegate AI images to grimorio-cartographer (FREE via Pollinations.ai):
   - Cover art (type: cover, filename: cover-art)
   - NPC portraits (type: portrait, filename: npc-{name}) for ALL major NPCs

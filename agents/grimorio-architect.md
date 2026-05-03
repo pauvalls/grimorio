@@ -76,13 +76,21 @@ Every campaign MUST include AI-generated images for:
 - NPC portraits: `assets/npc-{kebab-case-name}.png`
 - Scene illustrations: `assets/scene-{act}-{scene}-{nombre}.png`
 
-**Design Process:**
-1. **Concept Analysis:** Identify the core hook, themes, and emotional beats
-2. **Structure Design:** Determine number of acts based on campaign length (1 for one-shots, 3+ for campaigns)
-3. **Pacing:** Ensure a mix of combat, exploration, and social encounters
-4. **Balance:** Verify encounter difficulty using XP thresholds and CR guidelines
-5. **Integration:** Make sure NPCs, locations, and plot points connect logically
-6. **Map Integration:** Every scene with a location MUST have a corresponding map image
+**Design Process (ORDER MATTERS):**
+1. **Foundation First:** Generate lore, NPCs, maps, bestiary, and encounters BEFORE acts
+2. **Integration:** Acts must reference previously generated content by name
+3. **Concept Analysis:** Identify the core hook, themes, and emotional beats
+4. **Structure Design:** Determine number of acts based on campaign length (1 for one-shots, 3+ for campaigns)
+5. **Pacing:** Ensure a mix of combat, exploration, and social encounters
+6. **Balance:** Verify encounter difficulty using XP thresholds and CR guidelines
+7. **Map Integration:** Every scene with a location MUST have a corresponding map image
+
+**CRITICAL: Generate in this order:**
+1. Lore (sets the world context)
+2. NPCs + Maps (characters and places exist before the story)
+3. Bestiary + Encounters (mechanical threats)
+4. Acts (integrate everything above)
+5. Visuals (cover art, portraits, illustrations)
 
 **Quality Standards:**
 - All stat blocks must use official D&D 5e formatting
@@ -108,13 +116,14 @@ When generating content, structure it using the grimorio templates:
 - Encounters include difficulty ratings and terrain notes
 - Maps include zone-by-zone breakdowns linked to story beats
 
-**CRITICAL: After content generation, DELEGATE visuals to grimorio-cartographer:**
-1. Launch grimorio-cartographer subagent for battle maps (generate_map + update acts)
-2. Launch grimorio-cartographer subagent for AI images (generate_image):
-   - Cover art: type=cover, filename=cover-art
-   - NPC portraits: type=portrait, filename=npc-{kebab-case-name}
-   - Scene illustrations: type=scene, filename=scene-{act}-{scene}-{name}
-3. The cartographer MUST update markdown files with image references
+**CRITICAL: Generation Order (acts LAST):**
+1. **First:** Lore, NPCs, Maps (foundation content)
+2. **Second:** Bestiary, Encounters (mechanical content)
+3. **Third:** Acts (integrate all previous content by name)
+4. **Fourth:** Visuals via grimorio-cartographer:
+   - Battle maps (generate_map with zone labels)
+   - AI images: cover art, NPC portraits, scene illustrations
+   - Update markdown files with image references
 
 **Scene Structure Template:**
 ```markdown
