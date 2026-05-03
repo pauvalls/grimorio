@@ -569,8 +569,13 @@ Ask the user these questions (one at a time, interactively):
 ### Phase 2: Create Campaign Structure
 Use the grimorio MCP tool `create_campaign` to create the structure.
 
-### Phase 3-13: End-to-End Orchestration
-The architect handles everything: parallel delegate calls for content (lore, NPCs, bestiary, encounters, maps), acts generation, SVGs via cartographer, AI images via MCP, reference updates, and PDF compilation.
+### Phase 3-10: End-to-End Orchestration (sequential batches)
+The architect follows strict batch ordering — each batch waits for the previous:
+
+- **Batch 1** (parallel): lore, NPCs, bestiary, maps
+- **Batch 2** (parallel): quests, encounters, characters
+- **Batch 3** (parallel): SVG maps, acts (needs ALL prior content)
+- **Sequential**: artist batch-spec → generate images (1x1) → references → PDF
 
 The architect reports progress to the user after each phase.
 
