@@ -192,6 +192,11 @@ setup_plugin() {
         cp -f "$INSTALL_DIR/agents/grimorio-cartographer.md" "$CLAUDE_PLUGIN_DIR/agents/"
     fi
 
+    # Copy orchestrator agent
+    if [ -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" ]; then
+        cp -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" "$CLAUDE_PLUGIN_DIR/agents/"
+    fi
+
     # Fix .mcp.json for Claude Code (uses ${CLAUDE_PLUGIN_ROOT})
     cat > "$CLAUDE_PLUGIN_DIR/.mcp.json" << 'EOF'
 {
@@ -223,6 +228,11 @@ EOF
     # Copy new cartographer agent if it exists in repo but not in plugin
     if [ -f "$INSTALL_DIR/agents/grimorio-cartographer.md" ]; then
         cp -f "$INSTALL_DIR/agents/grimorio-cartographer.md" "$OPENCODE_PLUGIN_DIR/agents/"
+    fi
+
+    # Copy orchestrator agent
+    if [ -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" ]; then
+        cp -f "$INSTALL_DIR/agents/grimorio-orchestrator.md" "$OPENCODE_PLUGIN_DIR/agents/"
     fi
 
     # Fix .mcp.json for OpenCode (uses absolute path, not ${CLAUDE_PLUGIN_ROOT})
@@ -366,41 +376,35 @@ Ask the user these questions (one at a time, interactively):
 ### Phase 2: Create Campaign Structure
 Use the grimorio MCP tool `create_campaign` to create the structure.
 
-### Phase 3: Launch ALL Subagents in PARALLEL (using `delegate`)
-You MUST use the `delegate` tool to launch these subagents. Do NOT generate content yourself.
+### Phase 3: Launch Orchestrator (SINGLE delegate call)
+Launch the **grimorio-orchestrator** subagent with ALL campaign parameters.
 
-**FIRST — Launch grimorio-cartographer (images and maps):**
-- Use `delegate` with agent="grimorio-cartographer"
-- The cartographer WILL generate:
-  - Cover art: `generate_image` (type: cover, filename: cover-art)
-  - Battle maps for EVERY scene: `generate_map` (style: dungeon/landscape/city, use labels parameter)
-  - NPC portraits: `generate_image` (type: portrait, filename: npc-{name})
-  - Scene illustrations: `generate_image` (type: scene, filename: scene-{act}-{scene}-{name})
-- The cartographer WILL update markdown files with image references
-- **THIS IS MANDATORY — never skip the cartographer**
+You MUST pass these parameters in the prompt:
+- `campaign_path` — the full path returned by create_campaign
+- `campaign_name` — the kebab-case campaign name
+- `setting` — the campaign description/setting
+- `level_range` — e.g., "1-3", "4-6"
+- `tone` — e.g., "heroic", "dark"
+- `duration` — e.g., "one-shot", "3-5 sessions"
+- `is_oneshot` — true if one-shot, false if campaign
 
-**IN PARALLEL — Launch text content subagents:**
-- `delegate` lore generation: world backstory, setting, conflict
-- `delegate` NPCs generation: 5+ NPCs with factions
-- `delegate` bestiary generation: 3-5 monsters with stat blocks
-- `delegate` encounters generation: 3-5 encounters
-- `delegate` maps generation: scene descriptions with zone breakdowns
+Example:
+```
+delegate(
+  agent="grimorio-orchestrator",
+  prompt="Coordinate campaign generation for 'sunken-city'.\n\ncampaign_path: /home/pau/campaigns/sunken-city\ncampaign_name: sunken-city\nsetting: A sunken city where nobles are aquatic vampires...\nlevel_range: 4-6\ntone: dark\nduration: 3-5 sessions\nis_oneshot: false"
+)
+```
 
-### Phase 4: Generate Acts (LAST — after ALL other content exists)
-- `delegate` acts generation: generate act 1, act 2, act 3
-  - Acts MUST reference existing content by name:
-    - NPCs from npcs_and_factions.md
-    - Monsters from bestiary.md
-    - Encounters from encounters.md
-    - Maps: `![Mapa](assets/actX-sceneY-name.svg)`
-    - Illustrations if generated: `![Escena](assets/scene-actX-sceneY-name.png)`
-    - "Zonas del mapa" linking zones to story elements
+**CRITICAL:** This is the ONLY `delegate` call you make. The orchestrator handles ALL other subagents internally. Do NOT launch any other subagents from this thread.
 
-### Phase 5: Compile PDF
-Use grimorio MCP tool `compile_pdf` to generate the final PDF.
+### Phase 4: Report
+After the orchestrator completes, report to the user:
+- Where the PDF was saved
+- What content was generated
+- Any issues encountered
 
-### Phase 6: Report
-Tell the user where the PDF and markdown files were saved. Report which images were generated.
+**DO NOT call `delegation_list` repeatedly. Launch the orchestrator once and wait for it to complete.**
 TEMPLATE_EOF
 
         # Read template and escape for JSON
@@ -439,8 +443,9 @@ print_instructions() {
     echo ""
     echo -e "3. ${YELLOW}OpenCode auto-configured:${NC}"
     echo -e "   • MCP server  → ${GREEN}~/.config/opencode/opencode.json${NC} (mcp section)"
-    echo -e "   • Agent       → grimorio-architect (with delegate/subagent support)"
-    echo -e "   • Command     → /grimorio (interactive Q&A + parallel subagents)"
+    echo -e "   • Architect   → grimorio-architect (handles user Q&A)"
+    echo -e "   • Orchestrator→ grimorio-orchestrator (coordinates all subagents internally)"
+    echo -e "   • Command     → /grimorio (single delegate, zero polling)"
     echo ""
     echo -e "4. ${YELLOW}Generate your first campaign:${NC}"
     echo -e "   Type in OpenCode or Claude Code:"
