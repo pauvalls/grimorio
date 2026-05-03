@@ -63,8 +63,8 @@ Ask the user these questions ONE AT A TIME (interactively):
 Use `grimorio_create_campaign` with the gathered parameters.
 Take note of the `campaign_path` returned.
 
-### Phase 3: Launch Content Subagents (PARALLEL)
-Launch ALL of these simultaneously using `delegate` with the specific agent type for each content domain:
+### Phase 3: Batch 1 — Contenido Base (PARALLEL)
+Lore, NPCs, Bestiary y Maps son INDEPENDIENTES entre sí. Lanzalos todos juntos:
 
 **1. Lore — Agent: grimorio-lore**
 ```
@@ -81,133 +81,117 @@ delegate(agent="grimorio-npc", prompt="Generate NPCS for campaign '{campaign_nam
 delegate(agent="grimorio-bestiary", prompt="Generate BESTIARY for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
 ```
 
-**4. Encounters — Agent: grimorio-encounters**
-```
-delegate(agent="grimorio-encounters", prompt="Generate ENCOUNTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
-```
-
-**5. Maps — Agent: grimorio-maps**
+**4. Maps — Agent: grimorio-maps**
 ```
 delegate(agent="grimorio-maps", prompt="Generate MAP DESCRIPTIONS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}")
 ```
 
-### Phase 4: Monitor Content Completion
-
-Use `delegation_list` to check status:
+### Phase 3b: Monitor Batch 1
 
 ```
-WHILE any content subagent is still running:
+WHILE any subagent in Batch 1 is still running:
   delegation_list
-  IF subagent completed:
-    delegation_read(id) to get result
-    IF result contains error:
-      Log error but continue
 ```
 
-**Do NOT proceed until ALL content subagents complete.**
+**Do NOT proceed until Batch 1 completes.**
 
-### Phase 4b: Report Content Status to User
-
-Once all content subagents finish, call `delegation_read` on EACH one and output a clear report:
+### Phase 3c: Report Batch 1
 
 ```
-## Fase 3 Completada — Contenido Base Generado
+## Batch 1 Completado — Contenido Base
 
-✅ Lore: {resumen de qué se generó}
-✅ NPCs: {cuántos NPCs, nombres clave}
-✅ Bestiary: {cuántos monstruos}
-✅ Encounters: {cuántos encuentros}
-✅ Maps: {cuántas ubicaciones}
-
-⚠️ Errores (si los hay): {detalle}
-
-Iniciando Fase 5: Generación de Acts...
+✅ Lore
+✅ NPCs
+✅ Bestiary
+✅ Maps
 ```
 
-### Phase 5: Launch Acts Subagent — Agent: grimorio-acts
-
-```
-delegate(agent="grimorio-acts", prompt="Generate ACTS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nGenerate {act_count} acts.")
-```
-
-`act_count` = 1 if `is_oneshot` else 3
-
-### Phase 5b: Launch Quests + Characters (PARALLEL)
-
-Launch both simultaneously:
+### Phase 4: Batch 2 — Contenido Derivado (PARALLEL)
+Quests (necesita lore + NPCs), Encounters (necesita bestiary + maps), y Characters (necesita lore + NPCs) lanzalos juntos:
 
 **1. Quests — Agent: grimorio-quests**
 ```
 delegate(agent="grimorio-quests", prompt="Generate PERSONAL QUESTS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}")
 ```
 
-**2. Characters — Agent: grimorio-characters**
+**2. Encounters — Agent: grimorio-encounters**
+```
+delegate(agent="grimorio-encounters", prompt="Generate ENCOUNTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
+```
+
+**3. Characters — Agent: grimorio-characters**
 ```
 delegate(agent="grimorio-characters", prompt="Generate PRE-GENERATED CHARACTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
 ```
 
-### Phase 6: Monitor Acts + Quests + Characters Completion
+### Phase 4b: Monitor Batch 2
 
 ```
-WHILE acts, quests, and characters subagents are running:
+WHILE any subagent in Batch 2 is still running:
   delegation_list
-  IF completed:
-    delegation_read(id)
 ```
 
-**Do NOT proceed until acts, quests, and characters are all done.**
+**Do NOT proceed until Batch 2 completes.**
 
-### Phase 6b: Report Acts + Quests + Characters Status to User
-
-```
-## Fase 5 Completada — Acts, Misiones y Personajes Generados
-
-✅ Acts generados: {act_count}
-✅ Quests: {cuántas misiones}
-✅ Characters: {cuántos personajes pregenerados}
-📄 Archivos creados: {lista de act_*.md}
-🎭 NPCs referenciados: {nombres clave}
-👹 Monstruos referenciados: {nombres de bestias}
-
-Iniciando Fase 7: SVGs y Especificación de Imágenes...
-```
-
-### Phase 7: Launch SVGs + Artist (PARALLEL)
-
-Launch both simultaneously:
-
-**A. Cartographer — SVG Maps + Dividers**
-```
-delegate(agent="grimorio-cartographer", prompt="Generate ALL SVG assets for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nGenerate:\n1. Battle maps for each location in maps.md (generate_map tool)\n2. Ornate dividers for each act (generate_divider tool)\n3. Reference all SVGs in the appropriate markdown files")
-```
-
-**B. Artist — Batch Specification**
-```
-delegate(agent="grimorio-artist", prompt="Prepare image batch specification for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nRead these files:\n- {campaign_path}/npcs/npcs_and_factions.md (get NPC names, races, descriptions)\n- {campaign_path}/bestiary/bestiary.md (get monster names, types)\n- {campaign_path}/acts/*.md (get all [SCENE: ...] placeholders)\n- {campaign_path}/lore.md (get setting for cover art)\n\nCRITICAL: Include cover-art.png as the FIRST image (type: cover).\n\nCreate {campaign_path}/assets/batch-spec.json with ALL images needed.")
-```
-
-### Phase 8: Monitor SVGs + Artist Completion
+### Phase 4c: Report Batch 2
 
 ```
-WHILE any subagent is still running:
+## Batch 2 Completado — Contenido Derivado
+
+✅ Quests
+✅ Encounters
+✅ Characters
+```
+
+### Phase 5: Batch 3 — SVG Maps + Acts (PARALLEL)
+SVG Maps necesita maps descriptions. Acts necesita TODO el contenido (lore, NPCs, bestiary, maps, quests, encounters, characters).
+
+**1. Cartographer — SVG Maps + Dividers**
+```
+delegate(agent="grimorio-cartographer", prompt="Generate ALL SVG assets for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nRead maps/maps.md and generate battle maps for EACH location. Generate {act_count} ornate dividers.")
+```
+
+**2. Acts — Agent: grimorio-acts**
+```
+delegate(agent="grimorio-acts", prompt="Generate ACTS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nGenerate {act_count} acts. CRITICAL: Read ALL source files first:\n- lore.md\n- npcs/npcs_and_factions.md\n- bestiary/bestiary.md\n- maps/maps.md\n- quests/*.md\n- encounters/encounters.md\n- characters/*.md\n\nReference NPCs, creatures, quests, and characters by name. Use [SCENE: ...] placeholders for pivotal moments.")
+```
+
+`act_count` = 1 if `is_oneshot` else 3
+
+### Phase 5b: Monitor Batch 3
+
+```
+WHILE cartographer and acts subagents are running:
   delegation_list
-  IF completed:
-    delegation_read(id)
 ```
 
-### Phase 8b: Report SVGs + Artist Status to User
+**Do NOT proceed until Batch 3 completes.**
+
+### Phase 5c: Report Batch 3
 
 ```
-## Fase 7 Completada — Assets Visuales Preparados
+## Batch 3 Completado — SVG Maps + Acts
 
 ✅ SVG Maps: {cuántos mapas, nombres}
-✅ Dividers: {cuántos separadores generados}
-✅ Batch Spec: {cuántas imágenes planificadas, tipos}
-
-Iniciando Fase 9: Generación de Imágenes AI...
+✅ Dividers: {cuántos separadores}
+✅ Acts generados: {act_count}
 ```
 
-### Phase 9: Generate AI Images (SEQUENTIAL)
+### Phase 6: Artist — Batch Specification
+
+```
+delegate(agent="grimorio-artist", prompt="Prepare image batch specification for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nRead these files:\n- npcs/npcs_and_factions.md\n- bestiary/bestiary.md\n- acts/*.md\n- lore.md\n\nCRITICAL: Include cover-art.png as the FIRST image (type: cover). Create {campaign_path}/assets/batch-spec.json.")
+```
+
+### Phase 6b: Report Artist Spec
+
+```
+## Fase 6 Completada — Batch Spec Lista
+
+Total imágenes planificadas: {count}
+```
+
+### Phase 7: Generate AI Images (SEQUENTIAL)
 
 **CRITICAL:** Image generation is ALWAYS sequential with a 3-second delay between each request to avoid rate limiting on free AI APIs. Generate one at a time.
 
@@ -236,24 +220,24 @@ FOR each image in batch-spec.json:
 Bash: ls {campaign_path}/assets/*.png
 ```
 
-5. **Report completion to user:**
+ 5. **Report completion to user:**
 ```
-## Fase 9 Completada — Imágenes Generadas
+## Fase 7 Completada — Imágenes Generadas
 
 Imágenes generadas: {count}
 Ubicación: {campaign_path}/assets/
 Fallos (si los hay): {lista}
 
-Iniciando Fase 10: Actualización de Referencias...
+Iniciando Fase 8: Actualización de Referencias...
 ```
 
-### Phase 10: Update Markdown References
+### Phase 8: Update Markdown References
 
 ```
-delegate(agent="grimorio-artist", prompt="Update image references for campaign '{campaign_name}' at {campaign_path}.\n\nAll images have been generated. Now update ALL markdown files:\n1. README.md — add cover art reference at the top: `assets/cover-art.png`\n2. npcs/npcs_and_factions.md — add portrait references for each NPC\n3. bestiary/bestiary.md — add monster illustration references\n4. acts/*.md — keep [SCENE: ...] placeholders as-is (they render as descriptive text)")
+delegate(agent="grimorio-artist", prompt="Update image references for campaign '{campaign_name}' at {campaign_path}.\n\nAll images have been generated. Now update ALL markdown files:\n1. README.md — add cover art reference at the top\n2. npcs/npcs_and_factions.md — add portrait references for each NPC\n3. bestiary/bestiary.md — add monster illustration references\n4. acts/*.md — keep [SCENE: ...] placeholders as-is (they render as descriptive text)")
 ```
 
-### Phase 11: Monitor Reference Updates
+### Phase 8b: Monitor Reference Updates
 
 ```
 WHILE artist is running:
@@ -262,24 +246,24 @@ WHILE artist is running:
     delegation_read(id)
 ```
 
-### Phase 11b: Report References Status to User
+### Phase 8c: Report References Status to User
 
 ```
-## Fase 10 Completada — Referencias Actualizadas
+## Fase 8 Completada — Referencias Actualizadas
 
 ✅ README.md: portada agregada
 ✅ NPCs: retratos vinculados
 ✅ Bestiary: ilustraciones vinculadas
 ✅ Acts: escenas descriptivas mantenidas
 
-Iniciando Fase 12: Compilación del PDF...
+Iniciando Fase 9: Compilación del PDF...
 ```
 
-### Phase 12: Compile PDF
+### Phase 9: Compile PDF
 
 1. **Report start to user:**
 ```
-## Fase 12 — Compilando PDF Final
+## Fase 9 — Compilando PDF Final
 
 Uniendo todo el contenido en un solo documento...
 ```
@@ -302,7 +286,7 @@ Archivo: {campaign_path}/campaign.pdf
 Tamaño: {size}
 ```
 
-### Phase 13: Final Report to User
+### Phase 10: Final Report to User
 
 Output a comprehensive summary:
 
@@ -312,11 +296,16 @@ Output a comprehensive summary:
 PDF Final: {campaign_path}/campaign.pdf
 
 ## Contenido Generado:
-- Acts: {count}
+- Lore: {sí/no}
 - NPCs: {count}
-- Monstruos: {count}
-- Encuentros: {count}
-- Mapas SVG: {count}
+- Bestiary: {count}
+- Maps: {count}
+- Quests: {count}
+- Encounters: {count}
+- Characters: {count}
+- Acts: {count}
+- SVG Maps: {count}
+- Dividers: {count}
 - Imágenes AI: {count}
 
 ## Estado: Éxito / Completado con errores
@@ -338,11 +327,12 @@ PDF Final: {campaign_path}/campaign.pdf
    - `grimorio-lore` for world lore and backstory
    - `grimorio-npc` for NPCs and factions
    - `grimorio-bestiary` for monster stat blocks
-   - `grimorio-encounters` for combat and exploration challenges
    - `grimorio-maps` for location and zone descriptions
-   - `grimorio-acts` for narrative acts and scenes
    - `grimorio-quests` for personal quests and side missions
+   - `grimorio-encounters` for combat and exploration challenges
    - `grimorio-characters` for pre-generated character sheets
+   - `grimorio-acts` for narrative acts and scenes
+9. **Execution order is CRITICAL**: Batch 1 (lore, npcs, bestiary, maps) → Batch 2 (quests, encounters, characters) → Batch 3 (SVG maps, acts) → Artist → Images → PDF
 9. **Use `grimorio-cartographer` agent type** for SVG generation.
 10. **Use `grimorio-artist` agent type** for image batch specs and reference updates.
 11. You can make multiple `delegate` calls simultaneously when phases say PARALLEL.
