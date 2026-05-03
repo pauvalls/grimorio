@@ -177,10 +177,10 @@ WHILE cartographer and acts subagents are running:
 ✅ Acts generados: {act_count}
 ```
 
-### Phase 6: Artist — Batch Specification
+### Phase 6: Artist — Batch Specification (ALL image types)
 
 ```
-delegate(agent="grimorio-artist", prompt="Prepare image batch specification for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nRead these files:\n- npcs/npcs_and_factions.md\n- bestiary/bestiary.md\n- acts/*.md\n- lore.md\n\nCRITICAL: Include cover-art.png as the FIRST image (type: cover). Create {campaign_path}/assets/batch-spec.json.")
+delegate(agent="grimorio-artist", prompt="Prepare image batch specification for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nRead these files:\n- npcs/npcs_and_factions.md (extract ALL NPCs)\n- bestiary/bestiary.md (extract ALL monsters)\n- acts/*.md (extract ALL [SCENE: ...] placeholders)\n- lore.md (extract setting for cover)\n\nThe batch spec MUST include:\n1. **cover-art.png** — cover image (type: cover) — FIRST entry\n2. **npc-[name].png** — ONE portrait per major NPC (type: portrait)\n3. **scene-[act]-[description].png** — ONE per [SCENE: ...] placeholder in acts (type: scene)\n4. **monster-[name].png** — ONE per key monster (type: illustration)\n\nDo NOT skip any NPC or scene. Create {campaign_path}/assets/batch-spec.json.")
 ```
 
 ### Phase 6b: Report Artist Spec
@@ -189,6 +189,10 @@ delegate(agent="grimorio-artist", prompt="Prepare image batch specification for 
 ## Fase 6 Completada — Batch Spec Lista
 
 Total imágenes planificadas: {count}
+- Cover: 1
+- NPC portraits: {count_npcs}
+- Scenes: {count_scenes}
+- Monster illustrations: {count_monsters}
 ```
 
 ### Phase 7: Generate AI Images (SEQUENTIAL)
@@ -215,12 +219,15 @@ FOR each image in batch-spec.json:
   // Wait for completion (automatic 3s delay between each)
 ```
 
-4. **Verify images exist:**
+4. **Verify ALL images exist on disk:**
 ```
 Bash: ls {campaign_path}/assets/*.png
 ```
+Compare the list against batch-spec.json. For each MISSING image:
+   - Retry up to 2 more times with a simpler prompt
+   - Log the failure if it still doesn't generate
 
- 5. **Report completion to user:**
+5. **Report completion to user:**
 ```
 ## Fase 7 Completada — Imágenes Generadas
 
@@ -231,10 +238,12 @@ Fallos (si los hay): {lista}
 Iniciando Fase 8: Actualización de Referencias...
 ```
 
-### Phase 8: Update Markdown References
+### Phase 8: Update Markdown References (ALL images)
+
+The artist must reference EVERY generated image in the appropriate markdown files.
 
 ```
-delegate(agent="grimorio-artist", prompt="Update image references for campaign '{campaign_name}' at {campaign_path}.\n\nAll images have been generated. Now update ALL markdown files:\n1. README.md — add cover art reference at the top\n2. npcs/npcs_and_factions.md — add portrait references for each NPC\n3. bestiary/bestiary.md — add monster illustration references\n4. acts/*.md — keep [SCENE: ...] placeholders as-is (they render as descriptive text)")
+delegate(agent="grimorio-artist", prompt="Update ALL image references for campaign '{campaign_name}' at {campaign_path}.\n\nAll images have been generated in assets/. List them with: ls {campaign_path}/assets/*.png\n\nFor EACH image found, add the reference in the correct file:\n1. cover-*.png → README.md at the top: ![Cover](assets/filename.png)\n2. npc-*.png → npcs/npcs_and_factions.md in the matching NPC's section: ![NPC Name](assets/filename.png)\n3. scene-*.png → acts/*.md, replacing [SCENE: ...] placeholders: ![Scene](assets/filename.png)\n4. monster-*.png → bestiary/bestiary.md in the matching monster's section: ![Monster](assets/filename.png)\n\nCRITICAL: Every PNG in assets/ MUST be referenced in at least one markdown file. Do NOT skip any image.")
 ```
 
 ### Phase 8b: Monitor Reference Updates
@@ -246,15 +255,24 @@ WHILE artist is running:
     delegation_read(id)
 ```
 
-### Phase 8c: Report References Status to User
+### Phase 8c: Verify references before PDF
+
+```
+grep -rn '!\[\|assets/' {campaign_path}/ --include="*.md" | grep '\.png'
+Bash: compare the list of PNG references with the list of PNG files in assets/
+If any PNG is missing from markdown, report it as a warning.
+```
+
+### Phase 8d: Report References Status to User
 
 ```
 ## Fase 8 Completada — Referencias Actualizadas
 
 ✅ README.md: portada agregada
-✅ NPCs: retratos vinculados
-✅ Bestiary: ilustraciones vinculadas
-✅ Acts: escenas descriptivas mantenidas
+✅ NPCs: retratos vinculados ({cantidad})
+✅ Bestiary: ilustraciones vinculadas ({cantidad})
+✅ Acts: escenas reemplazadas ({cantidad})
+⚠️ Sin referencia (si hay): {lista de archivos}
 
 Iniciando Fase 9: Compilación del PDF...
 ```

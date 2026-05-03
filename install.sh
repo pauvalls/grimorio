@@ -575,7 +575,7 @@ The architect follows strict batch ordering — each batch waits for the previou
 - **Batch 1** (parallel): NPCs, bestiary, maps
 - **Batch 2** (parallel): lore, quests, encounters, characters
 - **Batch 3** (parallel): SVG maps, acts (needs ALL prior content)
-- **Sequential**: artist batch-spec → generate images (1x1) → references → PDF
+- **Sequential**: artist batch-spec (cover + NPCs + scenes + monsters) → generate images (1x1, retry missing) → update ALL references → PDF
 
 The architect reports progress to the user after each phase.
 
