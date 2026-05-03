@@ -133,16 +133,26 @@ OpenCode / Claude Code
 
 ### Image Generation
 
-Grimorio supports three modes of image generation:
+Grimorio supports multiple modes of image generation with **automatic fallback**:
 
-#### AI Images (Default — FREE via Pollinations.ai)
+#### AI Images (Default — FREE with Fallback)
 
-No API key needed. Generates cover art, NPC portraits, and illustrations using Pollinations.ai (FLUX model):
+No API key needed. Images are generated using free providers with automatic fallback:
+
+| Priority | Provider | Description | Fallback |
+|----------|----------|-------------|----------|
+| 1 | Pollinations.ai | FLUX model, 1024x1024 | ✅ |
+| 2 | Raphael AI | raphael.app, fast, unlimited | ✅ |
+| 3 | DALL-E (optional) | Highest quality, requires API key | Manual config |
+
+**Sequential Generation**: `generate_images_batch` generates images **one at a time** with a 3-second delay between requests. This prevents rate limiting on free APIs and ensures reliable generation.
+
+**Automatic Fallback**: If Pollinations.ai fails, the system automatically tries Raphael AI. If that also fails, it reports the error. No manual intervention needed.
 
 | Tool | Purpose | Cost |
 |------|---------|------|
-| `generate_image` | Single image: cover art, one portrait, one illustration | **FREE** |
-| `generate_images_batch` | Multiple images in parallel: all NPC portraits, all scene illustrations | **FREE** |
+| `generate_image` | Single image with fallback | **FREE** |
+| `generate_images_batch` | Multiple images sequential + fallback | **FREE** |
 
 #### Procedural SVG (100% local, free)
 
@@ -572,16 +582,26 @@ Todas las herramientas disponibles a través del servidor MCP:
 
 ### Generación de Imágenes
 
-Grimorio soporta tres modos de generación de imágenes:
+Grimorio soporta múltiples modos de generación de imágenes con **fallback automático**:
 
-#### Imágenes IA (Por defecto — GRATIS vía Pollinations.ai)
+#### Imágenes IA (Por defecto — GRATIS con Fallback)
 
-Sin API key. Genera portadas, retratos de NPCs e ilustraciones usando Pollinations.ai (modelo FLUX):
+Sin API key. Las imágenes se generan usando proveedores gratuitos con fallback automático:
+
+| Prioridad | Proveedor | Descripción | Fallback |
+|-----------|-----------|-------------|----------|
+| 1 | Pollinations.ai | Modelo FLUX, 1024x1024 | ✅ |
+| 2 | Raphael AI | raphael.app, rápido, ilimitado | ✅ |
+| 3 | DALL-E (opcional) | Máxima calidad, requiere API key | Config manual |
+
+**Generación Secuencial**: `generate_images_batch` genera imágenes **una a la vez** con 3 segundos de delay entre requests. Esto evita rate limiting en APIs gratuitas y asegura generación confiable.
+
+**Fallback Automático**: Si Pollinations.ai falla, el sistema prueba automáticamente Raphael AI. Si ambos fallan, reporta el error. No requiere intervención manual.
 
 | Herramienta | Propósito | Costo |
 |------------|-----------|-------|
-| `generate_image` | Imagen individual: portada, un retrato, una ilustración | **GRATIS** |
-| `generate_images_batch` | Múltiples imágenes en paralelo: todos los retratos NPC, todas las ilustraciones de escenas | **GRATIS** |
+| `generate_image` | Imagen individual con fallback | **GRATIS** |
+| `generate_images_batch` | Múltiples imágenes secuencial + fallback | **GRATIS** |
 
 #### SVG Procedural (100% local, gratis)
 

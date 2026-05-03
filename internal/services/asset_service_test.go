@@ -78,7 +78,7 @@ func TestGenerateImage_ProviderError(t *testing.T) {
 	}
 }
 
-func TestGenerateImagesBatch_Parallel(t *testing.T) {
+func TestGenerateImagesBatch_Sequential(t *testing.T) {
 	service, tmpDir := setupTestAssetService(t)
 
 	images := []BatchImageSpec{
@@ -115,60 +115,102 @@ func TestGenerateImagesBatch_Parallel(t *testing.T) {
 		}
 	}
 
-	// Should be fast (parallel), not sequential
-	// 4 images * 100ms each sequential = 400ms+
-	// Parallel should be < 200ms even with overhead
-	if elapsed > 500*time.Millisecond {
-		t.Logf("Warning: batch took %v, may not be fully parallel", elapsed)
+	// Should take some time (sequential with 3s delays between images)
+	// 4 images with 3s delay between each = ~9s minimum
+	if elapsed < 8*time.Second {
+		t.Logf("Note: batch took %v (sequential with delays)", elapsed)
 	}
 }
 
-func TestGenerateImagesBatch_PartialFailure_WithFallback(t *testing.T) {
+func TestGenerateImagesBatch_WithProviderFallback(t *testing.T) {
 	tmpDir := t.TempDir()
-	failCount := atomic.Int32{}
-	provider := &mockProvider{
-		name: "mock",
+	
+	// Primary provider always fails
+	primary := &mockProvider{
+		name: "primary",
 		generateFunc: func(prompt string) ([]byte, error) {
-			// Fail on first attempt for "npc-bad"
-			if strings.Contains(prompt, "bad") && failCount.Load() < 1 {
-				failCount.Add(1)
-				return nil, fmt.Errorf("simulated failure")
-			}
-			return []byte("fake-image-" + prompt), nil
+			return nil, fmt.Errorf("primary always fails")
 		},
 	}
-	service := NewAssetServiceWithProvider(tmpDir, provider)
-
-	images := []BatchImageSpec{
-		{Filename: "cover-art", Prompt: "good prompt", Type: "cover"},
-		{Filename: "npc-bad", Prompt: "bad npc prompt", Type: "portrait"},
-		{Filename: "scene-ok", Prompt: "good scene prompt", Type: "scene"},
+	
+	// Fallback provider succeeds
+	fallback := &mockProvider{
+		name: "fallback",
+		generateFunc: func(prompt string) ([]byte, error) {
+			return []byte("fallback-image-" + prompt), nil
+		},
 	}
 
-	results, err := service.GenerateImagesBatch("test-campaign", images)
+	service := NewAssetServiceWithProvider(tmpDir, primary)
+	// Add fallback provider manually for testing
+	service.imageProvider = nil // Force use of getProviders
+	
+	// We can't easily test multi-provider fallback with the current API
+	// because getProviders is internal. Instead test the GenerateAndSaveWithFallback function directly.
+	providers := []image.Provider{primary, fallback}
+	
+	outputPath := filepath.Join(tmpDir, "test-campaign", "assets", "test-image.png")
+	providerName, err := image.GenerateAndSaveWithFallback(providers, "test prompt", outputPath)
+	
 	if err != nil {
-		t.Fatalf("GenerateImagesBatch() error: %v", err)
+		t.Fatalf("GenerateAndSaveWithFallback() error: %v", err)
+	}
+	
+	if providerName != "fallback" {
+		t.Errorf("Expected fallback provider, got %s", providerName)
+	}
+	
+	// Verify file was created by fallback
+	if _, err := os.Stat(outputPath); os.IsNotExist(err) {
+		t.Errorf("Fallback did not create file at %s", outputPath)
+	}
+	
+	// Primary should have been called
+	if primary.callCount.Load() != 1 {
+		t.Errorf("Primary provider should have been called once, got %d", primary.callCount.Load())
+	}
+	
+	// Fallback should have been called
+	if fallback.callCount.Load() != 1 {
+		t.Errorf("Fallback provider should have been called once, got %d", fallback.callCount.Load())
+	}
+}
+
+func TestGenerateImagesBatch_AllProvidersFail(t *testing.T) {
+	tmpDir := t.TempDir()
+	
+	// All providers fail
+	provider1 := &mockProvider{
+		name: "provider1",
+		generateFunc: func(prompt string) ([]byte, error) {
+			return nil, fmt.Errorf("provider1 error")
+		},
+	}
+	provider2 := &mockProvider{
+		name: "provider2",
+		generateFunc: func(prompt string) ([]byte, error) {
+			return nil, fmt.Errorf("provider2 error")
+		},
 	}
 
-	// First image should succeed
-	if !results[0].Success {
-		t.Errorf("First image should succeed: %v", results[0])
+	providers := []image.Provider{provider1, provider2}
+	outputPath := filepath.Join(tmpDir, "test-campaign", "assets", "test-image.png")
+	_, err := image.GenerateAndSaveWithFallback(providers, "test prompt", outputPath)
+	
+	if err == nil {
+		t.Fatal("Expected error when all providers fail")
 	}
-
-	// Second image should succeed after fallback retry
-	if !results[1].Success {
-		t.Errorf("Second image (with fallback) should succeed: %v", results[1])
+	
+	if !strings.Contains(err.Error(), "all providers failed") {
+		t.Errorf("Expected 'all providers failed' error, got: %v", err)
 	}
-
-	// Third image should succeed
-	if !results[2].Success {
-		t.Errorf("Third image should succeed: %v", results[2])
+	
+	// Both providers should have been tried
+	if provider1.callCount.Load() != 1 {
+		t.Errorf("Provider1 should have been called once, got %d", provider1.callCount.Load())
 	}
-
-	// Verify the fallback was actually called (provider called more than len(images) times)
-	// Initial batch: 3 calls, fallback: 1 extra call for the failed one = 4 total
-	if provider.callCount.Load() < 3 {
-		t.Errorf("Expected at least 3 provider calls, got %d", provider.callCount.Load())
+	if provider2.callCount.Load() != 1 {
+		t.Errorf("Provider2 should have been called once, got %d", provider2.callCount.Load())
 	}
 }
 
@@ -192,7 +234,7 @@ func TestGenerateImagesBatch_CompleteFailure(t *testing.T) {
 		t.Fatalf("GenerateImagesBatch() error: %v", err)
 	}
 
-	// All should fail (even after fallback)
+	// All should fail
 	for _, r := range results {
 		if r.Success {
 			t.Errorf("Expected failure for %s, got success", r.Filename)
@@ -233,34 +275,38 @@ func TestGenerateDivider_Success(t *testing.T) {
 	}
 }
 
-func TestGetProvider_UsesInjectedProvider(t *testing.T) {
+func TestGetProviders_WithInjectedProvider(t *testing.T) {
 	provider := &mockProvider{name: "injected"}
 	service := NewAssetServiceWithProvider("/tmp", provider)
 
-	p, err := service.getProvider()
-	if err != nil {
-		t.Fatalf("getProvider() error: %v", err)
+	providers := service.getProviders()
+	if len(providers) != 1 {
+		t.Fatalf("getProviders() returned %d providers, want 1", len(providers))
 	}
 
-	if p.Name() != "injected" {
-		t.Errorf("getProvider() = %s, want 'injected'", p.Name())
+	if providers[0].Name() != "injected" {
+		t.Errorf("getProviders()[0] = %s, want 'injected'", providers[0].Name())
 	}
 }
 
-func TestGetProvider_FallsBackToConfig(t *testing.T) {
+func TestGetProviders_FallsBackToChain(t *testing.T) {
 	service := NewAssetService("/tmp", image.DefaultConfig())
 
-	p, err := service.getProvider()
-	if err != nil {
-		t.Fatalf("getProvider() error: %v", err)
+	providers := service.getProviders()
+	if len(providers) == 0 {
+		t.Fatal("getProviders() returned empty providers")
 	}
 
-	if p == nil {
-		t.Fatal("getProvider() returned nil provider")
+	// Should have pollinations in the chain
+	hasPollinations := false
+	for _, p := range providers {
+		if p.Name() == "pollinations" {
+			hasPollinations = true
+			break
+		}
 	}
-
-	if p.Name() != "pollinations" {
-		t.Errorf("getProvider() = %s, want 'pollinations'", p.Name())
+	if !hasPollinations {
+		t.Errorf("getProviders() should include 'pollinations' in fallback chain")
 	}
 }
 

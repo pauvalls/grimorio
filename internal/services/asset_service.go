@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
+	"time"
 
 	"github.com/pauvalls/grimorio/internal/image"
 	"github.com/pauvalls/grimorio/internal/svg"
@@ -31,13 +31,6 @@ func NewAssetServiceWithProvider(baseDir string, provider image.Provider) *Asset
 		baseDir:       baseDir,
 		imageProvider: provider,
 	}
-}
-
-func (s *AssetService) getProvider() (image.Provider, error) {
-	if s.imageProvider != nil {
-		return s.imageProvider, nil
-	}
-	return image.NewProvider(s.imgConfig)
 }
 
 func (s *AssetService) campaignDir(campaign string) string {
@@ -78,19 +71,27 @@ func (s *AssetService) GenerateDivider(campaign, filename, style string, width i
 	return svgContent, nil
 }
 
-// GenerateImage generates an image using AI
+// GenerateImage generates an image using AI with fallback providers
 func (s *AssetService) GenerateImage(campaign, filename, prompt, imgType string) (string, error) {
-	provider, err := s.getProvider()
-	if err != nil {
-		return "", fmt.Errorf("failed to initialize image provider: %w", err)
-	}
+	providers := s.getProviders()
 
 	outputPath := filepath.Join(s.assetsDir(campaign), ensureImageExt(filename))
-	if err := image.GenerateAndSave(provider, prompt, outputPath); err != nil {
-		return "", fmt.Errorf("%s generation failed: %w", provider.Name(), err)
+	_, err := image.GenerateAndSaveWithFallback(providers, prompt, outputPath)
+	if err != nil {
+		return "", fmt.Errorf("image generation failed (tried %d providers): %w", len(providers), err)
 	}
 
 	return outputPath, nil
+}
+
+// getProviders returns the list of providers to try
+// If a custom provider is injected (for testing), use only that
+// Otherwise use the fallback chain: primary -> raphael -> pollinations
+func (s *AssetService) getProviders() []image.Provider {
+	if s.imageProvider != nil {
+		return []image.Provider{s.imageProvider}
+	}
+	return image.NewProviderChain(s.imgConfig)
 }
 
 // ensureImageExt ensures filename has an image extension, defaulting to .png
@@ -102,62 +103,36 @@ func ensureImageExt(filename string) string {
 	return filename + ".png"
 }
 
-// GenerateImagesBatch generates multiple images in parallel with automatic fallback
+// GenerateImagesBatch generates multiple images SEQUENTIALLY with fallback providers
+// Sequential generation avoids rate limiting on free APIs
 func (s *AssetService) GenerateImagesBatch(campaign string, images []BatchImageSpec) ([]BatchImageResult, error) {
-	provider, err := s.getProvider()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize image provider: %w", err)
-	}
-
+	providers := s.getProviders()
 	results := make([]BatchImageResult, len(images))
-	var wg sync.WaitGroup
-	var mu sync.Mutex
 
 	for i, spec := range images {
-		wg.Add(1)
-		go func(idx int, sp BatchImageSpec) {
-			defer wg.Done()
-			outputPath := filepath.Join(s.assetsDir(campaign), ensureImageExt(sp.Filename))
-			if err := image.GenerateAndSave(provider, sp.Prompt, outputPath); err != nil {
-				mu.Lock()
-				results[idx] = BatchImageResult{
-					Filename: sp.Filename,
-					Success:  false,
-					Error:    err.Error(),
-				}
-				mu.Unlock()
-			} else {
-				mu.Lock()
-				results[idx] = BatchImageResult{
-					Filename: sp.Filename,
-					Success:  true,
-					Path:     outputPath,
-				}
-				mu.Unlock()
-			}
-		}(i, spec)
-	}
+		outputPath := filepath.Join(s.assetsDir(campaign), ensureImageExt(spec.Filename))
+		providerName, err := image.GenerateAndSaveWithFallback(providers, spec.Prompt, outputPath)
 
-	wg.Wait()
-
-	// Fallback: retry failed images individually
-	for i, result := range results {
-		if !result.Success {
-			spec := images[i]
-			outputPath := filepath.Join(s.assetsDir(campaign), ensureImageExt(spec.Filename))
-			if err := image.GenerateAndSave(provider, spec.Prompt, outputPath); err != nil {
-				results[i] = BatchImageResult{
-					Filename: spec.Filename,
-					Success:  false,
-					Error:    fmt.Sprintf("batch failed: %s; retry failed: %v", result.Error, err),
-				}
-			} else {
-				results[i] = BatchImageResult{
-					Filename: spec.Filename,
-					Success:  true,
-					Path:     outputPath,
-				}
+		if err != nil {
+			results[i] = BatchImageResult{
+				Filename:    spec.Filename,
+				Success:     false,
+				Error:       err.Error(),
+				ProviderUsed: "",
 			}
+		} else {
+			results[i] = BatchImageResult{
+				Filename:     spec.Filename,
+				Success:      true,
+				Path:         outputPath,
+				ProviderUsed: providerName,
+			}
+		}
+
+		// Delay between requests to avoid rate limiting on free APIs
+		// Only delay if there are more images to process
+		if i < len(images)-1 {
+			time.Sleep(3 * time.Second)
 		}
 	}
 
@@ -173,8 +148,9 @@ type BatchImageSpec struct {
 
 // BatchImageResult represents the result of generating an image
 type BatchImageResult struct {
-	Filename string
-	Success  bool
-	Path     string
-	Error    string
+	Filename     string
+	Success      bool
+	Path         string
+	Error        string
+	ProviderUsed string
 }
