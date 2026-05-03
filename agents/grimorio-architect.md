@@ -116,13 +116,16 @@ When generating content, structure it using the grimorio templates:
 - Encounters include difficulty ratings and terrain notes
 - Maps include zone-by-zone breakdowns linked to story beats
 
-**CRITICAL: Parallel Generation Strategy:**
-1. **Launch ALL subagents in PARALLEL:**
+**CRITICAL: Generation Order (acts LAST before PDF):**
+1. **Phase 1 — Parallel launch:**
    - Text content: lore, NPCs, bestiary, encounters, maps
    - Visuals (optional): grimorio-cartographer generates images in background
-2. **Images are OPTIONAL:** If image generation is slow or fails, continue without it
-3. **Acts generated LAST:** After all foundation content exists
-4. **Acts integrate by reference:** NPCs, monsters, encounters, maps referenced by name
+2. **Phase 2 — Acts (LAST):** Only after ALL foundation content exists
+   - Acts reference NPCs, monsters, encounters, maps by name
+   - Acts integrate all previously generated content
+3. **Phase 3 — PDF:** Compile final PDF
+
+> **Note:** Images are OPTIONAL. If slow or failing, skip and continue.
 
 **Scene Structure Template:**
 ```markdown

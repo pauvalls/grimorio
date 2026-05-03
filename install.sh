@@ -361,8 +361,8 @@ Launch subagents in PARALLEL:
 
 > **Note:** Image generation is OPTIONAL and runs in parallel. If images are slow or fail, continue without them. The campaign is still valid.
 
-### Phase 4: Generate Acts (integrates everything)
-After foundation content is ready, generate acts:
+### Phase 4: Generate Acts (LAST — integrates everything)
+Acts are generated LAST, after ALL other content exists:
 - Delegate acts generation: generate act 1, act 2, act 3
   - Acts MUST integrate all previously generated content:
     - Reference NPCs by name from npcs_and_factions.md
@@ -371,6 +371,8 @@ After foundation content is ready, generate acts:
     - Link to existing maps: `![Mapa](assets/actX-sceneY-name.svg)`
     - Include scene illustrations if generated: `![Escena](assets/scene-actX-sceneY-name.png)`
     - Add "Zonas del mapa" with descriptions linking to story elements
+
+> **Important:** Acts reference content generated in Phase 3. This ensures consistency.
 
 ### Phase 5: Compile PDF
 After ALL content is ready (images are optional), use grimorio MCP tool `compile_pdf` to generate the final PDF.
