@@ -332,6 +332,11 @@ configure_opencode_command() {
         return 0
     fi
 
+    # Clean up deprecated orchestrator agent from previous installations
+    if command_exists jq; then
+        jq 'del(.agent["grimorio-orchestrator"])' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" 2>/dev/null && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG" || true
+    fi
+
     # Always update agent (not just add) to ensure latest prompt
     log "Configuring grimorio-architect agent..."
     if command_exists jq; then
