@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -110,6 +111,13 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("Detailed image generation prompt")),
 		mcp.WithString("type", mcp.Description("Image type: cover, portrait, illustration, scene"), mcp.DefaultString("illustration")),
 	), handleGenerateImage(cfg))
+
+	// Tool: generate_images_batch (Parallel AI image generation)
+	s.AddTool(mcp.NewTool("generate_images_batch",
+		mcp.WithDescription("Generate MULTIPLE images in PARALLEL using AI. Free by default via Pollinations.ai. Use this for NPC portraits, scene illustrations, or any bulk image generation. Much faster than calling generate_image multiple times."),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithObject("images", mcp.Required(), mcp.Description("Array of image specifications. Each item must have: filename (required), prompt (required), type (optional: cover, portrait, illustration, scene)")),
+	), handleGenerateImagesBatch(cfg))
 
 	return s
 }
@@ -485,5 +493,127 @@ func handleGenerateImage(cfg *config.Config) server.ToolHandlerFunc {
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Image generated via %s: %s (type: %s)", provider.Name(), outputPath, imgType)), nil
+	}
+}
+
+type batchImageSpec struct {
+	Filename string `json:"filename"`
+	Prompt   string `json:"prompt"`
+	Type     string `json:"type"`
+}
+
+type batchImageResult struct {
+	Filename string
+	Success  bool
+	Path     string
+	Error    string
+}
+
+func handleGenerateImagesBatch(cfg *config.Config) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+		campaign := getArg(args, "campaign")
+		if campaign == "" {
+			return mcp.NewToolResultError("campaign is required"), nil
+		}
+
+		// Parse images array
+		imagesRaw, ok := args["images"].([]interface{})
+		if !ok || len(imagesRaw) == 0 {
+			return mcp.NewToolResultError("images array is required and must not be empty"), nil
+		}
+
+		var specs []batchImageSpec
+		for i, raw := range imagesRaw {
+			img, ok := raw.(map[string]interface{})
+			if !ok {
+				return mcp.NewToolResultError(fmt.Sprintf("image %d: invalid format", i)), nil
+			}
+			spec := batchImageSpec{}
+			if v, ok := img["filename"].(string); ok {
+				spec.Filename = v
+			}
+			if v, ok := img["prompt"].(string); ok {
+				spec.Prompt = v
+			}
+			if v, ok := img["type"].(string); ok {
+				spec.Type = v
+			}
+			if spec.Filename == "" || spec.Prompt == "" {
+				return mcp.NewToolResultError(fmt.Sprintf("image %d: filename and prompt are required", i)), nil
+			}
+			specs = append(specs, spec)
+		}
+
+		provider, err := image.NewProvider(cfg.Config)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to initialize image provider: %v", err)), nil
+		}
+
+		dir := campaignDir(cfg, campaign)
+		assetsDir := filepath.Join(dir, "assets")
+		if err := os.MkdirAll(assetsDir, 0755); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to create assets directory: %v", err)), nil
+		}
+
+		// Generate images in parallel
+		results := make([]batchImageResult, len(specs))
+		var wg sync.WaitGroup
+
+		for i, spec := range specs {
+			wg.Add(1)
+			go func(idx int, s batchImageSpec) {
+				defer wg.Done()
+				outputPath := filepath.Join(assetsDir, s.Filename+".png")
+				if err := image.GenerateAndSave(provider, s.Prompt, outputPath); err != nil {
+					results[idx] = batchImageResult{
+						Filename: s.Filename,
+						Success:  false,
+						Error:    err.Error(),
+					}
+				} else {
+					results[idx] = batchImageResult{
+						Filename: s.Filename,
+						Success:  true,
+						Path:     outputPath,
+					}
+				}
+			}(i, spec)
+		}
+
+		wg.Wait()
+
+		// Build result summary
+		var successes, failures []string
+		for _, r := range results {
+			if r.Success {
+				successes = append(successes, fmt.Sprintf("  ✅ %s → %s", r.Filename, r.Path))
+			} else {
+				failures = append(failures, fmt.Sprintf("  ❌ %s: %s", r.Filename, r.Error))
+			}
+		}
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("Batch image generation complete via %s\n", provider.Name()))
+		sb.WriteString(fmt.Sprintf("Total: %d | Success: %d | Failed: %d\n\n", len(specs), len(successes), len(failures)))
+
+		if len(successes) > 0 {
+			sb.WriteString("Generated:\n")
+			for _, s := range successes {
+				sb.WriteString(s + "\n")
+			}
+		}
+
+		if len(failures) > 0 {
+			sb.WriteString("\nFailed:\n")
+			for _, f := range failures {
+				sb.WriteString(f + "\n")
+			}
+		}
+
+		return mcp.NewToolResultText(sb.String()), nil
 	}
 }

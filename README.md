@@ -114,10 +114,11 @@ OpenCode / Claude Code
          ├─ save_bestiary    → Saves stat blocks
          ├─ save_encounters  → Saves encounters
          ├─ save_maps        → Saves scenes
-         ├─ generate_map     → Procedural SVG battle maps (100% local)
-         ├─ generate_divider → Decorative SVG section dividers (100% local)
+          ├─ generate_map     → Procedural SVG battle maps (100% local)
+          ├─ generate_divider → Decorative SVG section dividers (100% local)
           ├─ generate_image   → AI images via Pollinations.ai (FREE) or DALL-E (optional)
-         └─ compile_pdf      → Generates D&D-styled PDF with embedded images
+          ├─ generate_images_batch → Generate multiple AI images in parallel (bulk NPC portraits, scenes)
+          └─ compile_pdf      → Generates D&D-styled PDF with embedded images
 ```
 
 ### Image Generation
@@ -130,7 +131,8 @@ No API key needed. Generates cover art, NPC portraits, and illustrations using P
 
 | Tool | Purpose | Cost |
 |------|---------|------|
-| `generate_image` | Cover art, portraits, illustrations | **FREE** |
+| `generate_image` | Single image: cover art, one portrait, one illustration | **FREE** |
+| `generate_images_batch` | Multiple images in parallel: all NPC portraits, all scene illustrations | **FREE** |
 
 #### Procedural SVG (100% local, free)
 
@@ -157,7 +159,8 @@ echo '{"image_provider": "dalle", "dalle_api_key": "sk-..."}' > ~/.config/grimor
 
 | Tool | Purpose | Cost |
 |------|---------|------|
-| `generate_image` | Cover art, portraits, illustrations | ~$0.04-0.08/image (DALL-E 3) |
+| `generate_image` | Single image | ~$0.04-0.08/image (DALL-E 3) |
+| `generate_images_batch` | Multiple images in parallel | ~$0.04-0.08/image (DALL-E 3) |
 
 > **Tip:** OpenAI gives $5 free credit to new accounts (~60-120 images).
 
@@ -249,9 +252,13 @@ Every generated campaign lives in its own directory:
     ├── maps/
     │   └── maps_and_scenes.md
     ├── assets/
+    │   ├── cover-art.png            ← AI cover art
+    │   ├── npc-eldric.png           ← AI NPC portraits
+    │   ├── npc-lira.png             ← AI NPC portraits
+    │   ├── scene-act1-boss.png      ← AI scene illustrations
+    │   ├── scene-act2-ritual.png    ← AI scene illustrations
     │   ├── dungeon-map.svg          ← Procedural battle maps
-    │   ├── ornate-divider.svg       ← Decorative section dividers
-    │   └── cover-art.png            ← AI generated images (Pollinations.ai or DALL-E)
+    │   └── ornate-divider.svg       ← Decorative section dividers
     ├── campaign.html
     └── campaign.pdf                 ← Final PDF with embedded images
 ```
@@ -284,7 +291,8 @@ All tools available through the MCP server:
 | `save_maps` | File | Saves scene descriptions |
 | `generate_map` | SVG | Procedural battle map generator (free) |
 | `generate_divider` | SVG | Decorative section dividers (free) |
-| `generate_image` | AI | Image generation via Pollinations.ai (FREE) or DALL-E (optional) |
+| `generate_image` | AI | Single image generation via Pollinations.ai (FREE) or DALL-E (optional) |
+| `generate_images_batch` | AI | Bulk image generation — generates multiple images in parallel (NPC portraits, scene illustrations) |
 | `compile_pdf` | PDF | Compiles all content into styled PDF |
 
 ### Development
@@ -409,10 +417,11 @@ OpenCode / Claude Code
          ├─ save_bestiary    → Guarda stat blocks
          ├─ save_encounters  → Guarda encuentros
          ├─ save_maps        → Guarda escenas
-         ├─ generate_map     → Mapas SVG procedurales (100% local)
-         ├─ generate_divider → Divisores decorativos SVG (100% local)
+          ├─ generate_map     → Mapas SVG procedurales (100% local)
+          ├─ generate_divider → Divisores decorativos SVG (100% local)
           ├─ generate_image   → Imágenes IA vía Pollinations.ai (GRATIS) o DALL-E (opcional)
-         └─ compile_pdf      → Genera PDF estilo D&D con imágenes embebidas
+          ├─ generate_images_batch → Genera múltiples imágenes IA en paralelo (retratos NPCs, escenas)
+          └─ compile_pdf      → Genera PDF estilo D&D con imágenes embebidas
 ```
 
 ### Estructura del Plugin
@@ -496,9 +505,13 @@ Cada campaña generada vive en su propio directorio:
     ├── maps/
     │   └── maps_and_scenes.md
     ├── assets/
+    │   ├── cover-art.png            ← Portada IA
+    │   ├── npc-eldric.png           ← Retratos IA de NPCs
+    │   ├── npc-lira.png             ← Retratos IA de NPCs
+    │   ├── scene-act1-boss.png      ← Ilustraciones IA de escenas
+    │   ├── scene-act2-ritual.png    ← Ilustraciones IA de escenas
     │   ├── dungeon-map.svg          ← Mapas de batalla procedurales
-    │   ├── ornate-divider.svg       ← Divisores decorativos
-    │   └── cover-art.png            ← Imágenes IA generadas (Pollinations.ai o DALL-E)
+    │   └── ornate-divider.svg       ← Divisores decorativos
     ├── campaign.html
     └── campaign.pdf                 ← PDF final con imágenes embebidas
 ```
@@ -531,7 +544,8 @@ Todas las herramientas disponibles a través del servidor MCP:
 | `save_maps` | Archivo | Guarda descripciones de escenas |
 | `generate_map` | SVG | Generador de mapas procedurales (gratis) |
 | `generate_divider` | SVG | Divisores decorativos (gratis) |
-| `generate_image` | IA | Generación de imágenes vía Pollinations.ai (GRATIS) o DALL-E (opcional) |
+| `generate_image` | IA | Generación individual de imágenes vía Pollinations.ai (GRATIS) o DALL-E (opcional) |
+| `generate_images_batch` | IA | Generación masiva de imágenes en paralelo (retratos NPCs, ilustraciones de escenas) |
 | `compile_pdf` | PDF | Compila todo en PDF estilizado |
 
 ### Generación de Imágenes
@@ -544,7 +558,8 @@ Sin API key. Genera portadas, retratos de NPCs e ilustraciones usando Pollinatio
 
 | Herramienta | Propósito | Costo |
 |------------|-----------|-------|
-| `generate_image` | Portada, retratos, ilustraciones | **GRATIS** |
+| `generate_image` | Imagen individual: portada, un retrato, una ilustración | **GRATIS** |
+| `generate_images_batch` | Múltiples imágenes en paralelo: todos los retratos NPC, todas las ilustraciones de escenas | **GRATIS** |
 
 #### SVG Procedural (100% local, gratis)
 
@@ -571,7 +586,8 @@ echo '{"image_provider": "dalle", "dalle_api_key": "sk-..."}' > ~/.config/grimor
 
 | Herramienta | Propósito | Costo |
 |------------|-----------|-------|
-| `generate_image` | Portada, retratos, ilustraciones | ~$0.04-0.08/imagen (DALL-E 3) |
+| `generate_image` | Imagen individual | ~$0.04-0.08/imagen (DALL-E 3) |
+| `generate_images_batch` | Múltiples imágenes en paralelo | ~$0.04-0.08/imagen (DALL-E 3) |
 
 > **Tip:** OpenAI da $5 de crédito gratis a cuentas nuevas (~60-120 imágenes).
 
