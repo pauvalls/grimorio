@@ -1,22 +1,16 @@
 package compiler
 
 import (
-	"bytes"
 	_ "embed"
 	"encoding/base64"
 	"fmt"
 	"html"
-	"image"
-	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/srwiley/oksvg"
-	"github.com/srwiley/rasterx"
 )
 
 //go:embed templates/dnd-style.css
@@ -216,7 +210,7 @@ var (
 	boldRegex       = regexp.MustCompile(`\*\*(.+?)\*\*`)
 	italicRegex     = regexp.MustCompile(`\*(.+?)\*`)
 	imageRegex      = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
-	assetRegex      = regexp.MustCompile(`assets/[\w\-]+\.(svg|png|jpg|jpeg|gif|webp)`)
+
 	blockquoteRe    = regexp.MustCompile(`^>\s*(.*)`)
 	codeAssetRegex  = regexp.MustCompile("`assets/([\\w\\-]+\\.(svg|png|jpg|jpeg|gif|webp))`")
 )
@@ -613,21 +607,6 @@ func processImages(text string, baseDir string) string {
 		return embedImage(imgPath, filename, baseDir)
 	})
 
-	// Also detect bare asset references: assets/filename.ext (not inside ![...](...) or backticks)
-	text = assetRegex.ReplaceAllStringFunc(text, func(match string) string {
-		imgPath := match
-		if !filepath.IsAbs(imgPath) {
-			for strings.HasPrefix(imgPath, "../") {
-				imgPath = strings.TrimPrefix(imgPath, "../")
-			}
-			for strings.HasPrefix(imgPath, "./") {
-				imgPath = strings.TrimPrefix(imgPath, "./")
-			}
-			imgPath = filepath.Join(baseDir, imgPath)
-		}
-		return embedImage(imgPath, match, baseDir)
-	})
-
 	return text
 }
 
@@ -642,14 +621,13 @@ func embedImage(imgPath, alt, baseDir string) string {
 
 	switch ext {
 	case ".svg":
-		// Convert SVG to PNG for PDF compatibility
-		pngData, err := svgToPNG(data)
-		if err != nil {
-			return fmt.Sprintf(`<span class="image-missing">[SVG Error: %s]</span>`, html.EscapeString(alt))
+		// Use SVG directly - wkhtmltopdf can render SVG files with --enable-local-file-access
+		// Return relative path from campaign directory
+		relPath, _ := filepath.Rel(baseDir, imgPath)
+		if relPath == "" {
+			relPath = imgPath
 		}
-		encoded := base64.StdEncoding.EncodeToString(pngData)
-		dataURI := fmt.Sprintf("data:image/png;base64,%s", encoded)
-		return fmt.Sprintf(`<img src="%s" alt="%s" class="campaign-image"/>`, dataURI, html.EscapeString(alt))
+		return fmt.Sprintf(`<img src="%s" alt="%s" class="campaign-image"/>`, html.EscapeString(relPath), html.EscapeString(alt))
 	case ".png":
 		mimeType = "image/png"
 	case ".jpg", ".jpeg":
@@ -667,31 +645,3 @@ func embedImage(imgPath, alt, baseDir string) string {
 	return fmt.Sprintf(`<img src="%s" alt="%s" class="campaign-image"/>`, dataURI, html.EscapeString(alt))
 }
 
-func svgToPNG(svgData []byte) ([]byte, error) {
-	icon, err := oksvg.ReadIconStream(bytes.NewReader(svgData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse SVG: %w", err)
-	}
-
-	// Set default size if not specified
-	w, h := int(icon.ViewBox.W), int(icon.ViewBox.H)
-	if w == 0 {
-		w = 800
-	}
-	if h == 0 {
-		h = 600
-	}
-	icon.SetTarget(0, 0, float64(w), float64(h))
-
-	// Create RGBA image
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
-	icon.Draw(rasterx.NewDasher(w, h, rasterx.NewScannerGV(w, h, img, img.Bounds())), 1.0)
-
-	// Encode to PNG
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
-		return nil, fmt.Errorf("failed to encode PNG: %w", err)
-	}
-
-	return buf.Bytes(), nil
-}

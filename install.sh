@@ -321,11 +321,10 @@ configure_opencode_command() {
     # Always update command (not just add) to ensure latest template with image generation
     log "Configuring grimorio command..."
     if command_exists jq; then
-        jq '.command.grimorio = {
-            "description": "Generate a complete D&D 5e campaign or one-shot from an idea",
-            "agent": "grimorio-architect",
-            "subtask": false,
-            "template": "Generate a D&D 5e campaign or one-shot from the user's idea.
+        # Create template in temp file to avoid bash parenthesis issues
+        local TEMPLATE_FILE=$(mktemp)
+        cat > "$TEMPLATE_FILE" << 'TEMPLATE_EOF'
+Generate a D&D 5e campaign or one-shot from the user's idea.
 
 ## Workflow
 
@@ -376,7 +375,19 @@ After content is generated, launch subagents in PARALLEL:
 After ALL content and visuals are ready, use grimorio MCP tool `compile_pdf` to generate the final PDF.
 
 ### Phase 6: Report
-Tell the user where the PDF and markdown files were saved, and which images were generated."
+Tell the user where the PDF and markdown files were saved, and which images were generated.
+TEMPLATE_EOF
+
+        # Read template and escape for JSON
+        local TEMPLATE_JSON
+        TEMPLATE_JSON=$(cat "$TEMPLATE_FILE" | jq -Rs '.')
+        rm -f "$TEMPLATE_FILE"
+
+        jq --argjson template "$TEMPLATE_JSON" '.command.grimorio = {
+            "description": "Generate a complete D&D 5e campaign or one-shot from an idea",
+            "agent": "grimorio-architect",
+            "subtask": false,
+            "template": $template
         }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
         success "grimorio command configured"
     else
