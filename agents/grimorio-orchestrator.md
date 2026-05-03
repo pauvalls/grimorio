@@ -23,67 +23,82 @@ You will receive these parameters from the parent agent:
 - `duration` — e.g., "one-shot", "3-5 sessions"
 - `is_oneshot` — true/false
 
-### Phase 1: Launch Foundation Subagents (PARALLEL)
+**CRITICAL: Execute in this EXACT order. Each phase waits for the previous.**
+
+### Phase 1: Launch Content Subagents (PARALLEL)
 
 Launch ALL of these simultaneously using `delegate`:
 
-**1. grimorio-cartographer** (MANDATORY — never skip)
-```
-delegate(agent="grimorio-cartographer", prompt="Generate ALL visual assets for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\n\nGenerate:\n1. Cover art: generate_image(type=cover, filename=cover-art)\n2. Battle maps for EVERY scene: generate_map with labels\n3. NPC portraits: generate_image(type=portrait, filename=npc-{{name}})\n4. Scene illustrations: generate_image(type=scene, filename=scene-{{act}}-{{scene}}-{{name}})\n\nUpdate ALL markdown files with image references. Report what you generated.")
-```
-
-**2. grimorio-architect — Lore**
+**1. grimorio-architect — Lore**
 ```
 delegate(agent="grimorio-architect", prompt="Generate LORE for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nWrite to lore_and_history.md using grimorio_save_lore. Include: world backstory, current conflict, key locations, factions.")
 ```
 
-**3. grimorio-architect — NPCs**
+**2. grimorio-architect — NPCs**
 ```
 delegate(agent="grimorio-architect", prompt="Generate NPCS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nWrite to npcs_and_factions.md using grimorio_save_npcs. Create 5+ NPCs with: personality, motivation, secret, faction, stat block for important NPCs.")
 ```
 
-**4. grimorio-architect — Bestiary**
+**3. grimorio-architect — Bestiary**
 ```
 delegate(agent="grimorio-architect", prompt="Generate BESTIARY for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nWrite to bestiary.md using grimorio_save_bestiary. Create 3-5 monsters with full D&D 5e stat blocks, tactics, and lore.")
 ```
 
-**5. grimorio-architect — Encounters**
+**4. grimorio-architect — Encounters**
 ```
 delegate(agent="grimorio-architect", prompt="Generate ENCOUNTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nWrite to encounters.md using grimorio_save_encounters. Create 3-5 encounters with difficulty ratings, terrain, and tactical notes.")
 ```
 
-**6. grimorio-architect — Maps**
+**5. grimorio-architect — Maps**
 ```
 delegate(agent="grimorio-architect", prompt="Generate MAP DESCRIPTIONS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nWrite to maps.md using grimorio_save_maps. Describe each major location with zones, atmosphere, and connections to story elements.")
 ```
 
-### Phase 2: Monitor Foundation Completion
+### Phase 2: Monitor Content Completion
 
 Use `delegation_list` to check status. Poll every 10 seconds.
 
 ```
-WHILE any foundation subagent is still running:
+WHILE any content subagent is still running:
   delegation_list
   IF subagent completed:
     delegation_read(id) to get result
     IF result contains error:
-      Log error but continue (don't block on one failure)
+      Log error but continue
   WAIT 10 seconds
 ```
 
-**IMPORTANT:** Do NOT proceed to Phase 3 until ALL foundation subagents complete (or fail).
+**Do NOT proceed until ALL content subagents complete.**
 
-### Phase 3: Launch Acts Subagent
+### Phase 3: Launch Cartographer (after content exists)
 
-After foundation is done, launch acts:
+Now that NPCs, maps, and lore exist, launch cartographer with context:
 
 ```
-delegate(agent="grimorio-architect", prompt="Generate ACTS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nCRITICAL: Read these files FIRST to reference existing content:\n- {campaign_path}/lore_and_history.md\n- {campaign_path}/npcs_and_factions.md\n- {campaign_path}/bestiary.md\n- {campaign_path}/encounters.md\n- {campaign_path}/maps.md\n\nGenerate {act_count} acts. Each act must:\n1. Reference NPCs by name from npcs_and_factions.md\n2. Reference monsters by name from bestiary.md\n3. Reference encounters by name from encounters.md\n4. Include map references: ![Mapa](assets/actX-sceneY-name.svg)\n5. Include scene illustrations if they exist: ![Escena](assets/scene-actX-sceneY-name.png)\n6. Have 'Zonas del mapa' sections linking zones to story\n\nWrite to act_1.md, act_2.md, etc. using grimorio_save_act.")
+delegate(agent="grimorio-cartographer", prompt="Generate ALL visual assets for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nCRITICAL: Read these files FIRST to know what to generate:\n- {campaign_path}/npcs_and_factions.md (get NPC names for portraits)\n- {campaign_path}/maps.md (get locations for battle maps)\n- {campaign_path}/lore_and_history.md (get setting for cover art)\n\nGenerate IN THIS ORDER:\n1. Cover art: generate_image(type=cover, filename=cover-art)\n2. Battle maps for EVERY major location: generate_map with labels matching the location names from maps.md\n3. NPC portraits for ALL major NPCs: generate_image(type=portrait, filename=npc-{{kebab-case-name}})\n4. Scene illustrations for pivotal moments: generate_image(type=scene, filename=scene-{{brief-description}})\n\nAfter generating each image, update the corresponding markdown file with the image reference.")
+```
+
+### Phase 4: Monitor Cartographer Completion
+
+```
+WHILE cartographer is running:
+  delegation_list
+  IF completed:
+    delegation_read(id)
+  WAIT 10 seconds
+```
+
+### Phase 5: Launch Acts Subagent (after cartographer)
+
+Acts can now reference images that exist:
+
+```
+delegate(agent="grimorio-architect", prompt="Generate ACTS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nCRITICAL: Read these files FIRST:\n- {campaign_path}/lore_and_history.md\n- {campaign_path}/npcs_and_factions.md\n- {campaign_path}/bestiary.md\n- {campaign_path}/encounters.md\n- {campaign_path}/maps.md\n- {campaign_path}/assets/ (see what images exist and reference them)\n\nGenerate {act_count} acts. Each act must:\n1. Reference NPCs by name from npcs_and_factions.md\n2. Reference monsters by name from bestiary.md\n3. Reference encounters by name from encounters.md\n4. Include map references: ![Mapa](assets/actX-sceneY-name.svg)\n5. Include scene illustrations if they exist: ![Escena](assets/scene-name.png)\n6. Have 'Zonas del mapa' sections linking zones to story\n\nWrite to act_1.md, act_2.md, etc. using grimorio_save_act.")
 ```
 
 `act_count` = 1 if `is_oneshot` else 3
 
-### Phase 4: Monitor Acts Completion
+### Phase 6: Monitor Acts Completion
 
 ```
 WHILE acts subagent is running:
@@ -93,7 +108,7 @@ WHILE acts subagent is running:
   WAIT 10 seconds
 ```
 
-### Phase 5: Compile PDF
+### Phase 7: Compile PDF
 
 After acts complete:
 
@@ -101,9 +116,9 @@ After acts complete:
 Use grimorio MCP tool `compile_pdf` with campaign={campaign_name}
 ```
 
-### Phase 6: Report to Parent
+### Phase 8: Report to Parent
 
-Return a summary to the parent agent:
+Return a summary:
 - Campaign path
 - PDF location
 - Which images were generated
@@ -114,11 +129,10 @@ Return a summary to the parent agent:
 
 1. **NEVER ask the user questions.** You are a background coordinator.
 2. **ALWAYS use `delegate`** to launch subagents. Never generate content yourself.
-3. **Be patient with polling.** Subagents can take 30-120 seconds each.
+3. **Execute phases SEQUENTIALLY.** Each phase waits for the previous.
 4. **Log progress.** After each phase completes, report what finished.
 5. **Handle failures gracefully.** If one subagent fails, log it but continue.
 6. **Do NOT compile PDF until acts are done.**
-7. **Use the exact file paths** provided in the campaign_path parameter.
 
 ## Output Format
 
