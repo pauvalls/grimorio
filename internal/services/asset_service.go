@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -61,8 +62,15 @@ func (s *AssetService) GenerateMap(campaign, filename, style, title string, room
 	}
 
 	svgContent := svg.GenerateBattleMap(svgCfg)
-	// Note: The caller handles file writing to maintain compatibility
-	return svgContent, nil
+	assetsDir := s.assetsDir(campaign)
+	outputPath := filepath.Join(assetsDir, ensureSVGExt(filename))
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create assets dir: %w", err)
+	}
+	if err := os.WriteFile(outputPath, []byte(svgContent), 0644); err != nil {
+		return "", fmt.Errorf("failed to write map to %s: %w", outputPath, err)
+	}
+	return outputPath, nil
 }
 
 // GenerateDivider generates a decorative SVG divider
@@ -72,8 +80,15 @@ func (s *AssetService) GenerateDivider(campaign, filename, style string, width i
 	}
 
 	svgContent := svg.GenerateDivider(width, style)
-	// Note: The caller handles file writing
-	return svgContent, nil
+	assetsDir := s.assetsDir(campaign)
+	outputPath := filepath.Join(assetsDir, ensureSVGExt(filename))
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create assets dir: %w", err)
+	}
+	if err := os.WriteFile(outputPath, []byte(svgContent), 0644); err != nil {
+		return "", fmt.Errorf("failed to write divider to %s: %w", outputPath, err)
+	}
+	return outputPath, nil
 }
 
 // GenerateImage generates an image using AI with fallback providers
@@ -106,6 +121,14 @@ func (s *AssetService) getProviders() []image.Provider {
 		return []image.Provider{s.imageProvider}
 	}
 	return image.NewProviderChain(s.imgConfig)
+}
+
+// ensureSVGExt ensures filename has a .svg extension
+func ensureSVGExt(filename string) string {
+	if strings.ToLower(filepath.Ext(filename)) == ".svg" {
+		return filename
+	}
+	return filename + ".svg"
 }
 
 // ensureImageExt ensures filename has an image extension, defaulting to .png

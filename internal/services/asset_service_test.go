@@ -204,32 +204,52 @@ func TestGenerateImage_AllProvidersFail(t *testing.T) {
 }
 
 func TestGenerateMap_Success(t *testing.T) {
-	service, _ := setupTestAssetService(t)
+	service, tmpDir := setupTestAssetService(t)
 
-	svg, err := service.GenerateMap("test", "dungeon", "dungeon", "The Dark Cave", 5, []string{"Entrance", "Boss"})
+	path, err := service.GenerateMap("test", "dungeon.svg", "dungeon", "The Dark Cave", 5, []string{"Entrance", "Boss"})
 	if err != nil {
 		t.Fatalf("GenerateMap() error: %v", err)
 	}
 
-	if !strings.Contains(svg, "<svg") {
-		t.Error("GenerateMap() output should contain SVG markup")
+	expectedPath := filepath.Join(tmpDir, "test", "assets", "dungeon.svg")
+	if path != expectedPath {
+		t.Errorf("GenerateMap() path = %s, want %s", path, expectedPath)
 	}
 
-	if !strings.Contains(svg, "The Dark Cave") {
-		t.Error("GenerateMap() output should contain the title")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("GenerateMap() file not found at %s: %v", path, err)
+	}
+
+	if !strings.Contains(string(data), "<svg") {
+		t.Error("GenerateMap() file should contain SVG markup")
+	}
+
+	if !strings.Contains(string(data), "The Dark Cave") {
+		t.Error("GenerateMap() file should contain the title")
 	}
 }
 
 func TestGenerateDivider_Success(t *testing.T) {
-	service, _ := setupTestAssetService(t)
+	service, tmpDir := setupTestAssetService(t)
 
-	svg, err := service.GenerateDivider("test", "divider", "ornate", 600)
+	path, err := service.GenerateDivider("test", "divider.svg", "ornate", 600)
 	if err != nil {
 		t.Fatalf("GenerateDivider() error: %v", err)
 	}
 
-	if !strings.Contains(svg, "<svg") {
-		t.Error("GenerateDivider() output should contain SVG markup")
+	expectedPath := filepath.Join(tmpDir, "test", "assets", "divider.svg")
+	if path != expectedPath {
+		t.Errorf("GenerateDivider() path = %s, want %s", path, expectedPath)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("GenerateDivider() file not found at %s: %v", path, err)
+	}
+
+	if !strings.Contains(string(data), "<svg") {
+		t.Error("GenerateDivider() file should contain SVG markup")
 	}
 }
 

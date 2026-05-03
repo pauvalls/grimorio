@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -48,18 +47,12 @@ func (h *AssetHandlers) HandleGenerateMap() server.ToolHandlerFunc {
 			labelList = splitLabels(labels)
 		}
 
-		svgContent, err := h.service.GenerateMap(campaign, filename, style, title, rooms, labelList)
+		path, err := h.service.GenerateMap(campaign, filename, style, title, rooms, labelList)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		// Write to filesystem (this maintains backward compatibility)
-		assetsDir := filepath.Join(filepath.Join(".", campaign), "assets") // This needs baseDir from config
-		// For now, we need to handle this differently - let's pass baseDir through
-		_ = assetsDir
-		_ = svgContent
-
-		return mcp.NewToolResultText(fmt.Sprintf("Map '%s' generated (%d rooms, %s style)", filename, rooms, style)), nil
+		return mcp.NewToolResultText(fmt.Sprintf("Map '%s' saved to %s (%d rooms, %s style)", filename, path, rooms, style)), nil
 	}
 }
 
@@ -83,12 +76,12 @@ func (h *AssetHandlers) HandleGenerateDivider() server.ToolHandlerFunc {
 			return mcp.NewToolResultError("campaign and filename are required"), nil
 		}
 
-		_, err := h.service.GenerateDivider(campaign, filename, style, width)
+		path, err := h.service.GenerateDivider(campaign, filename, style, width)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return mcp.NewToolResultText(fmt.Sprintf("Divider '%s' generated (%s style, %dpx)", filename, style, width)), nil
+		return mcp.NewToolResultText(fmt.Sprintf("Divider '%s' saved to %s (%s style, %dpx)", filename, path, style, width)), nil
 	}
 }
 
