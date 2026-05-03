@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/pauvalls/grimorio/internal/image"
@@ -84,12 +85,21 @@ func (s *AssetService) GenerateImage(campaign, filename, prompt, imgType string)
 		return "", fmt.Errorf("failed to initialize image provider: %w", err)
 	}
 
-	outputPath := filepath.Join(s.assetsDir(campaign), filename+".png")
+	outputPath := filepath.Join(s.assetsDir(campaign), ensureImageExt(filename))
 	if err := image.GenerateAndSave(provider, prompt, outputPath); err != nil {
 		return "", fmt.Errorf("%s generation failed: %w", provider.Name(), err)
 	}
 
 	return outputPath, nil
+}
+
+// ensureImageExt ensures filename has an image extension, defaulting to .png
+func ensureImageExt(filename string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".webp" {
+		return filename
+	}
+	return filename + ".png"
 }
 
 // GenerateImagesBatch generates multiple images in parallel with automatic fallback
@@ -107,7 +117,7 @@ func (s *AssetService) GenerateImagesBatch(campaign string, images []BatchImageS
 		wg.Add(1)
 		go func(idx int, sp BatchImageSpec) {
 			defer wg.Done()
-			outputPath := filepath.Join(s.assetsDir(campaign), sp.Filename+".png")
+			outputPath := filepath.Join(s.assetsDir(campaign), ensureImageExt(sp.Filename))
 			if err := image.GenerateAndSave(provider, sp.Prompt, outputPath); err != nil {
 				mu.Lock()
 				results[idx] = BatchImageResult{
@@ -134,7 +144,7 @@ func (s *AssetService) GenerateImagesBatch(campaign string, images []BatchImageS
 	for i, result := range results {
 		if !result.Success {
 			spec := images[i]
-			outputPath := filepath.Join(s.assetsDir(campaign), spec.Filename+".png")
+			outputPath := filepath.Join(s.assetsDir(campaign), ensureImageExt(spec.Filename))
 			if err := image.GenerateAndSave(provider, spec.Prompt, outputPath); err != nil {
 				results[i] = BatchImageResult{
 					Filename: spec.Filename,

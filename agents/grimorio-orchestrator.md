@@ -31,27 +31,27 @@ Launch ALL of these simultaneously using `delegate`:
 
 **1. grimorio-architect — Lore**
 ```
-delegate(agent="grimorio-architect", prompt="Generate LORE for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nWrite to lore_and_history.md using grimorio_save_lore. Include: world backstory, current conflict, key locations, factions.")
+delegate(agent="grimorio-architect", prompt="Generate LORE for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nUse grimorio_save_lore tool. Include: world backstory, current conflict, key locations, factions.")
 ```
 
 **2. grimorio-architect — NPCs**
 ```
-delegate(agent="grimorio-architect", prompt="Generate NPCS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nWrite to npcs_and_factions.md using grimorio_save_npcs. Create 5+ NPCs with: personality, motivation, secret, faction, stat block for important NPCs.")
+delegate(agent="grimorio-architect", prompt="Generate NPCS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nUse grimorio_save_npcs tool. Create 5+ NPCs with: personality, motivation, secret, faction, stat block for important NPCs.")
 ```
 
 **3. grimorio-architect — Bestiary**
 ```
-delegate(agent="grimorio-architect", prompt="Generate BESTIARY for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nWrite to bestiary.md using grimorio_save_bestiary. Create 3-5 monsters with full D&D 5e stat blocks, tactics, and lore.")
+delegate(agent="grimorio-architect", prompt="Generate BESTIARY for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nUse grimorio_save_bestiary tool. Create 3-5 monsters with full D&D 5e stat blocks, tactics, and lore.")
 ```
 
 **4. grimorio-architect — Encounters**
 ```
-delegate(agent="grimorio-architect", prompt="Generate ENCOUNTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nWrite to encounters.md using grimorio_save_encounters. Create 3-5 encounters with difficulty ratings, terrain, and tactical notes.")
+delegate(agent="grimorio-architect", prompt="Generate ENCOUNTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\n\nUse grimorio_save_encounters tool. Create 3-5 encounters with difficulty ratings, terrain, and tactical notes.")
 ```
 
 **5. grimorio-architect — Maps**
 ```
-delegate(agent="grimorio-architect", prompt="Generate MAP DESCRIPTIONS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nWrite to maps.md using grimorio_save_maps. Describe each major location with zones, atmosphere, and connections to story elements.")
+delegate(agent="grimorio-architect", prompt="Generate MAP DESCRIPTIONS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nUse grimorio_save_maps tool. Describe each major location with zones, atmosphere, and connections to story elements.")
 ```
 
 ### Phase 2: Monitor Content Completion
@@ -75,7 +75,7 @@ WHILE any content subagent is still running:
 Acts are generated BEFORE images so the artist knows exactly what scenes to illustrate:
 
 ```
-delegate(agent="grimorio-architect", prompt="Generate ACTS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nCRITICAL: Read these files FIRST:\n- {campaign_path}/lore_and_history.md\n- {campaign_path}/npcs_and_factions.md\n- {campaign_path}/bestiary.md\n- {campaign_path}/encounters.md\n- {campaign_path}/maps.md\n\nGenerate {act_count} acts. Each act must:\n1. Reference NPCs by name from npcs_and_factions.md\n2. Reference monsters by name from bestiary.md\n3. Reference encounters by name from encounters.md\n4. Use [SCENE: brief-description] placeholders for pivotal moments (boss fights, key discoveries, dramatic moments)\n5. Have 'Zonas del mapa' sections linking zones to story\n6. Do NOT include actual image references — use [SCENE: ...] placeholders instead\n\nWrite to act_1.md, act_2.md, etc. using grimorio_save_act.")
+delegate(agent="grimorio-architect", prompt="Generate ACTS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nCRITICAL: Read these files FIRST:\n- {campaign_path}/lore.md\n- {campaign_path}/npcs/npcs_and_factions.md\n- {campaign_path}/bestiary/bestiary.md\n- {campaign_path}/encounters/encounters.md\n- {campaign_path}/maps/maps.md\n\nGenerate {act_count} acts. Each act must:\n1. Reference NPCs by name from npcs/npcs_and_factions.md\n2. Reference monsters by name from bestiary/bestiary.md\n3. Reference encounters by name from encounters/encounters.md\n4. Use [SCENE: brief-description] placeholders for pivotal moments (boss fights, key discoveries, dramatic moments)\n5. Have 'Zonas del mapa' sections linking zones to story\n6. Do NOT include actual image references — use [SCENE: ...] placeholders instead\n\nWrite to act_1.md, act_2.md, etc. using grimorio_save_act.")
 ```
 
 `act_count` = 1 if `is_oneshot` else 3
@@ -103,7 +103,7 @@ delegate(agent="grimorio-cartographer", prompt="Generate ALL SVG assets for camp
 
 **B. grimorio-artist — Batch Specification**
 ```
-delegate(agent="grimorio-artist", prompt="Prepare image batch specification for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nRead these files:\n- {campaign_path}/npcs_and_factions.md (get NPC names, races, descriptions)\n- {campaign_path}/bestiary.md (get monster names, types)\n- {campaign_path}/acts/*.md (get all [SCENE: ...] placeholders)\n- {campaign_path}/lore_and_history.md (get setting for cover art)\n\nCreate {campaign_path}/assets/batch-spec.json with ALL images needed.")
+delegate(agent="grimorio-artist", prompt="Prepare image batch specification for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nRead these files:\n- {campaign_path}/npcs/npcs_and_factions.md (get NPC names, races, descriptions)\n- {campaign_path}/bestiary/bestiary.md (get monster names, types)\n- {campaign_path}/acts/*.md (get all [SCENE: ...] placeholders)\n- {campaign_path}/lore.md (get setting for cover art)\n\nCRITICAL: Include cover-art.png as the FIRST image (type: cover).\n\nCreate {campaign_path}/assets/batch-spec.json with ALL images needed.")
 ```
 
 ### Phase 6: Monitor SVGs + Artist Completion
@@ -146,7 +146,7 @@ Bash: ls {campaign_path}/assets/*.png
 Launch artist again to update all references:
 
 ```
-delegate(agent="grimorio-artist", prompt="Update image references for campaign '{campaign_name}' at {campaign_path}.\n\nAll images have been generated. Now update ALL markdown files:\n1. README.md — add cover art reference\n2. npcs_and_factions.md — add portrait references\n3. bestiary.md — add monster illustration references\n4. acts/*.md — replace [SCENE: ...] placeholders with actual image references")
+delegate(agent="grimorio-artist", prompt="Update image references for campaign '{campaign_name}' at {campaign_path}.\n\nAll images have been generated. Now update ALL markdown files:\n1. README.md — add cover art reference at the top: `assets/cover-art.png`\n2. npcs/npcs_and_factions.md — add portrait references for each NPC\n3. bestiary/bestiary.md — add monster illustration references\n4. acts/*.md — keep [SCENE: ...] placeholders as-is (they render as descriptive text)")
 ```
 
 ### Phase 9: Monitor Reference Updates

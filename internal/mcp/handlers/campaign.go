@@ -99,6 +99,121 @@ func (h *CampaignHandlers) HandleCompilePDF() server.ToolHandlerFunc {
 	}
 }
 
+// HandleSaveLore handles the save_lore tool
+func (h *CampaignHandlers) HandleSaveLore() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+
+		campaign := getStringArg(args, "campaign")
+		content := getStringArg(args, "content")
+
+		if campaign == "" {
+			return mcp.NewToolResultError("campaign is required"), nil
+		}
+
+		if err := h.service.SaveLore(campaign, content); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Lore saved to campaign '%s'", campaign)), nil
+	}
+}
+
+// HandleSaveNPCs handles the save_npcs tool
+func (h *CampaignHandlers) HandleSaveNPCs() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+
+		campaign := getStringArg(args, "campaign")
+		content := getStringArg(args, "content")
+
+		if campaign == "" {
+			return mcp.NewToolResultError("campaign is required"), nil
+		}
+
+		if err := h.service.SaveNPCs(campaign, content); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("NPCs saved to campaign '%s'", campaign)), nil
+	}
+}
+
+// HandleSaveEncounters handles the save_encounters tool
+func (h *CampaignHandlers) HandleSaveEncounters() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+
+		campaign := getStringArg(args, "campaign")
+		content := getStringArg(args, "content")
+
+		if campaign == "" {
+			return mcp.NewToolResultError("campaign is required"), nil
+		}
+
+		if err := h.service.SaveEncounters(campaign, content); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Encounters saved to campaign '%s'", campaign)), nil
+	}
+}
+
+// HandleSaveBestiary handles the save_bestiary tool
+func (h *CampaignHandlers) HandleSaveBestiary() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+
+		campaign := getStringArg(args, "campaign")
+		content := getStringArg(args, "content")
+
+		if campaign == "" {
+			return mcp.NewToolResultError("campaign is required"), nil
+		}
+
+		if err := h.service.SaveBestiary(campaign, content); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Bestiary saved to campaign '%s'", campaign)), nil
+	}
+}
+
+// HandleSaveMaps handles the save_maps tool
+func (h *CampaignHandlers) HandleSaveMaps() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+
+		campaign := getStringArg(args, "campaign")
+		content := getStringArg(args, "content")
+
+		if campaign == "" {
+			return mcp.NewToolResultError("campaign is required"), nil
+		}
+
+		if err := h.service.SaveMaps(campaign, content); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Maps saved to campaign '%s'", campaign)), nil
+	}
+}
+
 // HandleGetTemplate handles the get_template tool
 func (h *CampaignHandlers) HandleGetTemplate() server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

@@ -154,3 +154,146 @@ func TestHandleCreateQuest(t *testing.T) {
 		t.Errorf("HandleCreateQuest() returned error result: %v", result.Content)
 	}
 }
+
+func TestHandleSaveLore(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "lore-test",
+	}))
+
+	handler := handlers.HandleSaveLore()
+	args := map[string]any{
+		"campaign": "lore-test",
+		"content":  "# World History\n\nLong ago...",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_lore", args))
+	if err != nil {
+		t.Fatalf("HandleSaveLore() error: %v", err)
+	}
+
+	if result.IsError {
+		t.Errorf("HandleSaveLore() returned error result: %v", result.Content)
+	}
+}
+
+func TestHandleSaveLore_MissingCampaign(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	handler := handlers.HandleSaveLore()
+	args := map[string]any{
+		"content": "Some lore",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_lore", args))
+	if err != nil {
+		t.Fatalf("HandleSaveLore() error: %v", err)
+	}
+
+	if !result.IsError {
+		t.Errorf("HandleSaveLore() should return error for missing campaign")
+	}
+}
+
+func TestHandleSaveNPCs(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "npc-test",
+	}))
+
+	handler := handlers.HandleSaveNPCs()
+	args := map[string]any{
+		"campaign": "npc-test",
+		"content":  "# NPCs\n\n## Gandalf\nA wizard...",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_npcs", args))
+	if err != nil {
+		t.Fatalf("HandleSaveNPCs() error: %v", err)
+	}
+
+	if result.IsError {
+		t.Errorf("HandleSaveNPCs() returned error result: %v", result.Content)
+	}
+}
+
+func TestHandleSaveEncounters(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "enc-test",
+	}))
+
+	handler := handlers.HandleSaveEncounters()
+	args := map[string]any{
+		"campaign": "enc-test",
+		"content":  "# Encounters\n\n## Ambush\nA bandit ambush...",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_encounters", args))
+	if err != nil {
+		t.Fatalf("HandleSaveEncounters() error: %v", err)
+	}
+
+	if result.IsError {
+		t.Errorf("HandleSaveEncounters() returned error result: %v", result.Content)
+	}
+}
+
+func TestHandleSaveBestiary(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "best-test",
+	}))
+
+	handler := handlers.HandleSaveBestiary()
+	args := map[string]any{
+		"campaign": "best-test",
+		"content":  "# Bestiary\n\n## Goblin\nA small creature...",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_bestiary", args))
+	if err != nil {
+		t.Fatalf("HandleSaveBestiary() error: %v", err)
+	}
+
+	if result.IsError {
+		t.Errorf("HandleSaveBestiary() returned error result: %v", result.Content)
+	}
+}
+
+func TestHandleSaveMaps(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "map-test",
+	}))
+
+	handler := handlers.HandleSaveMaps()
+	args := map[string]any{
+		"campaign": "map-test",
+		"content":  "# Maps\n\n## Dungeon\nA dark dungeon...",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_maps", args))
+	if err != nil {
+		t.Fatalf("HandleSaveMaps() error: %v", err)
+	}
+
+	if result.IsError {
+		t.Errorf("HandleSaveMaps() returned error result: %v", result.Content)
+	}
+}

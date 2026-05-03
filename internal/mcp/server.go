@@ -57,6 +57,36 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content of the act")),
 	), campaignHandlers.HandleSaveAct())
 
+	s.AddTool(mcp.NewTool("save_lore",
+		mcp.WithDescription("Save world lore and history for the campaign"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content of the lore")),
+	), campaignHandlers.HandleSaveLore())
+
+	s.AddTool(mcp.NewTool("save_npcs",
+		mcp.WithDescription("Save NPCs and factions for the campaign"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with NPCs and factions")),
+	), campaignHandlers.HandleSaveNPCs())
+
+	s.AddTool(mcp.NewTool("save_encounters",
+		mcp.WithDescription("Save combat encounters and challenges for the campaign"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with encounters")),
+	), campaignHandlers.HandleSaveEncounters())
+
+	s.AddTool(mcp.NewTool("save_bestiary",
+		mcp.WithDescription("Save monsters and creatures to the bestiary"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with monster stat blocks")),
+	), campaignHandlers.HandleSaveBestiary())
+
+	s.AddTool(mcp.NewTool("save_maps",
+		mcp.WithDescription("Save map descriptions and scene layouts for the campaign"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with maps and scenes")),
+	), campaignHandlers.HandleSaveMaps())
+
 	s.AddTool(mcp.NewTool("compile_pdf",
 		mcp.WithDescription("Compile all campaign markdown files into a styled PDF"),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),

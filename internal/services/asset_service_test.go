@@ -263,3 +263,71 @@ func TestGetProvider_FallsBackToConfig(t *testing.T) {
 		t.Errorf("getProvider() = %s, want 'pollinations'", p.Name())
 	}
 }
+
+func TestGenerateImage_DoubleExtension(t *testing.T) {
+	service, tmpDir := setupTestAssetService(t)
+
+	// filename already includes .png extension
+	path, err := service.GenerateImage("test-campaign", "morgus-portrait.png", "A wizard portrait", "portrait")
+	if err != nil {
+		t.Fatalf("GenerateImage() error: %v", err)
+	}
+
+	// Should NOT create morgus-portrait.png.png
+	badPath := filepath.Join(tmpDir, "test-campaign", "assets", "morgus-portrait.png.png")
+	if _, err := os.Stat(badPath); !os.IsNotExist(err) {
+		t.Errorf("GenerateImage() created double extension file: %s", badPath)
+	}
+
+	// Should create morgus-portrait.png
+	goodPath := filepath.Join(tmpDir, "test-campaign", "assets", "morgus-portrait.png")
+	if path != goodPath {
+		t.Errorf("GenerateImage() path = %s, want %s", path, goodPath)
+	}
+
+	if _, err := os.Stat(goodPath); os.IsNotExist(err) {
+		t.Errorf("GenerateImage() did not create file at %s", goodPath)
+	}
+}
+
+func TestGenerateImage_DoubleExtension_Batch(t *testing.T) {
+	service, tmpDir := setupTestAssetService(t)
+
+	images := []BatchImageSpec{
+		{Filename: "cover-art.png", Prompt: "cover prompt", Type: "cover"},
+		{Filename: "npc-1.jpg", Prompt: "npc1 prompt", Type: "portrait"},
+	}
+
+	results, err := service.GenerateImagesBatch("test-campaign", images)
+	if err != nil {
+		t.Fatalf("GenerateImagesBatch() error: %v", err)
+	}
+
+	for _, r := range results {
+		if !r.Success {
+			t.Errorf("GenerateImagesBatch() failed for %s: %s", r.Filename, r.Error)
+		}
+	}
+
+	// Should NOT create double extension files
+	badPaths := []string{
+		filepath.Join(tmpDir, "test-campaign", "assets", "cover-art.png.png"),
+		filepath.Join(tmpDir, "test-campaign", "assets", "npc-1.jpg.png"),
+	}
+	for _, badPath := range badPaths {
+		if _, err := os.Stat(badPath); !os.IsNotExist(err) {
+			t.Errorf("GenerateImagesBatch() created double extension file: %s", badPath)
+		}
+	}
+
+	// Should create correct files
+	goodPaths := []string{
+		filepath.Join(tmpDir, "test-campaign", "assets", "cover-art.png"),
+		filepath.Join(tmpDir, "test-campaign", "assets", "npc-1.jpg"),
+	}
+	for _, goodPath := range goodPaths {
+		if _, err := os.Stat(goodPath); os.IsNotExist(err) {
+			t.Errorf("GenerateImagesBatch() did not create file at %s", goodPath)
+		}
+	}
+}

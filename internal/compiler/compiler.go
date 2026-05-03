@@ -213,8 +213,9 @@ var (
 	italicRegex     = regexp.MustCompile(`\*(.+?)\*`)
 	imageRegex      = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 
-	blockquoteRe    = regexp.MustCompile(`^>\s*(.*)`)
+	blockquoteRe    = regexp.MustCompile("^>\\s*(.*)")
 	codeAssetRegex  = regexp.MustCompile("`assets/([\\w\\-]+\\.(svg|png|jpg|jpeg|gif|webp))`")
+	sceneRegex      = regexp.MustCompile(`\[SCENE:\s*(.*?)\]`)
 )
 
 func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool) string {
@@ -345,6 +346,23 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 
 		// Skip empty lines inside table
 		if inTable && trimmed == "" {
+			continue
+		}
+
+		// Handle scene placeholders [SCENE: description]
+		if sceneMatch := sceneRegex.FindStringSubmatch(trimmed); sceneMatch != nil {
+			flushParagraph()
+			flushBlockquote()
+			flushTable()
+			if inList {
+				out = append(out, "</ul>")
+				inList = false
+			}
+			sceneDesc := sceneMatch[1]
+			escaped := html.EscapeString(sceneDesc)
+			escaped = boldRegex.ReplaceAllString(escaped, "<strong>$1</strong>")
+			escaped = italicRegex.ReplaceAllString(escaped, "<em>$1</em>")
+			out = append(out, fmt.Sprintf(`<div class="scene-description">🎭 %s</div>`, escaped))
 			continue
 		}
 

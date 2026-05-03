@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/pauvalls/grimorio/internal/compiler"
@@ -87,15 +88,47 @@ func (s *CampaignService) SaveAct(campaignID string, number int, title, content 
 	return s.actRepo.Save(act)
 }
 
-// SaveNPCs saves NPCs to a campaign (for backward compatibility, saves as markdown)
-func (s *CampaignService) SaveNPCs(campaignID string, content string) error {
+func (s *CampaignService) saveMarkdownFile(campaignID, subdir, filename, content string) error {
 	if !s.campaignRepo.Exists(campaignID) {
 		return fmt.Errorf("campaign not found: %s", campaignID)
 	}
 
-	// For backward compatibility, save as markdown
-	// TODO: Implement markdown saving
+	dir := filepath.Join(s.baseDir, campaignID, subdir)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	path := filepath.Join(dir, filename)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
 	return nil
+}
+
+// SaveLore saves lore to a campaign
+func (s *CampaignService) SaveLore(campaignID, content string) error {
+	return s.saveMarkdownFile(campaignID, "", "lore.md", content)
+}
+
+// SaveNPCs saves NPCs to a campaign as markdown
+func (s *CampaignService) SaveNPCs(campaignID, content string) error {
+	return s.saveMarkdownFile(campaignID, "npcs", "npcs_and_factions.md", content)
+}
+
+// SaveEncounters saves encounters to a campaign as markdown
+func (s *CampaignService) SaveEncounters(campaignID, content string) error {
+	return s.saveMarkdownFile(campaignID, "encounters", "encounters.md", content)
+}
+
+// SaveBestiary saves bestiary to a campaign as markdown
+func (s *CampaignService) SaveBestiary(campaignID, content string) error {
+	return s.saveMarkdownFile(campaignID, "bestiary", "bestiary.md", content)
+}
+
+// SaveMaps saves maps to a campaign as markdown
+func (s *CampaignService) SaveMaps(campaignID, content string) error {
+	return s.saveMarkdownFile(campaignID, "maps", "maps.md", content)
 }
 
 // CompilePDF compiles campaign to PDF
