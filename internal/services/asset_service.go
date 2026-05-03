@@ -4,11 +4,16 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pauvalls/grimorio/internal/image"
 	"github.com/pauvalls/grimorio/internal/svg"
 )
+
+// rateLimiter ensures image generation is always sequential
+// This prevents rate limiting on free AI image APIs
+var imageRateLimiter sync.Mutex
 
 // AssetService handles asset generation (maps, images, dividers)
 type AssetService struct {
@@ -72,7 +77,16 @@ func (s *AssetService) GenerateDivider(campaign, filename, style string, width i
 }
 
 // GenerateImage generates an image using AI with fallback providers
+// ALWAYS sequential - waits for previous image generation to complete
 func (s *AssetService) GenerateImage(campaign, filename, prompt, imgType string) (string, error) {
+	// Lock to ensure sequential generation across all requests
+	imageRateLimiter.Lock()
+	defer func() {
+		// Delay before releasing to avoid rate limiting
+		time.Sleep(3 * time.Second)
+		imageRateLimiter.Unlock()
+	}()
+
 	providers := s.getProviders()
 
 	outputPath := filepath.Join(s.assetsDir(campaign), ensureImageExt(filename))
@@ -103,54 +117,4 @@ func ensureImageExt(filename string) string {
 	return filename + ".png"
 }
 
-// GenerateImagesBatch generates multiple images SEQUENTIALLY with fallback providers
-// Sequential generation avoids rate limiting on free APIs
-func (s *AssetService) GenerateImagesBatch(campaign string, images []BatchImageSpec) ([]BatchImageResult, error) {
-	providers := s.getProviders()
-	results := make([]BatchImageResult, len(images))
 
-	for i, spec := range images {
-		outputPath := filepath.Join(s.assetsDir(campaign), ensureImageExt(spec.Filename))
-		providerName, err := image.GenerateAndSaveWithFallback(providers, spec.Prompt, outputPath)
-
-		if err != nil {
-			results[i] = BatchImageResult{
-				Filename:    spec.Filename,
-				Success:     false,
-				Error:       err.Error(),
-				ProviderUsed: "",
-			}
-		} else {
-			results[i] = BatchImageResult{
-				Filename:     spec.Filename,
-				Success:      true,
-				Path:         outputPath,
-				ProviderUsed: providerName,
-			}
-		}
-
-		// Delay between requests to avoid rate limiting on free APIs
-		// Only delay if there are more images to process
-		if i < len(images)-1 {
-			time.Sleep(3 * time.Second)
-		}
-	}
-
-	return results, nil
-}
-
-// BatchImageSpec represents an image to generate
-type BatchImageSpec struct {
-	Filename string
-	Prompt   string
-	Type     string
-}
-
-// BatchImageResult represents the result of generating an image
-type BatchImageResult struct {
-	Filename     string
-	Success      bool
-	Path         string
-	Error        string
-	ProviderUsed string
-}

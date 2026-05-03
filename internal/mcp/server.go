@@ -173,11 +173,5 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("type", mcp.Description("Image type: cover, portrait, illustration, scene"), mcp.DefaultString("illustration")),
 	), assetHandlers.HandleGenerateImage())
 
-	s.AddTool(mcp.NewTool("generate_images_batch",
-		mcp.WithDescription("Generate multiple images in parallel"),
-		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name")),
-		mcp.WithObject("images", mcp.Required(), mcp.Description("Array of image specifications")),
-	), assetHandlers.HandleGenerateImagesBatch())
-
 	return s
 }
