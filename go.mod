@@ -1,4 +1,4 @@
-module github.com/paupena/grimorio
+module github.com/pauvalls/grimorio
 
 go 1.25.5
 

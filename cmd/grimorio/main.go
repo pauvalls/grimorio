@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/paupena/grimorio/internal/config"
-	mcpserver "github.com/paupena/grimorio/internal/mcp"
+	"github.com/pauvalls/grimorio/internal/config"
+	mcpserver "github.com/pauvalls/grimorio/internal/mcp"
 )
 
 func main() {

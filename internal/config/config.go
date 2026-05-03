@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/paupena/grimorio/internal/image"
+	"github.com/pauvalls/grimorio/internal/image"
 )
 
 type Config struct {
