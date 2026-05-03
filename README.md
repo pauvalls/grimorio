@@ -76,28 +76,30 @@ Phase 1: Interactive Q&A
 
 Phase 2: Create campaign structure (MCP: create_campaign)
 
-Phase 3: Parallel subagents (delegate)
-  ├─ Lore subagent: world, setting, conflict (MCP: get_template + save)
-  ├─ Acts subagent: 3 acts with scenes (MCP: get_template + save_act)
-  ├─ NPCs subagent: 5+ NPCs + factions (MCP: get_template + save_npcs)
-  ├─ Bestiary subagent: 3-5 monsters (MCP: get_template + save_bestiary)
-  ├─ Encounters subagent: balanced fights (MCP: get_template + save_encounters)
-  ├─ Maps subagent: scene descriptions + battle maps (MCP: save_maps + generate_map)
-  └─ Images subagent: cover art, portraits (MCP: generate_image, FREE via Pollinations.ai)
+Phase 3: Launch Orchestrator (single delegate)
+  └─ grimorio-orchestrator coordinates internally:
+      ├─ grimorio-cartographer: cover art, battle maps, portraits (MCP: generate_image + generate_map)
+      ├─ Lore subagent: world, setting, conflict (MCP: save)
+      ├─ NPCs subagent: 5+ NPCs + factions (MCP: save_npcs)
+      ├─ Bestiary subagent: 3-5 monsters (MCP: save_bestiary)
+      ├─ Encounters subagent: balanced fights (MCP: save_encounters)
+      ├─ Maps subagent: scene descriptions (MCP: save_maps)
+      └─ Acts subagent: 3 acts with scenes (MCP: save_act)
 
 Phase 4: Compile PDF (MCP: compile_pdf) — embeds all images
 
 Phase 5: Report generated files location
 ```
 
-> **Important:** The main agent only asks questions and compiles the PDF. All content generation happens in parallel subagents — the main thread stays clean.
+> **Important:** The main agent only asks questions and launches the orchestrator with a single `delegate` call. The orchestrator handles all subagent coordination internally — the main thread does zero polling.
 
 ### Architecture
 
 ```
 OpenCode / Claude Code
     │
-    ├─ Agent grimorio-architect → Q&A + orchestrates generation
+    ├─ Agent grimorio-architect → Q&A + single delegate to orchestrator
+    ├─ Agent grimorio-orchestrator → Coordinates all subagents internally
     ├─ Agent grimorio-cartographer → Battle maps, SVGs, images (subagent)
     ├─ Command /grimorio        → Triggers the workflow above
     └─ Skill dnd-5e-srd         → D&D 5e rules context
@@ -178,7 +180,8 @@ All images (SVG maps, AI-generated PNGs, dividers) are automatically embedded in
     ├─ commands/
     │   └─ grimorio.md                   # /grimorio slash command
     ├─ agents/
-    │   ├─ grimorio-architect.md         # Campaign designer agent
+    │   ├─ grimorio-architect.md         # Campaign designer agent (Q&A + single delegate)
+    │   ├─ grimorio-orchestrator.md      # Internal coordinator (handles all subagents)
     │   └─ grimorio-cartographer.md      # Maps, SVGs, images subagent
     └─ skills/
         └─ dnd-5e-srd/SKILL.md           # D&D 5e rules reference
@@ -211,7 +214,7 @@ The installer automatically adds the following to `~/.config/opencode/opencode.j
   "agent": {
     "grimorio-architect": {
       "mode": "primary",
-      "tools": { "delegate": true, "delegation_list": true, "delegation_read": true, /* ... */ }
+      "tools": { "delegate": true /* ... */ }
     }
   },
   "command": {
@@ -368,28 +371,30 @@ Fase 1: Preguntas interactivas
 
 Fase 2: Crear estructura (MCP: create_campaign)
 
-Fase 3: Subagentes en paralelo (delegate)
-  ├─ Subagente lore: mundo, ambientación, conflicto (MCP: get_template + save)
-  ├─ Subagente actos: 3 actos con escenas (MCP: get_template + save_act)
-  ├─ Subagente NPCs: 5+ NPCs + facciones (MCP: get_template + save_npcs)
-  ├─ Subagente bestiario: 3-5 monstruos (MCP: get_template + save_bestiary)
-  ├─ Subagente encuentros: combates balanceados (MCP: get_template + save_encounters)
-  ├─ Subagente mapas: escenas + mapas de batalla (MCP: save_maps + generate_map)
-  └─ Subagente imágenes: portada, retratos (MCP: generate_image, GRATIS vía Pollinations.ai)
+Fase 3: Lanzar Orquestador (delegate único)
+  └─ grimorio-orchestrator coordina internamente:
+      ├─ grimorio-cartographer: portada, mapas de batalla, retratos (MCP: generate_image + generate_map)
+      ├─ Subagente lore: mundo, ambientación, conflicto (MCP: save)
+      ├─ Subagente NPCs: 5+ NPCs + facciones (MCP: save_npcs)
+      ├─ Subagente bestiario: 3-5 monstruos (MCP: save_bestiary)
+      ├─ Subagente encuentros: combates balanceados (MCP: save_encounters)
+      ├─ Subagente mapas: descripciones de escenas (MCP: save_maps)
+      └─ Subagente actos: 3 actos con escenas (MCP: save_act)
 
 Fase 4: Compilar PDF (MCP: compile_pdf) — embebe todas las imágenes
 
 Fase 5: Mostrar ubicación de archivos generados
 ```
 
-> **Importante:** El agente principal solo hace preguntas y compila el PDF. Toda la generación de contenido ocurre en subagentes paralelos — el hilo principal queda limpio.
+> **Importante:** El agente principal solo hace preguntas y lanza el orquestador con un único `delegate`. El orquestador coordina todos los subagentes internamente — el hilo principal no hace polling.
 
 ### Arquitectura
 
 ```
 OpenCode / Claude Code
     │
-    ├─ Agente grimorio-architect → Q&A + orquesta la generación
+    ├─ Agente grimorio-architect → Q&A + delegate único al orquestador
+    ├─ Agente grimorio-orchestrator → Coordina todos los subagentes internamente
     ├─ Agente grimorio-cartographer → Mapas, SVGs, imágenes (subagente)
     ├─ Comando /grimorio         → Dispara el flujo de arriba
     └─ Skill dnd-5e-srd          → Contexto de reglas D&D 5e
@@ -422,7 +427,8 @@ OpenCode / Claude Code
     ├─ commands/
     │   └─ grimorio.md                   # Comando slash /grimorio
     ├─ agents/
-    │   ├─ grimorio-architect.md         # Agente diseñador de campañas
+    │   ├─ grimorio-architect.md         # Agente diseñador (Q&A + delegate único)
+    │   ├─ grimorio-orchestrator.md      # Coordinador interno (maneja todos los subagentes)
     │   └─ grimorio-cartographer.md      # Subagente mapas, SVGs, imágenes
     └─ skills/
         └─ dnd-5e-srd/SKILL.md           # Referencia de reglas D&D 5e
@@ -455,7 +461,7 @@ El instalador agrega automáticamente lo siguiente a `~/.config/opencode/opencod
   "agent": {
     "grimorio-architect": {
       "mode": "primary",
-      "tools": { "delegate": true, "delegation_list": true, "delegation_read": true, /* ... */ }
+      "tools": { "delegate": true /* ... */ }
     }
   },
   "command": {
