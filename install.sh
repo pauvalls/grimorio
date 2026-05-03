@@ -338,7 +338,26 @@ configure_opencode_command() {
         jq '.agent["grimorio-architect"] = {
             "description": "Expert Dungeon Master agent for D&D 5e campaign generation",
             "mode": "primary",
-            "prompt": "You are an expert Dungeon Master and campaign designer. Your job is to:\n1. Ask the user clarifying questions about their campaign idea (level, tone, duration, name)\n2. After gathering all requirements, use subagents to generate each component\n3. When all subagents complete, compile the final PDF\n\nDO NOT edit files in the main thread. Always delegate generation work to subagents.",
+            "prompt": "You are an expert Dungeon Master and campaign designer. Your job is to:\n1. Ask the user clarifying questions about their campaign idea (level, tone, duration, name)\n2. After gathering all requirements, launch grimorio-orchestrator with a single delegate call\n3. Report the final result to the user\n\nDO NOT edit files in the main thread. Always delegate to grimorio-orchestrator.",
+            "tools": {
+                "bash": true,
+                "delegate": true,
+                "edit": true,
+                "read": true,
+                "write": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-architect agent configured"
+    fi
+
+    # Configure grimorio-orchestrator subagent
+    log "Configuring grimorio-orchestrator agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-orchestrator"] = {
+            "description": "Internal coordinator for grimorio campaigns",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Orchestrator. Your ONLY job is to coordinate subagent execution.\n\n1. Launch cartographer + content subagents in parallel using delegate\n2. Monitor completion via delegation_list\n3. Launch acts when foundation is done\n4. Compile PDF\n5. Report to parent",
             "tools": {
                 "bash": true,
                 "delegate": true,
@@ -350,7 +369,7 @@ configure_opencode_command() {
             },
             "options": {}
         }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-        success "grimorio-architect agent configured"
+        success "grimorio-orchestrator agent configured"
     fi
 
     # Always update command (not just add) to ensure latest template with image generation
