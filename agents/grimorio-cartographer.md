@@ -131,31 +131,41 @@ The temple entrance lies beneath the waves...
 
 **Workflow:**
 
-1. **Cover Art** (MANDATORY — always do this first)
-   - Generate cover art using `generate_image` (type: cover, filename: cover-art)
-   - This is FAST and FREE via Pollinations.ai
-   - Read README.md and add: `![Portada](assets/cover-art.png)`
-   - **NEVER skip cover art**
+**STEP 1: Read all source files**
+Before generating anything, READ these files to understand the campaign:
+- `{campaign_path}/npcs_and_factions.md` — extract ALL NPC names
+- `{campaign_path}/maps.md` — extract ALL location names  
+- `{campaign_path}/lore_and_history.md` — understand setting and tone
+- `{campaign_path}/encounters.md` — understand combat locations
 
-2. **Battle Maps** (fast, 100% local SVG — always do this)
-   - Analyze the scene description to determine what map is needed
-   - Generate SVG map using `generate_map` with appropriate labels
-   - Read the relevant act file to find the scene
-   - Update the act file with the map reference AND zone descriptions
+**STEP 2: Cover Art** (MANDATORY)
+- Generate cover art: `generate_image` (type: cover, filename: cover-art)
+- Read README.md and add: `![Portada](assets/cover-art.png)`
+- **NEVER skip cover art**
 
-3. **NPC Portraits** (optional — can be skipped if slow)
-   - For each major NPC, generate portrait using `generate_image` (type: portrait, filename: npc-nombre)
-   - Read npcs_and_factions.md and add portrait references
-   - If generation takes too long, skip and inform user
+**STEP 3: Battle Maps** (MANDATORY — one per major location)
+- For EACH location found in maps.md, generate a battle map:
+  - `generate_map` (style: dungeon/landscape/city, use labels parameter with room names)
+  - Filename: `{location-name}.svg` in kebab-case
+- Read the act file that uses this location
+- Update the act file with: `![Mapa](assets/{location-name}.svg)`
+- Add "Zonas del mapa" section with descriptions for each labeled zone
 
-4. **Scene Illustrations** (optional — can be skipped if slow)
-   - For pivotal scenes, generate illustrations using `generate_image` (type: scene, filename: scene-actX-sceneY-nombre)
-   - Read act files and add illustration references
+**STEP 4: NPC Portraits** (MANDATORY — minimum 3)
+- For EACH major NPC found in npcs_and_factions.md:
+  - `generate_image` (type: portrait, filename: npc-{kebab-case-name})
+  - Read npcs_and_factions.md and add: `![Nombre](assets/npc-{name}.png)`
+- Generate at least 3 portraits (hero, villain, ally)
 
-5. **Verify**
-   - Verify cover art exists (MANDATORY)
-   - Verify battle maps exist (MANDATORY)
-   - Report which optional images were generated and which were skipped
+**STEP 5: Scene Illustrations** (minimum 2)
+- For pivotal scenes (boss fight, key discovery, dramatic moment):
+  - `generate_image` (type: scene, filename: scene-{brief-description})
+  - Read act files and add: `![Escena](assets/scene-{name}.png)`
+
+**STEP 6: Verify**
+- List ALL generated files in assets/
+- Report: "Generated X battle maps, Y portraits, Z illustrations"
+- If any file is missing, explain why
 
 **Edge Cases:**
 - AI image generation is FREE via Pollinations.ai — no configuration needed
