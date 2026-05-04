@@ -104,7 +104,7 @@ Add at the top (after the title):
 ```
 
 **RECOMMENDED: Use inline image linking during generation**
-When calling `grimorio_generate_image`, use the optional parameters to automatically insert the image reference into the markdown:
+When calling `grimorio_generate_image`, `grimorio_generate_map`, or `grimorio_generate_divider`, use the optional parameters to automatically insert the image reference into the markdown:
 
 ```json
 {
@@ -118,9 +118,9 @@ When calling `grimorio_generate_image`, use the optional parameters to automatic
 }
 ```
 
-Parameters:
-- `markdown_file`: Path to the markdown file (e.g., `npcs/npcs_and_factions.md`, `bestiary/bestiary.md`, `acts/act1.md`)
-- `section`: Section heading where to insert the image (e.g., `Gandalf`, `Act 1: The Beginning`)
+Parameters (available for all generation tools):
+- `markdown_file`: Path to the markdown file (e.g., `npcs/npcs_and_factions.md`, `bestiary/bestiary.md`, `acts/act1.md`, `maps/maps.md`)
+- `section`: Section heading where to insert the image (e.g., `Gandalf`, `Act 1: The Beginning`, `Mapa del Palacio`)
 - `alt`: Alt text for the image (defaults to filename if not provided)
 
 **Alternative: Manual update after generation**

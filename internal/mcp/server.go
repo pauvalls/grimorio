@@ -148,21 +148,27 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 
 	// Asset generation
 	s.AddTool(mcp.NewTool("generate_map",
-		mcp.WithDescription("Generate a procedural SVG battle map"),
+		mcp.WithDescription("Generate a procedural SVG battle map and optionally link it to a markdown file"),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name")),
 		mcp.WithString("filename", mcp.Required(), mcp.Description("Output filename (without extension)")),
 		mcp.WithString("style", mcp.Description("Map style: dungeon, landscape, city"), mcp.DefaultString("dungeon")),
 		mcp.WithString("title", mcp.Description("Map title")),
 		mcp.WithNumber("rooms", mcp.Description("Number of rooms (2-10)"), mcp.DefaultNumber(6)),
 		mcp.WithString("labels", mcp.Description("Comma-separated room labels")),
+		mcp.WithString("markdown_file", mcp.Description("Optional: markdown file to insert image reference (e.g., 'maps/maps.md')")),
+		mcp.WithString("section", mcp.Description("Optional: section heading where to insert the image reference")),
+		mcp.WithString("alt", mcp.Description("Optional: alt text for the image (defaults to title or filename)")),
 	), assetHandlers.HandleGenerateMap())
 
 	s.AddTool(mcp.NewTool("generate_divider",
-		mcp.WithDescription("Generate a decorative SVG divider"),
+		mcp.WithDescription("Generate a decorative SVG divider and optionally link it to a markdown file"),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name")),
 		mcp.WithString("filename", mcp.Required(), mcp.Description("Output filename")),
 		mcp.WithString("style", mcp.Description("Divider style: ornate, simple, double"), mcp.DefaultString("ornate")),
 		mcp.WithNumber("width", mcp.Description("Width in pixels"), mcp.DefaultNumber(600)),
+		mcp.WithString("markdown_file", mcp.Description("Optional: markdown file to insert image reference")),
+		mcp.WithString("section", mcp.Description("Optional: section heading where to insert the image reference")),
+		mcp.WithString("alt", mcp.Description("Optional: alt text for the image (defaults to filename)")),
 	), assetHandlers.HandleGenerateDivider())
 
 	s.AddTool(mcp.NewTool("generate_image",

@@ -47,9 +47,26 @@ func (h *AssetHandlers) HandleGenerateMap() server.ToolHandlerFunc {
 			labelList = splitLabels(labels)
 		}
 
+		markdownFile := getStringArg(args, "markdown_file")
+		section := getStringArg(args, "section")
+		alt := getStringArg(args, "alt")
+
 		path, err := h.service.GenerateMap(campaign, filename, style, title, rooms, labelList)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		if markdownFile != "" {
+			if alt == "" {
+				alt = title
+				if alt == "" {
+					alt = filename
+				}
+			}
+			if err := h.service.InsertImageReference(campaign, markdownFile, section, alt, filename); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Map generated but failed to update markdown: %v", err)), nil
+			}
+			return mcp.NewToolResultText(fmt.Sprintf("Map '%s' saved to %s and linked to %s", filename, path, markdownFile)), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Map '%s' saved to %s (%d rooms, %s style)", filename, path, rooms, style)), nil
@@ -76,9 +93,23 @@ func (h *AssetHandlers) HandleGenerateDivider() server.ToolHandlerFunc {
 			return mcp.NewToolResultError("campaign and filename are required"), nil
 		}
 
+		markdownFile := getStringArg(args, "markdown_file")
+		section := getStringArg(args, "section")
+		alt := getStringArg(args, "alt")
+
 		path, err := h.service.GenerateDivider(campaign, filename, style, width)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		if markdownFile != "" {
+			if alt == "" {
+				alt = filename
+			}
+			if err := h.service.InsertImageReference(campaign, markdownFile, section, alt, filename); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Divider generated but failed to update markdown: %v", err)), nil
+			}
+			return mcp.NewToolResultText(fmt.Sprintf("Divider '%s' saved to %s and linked to %s", filename, path, markdownFile)), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Divider '%s' saved to %s (%s style, %dpx)", filename, path, style, width)), nil
