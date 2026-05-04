@@ -19,10 +19,10 @@ func main() {
 
 	home, _ := os.UserHomeDir()
 	configPath := filepath.Join(home, ".config", "grimorio", "config.json")
-	
+
 	// Ensure config dir exists
 	os.MkdirAll(filepath.Dir(configPath), 0755)
-	
+
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)

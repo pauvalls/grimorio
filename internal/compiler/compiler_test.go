@@ -9,33 +9,33 @@ import (
 
 func TestMarkdownToHTML_ProcessScenePlaceholders(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		wantContains string
+		name            string
+		input           string
+		wantContains    string
 		wantNotContains string
 	}{
 		{
-			name:     "scene placeholder becomes descriptive text",
-			input:    "*[SCENE: A dark dungeon with flickering torches]*",
-			wantContains: "A dark dungeon with flickering torches",
+			name:            "scene placeholder becomes descriptive text",
+			input:           "*[SCENE: A dark dungeon with flickering torches]*",
+			wantContains:    "A dark dungeon with flickering torches",
 			wantNotContains: "[SCENE:",
 		},
 		{
-			name:     "scene placeholder in standalone line",
-			input:    "[SCENE: Epic battle between heroes and dragon]",
-			wantContains: "Epic battle between heroes and dragon",
+			name:            "scene placeholder in standalone line",
+			input:           "[SCENE: Epic battle between heroes and dragon]",
+			wantContains:    "Epic battle between heroes and dragon",
 			wantNotContains: "[SCENE:",
 		},
 		{
-			name:     "multiple scene placeholders",
-			input:    "[SCENE: First scene]\n\nSome text\n\n[SCENE: Second scene]",
-			wantContains: "First scene",
+			name:            "multiple scene placeholders",
+			input:           "[SCENE: First scene]\n\nSome text\n\n[SCENE: Second scene]",
+			wantContains:    "First scene",
 			wantNotContains: "[SCENE:",
 		},
 		{
-			name:     "regular markdown still works",
-			input:    "# Heading\n\nSome **bold** text",
-			wantContains: "<h1",
+			name:            "regular markdown still works",
+			input:           "# Heading\n\nSome **bold** text",
+			wantContains:    "<h1",
 			wantNotContains: "",
 		},
 	}
@@ -43,11 +43,11 @@ func TestMarkdownToHTML_ProcessScenePlaceholders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := markdownToHTML(tt.input, "/tmp")
-			
+
 			if tt.wantContains != "" && !strings.Contains(result, tt.wantContains) {
 				t.Errorf("markdownToHTML() result does not contain %q\nGot: %s", tt.wantContains, result)
 			}
-			
+
 			if tt.wantNotContains != "" && strings.Contains(result, tt.wantNotContains) {
 				t.Errorf("markdownToHTML() result should not contain %q\nGot: %s", tt.wantNotContains, result)
 			}
@@ -58,7 +58,7 @@ func TestMarkdownToHTML_ProcessScenePlaceholders(t *testing.T) {
 func TestMarkdownToHTML_ScenePlaceholder_Formatting(t *testing.T) {
 	input := "[SCENE: A mystical forest at dawn]"
 	result := markdownToHTML(input, "/tmp")
-	
+
 	if !strings.Contains(result, "scene-description") && !strings.Contains(result, "<p>") {
 		t.Errorf("scene placeholder should be wrapped in HTML element, got: %s", result)
 	}
@@ -248,13 +248,13 @@ func TestCountImagesInMarkdown(t *testing.T) {
 func TestCountImagesInHTML(t *testing.T) {
 	tmpDir := t.TempDir()
 	htmlPath := filepath.Join(tmpDir, "test.html")
-	
+
 	html := `<html><body>
 		<img src="a.png" alt="1">
 		<p>text</p>
 		<img src="b.svg" alt="2">
 	</body></html>`
-	
+
 	if err := os.WriteFile(htmlPath, []byte(html), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -270,11 +270,11 @@ func TestCountImagesInHTML(t *testing.T) {
 
 func TestVerifyImages(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create campaign structure
 	actsDir := filepath.Join(tmpDir, "acts")
 	os.MkdirAll(actsDir, 0755)
-	
+
 	// Create a markdown file with 2 images
 	mdContent := `# Act 1
 ![Scene 1](assets/scene1.png)
@@ -285,7 +285,7 @@ Some text
 	if err := os.WriteFile(mdPath, []byte(mdContent), 0644); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	// Create matching HTML with both images
 	htmlContent := `<html><body>
 		<h1>Act 1</h1>
@@ -316,11 +316,11 @@ Some text
 
 func TestVerifyImages_Mismatch(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create campaign structure
 	actsDir := filepath.Join(tmpDir, "acts")
 	os.MkdirAll(actsDir, 0755)
-	
+
 	// Create a markdown file with 2 images
 	mdContent := `# Act 1
 ![Scene 1](assets/scene1.png)
@@ -330,7 +330,7 @@ func TestVerifyImages_Mismatch(t *testing.T) {
 	if err := os.WriteFile(mdPath, []byte(mdContent), 0644); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	// Create HTML with only 1 image (simulating a failure)
 	htmlContent := `<html><body>
 		<h1>Act 1</h1>

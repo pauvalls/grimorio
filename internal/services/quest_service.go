@@ -21,15 +21,15 @@ func NewQuestService(repo repository.QuestRepository) *QuestService {
 // CreateQuest creates a new quest
 func (s *QuestService) CreateQuest(campaignID, title string, questType domain.QuestType, hook, description, stakes string, characterID *string) (*domain.Quest, error) {
 	quest := &domain.Quest{
-		CampaignID:  campaignID,
-		Title:       title,
-		Type:        questType,
-		Status:      domain.QuestStatusActive,
-		Hook:        hook,
-		Description: description,
-		Stakes:      stakes,
-		CharacterID: characterID,
-		Objectives:  []domain.Objective{},
+		CampaignID:    campaignID,
+		Title:         title,
+		Type:          questType,
+		Status:        domain.QuestStatusActive,
+		Hook:          hook,
+		Description:   description,
+		Stakes:        stakes,
+		CharacterID:   characterID,
+		Objectives:    []domain.Objective{},
 		ProgressNotes: []domain.ProgressNote{},
 	}
 

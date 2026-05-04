@@ -7,9 +7,9 @@ import (
 
 func TestCampaignValidation(t *testing.T) {
 	tests := []struct {
-		name    string
+		name     string
 		campaign Campaign
-		wantErr bool
+		wantErr  bool
 		errField string
 	}{
 		{
@@ -245,9 +245,9 @@ func TestCharacterValidation(t *testing.T) {
 
 func TestQuestValidation(t *testing.T) {
 	tests := []struct {
-		name    string
-		quest   Quest
-		wantErr bool
+		name     string
+		quest    Quest
+		wantErr  bool
 		errField string
 	}{
 		{

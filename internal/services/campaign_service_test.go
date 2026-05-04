@@ -15,11 +15,11 @@ func TestCampaignService_CreateCampaign(t *testing.T) {
 	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, "/tmp/campaigns", "wkhtmltopdf")
 
 	tests := []struct {
-		name    string
+		name         string
 		campaignName string
-		title   string
-		setting string
-		wantErr bool
+		title        string
+		setting      string
+		wantErr      bool
 	}{
 		{
 			name:         "create valid campaign",
@@ -85,9 +85,9 @@ func TestCampaignService_GetCampaign(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
+		name         string
 		campaignName string
-		wantErr bool
+		wantErr      bool
 	}{
 		{
 			name:         "get existing campaign",

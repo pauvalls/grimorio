@@ -43,7 +43,7 @@ func (r *FilesystemActRepository) Save(act *domain.Act) error {
 	}
 
 	filename := fmt.Sprintf("act_%02d_%s.md", act.Number, domain.SanitizeFilename(act.Title))
-	
+
 	// Add header if content doesn't already start with a heading
 	content := act.Content
 	if !strings.HasPrefix(strings.TrimSpace(content), "# ") {

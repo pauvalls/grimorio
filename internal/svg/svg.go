@@ -77,11 +77,11 @@ func generateRooms(cfg BattleMapConfig, cols, rows int) []Room {
 		attempts++
 		w := cfg.MinRoomSize + rand.Intn(cfg.MaxRoomSize-cfg.MinRoomSize+1)
 		h := cfg.MinRoomSize + rand.Intn(cfg.MaxRoomSize-cfg.MinRoomSize+1)
-		x := rand.Intn(cols - w - 2) + 1
-		y := rand.Intn(rows - h - 2) + 1
+		x := rand.Intn(cols-w-2) + 1
+		y := rand.Intn(rows-h-2) + 1
 
 		room := Room{X: x, Y: y, W: w, H: h, ID: len(rooms)}
-		
+
 		// Check overlap - allow adjacent but not overlapping
 		overlap := false
 		for _, existing := range rooms {
@@ -91,7 +91,7 @@ func generateRooms(cfg BattleMapConfig, cols, rows int) []Room {
 				break
 			}
 		}
-		
+
 		if !overlap {
 			// Assign label
 			if room.ID < len(cfg.Labels) && cfg.Labels[room.ID] != "" {
@@ -204,22 +204,22 @@ func renderSVG(cfg BattleMapConfig, rooms []Room, corridors []Corridor) string {
 	var sb strings.Builder
 	gs := cfg.GridSize
 
-	sb.WriteString(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`, 
+	sb.WriteString(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`,
 		cfg.Width, cfg.Height, cfg.Width, cfg.Height))
-	
+
 	// Definitions
 	sb.WriteString(`<defs>`)
-	
+
 	// Grid pattern
 	sb.WriteString(fmt.Sprintf(`<pattern id="grid" width="%d" height="%d" patternUnits="userSpaceOnUse">`, gs, gs))
 	sb.WriteString(fmt.Sprintf(`<path d="M %d 0 L 0 0 0 %d" fill="none" stroke="#c9ad6a" stroke-width="0.5" opacity="0.3"/>`, gs, gs))
 	sb.WriteString(`</pattern>`)
-	
+
 	// Shadow filter for rooms
 	sb.WriteString(`<filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">`)
 	sb.WriteString(`<feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.3"/>`)
 	sb.WriteString(`</filter>`)
-	
+
 	sb.WriteString(`</defs>`)
 
 	// Background
@@ -259,12 +259,12 @@ func renderSVG(cfg BattleMapConfig, rooms []Room, corridors []Corridor) string {
 
 func renderCorridor(corr Corridor, cfg BattleMapConfig, gs int) string {
 	var sb strings.Builder
-	
+
 	x1 := corr.X1 * gs
 	y1 := corr.Y1 * gs
 	x2 := corr.X2 * gs
 	y2 := corr.Y2 * gs
-	
+
 	// Corridor width
 	cw := gs / 2
 	if cw < 8 {
@@ -280,45 +280,45 @@ func renderCorridor(corr Corridor, cfg BattleMapConfig, gs int) string {
 			x1, y1, x2, y2, cw))
 		sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#8b7355" stroke-width="%d" opacity="0.6"/>`,
 			x1, y1, x2, y2, cw-4))
-		
+
 		// Doorways at room connections
 		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="%d" fill="#3d2e1f" stroke="#c9ad6a" stroke-width="1"/>`,
 			x1, y1, cw/2+2))
 		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="%d" fill="#3d2e1f" stroke="#c9ad6a" stroke-width="1"/>`,
 			x2, y2, cw/2+2))
-		
+
 	case MapStyleLandscape:
 		// Natural paths
 		sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#3d5a37" stroke-width="%d" stroke-dasharray="5,3" opacity="0.8"/>`,
 			x1, y1, x2, y2, cw))
-		
+
 		// Path markers
 		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="4" fill="#2d4a27"/>`, x1, y1))
 		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="4" fill="#2d4a27"/>`, x2, y2))
-		
+
 	case MapStyleCity:
 		// Streets
 		sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#8b7355" stroke-width="%d"/>`,
 			x1, y1, x2, y2, cw+2))
 		sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#d4c5a9" stroke-width="%d"/>`,
 			x1, y1, x2, y2, cw-2))
-		
+
 		// Street intersections
 		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="5" fill="#c9ad6a"/>`, x1, y1))
 		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="5" fill="#c9ad6a"/>`, x2, y2))
 	}
-	
+
 	return sb.String()
 }
 
 func renderRoom(room Room, cfg BattleMapConfig, gs int) string {
 	var sb strings.Builder
-	
+
 	x := room.X * gs
 	y := room.Y * gs
 	w := room.W * gs
 	h := room.H * gs
-	
+
 	// Room shadow
 	sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#1a1a1a" opacity="0.3" rx="3"/>`,
 		x+3, y+3, w, h))
@@ -328,22 +328,22 @@ func renderRoom(room Room, cfg BattleMapConfig, gs int) string {
 		// Main room
 		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#3d2e1f" stroke="#c9ad6a" stroke-width="2" rx="3" filter="url(#shadow)"/>`,
 			x, y, w, h))
-		
+
 		// Inner floor detail
 		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#4a3a2a" stroke="#8b7355" stroke-width="1" rx="2" opacity="0.5"/>`,
 			x+6, y+6, w-12, h-12))
-		
+
 		// Corner accents
 		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+8, y+8))
 		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+w-8, y+8))
 		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+8, y+h-8))
 		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+w-8, y+h-8))
-		
+
 	case MapStyleLandscape:
 		// Natural area
 		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#4a6741" stroke="#2d4a27" stroke-width="2" rx="8" filter="url(#shadow)"/>`,
 			x, y, w, h))
-		
+
 		// Trees/bushes
 		numTrees := rand.Intn(3) + 1
 		for i := 0; i < numTrees; i++ {
@@ -352,7 +352,7 @@ func renderRoom(room Room, cfg BattleMapConfig, gs int) string {
 			sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="8" fill="#2d4a27" opacity="0.7"/>`, tx, ty))
 			sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="5" fill="#3d5a37"/>`, tx, ty-3))
 		}
-		
+
 		// Rocks
 		numRocks := rand.Intn(2) + 1
 		for i := 0; i < numRocks; i++ {
@@ -361,16 +361,16 @@ func renderRoom(room Room, cfg BattleMapConfig, gs int) string {
 			sb.WriteString(fmt.Sprintf(`<polygon points="%d,%d %d,%d %d,%d" fill="#6b6b6b" opacity="0.6"/>`,
 				rx, ry, rx+8, ry-5, rx+12, ry+3))
 		}
-		
+
 	case MapStyleCity:
 		// Building
 		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#d4c5a9" stroke="#8b7355" stroke-width="2" filter="url(#shadow)"/>`,
 			x, y, w, h))
-		
+
 		// Inner courtyard/detail
 		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#c9ad6a" stroke="#a08c5a" stroke-width="1"/>`,
 			x+4, y+4, w-8, h-8))
-		
+
 		// Windows/doors
 		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#5a3d2b"/>`,
 			x+w/2-4, y+4, 8, 12))
@@ -379,34 +379,34 @@ func renderRoom(room Room, cfg BattleMapConfig, gs int) string {
 		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#5a3d2b"/>`,
 			x+w-14, y+h/2-4, 8, 8))
 	}
-	
+
 	return sb.String()
 }
 
 func renderRoomLabel(room Room, gs int) string {
 	var sb strings.Builder
-	
+
 	x := room.X * gs
 	y := room.Y * gs
 	w := room.W * gs
 	h := room.H * gs
-	
+
 	if room.Label == "" {
 		return ""
 	}
-	
+
 	// Background for text readability
 	textWidth := len(room.Label) * 8
 	if textWidth < 50 {
 		textWidth = 50
 	}
-	
+
 	sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="20" fill="#1a1a1a" opacity="0.8" rx="4"/>`,
 		x+w/2-textWidth/2, y+h/2-10, textWidth))
-	
+
 	sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#f5f0e6" text-anchor="middle" dominant-baseline="central" font-weight="bold">%s</text>`,
 		x+w/2, y+h/2, room.Label))
-	
+
 	return sb.String()
 }
 

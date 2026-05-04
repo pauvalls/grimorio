@@ -20,24 +20,24 @@ type RaphaelProvider struct {
 
 // RaphaelRequest represents the API request payload
 type raphaelRequest struct {
-	Prompt          string `json:"prompt"`
-	Aspect          string `json:"aspect"`
-	IsSafeContent   bool   `json:"isSafeContent"`
-	AutoTranslate   bool   `json:"autoTranslate"`
-	ModelID         string `json:"model_id"`
-	NumberOfImages  int    `json:"number_of_images"`
-	HighQuality     bool   `json:"highQuality"`
-	FastMode        bool   `json:"fastMode"`
-	TurnstileToken  *string `json:"turnstileToken"`
+	Prompt         string  `json:"prompt"`
+	Aspect         string  `json:"aspect"`
+	IsSafeContent  bool    `json:"isSafeContent"`
+	AutoTranslate  bool    `json:"autoTranslate"`
+	ModelID        string  `json:"model_id"`
+	NumberOfImages int     `json:"number_of_images"`
+	HighQuality    bool    `json:"highQuality"`
+	FastMode       bool    `json:"fastMode"`
+	TurnstileToken *string `json:"turnstileToken"`
 }
 
 // RaphaelResponse represents the API response
 type raphaelResponse struct {
-	URL          string `json:"url"`
-	Seed         int64  `json:"seed"`
-	Width        int    `json:"width"`
-	Height       int    `json:"height"`
-	IsHighQuality bool  `json:"isHighQuality"`
+	URL           string `json:"url"`
+	Seed          int64  `json:"seed"`
+	Width         int    `json:"width"`
+	Height        int    `json:"height"`
+	IsHighQuality bool   `json:"isHighQuality"`
 }
 
 func NewRaphaelProvider() *RaphaelProvider {

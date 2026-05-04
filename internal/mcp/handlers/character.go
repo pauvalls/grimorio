@@ -106,7 +106,7 @@ func (h *CharacterHandlers) HandleListCharacters() server.ToolHandlerFunc {
 
 		var result string
 		for _, c := range characters {
-			result += fmt.Sprintf("- %s (Level %d %s %s) - %s\n", 
+			result += fmt.Sprintf("- %s (Level %d %s %s) - %s\n",
 				c.Name, c.Level, c.Race, c.Class, c.Status)
 		}
 		return mcp.NewToolResultText(result), nil
@@ -126,5 +126,3 @@ func formatCharacterSheet(c *domain.Character) string {
 		c.Stats.STR, c.Stats.DEX, c.Stats.CON, c.Stats.INT, c.Stats.WIS, c.Stats.CHA,
 		c.HP.Current, c.HP.Maximum, c.AC, c.Status)
 }
-
-

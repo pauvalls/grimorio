@@ -4,28 +4,28 @@ import "time"
 
 // Character represents a player character (PC)
 type Character struct {
-	ID            string            `json:"id"`
-	CampaignID    string            `json:"campaign_id"`
-	Name          string            `json:"name"`
-	PlayerName    string            `json:"player_name,omitempty"`
-	Race          string            `json:"race"`
-	Class         string            `json:"class"`
-	Level         int               `json:"level"`
-	Background    string            `json:"background"`
-	Alignment     string            `json:"alignment"`
-	Stats         Stats             `json:"stats"`
-	HP            HP                `json:"hp"`
-	AC            int               `json:"ac"`
-	Proficiency   int               `json:"proficiency_bonus"`
-	Skills        map[string]bool   `json:"skills"`
-	Inventory     []Item            `json:"inventory"`
-	Features      []Feature         `json:"features"`
-	Spells        []Spell           `json:"spells,omitempty"`
-	Personality   Personality       `json:"personality"`
-	Relationships []Relationship    `json:"relationships"`
-	Status        string            `json:"status"` // alive, dead, missing, retired
-	CreatedAt     time.Time         `json:"created_at"`
-	UpdatedAt     time.Time         `json:"updated_at"`
+	ID            string          `json:"id"`
+	CampaignID    string          `json:"campaign_id"`
+	Name          string          `json:"name"`
+	PlayerName    string          `json:"player_name,omitempty"`
+	Race          string          `json:"race"`
+	Class         string          `json:"class"`
+	Level         int             `json:"level"`
+	Background    string          `json:"background"`
+	Alignment     string          `json:"alignment"`
+	Stats         Stats           `json:"stats"`
+	HP            HP              `json:"hp"`
+	AC            int             `json:"ac"`
+	Proficiency   int             `json:"proficiency_bonus"`
+	Skills        map[string]bool `json:"skills"`
+	Inventory     []Item          `json:"inventory"`
+	Features      []Feature       `json:"features"`
+	Spells        []Spell         `json:"spells,omitempty"`
+	Personality   Personality     `json:"personality"`
+	Relationships []Relationship  `json:"relationships"`
+	Status        string          `json:"status"` // alive, dead, missing, retired
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
 }
 
 // Stats represents ability scores
@@ -71,12 +71,12 @@ type Spell struct {
 
 // Personality represents roleplay traits
 type Personality struct {
-	Traits       []string `json:"traits"`
-	Ideals       []string `json:"ideals"`
-	Bonds        []string `json:"bonds"`
-	Flaws        []string `json:"flaws"`
-	Appearance   string   `json:"appearance,omitempty"`
-	Backstory    string   `json:"backstory,omitempty"`
+	Traits     []string `json:"traits"`
+	Ideals     []string `json:"ideals"`
+	Bonds      []string `json:"bonds"`
+	Flaws      []string `json:"flaws"`
+	Appearance string   `json:"appearance,omitempty"`
+	Backstory  string   `json:"backstory,omitempty"`
 }
 
 // Relationship represents a relationship with an NPC or PC

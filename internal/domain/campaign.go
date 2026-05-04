@@ -7,11 +7,11 @@ import (
 // Campaign represents a tabletop RPG campaign
 type Campaign struct {
 	ID          string    `json:"id"`
-	Name        string    `json:"name"`         // kebab-case identifier
-	Title       string    `json:"title"`        // Display title
-	Setting     string    `json:"setting"`      // Brief setting description
-	Description string    `json:"description"`  // Full description
-	Status      string    `json:"status"`       // active, paused, completed, archived
+	Name        string    `json:"name"`        // kebab-case identifier
+	Title       string    `json:"title"`       // Display title
+	Setting     string    `json:"setting"`     // Brief setting description
+	Description string    `json:"description"` // Full description
+	Status      string    `json:"status"`      // active, paused, completed, archived
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -32,27 +32,27 @@ func (c *Campaign) Validate() error {
 
 // CampaignSummary provides a lightweight overview of a campaign
 type CampaignSummary struct {
-	Name      string    `json:"name"`
-	Title     string    `json:"title"`
-	Setting   string    `json:"setting"`
-	Status    string    `json:"status"`
-	Acts      int       `json:"acts_count"`
-	NPCs      int       `json:"npcs_count"`
-	Characters int      `json:"characters_count"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Name       string    `json:"name"`
+	Title      string    `json:"title"`
+	Setting    string    `json:"setting"`
+	Status     string    `json:"status"`
+	Acts       int       `json:"acts_count"`
+	NPCs       int       `json:"npcs_count"`
+	Characters int       `json:"characters_count"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // Act represents a chapter/act of a campaign
 type Act struct {
-	ID          string    `json:"id"`
-	CampaignID  string    `json:"campaign_id"`
-	Number      int       `json:"number"`
-	Title       string    `json:"title"`
-	Content     string    `json:"content"`      // Markdown content
-	Summary     string    `json:"summary"`      // Auto-generated or provided
-	KeyEvents   []string  `json:"key_events"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID         string    `json:"id"`
+	CampaignID string    `json:"campaign_id"`
+	Number     int       `json:"number"`
+	Title      string    `json:"title"`
+	Content    string    `json:"content"` // Markdown content
+	Summary    string    `json:"summary"` // Auto-generated or provided
+	KeyEvents  []string  `json:"key_events"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // Validate checks if the act is valid
@@ -71,15 +71,15 @@ func (a *Act) Validate() error {
 
 // NPC represents a non-player character
 type NPC struct {
-	ID          string    `json:"id"`
-	CampaignID  string    `json:"campaign_id"`
-	Name        string    `json:"name"`
-	Role        string    `json:"role"`         // ally, enemy, neutral, merchant, etc.
-	Faction     string    `json:"faction"`
-	Description string    `json:"description"`
+	ID          string     `json:"id"`
+	CampaignID  string     `json:"campaign_id"`
+	Name        string     `json:"name"`
+	Role        string     `json:"role"` // ally, enemy, neutral, merchant, etc.
+	Faction     string     `json:"faction"`
+	Description string     `json:"description"`
 	Stats       *StatBlock `json:"stats,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 // StatBlock represents creature/character statistics
@@ -99,9 +99,9 @@ type Monster struct {
 	ID          string    `json:"id"`
 	CampaignID  string    `json:"campaign_id"`
 	Name        string    `json:"name"`
-	CR          string    `json:"cr"`           // Challenge Rating
-	Type        string    `json:"type"`         // beast, humanoid, undead, etc.
-	Size        string    `json:"size"`         // Tiny, Small, Medium, Large, Huge, Gargantuan
+	CR          string    `json:"cr"`   // Challenge Rating
+	Type        string    `json:"type"` // beast, humanoid, undead, etc.
+	Size        string    `json:"size"` // Tiny, Small, Medium, Large, Huge, Gargantuan
 	Stats       StatBlock `json:"stats"`
 	Abilities   []string  `json:"abilities"`
 	Description string    `json:"description"`
@@ -110,15 +110,15 @@ type Monster struct {
 
 // Encounter represents a combat encounter or challenge
 type Encounter struct {
-	ID          string    `json:"id"`
-	CampaignID  string    `json:"campaign_id"`
-	Name        string    `json:"name"`
-	Difficulty  string    `json:"difficulty"`   // easy, medium, hard, deadly
-	Location    string    `json:"location"`
+	ID          string       `json:"id"`
+	CampaignID  string       `json:"campaign_id"`
+	Name        string       `json:"name"`
+	Difficulty  string       `json:"difficulty"` // easy, medium, hard, deadly
+	Location    string       `json:"location"`
 	Monsters    []MonsterRef `json:"monsters"`
-	Rewards     []Reward  `json:"rewards"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
+	Rewards     []Reward     `json:"rewards"`
+	Description string       `json:"description"`
+	CreatedAt   time.Time    `json:"created_at"`
 }
 
 // MonsterRef references a monster in an encounter
@@ -130,7 +130,7 @@ type MonsterRef struct {
 
 // Reward represents loot or experience
 type Reward struct {
-	Type        string `json:"type"`        // gold, item, xp, reputation
+	Type        string `json:"type"` // gold, item, xp, reputation
 	Description string `json:"description"`
 	Value       string `json:"value"`
 }
@@ -140,7 +140,7 @@ type Map struct {
 	ID          string    `json:"id"`
 	CampaignID  string    `json:"campaign_id"`
 	Name        string    `json:"name"`
-	Type        string    `json:"type"`        // dungeon, city, landscape, battlemap
+	Type        string    `json:"type"` // dungeon, city, landscape, battlemap
 	Description string    `json:"description"`
 	SVGPath     string    `json:"svg_path,omitempty"`
 	ImagePath   string    `json:"image_path,omitempty"`

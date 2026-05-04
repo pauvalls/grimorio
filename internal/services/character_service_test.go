@@ -45,9 +45,9 @@ func TestCharacterService_CreateCharacter(t *testing.T) {
 			wantErr:    true,
 		},
 		{
-			name:       "create character without campaign",
-			charName:   "Legolas",
-			wantErr:    true,
+			name:     "create character without campaign",
+			charName: "Legolas",
+			wantErr:  true,
 		},
 		{
 			name:       "invalid level - too high",

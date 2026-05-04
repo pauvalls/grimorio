@@ -34,11 +34,11 @@ func TestCampaignService_SaveLore(t *testing.T) {
 	service, tmpDir := setupContentTestService(t)
 
 	tests := []struct {
-		name      string
-		campaign  string
-		content   string
-		wantErr   bool
-		wantFile  bool
+		name     string
+		campaign string
+		content  string
+		wantErr  bool
+		wantFile bool
 	}{
 		{
 			name:     "save valid lore",

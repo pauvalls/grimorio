@@ -74,7 +74,7 @@ func TestHandleCreateCampaign_InvalidArgs(t *testing.T) {
 
 func TestHandleSaveAct(t *testing.T) {
 	handlers, _, _ := setupTestHandlers()
-	
+
 	// Create campaign first
 	createHandler := handlers.HandleCreateCampaign()
 	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
@@ -102,11 +102,11 @@ func TestHandleSaveAct(t *testing.T) {
 
 func TestHandleGenerateCharacter(t *testing.T) {
 	_, charHandlers, _ := setupTestHandlers()
-	
+
 	// Create campaign first
 	campaignRepo := repository.NewMemoryCampaignRepository()
 	campaignRepo.Create(&domain.Campaign{Name: "char-test", Title: "Char Test"})
-	
+
 	handler := charHandlers.HandleGenerateCharacter()
 	args := map[string]any{
 		"campaign":   "char-test",
@@ -130,19 +130,19 @@ func TestHandleGenerateCharacter(t *testing.T) {
 
 func TestHandleCreateQuest(t *testing.T) {
 	_, _, questHandlers := setupTestHandlers()
-	
+
 	// Create campaign first
 	campaignRepo := repository.NewMemoryCampaignRepository()
 	campaignRepo.Create(&domain.Campaign{Name: "quest-test", Title: "Quest Test"})
-	
+
 	handler := questHandlers.HandleCreateQuest()
 	args := map[string]any{
-		"campaign":      "quest-test",
-		"quest_title":   "Find the Sword",
-		"quest_type":    "main",
-		"hook":          "A stranger approaches...",
-		"stakes":        "The kingdom's fate",
-		"reward":        "1000 gold",
+		"campaign":    "quest-test",
+		"quest_title": "Find the Sword",
+		"quest_type":  "main",
+		"hook":        "A stranger approaches...",
+		"stakes":      "The kingdom's fate",
+		"reward":      "1000 gold",
 	}
 
 	result, err := handler(context.Background(), newToolRequest("create_personal_quest", args))

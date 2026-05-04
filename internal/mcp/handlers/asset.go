@@ -166,5 +166,3 @@ func splitLabels(labels string) []string {
 	}
 	return result
 }
-
-

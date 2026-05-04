@@ -45,7 +45,7 @@ func (h *QuestHandlers) HandleCreateQuest() server.ToolHandlerFunc {
 
 		var qType domain.QuestType
 		var charID *string
-		
+
 		if questType != "" {
 			qType = domain.QuestType(questType)
 		} else if characterName != "" {
@@ -53,7 +53,7 @@ func (h *QuestHandlers) HandleCreateQuest() server.ToolHandlerFunc {
 		} else {
 			qType = domain.QuestTypeGroup
 		}
-		
+
 		if characterName != "" {
 			charID = &characterName
 		}

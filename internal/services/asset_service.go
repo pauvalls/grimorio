@@ -18,8 +18,8 @@ var imageRateLimiter sync.Mutex
 
 // AssetService handles asset generation (maps, images, dividers)
 type AssetService struct {
-	baseDir      string
-	imgConfig    image.Config
+	baseDir       string
+	imgConfig     image.Config
 	imageProvider image.Provider // injectable for testing
 }
 
@@ -236,5 +236,3 @@ func ensureImageExt(filename string) string {
 	}
 	return filename + ".png"
 }
-
-
