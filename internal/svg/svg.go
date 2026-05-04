@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+var rng = rand.New(rand.NewSource(rand.Int63()))
+
 type MapStyle string
 
 const (
@@ -54,9 +56,9 @@ type Corridor struct {
 
 func GenerateBattleMap(cfg BattleMapConfig) string {
 	if cfg.Seed != 0 {
-		rand.Seed(cfg.Seed)
+		rng = rand.New(rand.NewSource(cfg.Seed))
 	} else {
-		rand.Seed(rand.Int63())
+		rng = rand.New(rand.NewSource(rand.Int63()))
 	}
 
 	cols := cfg.Width / cfg.GridSize
@@ -75,10 +77,10 @@ func generateRooms(cfg BattleMapConfig, cols, rows int) []Room {
 
 	for len(rooms) < cfg.NumRooms && attempts < maxAttempts {
 		attempts++
-		w := cfg.MinRoomSize + rand.Intn(cfg.MaxRoomSize-cfg.MinRoomSize+1)
-		h := cfg.MinRoomSize + rand.Intn(cfg.MaxRoomSize-cfg.MinRoomSize+1)
-		x := rand.Intn(cols-w-2) + 1
-		y := rand.Intn(rows-h-2) + 1
+		w := cfg.MinRoomSize + rng.Intn(cfg.MaxRoomSize-cfg.MinRoomSize+1)
+		h := cfg.MinRoomSize + rng.Intn(cfg.MaxRoomSize-cfg.MinRoomSize+1)
+		x := rng.Intn(cols-w-2) + 1
+		y := rng.Intn(rows-h-2) + 1
 
 		room := Room{X: x, Y: y, W: w, H: h, ID: len(rooms)}
 
@@ -146,7 +148,7 @@ func generateCorridors(rooms []Room) []Corridor {
 	// Add some extra connections for loops (20% chance per pair)
 	for i := 0; i < len(rooms); i++ {
 		for j := i + 1; j < len(rooms); j++ {
-			if rand.Float64() < 0.2 {
+			if rng.Float64() < 0.2 {
 				corridors = append(corridors, createCorridor(rooms[i], rooms[j]))
 			}
 		}
@@ -345,19 +347,19 @@ func renderRoom(room Room, cfg BattleMapConfig, gs int) string {
 			x, y, w, h))
 
 		// Trees/bushes
-		numTrees := rand.Intn(3) + 1
+		numTrees := rng.Intn(3) + 1
 		for i := 0; i < numTrees; i++ {
-			tx := x + rand.Intn(w-20) + 10
-			ty := y + rand.Intn(h-20) + 10
+			tx := x + rng.Intn(w-20) + 10
+			ty := y + rng.Intn(h-20) + 10
 			sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="8" fill="#2d4a27" opacity="0.7"/>`, tx, ty))
 			sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="5" fill="#3d5a37"/>`, tx, ty-3))
 		}
 
 		// Rocks
-		numRocks := rand.Intn(2) + 1
+		numRocks := rng.Intn(2) + 1
 		for i := 0; i < numRocks; i++ {
-			rx := x + rand.Intn(w-15) + 8
-			ry := y + rand.Intn(h-15) + 8
+			rx := x + rng.Intn(w-15) + 8
+			ry := y + rng.Intn(h-15) + 8
 			sb.WriteString(fmt.Sprintf(`<polygon points="%d,%d %d,%d %d,%d" fill="#6b6b6b" opacity="0.6"/>`,
 				rx, ry, rx+8, ry-5, rx+12, ry+3))
 		}

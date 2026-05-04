@@ -79,7 +79,7 @@ func TestGenerateImage_ProviderError(t *testing.T) {
 }
 
 func TestGenerateImage_Sequential(t *testing.T) {
-	service, tmpDir := setupTestAssetService(t)
+	_, tmpDir := setupTestAssetService(t)
 
 	// Track call times to verify sequential execution
 	var callTimes []time.Time
@@ -90,7 +90,7 @@ func TestGenerateImage_Sequential(t *testing.T) {
 			return []byte("fake-image-data-" + prompt), nil
 		},
 	}
-	service = NewAssetServiceWithProvider(tmpDir, provider)
+	service := NewAssetServiceWithProvider(tmpDir, provider)
 
 	// Generate multiple images
 	start := time.Now()
@@ -319,10 +319,14 @@ func TestInsertImageReference_AppendToEnd(t *testing.T) {
 
 	// Create a markdown file
 	campaignDir := filepath.Join(tmpDir, "test-campaign")
-	os.MkdirAll(campaignDir, 0755)
+	if err := os.MkdirAll(campaignDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	mdPath := filepath.Join(campaignDir, "npcs.md")
 	originalContent := "# NPCs\n\n## Gandalf\nA powerful wizard."
-	os.WriteFile(mdPath, []byte(originalContent), 0644)
+	if err := os.WriteFile(mdPath, []byte(originalContent), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Insert image reference without section (append to end)
 	err := service.InsertImageReference("test-campaign", "npcs.md", "", "Gandalf Portrait", "gandalf.png")
@@ -342,10 +346,14 @@ func TestInsertImageReference_InsertAfterSection(t *testing.T) {
 
 	// Create a markdown file with sections
 	campaignDir := filepath.Join(tmpDir, "test-campaign")
-	os.MkdirAll(campaignDir, 0755)
+	if err := os.MkdirAll(campaignDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	mdPath := filepath.Join(campaignDir, "npcs.md")
 	originalContent := "# NPCs\n\n## Gandalf\nA powerful wizard.\n\n## Saruman\nA fallen wizard."
-	os.WriteFile(mdPath, []byte(originalContent), 0644)
+	if err := os.WriteFile(mdPath, []byte(originalContent), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Insert image reference after Gandalf section
 	err := service.InsertImageReference("test-campaign", "npcs.md", "Gandalf", "Gandalf Portrait", "gandalf.png")

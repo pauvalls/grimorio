@@ -77,9 +77,11 @@ func TestHandleSaveAct(t *testing.T) {
 
 	// Create campaign first
 	createHandler := handlers.HandleCreateCampaign()
-	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
 		"name": "act-test",
-	}))
+	})); err != nil {
+		t.Fatal(err)
+	}
 
 	// Now save act
 	actHandler := handlers.HandleSaveAct()
@@ -105,7 +107,9 @@ func TestHandleGenerateCharacter(t *testing.T) {
 
 	// Create campaign first
 	campaignRepo := repository.NewMemoryCampaignRepository()
-	campaignRepo.Create(&domain.Campaign{Name: "char-test", Title: "Char Test"})
+	if err := campaignRepo.Create(&domain.Campaign{Name: "char-test", Title: "Char Test"}); err != nil {
+		t.Fatal(err)
+	}
 
 	handler := charHandlers.HandleGenerateCharacter()
 	args := map[string]any{
@@ -133,7 +137,9 @@ func TestHandleCreateQuest(t *testing.T) {
 
 	// Create campaign first
 	campaignRepo := repository.NewMemoryCampaignRepository()
-	campaignRepo.Create(&domain.Campaign{Name: "quest-test", Title: "Quest Test"})
+	if err := campaignRepo.Create(&domain.Campaign{Name: "quest-test", Title: "Quest Test"}); err != nil {
+		t.Fatal(err)
+	}
 
 	handler := questHandlers.HandleCreateQuest()
 	args := map[string]any{
@@ -160,9 +166,11 @@ func TestHandleSaveLore(t *testing.T) {
 
 	// Create campaign first
 	createHandler := handlers.HandleCreateCampaign()
-	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
 		"name": "lore-test",
-	}))
+	})); err != nil {
+		t.Fatal(err)
+	}
 
 	handler := handlers.HandleSaveLore()
 	args := map[string]any{
@@ -203,9 +211,11 @@ func TestHandleSaveNPCs(t *testing.T) {
 
 	// Create campaign first
 	createHandler := handlers.HandleCreateCampaign()
-	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
 		"name": "npc-test",
-	}))
+	})); err != nil {
+		t.Fatal(err)
+	}
 
 	handler := handlers.HandleSaveNPCs()
 	args := map[string]any{
@@ -228,9 +238,11 @@ func TestHandleSaveEncounters(t *testing.T) {
 
 	// Create campaign first
 	createHandler := handlers.HandleCreateCampaign()
-	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
 		"name": "enc-test",
-	}))
+	})); err != nil {
+		t.Fatal(err)
+	}
 
 	handler := handlers.HandleSaveEncounters()
 	args := map[string]any{
@@ -253,9 +265,11 @@ func TestHandleSaveBestiary(t *testing.T) {
 
 	// Create campaign first
 	createHandler := handlers.HandleCreateCampaign()
-	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
 		"name": "best-test",
-	}))
+	})); err != nil {
+		t.Fatal(err)
+	}
 
 	handler := handlers.HandleSaveBestiary()
 	args := map[string]any{
@@ -278,9 +292,11 @@ func TestHandleSaveMaps(t *testing.T) {
 
 	// Create campaign first
 	createHandler := handlers.HandleCreateCampaign()
-	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
 		"name": "map-test",
-	}))
+	})); err != nil {
+		t.Fatal(err)
+	}
 
 	handler := handlers.HandleSaveMaps()
 	args := map[string]any{

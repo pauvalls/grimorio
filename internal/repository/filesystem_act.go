@@ -98,7 +98,7 @@ func (r *FilesystemActRepository) List(campaignID string) ([]domain.Act, error) 
 
 		// Extract number from filename: act_XX_title.md
 		var number int
-		fmt.Sscanf(file, "act_%02d_", &number)
+		_, _ = fmt.Sscanf(file, "act_%02d_", &number)
 
 		acts = append(acts, domain.Act{
 			CampaignID: campaignID,

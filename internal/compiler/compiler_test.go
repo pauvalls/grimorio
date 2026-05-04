@@ -88,7 +88,9 @@ func TestImageEmbedding_PNG(t *testing.T) {
 func TestImageEmbedding_SVG(t *testing.T) {
 	tmpDir := t.TempDir()
 	svgDir := filepath.Join(tmpDir, "assets")
-	os.MkdirAll(svgDir, 0755)
+	if err := os.MkdirAll(svgDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	svgPath := filepath.Join(svgDir, "divider.svg")
 	svgContent := `<svg xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="0" x2="100" y2="0"/></svg>`
 	if err := os.WriteFile(svgPath, []byte(svgContent), 0644); err != nil {
@@ -120,7 +122,9 @@ func TestImageEmbedding_MissingImage(t *testing.T) {
 func TestImageEmbedding_CodeAssetRef(t *testing.T) {
 	tmpDir := t.TempDir()
 	imgDir := filepath.Join(tmpDir, "assets")
-	os.MkdirAll(imgDir, 0755)
+	if err := os.MkdirAll(imgDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	imgPath := filepath.Join(imgDir, "monster.png")
 	if err := os.WriteFile(imgPath, []byte("fake-monster"), 0644); err != nil {
 		t.Fatal(err)
@@ -273,7 +277,9 @@ func TestVerifyImages(t *testing.T) {
 
 	// Create campaign structure
 	actsDir := filepath.Join(tmpDir, "acts")
-	os.MkdirAll(actsDir, 0755)
+	if err := os.MkdirAll(actsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create a markdown file with 2 images
 	mdContent := `# Act 1
@@ -319,7 +325,9 @@ func TestVerifyImages_Mismatch(t *testing.T) {
 
 	// Create campaign structure
 	actsDir := filepath.Join(tmpDir, "acts")
-	os.MkdirAll(actsDir, 0755)
+	if err := os.MkdirAll(actsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create a markdown file with 2 images
 	mdContent := `# Act 1

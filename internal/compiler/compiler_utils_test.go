@@ -84,9 +84,13 @@ func TestFindCoverImage(t *testing.T) {
 	}
 
 	// Create a cover image in assets dir
-	os.MkdirAll(assetsDir, 0755)
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	coverPath := filepath.Join(assetsDir, "cover.png")
-	os.WriteFile(coverPath, []byte("fake image"), 0644)
+	if err := os.WriteFile(coverPath, []byte("fake image"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	result = findCoverImage(tmpDir)
 	if result != coverPath {

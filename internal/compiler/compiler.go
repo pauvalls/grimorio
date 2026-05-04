@@ -70,11 +70,6 @@ func GetTemplate(tmplType string) (string, error) {
 	}
 }
 
-type tocEntry struct {
-	name string
-	id   string
-}
-
 func (c *Compiler) Compile(title string) (string, error) {
 	htmlParts, err := c.generateHTML(title)
 	if err != nil {
@@ -339,7 +334,7 @@ var (
 	imageRegex        = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	imgTagRegex       = regexp.MustCompile(`<img[^>]*(?:/\s*)?>`)
 
-	blockquoteRe   = regexp.MustCompile("^>\\s*(.*)")
+	blockquoteRe   = regexp.MustCompile(`^>\s*(.*)`)
 	codeAssetRegex = regexp.MustCompile("`assets/([\\w\\-]+\\.(svg|png|jpg|jpeg|gif|webp))`")
 	sceneRegex     = regexp.MustCompile(`\[SCENE:\s*(.*?)\]`)
 )

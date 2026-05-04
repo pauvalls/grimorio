@@ -162,7 +162,9 @@ func TestQuestService_ListActiveQuests(t *testing.T) {
 	// Create quests with different statuses
 	q1, _ := questService.CreateQuest("active-test", "Active Quest", domain.QuestTypeMain, "", "", "", nil)
 	q2, _ := questService.CreateQuest("active-test", "Completed Quest", domain.QuestTypeSide, "", "", "", nil)
-	questService.UpdateQuestStatus("active-test", q2.ID, domain.QuestStatusCompleted, "")
+	if err := questService.UpdateQuestStatus("active-test", q2.ID, domain.QuestStatusCompleted, ""); err != nil {
+		t.Fatal(err)
+	}
 
 	active, err := questService.ListActiveQuests("active-test")
 	if err != nil {

@@ -15,9 +15,11 @@ func TestHandleCompilePDF(t *testing.T) {
 
 	// Create campaign first
 	createHandler := handlers.HandleCreateCampaign()
-	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
 		"name": "pdf-test",
-	}))
+	})); err != nil {
+		t.Fatal(err)
+	}
 
 	handler := handlers.HandleCompilePDF()
 	args := map[string]any{
@@ -72,9 +74,13 @@ func TestHandleGetTemplate_Invalid(t *testing.T) {
 func TestHandleGetCharacter(t *testing.T) {
 	// Create campaign and character
 	campaignRepo := repository.NewMemoryCampaignRepository()
-	campaignRepo.Create(&domain.Campaign{Name: "char-get-test", Title: "Char Get Test"})
+	if err := campaignRepo.Create(&domain.Campaign{Name: "char-get-test", Title: "Char Get Test"}); err != nil {
+		t.Fatal(err)
+	}
 	charRepo := repository.NewMemoryCharacterRepository()
-	charRepo.Save(&domain.Character{CampaignID: "char-get-test", Name: "TestChar", Race: "humano", Class: "guerrero", Level: 1})
+	if err := charRepo.Save(&domain.Character{CampaignID: "char-get-test", Name: "TestChar", Race: "humano", Class: "guerrero", Level: 1}); err != nil {
+		t.Fatal(err)
+	}
 
 	charService := services.NewCharacterService(charRepo)
 	handlers := NewCharacterHandlers(charService)
@@ -98,9 +104,13 @@ func TestHandleGetCharacter(t *testing.T) {
 func TestHandleListCharacters(t *testing.T) {
 	// Create campaign and character
 	campaignRepo := repository.NewMemoryCampaignRepository()
-	campaignRepo.Create(&domain.Campaign{Name: "char-list-test", Title: "Char List Test"})
+	if err := campaignRepo.Create(&domain.Campaign{Name: "char-list-test", Title: "Char List Test"}); err != nil {
+		t.Fatal(err)
+	}
 	charRepo := repository.NewMemoryCharacterRepository()
-	charRepo.Save(&domain.Character{CampaignID: "char-list-test", Name: "TestChar", Race: "humano", Class: "guerrero", Level: 1})
+	if err := charRepo.Save(&domain.Character{CampaignID: "char-list-test", Name: "TestChar", Race: "humano", Class: "guerrero", Level: 1}); err != nil {
+		t.Fatal(err)
+	}
 
 	charService := services.NewCharacterService(charRepo)
 	handlers := NewCharacterHandlers(charService)
@@ -123,10 +133,14 @@ func TestHandleListCharacters(t *testing.T) {
 func TestHandleUpdateQuestStatus(t *testing.T) {
 	// Create campaign and quest
 	campaignRepo := repository.NewMemoryCampaignRepository()
-	campaignRepo.Create(&domain.Campaign{Name: "quest-update-test", Title: "Quest Update Test"})
+	if err := campaignRepo.Create(&domain.Campaign{Name: "quest-update-test", Title: "Quest Update Test"}); err != nil {
+		t.Fatal(err)
+	}
 	questRepo := repository.NewMemoryQuestRepository()
 	quest := &domain.Quest{CampaignID: "quest-update-test", Title: "Test Quest", Type: domain.QuestTypeRedencion, Status: domain.QuestStatusActive}
-	questRepo.Save(quest)
+	if err := questRepo.Save(quest); err != nil {
+		t.Fatal(err)
+	}
 
 	questService := services.NewQuestService(questRepo)
 	handlers := NewQuestHandlers(questService)
@@ -152,9 +166,13 @@ func TestHandleUpdateQuestStatus(t *testing.T) {
 func TestHandleListQuests(t *testing.T) {
 	// Create campaign and quest
 	campaignRepo := repository.NewMemoryCampaignRepository()
-	campaignRepo.Create(&domain.Campaign{Name: "quest-list-test", Title: "Quest List Test"})
+	if err := campaignRepo.Create(&domain.Campaign{Name: "quest-list-test", Title: "Quest List Test"}); err != nil {
+		t.Fatal(err)
+	}
 	questRepo := repository.NewMemoryQuestRepository()
-	questRepo.Save(&domain.Quest{CampaignID: "quest-list-test", Title: "Test Quest", Type: domain.QuestTypeRedencion, Status: domain.QuestStatusActive})
+	if err := questRepo.Save(&domain.Quest{CampaignID: "quest-list-test", Title: "Test Quest", Type: domain.QuestTypeRedencion, Status: domain.QuestStatusActive}); err != nil {
+		t.Fatal(err)
+	}
 
 	questService := services.NewQuestService(questRepo)
 	handlers := NewQuestHandlers(questService)
@@ -179,9 +197,11 @@ func TestHandleGenerateMap(t *testing.T) {
 
 	// Create campaign first
 	createHandler := handlers.HandleCreateCampaign()
-	createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
 		"name": "map-gen-test",
-	}))
+	})); err != nil {
+		t.Fatal(err)
+	}
 
 	// Need asset handlers - create them
 	assetService := services.NewAssetService("/tmp/test", image.Config{})
