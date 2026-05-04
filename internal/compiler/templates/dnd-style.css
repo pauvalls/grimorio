@@ -186,6 +186,7 @@ p {
 strong {
   font-weight: 700;
   color: #1a1a1a;
+  margin-right: 0.1em;
 }
 
 em {

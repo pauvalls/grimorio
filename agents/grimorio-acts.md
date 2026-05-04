@@ -47,15 +47,28 @@ Después, generá los actos usando `grimorio_save_act` para CADA acto.
 Qué pasa en este acto a grandes rasgos. El "elevator pitch" para el DM.
 
 ### Escenas
-Numerá las escenas del acto. Cada escena debe incluir:
+Numerá las escenas del acto. Cada escena debe incluir TODOS estos elementos:
 
-1. **Disparador** — Cómo empieza la escena. Qué ven/escuchan/sienten los PJs.
-2. **Desarrollo** — 3-5 oraciones de lo que ocurre. Incluí:
-   - NPCs presentes (referenciá por nombre exacto de npcs.md)
-   - Posibles acciones de los PJs
-   - Reacciones de los NPCs
-3. **Puntos de Decisión** — 1-3 opciones que los PJs pueden tomar. El DM necesita saber cómo reacciona el mundo a cada opción.
-4. **SCENE placeholder** — Si hay un momento clave que merece ilustración, incluí `[SCENE: descripción breve en español]` donde corresponda. NO pongas referencias a imágenes reales.
+1. **Localización** — Dónde ocurre, momento del día, atmósfera
+2. **Personajes presentes** — NPCs y criaturas involucrados (nombres exactos)
+3. **Mapa de la Escena** — Referencia SVG del cartógrafo:
+   ```
+   ![Map: Nombre del Lugar](assets/mapa-{lugar}.svg)
+   ```
+4. **Zonas del mapa** — Desglose numerado con:
+   - **Zona 1 — Nombre:** descripción visual, elementos interactivos, cobertura, CD
+   - **Zona 2 — Nombre:** conexiones, posibles encuentros, tesoro/pistas
+5. **Descripción para leer en voz alta** — Texto en blockquote (>)
+6. **Qué pasa** — Desarrollo detallado:
+   - Acciones de NPCs y reacciones
+   - **Si combaten:** referenciá el encuentro por nombre: "Ver **Encuentro X: Nombre** (enemigos: stats resumidos)"
+   - **Si evitan/negocian:** alternativas con CD
+   - Posibles consecuencias de cada decisión
+7. **Pistas que se revelan** — Lista numerada de información que los PJs obtienen
+8. **Posibles caminos** — 2-3 opciones con cómo reacciona el mundo a cada una
+
+### SCENE Placeholders
+Si hay un momento clave que merece ilustración, incluí `[SCENE: descripción breve en español]` donde corresponda. NO pongas referencias a imágenes reales.
 
 ### Zonas del Mapa (si aplica)
 Si el acto ocurre en una ubicación específica, describí:
