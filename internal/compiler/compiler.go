@@ -76,6 +76,57 @@ type tocEntry struct {
 }
 
 func (c *Compiler) Compile(title string) (string, error) {
+	htmlParts, err := c.generateHTML(title)
+	if err != nil {
+		return "", err
+	}
+
+	htmlPath := filepath.Join(c.CampaignDir, "campaign.html")
+	if err := os.WriteFile(htmlPath, []byte(strings.Join(htmlParts, "\n")), 0644); err != nil {
+		return "", fmt.Errorf("failed to write HTML: %w", err)
+	}
+
+	pdfPath := filepath.Join(c.CampaignDir, "campaign.pdf")
+	
+	// Retry loop: verify images after PDF generation and retry if missing
+	maxRetries := 3
+	var lastExpected, lastFound int
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if err := c.htmlToPDF(htmlPath, pdfPath); err != nil {
+			return "", fmt.Errorf("failed to convert to PDF (attempt %d): %w", attempt+1, err)
+		}
+
+		// Verify images are present in the generated HTML
+		expected, found, ok, err := c.verifyImages(htmlPath)
+		if err != nil {
+			return "", fmt.Errorf("failed to verify images (attempt %d): %w", attempt+1, err)
+		}
+		lastExpected = expected
+		lastFound = found
+		if ok {
+			return pdfPath, nil
+		}
+
+		if attempt < maxRetries-1 {
+			// Regenerate HTML (images might need re-embedding)
+			// Clear seen images to allow re-embedding
+			c.seenImages = make(map[string]bool)
+			// Re-read source files and regenerate HTML
+			htmlParts, err = c.generateHTML(title)
+			if err != nil {
+				return "", fmt.Errorf("failed to regenerate HTML (attempt %d): %w", attempt+1, err)
+			}
+			if err := os.WriteFile(htmlPath, []byte(strings.Join(htmlParts, "\n")), 0644); err != nil {
+				return "", fmt.Errorf("failed to write regenerated HTML (attempt %d): %w", attempt+1, err)
+			}
+		}
+	}
+
+	return "", fmt.Errorf("PDF generation failed after %d attempts: images missing (expected %d, found %d)", maxRetries, lastExpected, lastFound)
+}
+
+// generateHTML reads all markdown sources and generates the full HTML document.
+func (c *Compiler) generateHTML(title string) ([]string, error) {
 	sections := []struct {
 		name  string
 		path  string
@@ -162,18 +213,92 @@ func (c *Compiler) Compile(title string) (string, error) {
 	}
 
 	htmlParts = append(htmlParts, "</body></html>")
+	return htmlParts, nil
+}
 
-	htmlPath := filepath.Join(c.CampaignDir, "campaign.html")
-	if err := os.WriteFile(htmlPath, []byte(strings.Join(htmlParts, "\n")), 0644); err != nil {
-		return "", fmt.Errorf("failed to write HTML: %w", err)
+// verifyImages compares the number of expected images in markdown sources
+// with the number of <img> tags in the generated HTML.
+// Returns (expected, found, ok, error).
+func (c *Compiler) verifyImages(htmlPath string) (int, int, bool, error) {
+	expected, err := c.countImagesInMarkdownSources()
+	if err != nil {
+		return 0, 0, false, err
 	}
 
-	pdfPath := filepath.Join(c.CampaignDir, "campaign.pdf")
-	if err := c.htmlToPDF(htmlPath, pdfPath); err != nil {
-		return "", fmt.Errorf("failed to convert to PDF: %w", err)
+	found, err := countImagesInHTML(htmlPath)
+	if err != nil {
+		return expected, 0, false, err
 	}
 
-	return pdfPath, nil
+	// ok if found >= expected (some images might be deduplicated)
+	return expected, found, found >= expected, nil
+}
+
+// countImagesInMarkdownSources walks all markdown files in the campaign directory
+// and counts image references: markdown ![alt](path), <img> tags, and `assets/file` refs.
+func (c *Compiler) countImagesInMarkdownSources() (int, error) {
+	count := 0
+	
+	sections := []string{
+		filepath.Join(c.CampaignDir, "lore.md"),
+		filepath.Join(c.CampaignDir, "acts"),
+		filepath.Join(c.CampaignDir, "npcs"),
+		filepath.Join(c.CampaignDir, "bestiary"),
+		filepath.Join(c.CampaignDir, "encounters"),
+		filepath.Join(c.CampaignDir, "maps"),
+	}
+
+	for _, secPath := range sections {
+		info, err := os.Stat(secPath)
+		if err != nil {
+			continue
+		}
+
+		if info.IsDir() {
+			files, err := os.ReadDir(secPath)
+			if err != nil {
+				continue
+			}
+			for _, f := range files {
+				if strings.HasSuffix(f.Name(), ".md") {
+					content, err := os.ReadFile(filepath.Join(secPath, f.Name()))
+					if err != nil {
+						continue
+					}
+					count += countImagesInMarkdown(string(content))
+				}
+			}
+		} else {
+			content, err := os.ReadFile(secPath)
+			if err != nil {
+				continue
+			}
+			count += countImagesInMarkdown(string(content))
+		}
+	}
+
+	return count, nil
+}
+
+// countImagesInMarkdown counts image references in a single markdown string.
+func countImagesInMarkdown(md string) int {
+	count := 0
+	// Count markdown images: ![alt](path)
+	count += len(imageRegex.FindAllString(md, -1))
+	// Count raw <img> tags
+	count += len(imgTagRegex.FindAllString(md, -1))
+	// Count code asset refs: `assets/filename.ext`
+	count += len(codeAssetRegex.FindAllString(md, -1))
+	return count
+}
+
+// countImagesInHTML counts <img> tags in the generated HTML file.
+func countImagesInHTML(htmlPath string) (int, error) {
+	content, err := os.ReadFile(htmlPath)
+	if err != nil {
+		return 0, err
+	}
+	return len(imgTagRegex.FindAllString(string(content), -1)), nil
 }
 
 func sanitizeID(s string) string {
@@ -212,6 +337,7 @@ var (
 	italicRegex        = regexp.MustCompile(`\*(.+?)\*`)
 	boldAdjacentRegex  = regexp.MustCompile(`</strong>([^\s<])`)
 	imageRegex         = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
+	imgTagRegex        = regexp.MustCompile(`<img[^>]*(?:/\s*)?>`)
 
 	blockquoteRe    = regexp.MustCompile("^>\\s*(.*)")
 	codeAssetRegex  = regexp.MustCompile("`assets/([\\w\\-]+\\.(svg|png|jpg|jpeg|gif|webp))`")
@@ -221,8 +347,35 @@ var (
 // formatInline processes bold and italic markers, ensuring no word merging after </strong>
 func formatInline(text string) string {
 	text = boldRegex.ReplaceAllString(text, "<strong>$1</strong>")
-	text = boldAdjacentRegex.ReplaceAllString(text, "</strong>&thinsp;$1")
+	text = boldAdjacentRegex.ReplaceAllString(text, "</strong>\u0026thinsp;$1")
 	return italicRegex.ReplaceAllString(text, "<em>$1</em>")
+}
+
+// processInlineText processes markdown images, escapes HTML, formats inline,
+// and preserves existing <img> tags so they are not escaped.
+func processInlineText(text string, baseDir string, seenImages map[string]bool) string {
+	// 1. Process markdown images first
+	text = processImages(text, baseDir, seenImages)
+
+	// 2. Extract and preserve existing <img> tags
+	var imgTags []string
+	text = imgTagRegex.ReplaceAllStringFunc(text, func(match string) string {
+		imgTags = append(imgTags, match)
+		return "\x00IMG\x00"
+	})
+
+	// 3. Escape HTML
+	text = html.EscapeString(text)
+
+	// 4. Format inline (bold, italic)
+	text = formatInline(text)
+
+	// 5. Restore <img> tags
+	for _, img := range imgTags {
+		text = strings.Replace(text, "\x00IMG\x00", img, 1)
+	}
+
+	return text
 }
 
 func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool) string {
@@ -266,9 +419,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		if text == "" {
 			return
 		}
-		escaped := html.EscapeString(text)
-		escaped = formatInline(escaped)
-		escaped = processImages(escaped, baseDir, seenImages)
+		escaped := processInlineText(text, baseDir, seenImages)
 		out = append(out, fmt.Sprintf(`<div class="read-aloud">%s</div>`, escaped))
 	}
 
@@ -281,9 +432,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		if text == "" {
 			return
 		}
-		escaped := html.EscapeString(text)
-		escaped = formatInline(escaped)
-		escaped = processImages(escaped, baseDir, seenImages)
+		escaped := processInlineText(text, baseDir, seenImages)
 		out = append(out, fmt.Sprintf("<p>%s</p>", escaped))
 	}
 
@@ -292,8 +441,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			// Not a valid table, treat rows as paragraphs
 			for _, row := range tableRows {
 				if strings.TrimSpace(row) != "" {
-					escaped := html.EscapeString(strings.TrimSpace(row))
-					escaped = formatInline(escaped)
+					escaped := processInlineText(strings.TrimSpace(row), baseDir, seenImages)
 					out = append(out, fmt.Sprintf("<p>%s</p>", escaped))
 				}
 			}
@@ -324,8 +472,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				if i < len(alignments) {
 					align = alignments[i]
 				}
-				cellEsc := html.EscapeString(cell)
-				cellEsc = formatInline(cellEsc)
+				cellEsc := processInlineText(cell, baseDir, seenImages)
 				if align != "" {
 					htmlOut.WriteString(fmt.Sprintf(`<td style="text-align:%s">%s</td>`, align, cellEsc))
 				} else {
@@ -505,9 +652,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			if strings.HasPrefix(trimmed, "* ") {
 				text = strings.TrimPrefix(trimmed, "* ")
 			}
-			escaped := html.EscapeString(text)
-			escaped = formatInline(escaped)
-			escaped = processImages(escaped, baseDir, seenImages)
+			escaped := processInlineText(text, baseDir, seenImages)
 			out = append(out, fmt.Sprintf("<li>%s</li>", escaped))
 		} else if trimmed == "" {
 			flushParagraph()
