@@ -22,7 +22,7 @@ AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into 
 - **Interactive Q&A flow** — `/grimorio` asks questions first, then generates via parallel subagents
 - **Image generation** — Procedural SVG maps (free) + AI cover art/portraits via Pollinations.ai (FREE, no API key) or DALL-E 3 (optional)
 - **Multi-provider LLM** — Works with OpenAI, Anthropic, Groq, Ollama (via OpenCode / Claude Code)
-- **D&D-styled PDF** — Professional layout with CSS Paged Media and wkhtmltopdf, with embedded images (maps, AI art, portraits)
+- **D&D-styled PDF** — Professional layout inspired by official Wizards of the Coast manuals, with embedded images (maps, AI art, portraits)
 - **MCP Server** — Native integration with OpenCode and Claude Code as MCP tools
 - **Zero cloud dependencies** — Runs 100% locally, no servers required
 
@@ -131,7 +131,7 @@ OpenCode / Claude Code
          ├─ generate_divider → Decorative SVG section dividers (100% local)
          ├─ generate_image   → AI images via Pollinations.ai (FREE) or DALL-E (optional)
          ├─ generate_images_batch → Generate multiple AI images in parallel (bulk NPC portraits, scenes)
-         └─ compile_pdf      → Generates D&D-styled PDF with embedded images
+         └─ compile_pdf      → Generates D&D adventure book (Lore → Acts → Appendices)
 ```
 
 ### Image Generation
@@ -191,7 +191,7 @@ echo '{"image_provider": "dalle", "dalle_api_key": "sk-..."}' > ~/.config/grimor
 
 All images (SVG maps, AI-generated PNGs, dividers) are automatically embedded into the PDF:
 - Images referenced in Markdown with `![alt](assets/file.png)` appear inline
-- All images in `assets/` are included in a "Campaign Visuals" gallery at the end
+- Image deduplication — same image only appears once even if referenced multiple times
 - SVGs are embedded as vector graphics, PNGs as base64
 
 ### Plugin Structure
@@ -287,18 +287,38 @@ Every generated campaign lives in its own directory:
     └── campaign.pdf                 ← Final PDF with embedded images
 ```
 
+**PDF Compilation Order** (professional D&D adventure structure):
+
+```
+1. Cover Page (with title, subtitle, cover art)
+2. Table of Contents
+3. Lore y Ambientación       ← World backstory, setting, history
+4. Acts (Chapters)            ← Full narrative with embedded NPCs, 
+   │                            read-aloud text, numbered areas,
+   │                            maps, encounters, and quests
+   ├── Act 1: ...
+   ├── Act 2: ...
+   └── Act 3: ...
+5. Apéndice A: NPCs           ← NPC profiles & factions (reference)
+6. Apéndice B: Bestiary       ← Monster stat blocks (reference)
+7. Apéndice C: Encounters     ← Combat & challenge summaries
+8. Apéndice D: Maps           ← Location & zone reference
+```
+
+This structure mirrors official Wizards of the Coast adventure modules: chapters embed all narrative content (NPCs, locations, encounters) inline, with appendices at the end for quick reference.
+
 ### Available Templates
 
 The MCP server exposes structured templates for each content type:
 
-| Template   | Description                              |
-|------------|------------------------------------------|
-| `act`      | Act/chapter structure with scenes        |
-| `npc`      | NPC sheet with motivation and secret     |
-| `monster`  | Full D&D 5e stat block                   |
-| `encounter`| Encounter with difficulty balancing      |
-| `map`      | Scene description with areas             |
-| `lore`     | World-building and conflicts             |
+| Template   | Description                                    |
+|------------|------------------------------------------------|
+| `act`      | Act/chapter structure with OotA-style sections, read-aloud, numbered areas |
+| `npc`      | NPC sheet with motivation and secret           |
+| `monster`  | Full D&D 5e stat block                         |
+| `encounter`| Encounter with difficulty balancing            |
+| `map`      | Scene description with zones                   |
+| `lore`     | World-building and conflicts                   |
 
 ### MCP Tools
 
@@ -317,7 +337,7 @@ All tools available through the MCP server:
 | `generate_divider` | SVG | Decorative section dividers (free) |
 | `generate_image` | AI | Single image generation via Pollinations.ai (FREE) or DALL-E (optional) |
 | `generate_images_batch` | AI | Bulk image generation — generates multiple images in parallel (NPC portraits, scene illustrations) |
-| `compile_pdf` | PDF | Compiles all content into styled PDF |
+| `compile_pdf` | PDF | Compiles all content into styled D&D adventure PDF (Lore → Acts → Apéndices) |
 
 ### Development
 
@@ -457,7 +477,7 @@ OpenCode / Claude Code
          ├─ generate_divider → Divisores decorativos SVG (100% local)
          ├─ generate_image   → Imágenes IA vía Pollinations.ai (GRATIS) o DALL-E (opcional)
          ├─ generate_images_batch → Genera múltiples imágenes IA en paralelo (retratos NPCs, escenas)
-         └─ compile_pdf      → Genera PDF estilo D&D con imágenes embebidas
+         └─ compile_pdf      → Genera PDF estilo libro de aventura D&D (Lore → Actos → Apéndices)
 ```
 
 ### Estructura del Plugin
@@ -553,18 +573,38 @@ Cada campaña generada vive en su propio directorio:
     └── campaign.pdf                 ← PDF final con imágenes embebidas
 ```
 
+**Orden de compilación del PDF** (estructura profesional de aventura D&D):
+
+```
+1. Portada (título, subtítulo, arte de portada)
+2. Índice
+3. Lore y Ambientación       ← Trasfondo del mundo, historia
+4. Actos (Capítulos)          ← Narrativa completa con NPCs, 
+   │                            texto para leer, áreas numeradas,
+   │                            mapas, encuentros y misiones
+   ├── Acto 1: ...
+   ├── Acto 2: ...
+   └── Acto 3: ...
+5. Apéndice A: NPCs           ← Perfiles de NPCs y facciones (referencia)
+6. Apéndice B: Bestiario      ← Stat blocks de monstruos (referencia)
+7. Apéndice C: Encuentros     ← Resumen de combates y desafíos
+8. Apéndice D: Mapas          ← Referencia de localizaciones y zonas
+```
+
+Esta estructura refleja los módulos de aventura oficiales de Wizards of the Coast: los capítulos embeben todo el contenido narrativo (NPCs, localizaciones, encuentros), con apéndices al final para consulta rápida.
+
 ### Templates Disponibles
 
 El servidor MCP expone templates estructurados para cada tipo de contenido:
 
-| Template    | Descripción                                |
-|-------------|--------------------------------------------|
-| `act`       | Estructura de acto/capítulo con escenas    |
-| `npc`       | Ficha de NPC con motivación y secreto      |
-| `monster`   | Stat block completo D&D 5e                 |
-| `encounter` | Encuentro con balance de dificultad        |
-| `map`       | Descripción de escena con áreas            |
-| `lore`      | Ambientación y conflictos                  |
+| Template    | Descripción                                         |
+|-------------|-----------------------------------------------------|
+| `act`       | Estructura de acto estilo OotA con secciones, read-aloud, áreas numeradas |
+| `npc`       | Ficha de NPC con motivación y secreto               |
+| `monster`   | Stat block completo D&D 5e                          |
+| `encounter` | Encuentro con balance de dificultad                 |
+| `map`       | Descripción de escena con zonas                     |
+| `lore`      | Ambientación y conflictos                           |
 
 ### Herramientas MCP
 
@@ -583,7 +623,7 @@ Todas las herramientas disponibles a través del servidor MCP:
 | `generate_divider` | SVG | Divisores decorativos (gratis) |
 | `generate_image` | IA | Generación individual de imágenes vía Pollinations.ai (GRATIS) o DALL-E (opcional) |
 | `generate_images_batch` | IA | Generación masiva de imágenes en paralelo (retratos NPCs, ilustraciones de escenas) |
-| `compile_pdf` | PDF | Compila todo en PDF estilizado |
+| `compile_pdf` | PDF | Compila todo en PDF estilo aventura D&D profesional (Lore → Actos → Apéndices) |
 
 ### Generación de Imágenes
 

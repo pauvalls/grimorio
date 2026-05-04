@@ -77,16 +77,16 @@ type tocEntry struct {
 
 func (c *Compiler) Compile(title string) (string, error) {
 	sections := []struct {
-		name string
-		path string
+		name  string
+		path  string
+		isDir bool
 	}{
-		{"README", filepath.Join(c.CampaignDir, "README.md")},
-		{"Lore", filepath.Join(c.CampaignDir, "lore.md")},
-		{"Acts", filepath.Join(c.CampaignDir, "acts")},
-		{"NPCs", filepath.Join(c.CampaignDir, "npcs")},
-		{"Bestiary", filepath.Join(c.CampaignDir, "bestiary")},
-		{"Encounters", filepath.Join(c.CampaignDir, "encounters")},
-		{"Maps", filepath.Join(c.CampaignDir, "maps")},
+		{"Lore y Ambientación", filepath.Join(c.CampaignDir, "lore.md"), false},
+		{"Acts", filepath.Join(c.CampaignDir, "acts"), true},
+		{"Apéndice A: NPCs y Facciones", filepath.Join(c.CampaignDir, "npcs"), true},
+		{"Apéndice B: Bestiario", filepath.Join(c.CampaignDir, "bestiary"), true},
+		{"Apéndice C: Encuentros", filepath.Join(c.CampaignDir, "encounters"), true},
+		{"Apéndice D: Mapas de Referencia", filepath.Join(c.CampaignDir, "maps"), true},
 	}
 
 	var htmlParts []string
@@ -121,12 +121,11 @@ func (c *Compiler) Compile(title string) (string, error) {
 	htmlParts = append(htmlParts, `<div class="section-break"></div>`)
 
 	for _, sec := range sections {
-		info, err := os.Stat(sec.path)
-		if err != nil {
+		if _, err := os.Stat(sec.path); err != nil {
 			continue
 		}
 
-		if info.IsDir() {
+		if sec.isDir {
 			files, err := os.ReadDir(sec.path)
 			if err != nil {
 				continue

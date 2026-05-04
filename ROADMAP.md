@@ -17,7 +17,7 @@ El MCP actual tiene **12 herramientas** organizadas en 3 categorías:
 | **Output** | `compile_pdf`, `get_template` |
 
 ### Problemas Identificados
-- ❌ Cero tests — 0% coverage
+- ❌ Cero tests — 0% coverage (partial: compiler + domain + services now have tests)
 - ❌ Handlers monolíticos — lógica de negocio mezclada con MCP
 - ❌ Sin validación estructurada de inputs
 - ❌ Sin lectura de campañas existentes (solo escritura)
@@ -25,6 +25,12 @@ El MCP actual tiene **12 herramientas** organizadas en 3 categorías:
 - ❌ Sin concepto de personajes jugadores (PCs)
 - ❌ Sin tracking de estado narrativo
 - ❌ Sin evolución orgánica de campañas
+
+### Últimos Cambios
+
+- ✅ **PDF compilation reordenado** — Lore → Acts → Apéndices (estructura profesional D&D)
+- ✅ **Template `act.md.tmpl` rediseñado** — Estilo Out of the Abyss con secciones, read-aloud, áreas numeradas
+- ✅ **README actualizado** — Documentación del nuevo orden de compilación
 
 ---
 
