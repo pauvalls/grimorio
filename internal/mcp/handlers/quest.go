@@ -44,16 +44,21 @@ func (h *QuestHandlers) HandleCreateQuest() server.ToolHandlerFunc {
 		}
 
 		var qType domain.QuestType
-		if characterName != "" {
+		var charID *string
+		
+		if questType != "" {
+			qType = domain.QuestType(questType)
+		} else if characterName != "" {
 			qType = domain.QuestTypePersonal
 		} else {
 			qType = domain.QuestTypeGroup
 		}
-		if questType != "" {
-			qType = domain.QuestType(questType)
+		
+		if characterName != "" {
+			charID = &characterName
 		}
 
-		quest, err := h.service.CreateQuest(campaign, title, qType, hook, "", stakes, nil)
+		quest, err := h.service.CreateQuest(campaign, title, qType, hook, "", stakes, charID)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}

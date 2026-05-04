@@ -94,12 +94,10 @@ func (s *AssetService) GenerateDivider(campaign, filename, style string, width i
 // GenerateImage generates an image using AI with fallback providers
 // ALWAYS sequential - waits for previous image generation to complete
 func (s *AssetService) GenerateImage(campaign, filename, prompt, imgType string) (string, error) {
-	// Try to acquire lock — return error immediately if another generation is in progress
-	if !imageRateLimiter.TryLock() {
-		return "", fmt.Errorf("image generation already in progress, try again later")
-	}
+	// Acquire lock — blocks until previous generation completes
+	imageRateLimiter.Lock()
 	defer func() {
-		// Delay before releasing to avoid rate limiting
+		// Delay before releasing to avoid rate limiting on free APIs
 		time.Sleep(3 * time.Second)
 		imageRateLimiter.Unlock()
 	}()

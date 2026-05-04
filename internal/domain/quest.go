@@ -6,10 +6,14 @@ import "time"
 type QuestType string
 
 const (
-	QuestTypeMain      QuestType = "main"
-	QuestTypeSide      QuestType = "side"
-	QuestTypePersonal  QuestType = "personal"
-	QuestTypeGroup     QuestType = "group"
+	QuestTypeMain         QuestType = "main"
+	QuestTypeSide         QuestType = "side"
+	QuestTypePersonal     QuestType = "personal"
+	QuestTypeGroup        QuestType = "group"
+	QuestTypeRedencion    QuestType = "redencion"
+	QuestTypeVenganza     QuestType = "venganza"
+	QuestTypeDescubrimiento QuestType = "descubrimiento"
+	QuestTypeProteccion   QuestType = "proteccion"
 )
 
 // QuestStatus represents the status of a quest
@@ -67,7 +71,8 @@ func (q *Quest) Validate() error {
 	}
 	if q.Type != "" {
 		switch q.Type {
-		case QuestTypeMain, QuestTypeSide, QuestTypePersonal, QuestTypeGroup:
+		case QuestTypeMain, QuestTypeSide, QuestTypePersonal, QuestTypeGroup,
+			QuestTypeRedencion, QuestTypeVenganza, QuestTypeDescubrimiento, QuestTypeProteccion:
 			// valid
 		default:
 			return NewValidationError("type", "invalid quest type: "+string(q.Type))

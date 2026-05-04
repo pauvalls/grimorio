@@ -281,6 +281,26 @@ func TestQuestValidation(t *testing.T) {
 			errField: "title",
 		},
 		{
+			name: "valid narrative type - redencion",
+			quest: Quest{
+				CampaignID: "my-campaign",
+				Title:      "Redemption Arc",
+				Type:       QuestTypeRedencion,
+				Status:     QuestStatusActive,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid narrative type - venganza",
+			quest: Quest{
+				CampaignID: "my-campaign",
+				Title:      "Vengeance Path",
+				Type:       QuestTypeVenganza,
+				Status:     QuestStatusActive,
+			},
+			wantErr: false,
+		},
+		{
 			name: "invalid type",
 			quest: Quest{
 				CampaignID: "my-campaign",
