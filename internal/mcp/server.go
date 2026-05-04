@@ -166,11 +166,14 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	), assetHandlers.HandleGenerateDivider())
 
 	s.AddTool(mcp.NewTool("generate_image",
-		mcp.WithDescription("Generate an image using AI"),
+		mcp.WithDescription("Generate an image using AI and optionally link it to a markdown file"),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name")),
 		mcp.WithString("filename", mcp.Required(), mcp.Description("Output filename")),
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("Image generation prompt")),
 		mcp.WithString("type", mcp.Description("Image type: cover, portrait, illustration, scene"), mcp.DefaultString("illustration")),
+		mcp.WithString("markdown_file", mcp.Description("Optional: markdown file to insert image reference (e.g., 'npcs/npcs_and_factions.md')")),
+		mcp.WithString("section", mcp.Description("Optional: section heading where to insert the image reference")),
+		mcp.WithString("alt", mcp.Description("Optional: alt text for the image (defaults to filename)")),
 	), assetHandlers.HandleGenerateImage())
 
 	return s

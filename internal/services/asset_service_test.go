@@ -313,3 +313,134 @@ func TestGenerateImage_DoubleExtension(t *testing.T) {
 		t.Errorf("GenerateImage() did not create file at %s", goodPath)
 	}
 }
+
+func TestInsertImageReference_AppendToEnd(t *testing.T) {
+	service, tmpDir := setupTestAssetService(t)
+
+	// Create a markdown file
+	campaignDir := filepath.Join(tmpDir, "test-campaign")
+	os.MkdirAll(campaignDir, 0755)
+	mdPath := filepath.Join(campaignDir, "npcs.md")
+	originalContent := "# NPCs\n\n## Gandalf\nA powerful wizard."
+	os.WriteFile(mdPath, []byte(originalContent), 0644)
+
+	// Insert image reference without section (append to end)
+	err := service.InsertImageReference("test-campaign", "npcs.md", "", "Gandalf Portrait", "gandalf.png")
+	if err != nil {
+		t.Fatalf("InsertImageReference() error: %v", err)
+	}
+
+	// Verify content
+	content, _ := os.ReadFile(mdPath)
+	if !strings.Contains(string(content), "![Gandalf Portrait](assets/gandalf.png)") {
+		t.Errorf("InsertImageReference() did not append image reference. Got:\n%s", string(content))
+	}
+}
+
+func TestInsertImageReference_InsertAfterSection(t *testing.T) {
+	service, tmpDir := setupTestAssetService(t)
+
+	// Create a markdown file with sections
+	campaignDir := filepath.Join(tmpDir, "test-campaign")
+	os.MkdirAll(campaignDir, 0755)
+	mdPath := filepath.Join(campaignDir, "npcs.md")
+	originalContent := "# NPCs\n\n## Gandalf\nA powerful wizard.\n\n## Saruman\nA fallen wizard."
+	os.WriteFile(mdPath, []byte(originalContent), 0644)
+
+	// Insert image reference after Gandalf section
+	err := service.InsertImageReference("test-campaign", "npcs.md", "Gandalf", "Gandalf Portrait", "gandalf.png")
+	if err != nil {
+		t.Fatalf("InsertImageReference() error: %v", err)
+	}
+
+	// Verify content
+	content, _ := os.ReadFile(mdPath)
+	result := string(content)
+	if !strings.Contains(result, "![Gandalf Portrait](assets/gandalf.png)") {
+		t.Errorf("InsertImageReference() did not insert image reference. Got:\n%s", result)
+	}
+	// Should be after Gandalf section and before Saruman
+	gandalfIdx := strings.Index(result, "## Gandalf")
+	sarumanIdx := strings.Index(result, "## Saruman")
+	imgIdx := strings.Index(result, "![Gandalf Portrait]")
+	if imgIdx < gandalfIdx || imgIdx > sarumanIdx {
+		t.Errorf("InsertImageReference() inserted at wrong position. Got:\n%s", result)
+	}
+}
+
+func TestInsertImageReference_MarkdownFileNotFound(t *testing.T) {
+	service, _ := setupTestAssetService(t)
+
+	err := service.InsertImageReference("test-campaign", "nonexistent.md", "", "Alt", "img.png")
+	if err == nil {
+		t.Error("InsertImageReference() expected error for nonexistent file")
+	}
+}
+
+func TestHeadingLevel(t *testing.T) {
+	tests := []struct {
+		line string
+		want int
+	}{
+		{"# Heading 1", 1},
+		{"## Heading 2", 2},
+		{"### Heading 3", 3},
+		{"#### Heading 4", 4},
+		{"##### Heading 5", 5},
+		{"###### Heading 6", 6},
+		{"####### Not a heading", 0},
+		{"Not a heading", 0},
+		{"", 0},
+		{"#No space", 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.line, func(t *testing.T) {
+			got := headingLevel(tt.line)
+			if got != tt.want {
+				t.Errorf("headingLevel(%q) = %d, want %d", tt.line, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInsertAfterSection(t *testing.T) {
+	tests := []struct {
+		name      string
+		content   string
+		section   string
+		insertion string
+		want      string
+	}{
+		{
+			name:      "insert after h2 section",
+			content:   "# NPCs\n\n## Gandalf\nA wizard.\n\n## Saruman\nAnother wizard.",
+			section:   "Gandalf",
+			insertion: "\n![Gandalf](assets/gandalf.png)\n",
+			want:      "# NPCs\n\n## Gandalf\nA wizard.\n\n\n![Gandalf](assets/gandalf.png)\n\n## Saruman\nAnother wizard.",
+		},
+		{
+			name:      "insert at end if last section",
+			content:   "# NPCs\n\n## Gandalf\nA wizard.",
+			section:   "Gandalf",
+			insertion: "\n![Gandalf](assets/gandalf.png)\n",
+			want:      "# NPCs\n\n## Gandalf\nA wizard.\n\n![Gandalf](assets/gandalf.png)\n",
+		},
+		{
+			name:      "section not found returns original",
+			content:   "# NPCs\n\n## Gandalf\nA wizard.",
+			section:   "Missing",
+			insertion: "\n![Missing](assets/missing.png)\n",
+			want:      "# NPCs\n\n## Gandalf\nA wizard.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := insertAfterSection(tt.content, tt.section, tt.insertion)
+			if got != tt.want {
+				t.Errorf("insertAfterSection() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

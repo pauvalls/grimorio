@@ -125,6 +125,103 @@ func (s *AssetService) getProviders() []image.Provider {
 	return image.NewProviderChain(s.imgConfig)
 }
 
+// InsertImageReference inserts an image reference into a markdown file.
+// It finds the section by heading and appends the image reference after the section content.
+// If section is empty, appends to the end of the file.
+func (s *AssetService) InsertImageReference(campaign, markdownFile, section, alt, filename string) error {
+	if markdownFile == "" {
+		return nil // No markdown file specified, skip
+	}
+
+	// Resolve markdown path
+	mdPath := markdownFile
+	if !filepath.IsAbs(mdPath) {
+		mdPath = filepath.Join(s.campaignDir(campaign), markdownFile)
+	}
+
+	// Read markdown content
+	content, err := os.ReadFile(mdPath)
+	if err != nil {
+		return fmt.Errorf("failed to read markdown file %s: %w", mdPath, err)
+	}
+
+	// Build image reference
+	imgRef := fmt.Sprintf("\n![%s](assets/%s)\n", alt, ensureImageExt(filename))
+
+	var newContent string
+	if section == "" {
+		// Append to end of file
+		newContent = string(content) + imgRef
+	} else {
+		// Find the section and insert after it
+		newContent = insertAfterSection(string(content), section, imgRef)
+	}
+
+	if err := os.WriteFile(mdPath, []byte(newContent), 0644); err != nil {
+		return fmt.Errorf("failed to write markdown file %s: %w", mdPath, err)
+	}
+
+	return nil
+}
+
+// insertAfterSection finds a section heading in markdown and inserts text after its content.
+// It looks for the next heading at the same or higher level to determine section boundaries.
+func insertAfterSection(content, section, insertion string) string {
+	lines := strings.Split(content, "\n")
+	var result []string
+	found := false
+	inserted := false
+	sectionLevel := 0
+
+	for _, line := range lines {
+		if !found {
+			// Check if this line is the section heading
+			level := headingLevel(line)
+			if level > 0 {
+				headingText := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(line, "#"), "#"))
+				headingText = strings.TrimSpace(headingText)
+				if strings.EqualFold(headingText, section) {
+					found = true
+					sectionLevel = level
+					result = append(result, line)
+					continue
+				}
+			}
+			result = append(result, line)
+		} else if !inserted {
+			// Check if we've reached the next section at same or higher level
+			level := headingLevel(line)
+			if level > 0 && level <= sectionLevel {
+				// Insert before this new section
+				result = append(result, insertion)
+				inserted = true
+			}
+			result = append(result, line)
+		} else {
+			result = append(result, line)
+		}
+	}
+
+	// If section was found but never inserted (end of file)
+	if found && !inserted {
+		result = append(result, insertion)
+	}
+
+	return strings.Join(result, "\n")
+}
+
+// headingLevel returns the heading level (1-6) or 0 if not a heading
+func headingLevel(line string) int {
+	line = strings.TrimSpace(line)
+	for i := 1; i <= 6; i++ {
+		prefix := strings.Repeat("#", i) + " "
+		if strings.HasPrefix(line, prefix) {
+			return i
+		}
+	}
+	return 0
+}
+
 // ensureSVGExt ensures filename has a .svg extension
 func ensureSVGExt(filename string) string {
 	if strings.ToLower(filepath.Ext(filename)) == ".svg" {

@@ -103,22 +103,45 @@ Add at the top (after the title):
 ![Portada](assets/cover-art.png)
 ```
 
+**RECOMMENDED: Use inline image linking during generation**
+When calling `grimorio_generate_image`, use the optional parameters to automatically insert the image reference into the markdown:
+
+```json
+{
+  "campaign": "campaign-name",
+  "filename": "npc-gandalf",
+  "prompt": "D&D wizard portrait...",
+  "type": "portrait",
+  "markdown_file": "npcs/npcs_and_factions.md",
+  "section": "Gandalf",
+  "alt": "Gandalf the Grey"
+}
+```
+
+Parameters:
+- `markdown_file`: Path to the markdown file (e.g., `npcs/npcs_and_factions.md`, `bestiary/bestiary.md`, `acts/act1.md`)
+- `section`: Section heading where to insert the image (e.g., `Gandalf`, `Act 1: The Beginning`)
+- `alt`: Alt text for the image (defaults to filename if not provided)
+
+**Alternative: Manual update after generation**
+If you didn't use inline linking, manually update markdowns after all images are generated:
+
 **Step 3: Update npcs_and_factions.md**
 For each NPC, find their section and add after their description:
 ```markdown
-![[NPC Name]](assets/npc-[kebab-case-name].png)
+![NPC Name](assets/npc-[kebab-case-name].png)
 ```
 
 **Step 4: Update bestiary.md**
 For each monster, find their stat block and add after the description:
 ```markdown
-![[Monster Name]](assets/monster-[kebab-case-name].png)
+![Monster Name](assets/monster-[kebab-case-name].png)
 ```
 
 **Step 5: Update acts/*.md**
 For each `[SCENE: description]` placeholder, replace with:
 ```markdown
-![[Scene Description]](assets/scene-[act]-[kebab-case-description].png)
+![Scene Description](assets/scene-[act]-[kebab-case-description].png)
 ```
 
 **Step 6: Verify**

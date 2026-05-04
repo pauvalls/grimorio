@@ -97,6 +97,9 @@ func (h *AssetHandlers) HandleGenerateImage() server.ToolHandlerFunc {
 		filename := getStringArg(args, "filename")
 		prompt := getStringArg(args, "prompt")
 		imgType := getStringArg(args, "type")
+		markdownFile := getStringArg(args, "markdown_file")
+		section := getStringArg(args, "section")
+		alt := getStringArg(args, "alt")
 
 		if campaign == "" || filename == "" || prompt == "" {
 			return mcp.NewToolResultError("campaign, filename, and prompt are required"), nil
@@ -105,6 +108,17 @@ func (h *AssetHandlers) HandleGenerateImage() server.ToolHandlerFunc {
 		path, err := h.service.GenerateImage(campaign, filename, prompt, imgType)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// If markdown file is specified, insert image reference
+		if markdownFile != "" {
+			if alt == "" {
+				alt = filename
+			}
+			if err := h.service.InsertImageReference(campaign, markdownFile, section, alt, filename); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Image generated but failed to update markdown: %v", err)), nil
+			}
+			return mcp.NewToolResultText(fmt.Sprintf("Image generated: %s (type: %s) and linked to %s", path, imgType, markdownFile)), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Image generated: %s (type: %s)", path, imgType)), nil
