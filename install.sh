@@ -279,20 +279,28 @@ configure_shell() {
     esac
 
     if [ -n "$SHELL_RC" ] && [ -f "$SHELL_RC" ]; then
-        # Remove any existing Grimorio block to prevent duplicates on re-install
+        # 1. Clean up legacy standalone lines (re-install compatibility)
         sed -i '/^# Grimorio$/d' "$SHELL_RC"
         sed -i '/^export PATH="\$HOME\/\.local\/go\/bin:\$PATH"$/d' "$SHELL_RC"
+        sed -i '/^export PATH="\$HOME\/\.local\/bin:\$PATH"$/d' "$SHELL_RC"
 
-        # Only add .local/bin if not already present in an active (non-commented) line
-        if ! grep -q '^[^#]*\.local/bin' "$SHELL_RC" 2>/dev/null; then
-            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_RC"
-            log "Added ~/.local/bin to PATH in $SHELL_RC"
-        fi
+        # 2. Clean up any existing marked block to prevent duplicates
+        awk '
+            /^# === GRIMORIO CONFIG BEGIN ===$/ { in_block=1; next }
+            /^# === GRIMORIO CONFIG END ===$/   { in_block=0; next }
+            !in_block { print }
+        ' "$SHELL_RC" > "${SHELL_RC}.tmp" && mv "${SHELL_RC}.tmp" "$SHELL_RC"
 
-        # Add Grimorio block (always clean thanks to sed cleanup above)
-        echo '# Grimorio' >> "$SHELL_RC"
-        echo 'export PATH="$HOME/.local/go/bin:$PATH"' >> "$SHELL_RC"
-        log "Added Go PATH to $SHELL_RC"
+        # 3. Add fresh marked block with both paths
+        cat >> "$SHELL_RC" << 'EOF'
+
+# === GRIMORIO CONFIG BEGIN ===
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/go/bin:$PATH"
+# === GRIMORIO CONFIG END ===
+EOF
+
+        log "Shell configured at $SHELL_RC"
     fi
 
     success "Shell configured"
