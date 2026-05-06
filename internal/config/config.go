@@ -5,21 +5,24 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pauvalls/grimorio/internal/game"
 	"github.com/pauvalls/grimorio/internal/image"
 )
 
 type Config struct {
-	OutputDir string `json:"output_dir"`
-	PDFEngine string `json:"pdf_engine"`
+	OutputDir  string `json:"output_dir"`
+	PDFEngine  string `json:"pdf_engine"`
 	image.Config
+	GameEngine game.LLMConfig `json:"game_engine"`
 }
 
 func DefaultConfig() *Config {
 	home, _ := os.UserHomeDir()
 	return &Config{
-		OutputDir: filepath.Join(home, "campaigns"),
-		PDFEngine: "wkhtmltopdf",
-		Config:    image.DefaultConfig(),
+		OutputDir:  filepath.Join(home, "campaigns"),
+		PDFEngine:  "wkhtmltopdf",
+		Config:     image.DefaultConfig(),
+		GameEngine: game.DefaultLLMConfig(),
 	}
 }
 
@@ -51,6 +54,15 @@ func LoadConfig(path string) (*Config, error) {
 	if cfg.DalleModel == "" {
 		cfg.DalleModel = "dall-e-3"
 	}
+	
+	// Load game engine config from env if not set
+	if cfg.GameEngine.APIKey == "" {
+		envCfg := game.LoadLLMConfigFromEnv()
+		if envCfg.APIKey != "" {
+			cfg.GameEngine = envCfg
+		}
+	}
+	
 	return &cfg, nil
 }
 

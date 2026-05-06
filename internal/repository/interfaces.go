@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/pauvalls/grimorio/internal/domain"
 )
 
@@ -70,4 +72,28 @@ type MapRepository interface {
 	Read(campaignID, name string) (*domain.Map, error)
 	List(campaignID string) ([]domain.Map, error)
 	Delete(campaignID, name string) error
+}
+
+// SessionRepository defines operations for game session persistence
+type SessionRepository interface {
+	Create(session *domain.Session) error
+	Read(id string) (*domain.Session, error)
+	Update(session *domain.Session) error
+	End(id string) error
+	ListByCampaign(campaignID string) ([]*domain.Session, error)
+	
+	// Player state
+	SavePlayerState(sessionID string, player *domain.PlayerState) error
+	GetPlayerState(sessionID, characterID string) (*domain.PlayerState, error)
+	ListPlayerStates(sessionID string) ([]domain.PlayerState, error)
+	
+	// Events
+	AppendEvent(event *domain.SessionEvent) error
+	GetEvents(sessionID string, limit int) ([]*domain.SessionEvent, error)
+	GetEventsSince(sessionID string, since time.Time) ([]*domain.SessionEvent, error)
+	
+	// Combat
+	SaveCombatState(sessionID string, combat *domain.CombatState) error
+	GetCombatState(sessionID string) (*domain.CombatState, error)
+	ClearCombatState(sessionID string) error
 }
