@@ -2,13 +2,19 @@
 set -e
 
 # Grimorio - One Command Installer
-# Usage: curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+# Usage:
+#   curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash -s -- --full
 
 REPO_URL="https://github.com/pauvalls/grimorio"
+RAW_URL="https://raw.githubusercontent.com/pauvalls/grimorio/main"
 INSTALL_DIR="${HOME}/.local/share/grimorio"
 CLAUDE_PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
 OPENCODE_PLUGIN_DIR="${HOME}/.config/opencode/plugins/grimorio"
 BINARY_DIR="${HOME}/.local/bin"
+
+# Installation mode: mcp-only (default) or full
+INSTALL_MODE="mcp-only"
 
 # Colors
 RED='\033[0;31m'
@@ -56,6 +62,39 @@ detect_platform() {
             WKHTMLTOPDF_URL=""
             ;;
     esac
+}
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --mcp-only)
+                INSTALL_MODE="mcp-only"
+                shift
+                ;;
+            --full)
+                INSTALL_MODE="full"
+                shift
+                ;;
+            --help|-h)
+                echo "Grimorio Installer"
+                echo ""
+                echo "Usage:"
+                echo "  curl -sSL .../install.sh | bash              # Install MCP-only (default)"
+                echo "  curl -sSL .../install.sh | bash -s -- --full # Install MCP + Game Engine"
+                echo "  curl -sSL .../install.sh | bash -s -- --mcp-only # Same as default"
+                echo ""
+                echo "Modes:"
+                echo "  --mcp-only  Install only the MCP server and plugins (default)"
+                echo "              No game engine code is downloaded or compiled."
+                echo "  --full      Install everything: MCP server + Game Engine"
+                exit 0
+                ;;
+            *)
+                warn "Unknown argument: $1"
+                shift
+                ;;
+        esac
+    done
 }
 
 command_exists() {
@@ -133,42 +172,79 @@ install_wkhtmltopdf() {
 }
 
 setup_repo() {
-    log "Setting up Grimorio repository..."
-
-    if [ -d "$INSTALL_DIR" ]; then
-        log "Updating existing installation..."
-        cd "$INSTALL_DIR"
-        git fetch origin main 2>/dev/null || true
-        git reset --hard origin/main 2>/dev/null || true
-        log "Updated to latest version"
+    if [ "$INSTALL_MODE" == "mcp-only" ]; then
+        log "Setting up Grimorio MCP-only (no game engine)..."
+        
+        mkdir -p "$INSTALL_DIR"
+        
+        # Download and extract only MCP-related files
+        log "Downloading MCP source files..."
+        curl -L "${REPO_URL}/archive/refs/heads/main.tar.gz" -o /tmp/grimorio.tar.gz
+        
+        # Extract only what we need for MCP build
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/go.mod grimorio-main/go.sum
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/cmd/mcp
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/internal/mcp
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/internal/config
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/internal/repository
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/internal/services
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/internal/compiler
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/internal/svg
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/internal/image
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/.claude-plugin
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/commands
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/agents
+        tar -xzf /tmp/grimorio.tar.gz -C /tmp grimorio-main/skills
+        
+        # Move to install dir
+        rm -rf "$INSTALL_DIR"
+        mv /tmp/grimorio-main "$INSTALL_DIR"
+        
+        success "MCP source ready at $INSTALL_DIR (game engine excluded)"
     else
-        log "Cloning repository..."
-        if command_exists git; then
-            git clone "$REPO_URL" "$INSTALL_DIR"
-        else
-            log "Git not found. Downloading source archive..."
-            curl -L "${REPO_URL}/archive/refs/heads/main.tar.gz" -o /tmp/grimorio.tar.gz
-            mkdir -p "$INSTALL_DIR"
-            tar -xzf /tmp/grimorio.tar.gz -C "$INSTALL_DIR" --strip-components=1
-        fi
-    fi
+        log "Setting up Grimorio repository (full install with game engine)..."
 
-    success "Repository ready at $INSTALL_DIR"
+        if [ -d "$INSTALL_DIR" ]; then
+            log "Updating existing installation..."
+            cd "$INSTALL_DIR"
+            git fetch origin main 2>/dev/null || true
+            git reset --hard origin/main 2>/dev/null || true
+            log "Updated to latest version"
+        else
+            log "Cloning repository..."
+            if command_exists git; then
+                git clone "$REPO_URL" "$INSTALL_DIR"
+            else
+                log "Git not found. Downloading source archive..."
+                curl -L "${REPO_URL}/archive/refs/heads/main.tar.gz" -o /tmp/grimorio.tar.gz
+                mkdir -p "$INSTALL_DIR"
+                tar -xzf /tmp/grimorio.tar.gz -C "$INSTALL_DIR" --strip-components=1
+            fi
+        fi
+
+        success "Repository ready at $INSTALL_DIR"
+    fi
 }
 
 build_binary() {
-    log "Building Grimorio binary..."
-
     cd "$INSTALL_DIR"
     export PATH="${HOME}/.local/go/bin:$PATH"
 
-    go build -o grimorio ./cmd/grimorio
+    if [ "$INSTALL_MODE" == "mcp-only" ]; then
+        log "Building Grimorio MCP binary (no game engine)..."
+        go build -o grimorio ./cmd/mcp
+        success "MCP binary built — game engine code NOT included"
+    else
+        log "Building Grimorio full binary (MCP + game engine)..."
+        go build -o grimorio ./cmd/grimorio
+        success "Full binary built — includes game engine"
+    fi
 
     mkdir -p "$BINARY_DIR"
     cp grimorio "$BINARY_DIR/"
     chmod +x "$BINARY_DIR/grimorio"
 
-    success "Binary built and installed to $BINARY_DIR/grimorio"
+    success "Binary installed to $BINARY_DIR/grimorio"
 }
 
 setup_plugin() {
@@ -614,8 +690,13 @@ TEMPLATE_EOF
 print_instructions() {
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║         Grimorio Installed Successfully!                   ║${NC}"
-    echo -e "${GREEN}║         D&D One-shot & Campaign Generator                  ║${NC}"
+    if [ "$INSTALL_MODE" == "mcp-only" ]; then
+        echo -e "${GREEN}║     Grimorio MCP Installed Successfully!                 ║${NC}"
+        echo -e "${GREEN}║     (Game engine NOT included)                           ║${NC}"
+    else
+        echo -e "${GREEN}║     Grimorio Installed Successfully!                     ║${NC}"
+        echo -e "${GREEN}║     MCP + Game Engine                                    ║${NC}"
+    fi
     echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo -e "${BLUE}What's next:${NC}"
@@ -657,8 +738,19 @@ print_instructions() {
     echo -e "     - Raphael AI (raphael.app, fallback)"
     echo -e "   • DALL-E (optional) → Set OPENAI_API_KEY for higher quality"
     echo ""
-    echo -e "7. ${YELLOW}Update grimorio later:${NC}"
-    echo -e "   Just re-run: ${GREEN}curl -sSL ${REPO_URL}/raw/main/install.sh | bash${NC}"
+    if [ "$INSTALL_MODE" == "mcp-only" ]; then
+        echo -e "7. ${YELLOW}Installation mode:${NC} ${GREEN}MCP-ONLY${NC}"
+        echo -e "   • Game engine code was NOT downloaded"
+        echo -e "   • Binary size is smaller (no game engine bloat)"
+        echo -e "   • To install with game engine later, run:"
+        echo -e "     ${GREEN}curl -sSL ${REPO_URL}/raw/main/install.sh | bash -s -- --full${NC}"
+        echo ""
+    fi
+    echo -e "8. ${YELLOW}Update grimorio later:${NC}"
+    echo -e "   MCP-only: ${GREEN}curl -sSL ${REPO_URL}/raw/main/install.sh | bash${NC}"
+    if [ "$INSTALL_MODE" == "full" ]; then
+        echo -e "   Full:     ${GREEN}curl -sSL ${REPO_URL}/raw/main/install.sh | bash -s -- --full${NC}"
+    fi
     echo ""
     echo -e "${BLUE}Manual usage (without AI tools):${NC}"
     echo -e "   ${GREEN}grimorio${NC} - Runs the MCP server"
@@ -679,6 +771,11 @@ main() {
     echo ""
 
     log "Starting installation..."
+    log "Mode: ${GREEN}$INSTALL_MODE${NC}"
+    if [ "$INSTALL_MODE" == "mcp-only" ]; then
+        log "Game engine will NOT be downloaded or compiled."
+    fi
+    echo ""
 
     detect_platform
     install_go
@@ -693,4 +790,5 @@ main() {
     print_instructions
 }
 
+parse_args "$@"
 main "$@"

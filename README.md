@@ -28,8 +28,20 @@ AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into 
 
 ### Quick Install
 
+#### MCP-Only Install (Default — Recommended)
+
+Installs only the MCP server and plugins. The game engine code is **not downloaded**.
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+```
+
+#### Full Install (MCP + Game Engine)
+
+Installs everything including the game engine. Use this if you plan to run the web-based game engine (`grimorio serve`).
+
+```bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash -s -- --full
 ```
 
 **What the installer does:**
@@ -48,11 +60,13 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 
 ### Requirements
 
-| Dependency | Auto-installed | Purpose |
-|------------|---------------|---------|
-| Go 1.23+ | ✅ Yes | Build the MCP server binary |
-| wkhtmltopdf | ✅ Yes | Compile HTML to PDF |
-| Git | ❌ Must have | Clone the repository |
+| Dependency | Auto-installed | MCP-Only | Full Install | Purpose |
+|------------|---------------|----------|--------------|---------|
+| Go 1.23+ | ✅ Yes | ✅ Yes | ✅ Yes | Build the MCP server binary |
+| wkhtmltopdf | ✅ Yes | ✅ Yes | ✅ Yes | Compile HTML to PDF |
+| Git | ❌ No | ❌ No | ✅ Yes | Clone the full repository |
+
+> **Note:** MCP-only install downloads only the necessary source files via `curl`. No Git required.
 
 ### Usage
 
@@ -375,8 +389,20 @@ Generador de campañas y one-shots de D&D 5e impulsado por IA. Convierte una ide
 
 ### Instalación Rápida
 
+#### Instalación Solo MCP (Por defecto — Recomendada)
+
+Instala solo el servidor MCP y los plugins. El código del game engine **no se descarga**.
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+```
+
+#### Instalación Completa (MCP + Game Engine)
+
+Instala todo incluyendo el game engine. Usá esto si planeás ejecutar el game engine web (`grimorio serve`).
+
+```bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash -s -- --full
 ```
 
 **Qué hace el instalador:**
@@ -395,11 +421,13 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 
 ### Requisitos
 
-| Dependencia | Auto-instalada | Propósito |
-|------------|---------------|-----------|
-| Go 1.23+ | ✅ Sí | Compilar el binario del servidor MCP |
-| wkhtmltopdf | ✅ Sí | Compilar HTML a PDF |
-| Git | ❌ Requerido | Clonar el repositorio |
+| Dependencia | Auto-instalada | Solo MCP | Completa | Propósito |
+|------------|---------------|----------|----------|-----------|
+| Go 1.23+ | ✅ Sí | ✅ Sí | ✅ Sí | Compilar el binario del servidor MCP |
+| wkhtmltopdf | ✅ Sí | ✅ Sí | ✅ Sí | Compilar HTML a PDF |
+| Git | ❌ No | ❌ No | ✅ Sí | Clonar el repositorio completo |
+
+> **Nota:** La instalación solo MCP descarga solo los archivos fuente necesarios vía `curl`. No requiere Git.
 
 ### Uso
 
