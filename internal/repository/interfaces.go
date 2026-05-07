@@ -71,3 +71,17 @@ type MapRepository interface {
 	List(campaignID string) ([]domain.Map, error)
 	Delete(campaignID, name string) error
 }
+
+// CanonRepository defines operations for canon document persistence
+type CanonRepository interface {
+	Save(campaignID string, doc *domain.CanonDocument) error
+	Load(campaignID string) (*domain.CanonDocument, error)
+	Exists(campaignID string) bool
+}
+
+// NarrativeStateRepository defines operations for narrative state persistence
+type NarrativeStateRepository interface {
+	Save(campaignID string, state *domain.NarrativeState) error
+	Load(campaignID string) (*domain.NarrativeState, error)
+	Exists(campaignID string) bool
+}

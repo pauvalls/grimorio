@@ -1,0 +1,308 @@
+package services
+
+import (
+	"context"
+	"testing"
+
+	"github.com/pauvalls/grimorio/internal/domain"
+	"github.com/pauvalls/grimorio/internal/repository"
+)
+
+func setupCanonService() (*CanonService, *repository.MemoryCanonRepository, *repository.MemoryNarrativeStateRepository) {
+	canonRepo := repository.NewMemoryCanonRepository()
+	stateRepo := repository.NewMemoryNarrativeStateRepository()
+	svc := NewCanonService(canonRepo, stateRepo)
+	return svc, canonRepo, stateRepo
+}
+
+func TestCanonService_InitializeCanon(t *testing.T) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{
+		Name:         "shadows-of-thornvale",
+		LevelRange:   "1-5",
+		Tone:         "dark",
+		SettingType:  "gothic",
+		Themes:       []string{"corruption", "redemption"},
+		VillainType:  "lich",
+		McGuffinType: "artifact",
+	}
+
+	doc, err := svc.InitializeCanon(ctx, brief)
+	if err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
+
+	if doc.SchemaVersion != domain.SchemaVersionV2 {
+		t.Fatalf("expected schema version %s, got %s", domain.SchemaVersionV2, doc.SchemaVersion)
+	}
+
+	if doc.CampaignID != brief.Name {
+		t.Fatalf("expected campaign ID %s, got %s", brief.Name, doc.CampaignID)
+	}
+
+	if len(doc.Facts) == 0 {
+		t.Fatal("expected at least one lore fact")
+	}
+
+	if len(doc.Entities) == 0 {
+		t.Fatal("expected at least one entity (mcguffin)")
+	}
+
+	if doc.Entities[0].Role != "mcguffin" {
+		t.Fatalf("expected first entity to be mcguffin, got %s", doc.Entities[0].Role)
+	}
+}
+
+func TestCanonService_InitializeCanon_InvalidName(t *testing.T) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "Invalid Name"}
+	_, err := svc.InitializeCanon(ctx, brief)
+	if err == nil {
+		t.Fatal("expected error for invalid campaign name")
+	}
+}
+
+func TestCanonService_LoadSaveCanon(t *testing.T) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	// Initialize first
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	doc, _ := svc.InitializeCanon(ctx, brief)
+
+	// Modify and save
+	doc.Facts = append(doc.Facts, domain.CanonFact{
+		ID:        "fact-002",
+		Category:  "history",
+		Statement: "The ancient kingdom fell 500 years ago",
+		Immutable: true,
+	})
+
+	if err := svc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
+
+	// Load and verify
+	loaded, err := svc.LoadCanon(ctx, brief.Name)
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
+
+	if len(loaded.Facts) != 2 {
+		t.Fatalf("expected 2 facts, got %d", len(loaded.Facts))
+	}
+}
+
+func TestCanonService_RegisterFact(t *testing.T) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	svc.InitializeCanon(ctx, brief)
+
+	fact := domain.CanonFact{
+		ID:        "fact-002",
+		Category:  "politics",
+		Statement: "The king is secretly a vampire",
+		Immutable: true,
+	}
+
+	if err := svc.RegisterFact(ctx, brief.Name, fact); err != nil {
+		t.Fatalf("failed to register fact: %v", err)
+	}
+
+	doc, _ := svc.LoadCanon(ctx, brief.Name)
+	if len(doc.Facts) != 2 {
+		t.Fatalf("expected 2 facts, got %d", len(doc.Facts))
+	}
+}
+
+func TestCanonService_QueryEntity(t *testing.T) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	doc, _ := svc.InitializeCanon(ctx, brief)
+
+	// Add more entities
+	doc.Entities = append(doc.Entities, domain.CanonEntity{
+		ID:         "npc-001",
+		Name:       "Lord Vex",
+		Type:       domain.EntityTypeNPC,
+		Role:       "ally",
+		CanonState: domain.EntityStateAlive,
+	}, domain.CanonEntity{
+		ID:         "npc-002",
+		Name:       "Dark Lady",
+		Type:       domain.EntityTypeNPC,
+		Role:       "villain",
+		CanonState: domain.EntityStateAlive,
+	})
+	svc.SaveCanon(ctx, doc)
+
+	// Query by type
+	npcs, err := svc.QueryEntity(ctx, brief.Name, domain.EntityFilter{Type: domain.EntityTypeNPC})
+	if err != nil {
+		t.Fatalf("failed to query entities: %v", err)
+	}
+	if len(npcs) != 2 {
+		t.Fatalf("expected 2 NPCs, got %d", len(npcs))
+	}
+
+	// Query by role
+	villains, err := svc.QueryEntity(ctx, brief.Name, domain.EntityFilter{Role: "villain"})
+	if err != nil {
+		t.Fatalf("failed to query entities: %v", err)
+	}
+	if len(villains) != 1 {
+		t.Fatalf("expected 1 villain, got %d", len(villains))
+	}
+
+	// Query by name
+	results, err := svc.QueryEntity(ctx, brief.Name, domain.EntityFilter{NameQuery: "vex"})
+	if err != nil {
+		t.Fatalf("failed to query entities: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result for 'vex', got %d", len(results))
+	}
+}
+
+func TestCanonService_UpdateEntityState(t *testing.T) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	doc, _ := svc.InitializeCanon(ctx, brief)
+
+	doc.Entities = append(doc.Entities, domain.CanonEntity{
+		ID:         "npc-001",
+		Name:       "Lord Vex",
+		Type:       domain.EntityTypeNPC,
+		CanonState: domain.EntityStateAlive,
+	})
+	svc.SaveCanon(ctx, doc)
+
+	if err := svc.UpdateEntityState(ctx, brief.Name, "npc-001", domain.EntityStateDead); err != nil {
+		t.Fatalf("failed to update entity state: %v", err)
+	}
+
+	loaded, _ := svc.LoadCanon(ctx, brief.Name)
+	for _, e := range loaded.Entities {
+		if e.ID == "npc-001" {
+			if e.CanonState != domain.EntityStateDead {
+				t.Fatalf("expected state dead, got %s", e.CanonState)
+			}
+			return
+		}
+	}
+	t.Fatal("entity not found after update")
+}
+
+func TestCanonService_ValidateProposal(t *testing.T) {
+	svc, _, stateRepo := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	svc.InitializeCanon(ctx, brief)
+
+	// Add an NPC and a rule to the canon
+	doc, _ := svc.LoadCanon(ctx, brief.Name)
+	doc.Entities = append(doc.Entities, domain.CanonEntity{
+		ID:         "npc-informador",
+		Name:       "El Informador",
+		Type:       domain.EntityTypeNPC,
+		CanonState: domain.EntityStateAlive,
+	})
+	doc.Rules = append(doc.Rules, domain.CanonRule{
+		ID:        "rule-001",
+		Domain:    "magic",
+		Statement: "Arcane magic is banned in the city",
+	})
+	svc.SaveCanon(ctx, doc)
+
+	// Set NPC as dead in narrative state
+	state, _ := stateRepo.Load(brief.Name)
+	state.DeadNPCs = append(state.DeadNPCs, domain.NPCDeathRecord{
+		NPCID:   "npc-informador",
+		Name:    "El Informador",
+		Session: 2,
+		Cause:   "combat",
+	})
+	stateRepo.Save(brief.Name, state)
+
+	// Test 1: Valid proposal referencing existing entity
+	proposal1 := domain.ContentProposal{
+		ID:      "act-3-draft",
+		Type:    "act",
+		Content: "The party enters the city.",
+		EntityReferences: []domain.EntityReference{
+			{EntityID: "npc-informador", Location: "act_3, area_12"},
+		},
+	}
+	report1, err := svc.ValidateProposal(ctx, brief.Name, proposal1)
+	if err != nil {
+		t.Fatalf("failed to validate proposal: %v", err)
+	}
+	if report1.OverallStatus != "rejected" {
+		t.Fatalf("expected rejected due to dead NPC, got %s", report1.OverallStatus)
+	}
+
+	// Check that npc_alive_check failed
+	var foundAliveCheck bool
+	for _, check := range report1.Checks {
+		if check.Rule == "npc_alive_check" && !check.Passed {
+			foundAliveCheck = true
+			break
+		}
+	}
+	if !foundAliveCheck {
+		t.Fatal("expected npc_alive_check to fail")
+	}
+
+	// Test 2: Missing entity
+	proposal2 := domain.ContentProposal{
+		ID:      "quest-1",
+		Type:    "quest",
+		Content: "Find the lost artifact.",
+		EntityReferences: []domain.EntityReference{
+			{EntityID: "npc-zarth", Location: "quest_1"},
+		},
+	}
+	report2, _ := svc.ValidateProposal(ctx, brief.Name, proposal2)
+	if report2.OverallStatus != "rejected" {
+		t.Fatalf("expected rejected due to missing entity, got %s", report2.OverallStatus)
+	}
+
+	// Test 3: Lore rule violation
+	proposal3 := domain.ContentProposal{
+		ID:      "act-3",
+		Type:    "act",
+		Content: "The wizards hold a public arcane fair in the city square.",
+	}
+	report3, _ := svc.ValidateProposal(ctx, brief.Name, proposal3)
+	if report3.OverallStatus != "rejected" {
+		t.Fatalf("expected rejected due to lore violation, got %s", report3.OverallStatus)
+	}
+}
+
+func TestCanonService_GetRelationshipGraph(t *testing.T) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	svc.InitializeCanon(ctx, brief)
+
+	graph, err := svc.GetRelationshipGraph(ctx, brief.Name)
+	if err != nil {
+		t.Fatalf("failed to get relationship graph: %v", err)
+	}
+
+	if graph.CampaignID != brief.Name {
+		t.Fatalf("expected campaign ID %s, got %s", brief.Name, graph.CampaignID)
+	}
+}
