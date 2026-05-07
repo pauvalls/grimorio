@@ -113,19 +113,19 @@ WHILE any subagent in Batch 1 is still running:
 **Do NOT proceed until Batch 1 completes.**
 
 ### Phase 3c: Validate Batch 1 (Consistency Gate)
-Before proceeding, validate ALL Batch 1 content atomically:
+Before proceeding, delegate validation to the narrative custodian:
 
 ```
-grimorio_process_consistency_gate(
-  campaign_id="{campaign_name}",
-  batch_id="batch-1-npcs-bestiary-maps",
-  artifacts=[
-    { type: "npc", content: "...", entity_references: [...] },
-    { type: "bestiary", content: "...", entity_references: [...] },
-    { type: "map", content: "...", entity_references: [...] }
-  ],
-  fast_mode=false
-)
+delegate(agent="grimorio-narrative-custodian", prompt="Validate Batch 1 for campaign '{campaign_name}' at {campaign_path}.
+
+Read canon.json and narrative_state.json, then validate ALL Batch 1 content:
+- NPCs from npcs/npcs_and_factions.md
+- Bestiary from bestiary/bestiary.md
+- Maps from maps/maps_and_scenes.md
+
+Check for: dead NPCs appearing alive, missing entities, world rule violations, level-appropriate encounters.
+
+Return a validation report with status (approved/rejected) and specific fix suggestions if rejected.")
 ```
 
 If **rejected**: Review the feedback, fix the issues, and retry.
@@ -178,35 +178,31 @@ WHILE any subagent in Batch 2 is still running:
 Validate ALL Batch 2 content:
 
 ```
-grimorio_process_consistency_gate(
-  campaign_id="{campaign_name}",
-  batch_id="batch-2-lore-quests-encounters-characters",
-  artifacts=[
-    { type: "lore", content: "...", entity_references: [...] },
-    { type: "quest", content: "...", entity_references: [...] },
-    { type: "encounter", content: "...", entity_references: [...] },
-    { type: "character", content: "...", entity_references: [...] }
-  ],
-  fast_mode=false
-)
+delegate(agent="grimorio-narrative-custodian", prompt="Validate Batch 2 for campaign '{campaign_name}' at {campaign_path}.
+
+Read canon.json and narrative_state.json, then validate:
+- Lore from lore.md
+- Quests from quests/
+- Encounters from encounters/encounters.md
+- Characters from characters/
+
+Check for: lore contradictions, missing prerequisites, dead NPCs in quests, encounter balance.
+
+Return validation report with status and fixes.")
 ```
 
 ### Phase 4d: Update Narrative State
-After Batch 2 is approved, update the narrative state:
+After Batch 2 is approved, delegate state update to custodian:
 
 ```
-grimorio_update_narrative_state(
-  campaign_id="{campaign_name}",
-  session_num=0,
-  revealed_clues=["clue-1", "clue-2", ...],
-  dead_npcs=[],
-  completed_quests=[],
-  new_quests=["quest-1", "quest-2", ...],
-  key_decisions=[],
-  xp_awarded=0,
-  loot_acquired=[],
-  session_summary="Campaign setup complete. Initial quests and clues established."
-)
+delegate(agent="grimorio-narrative-custodian", prompt="Update narrative state for campaign '{campaign_name}' at {campaign_path}.
+
+Batch 2 approved. Update state to reflect:
+- New quests activated
+- Clues revealed in lore
+- Initial world state established
+
+Use grimorio_update_narrative_state with session_num=0.")
 ```
 
 ### Phase 4e: Report Batch 2
@@ -250,15 +246,15 @@ WHILE cartographer and acts subagents are running:
 Validate acts and SVG maps:
 
 ```
-grimorio_process_consistency_gate(
-  campaign_id="{campaign_name}",
-  batch_id="batch-3-acts-maps",
-  artifacts=[
-    { type: "act", content: "...", entity_references: [...] },
-    { type: "map", content: "...", entity_references: [...] }
-  ],
-  fast_mode=false
-)
+delegate(agent="grimorio-narrative-custodian", prompt="Validate Batch 3 for campaign '{campaign_name}' at {campaign_path}.
+
+Read canon.json and narrative_state.json, then validate:
+- All acts from acts/
+- SVG maps and dividers
+
+Check for: NPC consistency across acts, timeline coherence, location consistency, act transitions.
+
+Return validation report with status and fixes.")
 ```
 
 ### Phase 5d: Report Batch 3
@@ -373,20 +369,30 @@ Iniciando Fase 9: Compilación del PDF...
 ```
 
 ### Phase 9: Final Consistency Check
-Before compiling the PDF, run a full campaign consistency validation:
+Before compiling the PDF, delegate full validation to the custodian:
 
 ```
-grimorio_check_consistency(
-  campaign_id="{campaign_name}",
-  scope="full",
-  severity_threshold="warning"
-)
+delegate(agent="grimorio-narrative-custodian", prompt="Run FINAL consistency check for campaign '{campaign_name}' at {campaign_path}.
+
+Read ALL content files and validate:
+1. Cross-act consistency (NPCs dead in act 2 don't appear in act 4)
+2. Quest closure (all quests have resolution or continuation)
+3. Lore coherence (no contradictions between lore and acts)
+4. Encounter balance (all CRs appropriate for level)
+5. Treasure balance (loot appropriate for level and economy)
+6. Faction consistency (reputation changes tracked)
+7. State completeness (narrative_state.json reflects all content)
+
+Return comprehensive report with critical issues (must fix) and warnings (note for DM).")
 ```
 
-If issues are found:
-- Review each violation
-- Fix critical issues (errors)
-- Note warnings for the DM
+If critical issues found:
+- Fix them before PDF compilation
+- Re-run validation after fixes
+
+If only warnings:
+- Note them in the final report for the DM
+- Proceed with PDF compilation
 
 ### Phase 10: Compile PDF
 

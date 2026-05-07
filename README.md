@@ -120,14 +120,14 @@ Phase 3-13: End-to-end orchestration by grimorio-architect
 │                       └──────┬───────┘  │ (SVG maps + dividers)    │   │
 │                              │          └──────────────────────────┘   │
 │                              │                                          │
-│  Content Sub-agents          │          Skill: dnd-5e-srd              │
-│  (delegated by architect):   │          (D&D 5e rules context)         │
-│  ├─ grimorio-lore            │                                          │
-│  ├─ grimorio-npc             │                                          │
-│  ├─ grimorio-bestiary        │                                          │
-│  ├─ grimorio-encounters      │                                          │
-│  ├─ grimorio-maps            │                                          │
-│  ├─ grimorio-acts            │                                          │
+│  Content Sub-agents          │  ┌──────────────────────────┐           │
+│  (delegated by architect):   │  │ grimorio-narrative-      │           │
+│  ├─ grimorio-lore            │  │ custodian                │           │
+│  ├─ grimorio-npc             │  │ (Coherence validation    │           │
+│  ├─ grimorio-bestiary        │  │  + state tracking)       │           │
+│  ├─ grimorio-encounters      │  └──────────────────────────┘           │
+│  ├─ grimorio-maps            │          Skill: dnd-5e-srd              │
+│  ├─ grimorio-acts            │          (D&D 5e rules context)         │
 │  ├─ grimorio-quests          │                                          │
 │  └─ grimorio-characters      │                                          │
 │                              ▼                                          │
@@ -174,25 +174,25 @@ grimorio-architect (Primary Orchestrator)
     │   ├─ grimorio-npc         → NPCs + factions
     │   ├─ grimorio-bestiary    → Monster stat blocks
     │   └─ grimorio-maps        → Location descriptions
-    │   → Consistency Gate validation
+    │   → grimorio-narrative-custodian → Consistency validation
     │
     ├─ Batch 2 (PARALLEL delegate)
     │   ├─ grimorio-lore        → World backstory
     │   ├─ grimorio-quests      → Personal quests
     │   ├─ grimorio-encounters  → Combat challenges
     │   └─ grimorio-characters  → Pre-gen PCs
-    │   → Consistency Gate validation
-    │   → Update narrative state
+    │   → grimorio-narrative-custodian → Consistency validation
+    │   → grimorio-narrative-custodian → State update
     │
     ├─ Batch 3 (PARALLEL delegate)
     │   ├─ grimorio-cartographer → SVG maps + dividers
     │   └─ grimorio-acts         → Narrative acts
-    │   → Consistency Gate validation
+    │   → grimorio-narrative-custodian → Consistency validation
     │
     ├─ Phase 6: grimorio-artist   → Image batch spec
     ├─ Phase 7: AI image generation (sequential MCP calls)
     ├─ Phase 8: grimorio-artist   → Update markdown references
-    ├─ Phase 9: Final consistency check
+    ├─ Phase 9: grimorio-narrative-custodian → Final consistency check
     └─ Phase 10: PDF compilation
 ```
 
@@ -647,14 +647,14 @@ Fase 3-13: Orquestación completa por grimorio-architect
 │                       └──────┬───────┘  │ (Mapas SVG + divisores)  │   │
 │                              │          └──────────────────────────┘   │
 │                              │                                          │
-│  Sub-agentes de contenido    │          Skill: dnd-5e-srd              │
-│  (delegados por architect):  │          (Contexto reglas D&D 5e)       │
-│  ├─ grimorio-lore            │                                          │
-│  ├─ grimorio-npc             │                                          │
-│  ├─ grimorio-bestiary        │                                          │
-│  ├─ grimorio-encounters      │                                          │
-│  ├─ grimorio-maps            │                                          │
-│  ├─ grimorio-acts            │                                          │
+│  Sub-agentes de contenido    │  ┌──────────────────────────┐           │
+│  (delegados por architect):  │  │ grimorio-narrative-      │           │
+│  ├─ grimorio-lore            │  │ custodian                │           │
+│  ├─ grimorio-npc             │  │ (Validación coherencia   │           │
+│  ├─ grimorio-bestiary        │  │  + tracking estado)      │           │
+│  ├─ grimorio-encounters      │  └──────────────────────────┘           │
+│  ├─ grimorio-maps            │          Skill: dnd-5e-srd              │
+│  ├─ grimorio-acts            │          (Contexto reglas D&D 5e)       │
 │  ├─ grimorio-quests          │                                          │
 │  └─ grimorio-characters      │                                          │
 │                              ▼                                          │
@@ -701,25 +701,25 @@ grimorio-architect (Orquestador Principal)
     │   ├─ grimorio-npc         → NPCs + facciones
     │   ├─ grimorio-bestiary    → Stat blocks monstruos
     │   └─ grimorio-maps        → Descripciones ubicaciones
-    │   → Validación Consistency Gate
+    │   → grimorio-narrative-custodian → Validación coherencia
     │
     ├─ Batch 2 (PARALELO delegate)
     │   ├─ grimorio-lore        → Trasfondo mundo
     │   ├─ grimorio-quests      → Misiones personales
     │   ├─ grimorio-encounters  → Desafíos combate
     │   └─ grimorio-characters  → PJs pre-generados
-    │   → Validación Consistency Gate
-    │   → Actualizar estado narrativo
+    │   → grimorio-narrative-custodian → Validación coherencia
+    │   → grimorio-narrative-custodian → Actualizar estado
     │
     ├─ Batch 3 (PARALELO delegate)
     │   ├─ grimorio-cartographer → Mapas SVG + divisores
     │   └─ grimorio-acts         → Actos narrativos
-    │   → Validación Consistency Gate
+    │   → grimorio-narrative-custodian → Validación coherencia
     │
     ├─ Fase 6: grimorio-artist   → Especificación batch imágenes
     ├─ Fase 7: Generación imágenes IA (llamadas MCP secuenciales)
     ├─ Fase 8: grimorio-artist   → Actualizar referencias markdown
-    ├─ Fase 9: Consistency check final
+    ├─ Fase 9: grimorio-narrative-custodian → Check final
     └─ Fase 10: Compilación PDF
 ```
 
@@ -741,10 +741,19 @@ grimorio-architect (Orquestador Principal)
     ├─ commands/
     │   └─ grimorio.md                   # Comando slash /grimorio
     ├─ agents/
-    │   ├─ grimorio-architect.md         # Agente diseñador (orquestación completa)
-    │   ├─ grimorio-orchestrator.md      # DEPRECATED — architect lo maneja ahora
-    │   ├─ grimorio-artist.md            # Especificaciones de imágenes + actualización de referencias
-    │   └─ grimorio-cartographer.md      # Mapas de batalla SVG + divisores decorativos
+    │   ├─ grimorio-architect.md           # Agente diseñador (orquestación completa)
+    │   ├─ grimorio-narrative-custodian.md # Guardián de coherencia narrativa
+    │   ├─ grimorio-orchestrator.md        # DEPRECATED — architect lo maneja ahora
+    │   ├─ grimorio-artist.md              # Especificaciones de imágenes + actualización de referencias
+    │   ├─ grimorio-cartographer.md        # Mapas de batalla SVG + divisores decorativos
+    │   ├─ grimorio-lore.md                # Trasfondo y ambientación
+    │   ├─ grimorio-npc.md                 # NPCs y facciones
+    │   ├─ grimorio-bestiary.md            # Bestiario y stat blocks
+    │   ├─ grimorio-encounters.md          # Encuentros y desafíos
+    │   ├─ grimorio-maps.md                # Descripciones de mapas
+    │   ├─ grimorio-acts.md                # Actos narrativos
+    │   ├─ grimorio-quests.md              # Misiones personales
+    │   └─ grimorio-characters.md          # Personajes pre-generados
     └─ skills/
         └─ dnd-5e-srd/SKILL.md           # Referencia de reglas D&D 5e
 
