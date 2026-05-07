@@ -7,3 +7,6 @@ coverage.out
 .semrel/
 .atl/
 grimorio-sdd-roadmap.md
+grimorio-test
+migrate-v1-to-v2
+sdd/
