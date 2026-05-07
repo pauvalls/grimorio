@@ -24,6 +24,8 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	charRepo := repository.NewFilesystemCharacterRepository(cfg.OutputDir)
 	npcRepo := repository.NewFilesystemNPCRepository(cfg.OutputDir)
 	questRepo := repository.NewFilesystemQuestRepository(cfg.OutputDir)
+	canonRepo := repository.NewFilesystemCanonRepository(cfg.OutputDir)
+	narrativeStateRepo := repository.NewFilesystemNarrativeStateRepository(cfg.OutputDir)
 
 	// Initialize services
 	campaignService := services.NewCampaignService(
@@ -33,12 +35,16 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	characterService := services.NewCharacterService(charRepo)
 	questService := services.NewQuestService(questRepo)
 	assetService := services.NewAssetService(cfg.OutputDir, cfg.Config)
+	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
+	narrativeStateService := services.NewNarrativeStateService(narrativeStateRepo, canonRepo)
+	validationEngine := services.NewValidationEngine(canonService, narrativeStateService)
 
 	// Initialize handlers
 	campaignHandlers := handlers.NewCampaignHandlers(campaignService)
 	characterHandlers := handlers.NewCharacterHandlers(characterService)
 	questHandlers := handlers.NewQuestHandlers(questService)
 	assetHandlers := handlers.NewAssetHandlers(assetService)
+	canonHandlers := handlers.NewCanonHandlers(canonService, narrativeStateService, validationEngine)
 
 	// Register tools
 	// Campaign management
@@ -181,6 +187,37 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("section", mcp.Description("Optional: section heading where to insert the image reference")),
 		mcp.WithString("alt", mcp.Description("Optional: alt text for the image (defaults to filename)")),
 	), assetHandlers.HandleGenerateImage())
+
+	// Canon and narrative coherence tools
+	s.AddTool(mcp.NewTool("generate_adventure_bible",
+		mcp.WithDescription("Generate the canon initial document for a campaign from a brief"),
+		mcp.WithString("name", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("level_range", mcp.Description("Level range (e.g., 1-10)")),
+		mcp.WithString("tone", mcp.Description("Campaign tone (grim, whimsical, heroic, horror, political, mystery)")),
+		mcp.WithString("setting_type", mcp.Description("Setting type (urban, wilderness, dungeon, maritime, planar)")),
+		mcp.WithString("villain_type", mcp.Description("Type of main villain")),
+		mcp.WithString("mcguffin_type", mcp.Description("Type of McGuffin")),
+	), canonHandlers.HandleGenerateAdventureBible())
+
+	s.AddTool(mcp.NewTool("validate_canon",
+		mcp.WithDescription("Validate a content proposal against the campaign canon"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("proposal_id", mcp.Required(), mcp.Description("Proposal ID")),
+		mcp.WithString("proposal_type", mcp.Required(), mcp.Description("Type: act, quest, encounter, npc, lore, item")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Content markdown or JSON to validate")),
+	), canonHandlers.HandleValidateCanon())
+
+	s.AddTool(mcp.NewTool("update_narrative_state",
+		mcp.WithDescription("Update the narrative state after a session"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithNumber("session_num", mcp.Required(), mcp.Description("Session number (1, 2, 3...)")),
+	), canonHandlers.HandleUpdateNarrativeState())
+
+	s.AddTool(mcp.NewTool("check_consistency",
+		mcp.WithDescription("Check campaign consistency across all artifacts"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("scope", mcp.Description("Scope: full, lore_only, acts_only, npcs_only, quests_only"), mcp.DefaultString("full")),
+	), canonHandlers.HandleCheckConsistency())
 
 	return s
 }
