@@ -7,6 +7,17 @@ type ValidationReport struct {
 	OverallStatus string        `json:"overall_status"`
 	Checks        []CheckResult `json:"checks"`
 	Suggestions   []Suggestion  `json:"suggestions"`
+	GateStatus    GateStatus    `json:"gate_status,omitempty"`
+	CanonUpdates  []CanonUpdate `json:"canon_updates,omitempty"`
+}
+
+// CanonUpdate represents a proposed update to the canon document
+type CanonUpdate struct {
+	EntityID    string `json:"entity_id"`
+	UpdateType  string `json:"update_type"` // create, update, delete
+	Field       string `json:"field,omitempty"`
+	NewValue    string `json:"new_value,omitempty"`
+	Description string `json:"description"`
 }
 
 // CheckResult represents the outcome of a single validation check

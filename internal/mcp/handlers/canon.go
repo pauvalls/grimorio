@@ -16,6 +16,7 @@ type CanonHandlers struct {
 	canonService   *services.CanonService
 	stateService   *services.NarrativeStateService
 	validationEngine *services.ValidationEngine
+	gateService    *services.ConsistencyGateService
 }
 
 // NewCanonHandlers creates new canon handlers
@@ -23,11 +24,13 @@ func NewCanonHandlers(
 	canonService *services.CanonService,
 	stateService *services.NarrativeStateService,
 	validationEngine *services.ValidationEngine,
+	gateService *services.ConsistencyGateService,
 ) *CanonHandlers {
 	return &CanonHandlers{
 		canonService:     canonService,
 		stateService:     stateService,
 		validationEngine: validationEngine,
+		gateService:      gateService,
 	}
 }
 
@@ -263,6 +266,79 @@ func (h *CanonHandlers) HandleCheckConsistency() server.ToolHandlerFunc {
 		jsonBytes, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to marshal report: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(string(jsonBytes)), nil
+	}
+}
+
+// HandleProcessConsistencyGate handles the process_consistency_gate tool
+func (h *CanonHandlers) HandleProcessConsistencyGate() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+
+		campaignID := getStringArg(args, "campaign_id")
+		batchID := getStringArg(args, "batch_id")
+		fastMode := getBoolArg(args, "fast_mode")
+		attempt := getIntArg(args, "attempt")
+		if attempt == 0 {
+			attempt = 1
+		}
+
+		if campaignID == "" {
+			return mcp.NewToolResultError("campaign_id is required"), nil
+		}
+		if batchID == "" {
+			return mcp.NewToolResultError("batch_id is required"), nil
+		}
+
+		// Parse proposals from args
+		var proposals []domain.ContentProposal
+		if proposalsVal, ok := args["proposals"]; ok {
+			if proposalsArr, ok := proposalsVal.([]any); ok {
+				for _, p := range proposalsArr {
+					if pMap, ok := p.(map[string]any); ok {
+						proposal := domain.ContentProposal{
+							ID:      getStringArg(pMap, "id"),
+							Type:    getStringArg(pMap, "type"),
+							Content: getStringArg(pMap, "content"),
+						}
+						if refsVal, ok := pMap["entity_references"]; ok {
+							if refsArr, ok := refsVal.([]any); ok {
+								for _, r := range refsArr {
+									if rMap, ok := r.(map[string]any); ok {
+										ref := domain.EntityReference{
+											EntityID: getStringArg(rMap, "entity_id"),
+										}
+										proposal.EntityReferences = append(proposal.EntityReferences, ref)
+									}
+								}
+							}
+						}
+						proposals = append(proposals, proposal)
+					}
+				}
+			}
+		}
+
+		batchProposal := domain.BatchProposal{
+			BatchID:    batchID,
+			CampaignID: campaignID,
+			Artifacts:  proposals,
+			Attempt:    attempt,
+		}
+
+		result, err := h.gateService.ProcessBatch(ctx, batchProposal, fastMode)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		jsonBytes, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
 		}
 
 		return mcp.NewToolResultText(string(jsonBytes)), nil

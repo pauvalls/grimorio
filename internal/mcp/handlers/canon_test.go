@@ -15,7 +15,8 @@ func setupTestCanonHandlers() (*CanonHandlers, *services.CanonService, *services
 	canonService := services.NewCanonService(canonRepo, stateRepo)
 	stateService := services.NewNarrativeStateService(stateRepo, canonRepo)
 	validator := services.NewValidationEngine(canonService, stateService)
-	return NewCanonHandlers(canonService, stateService, validator), canonService, stateService, validator
+	gateService := services.NewConsistencyGateService(canonService, stateService, validator)
+	return NewCanonHandlers(canonService, stateService, validator, gateService), canonService, stateService, validator
 }
 
 func TestHandleGenerateAdventureBible(t *testing.T) {

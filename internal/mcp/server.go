@@ -38,13 +38,14 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
 	narrativeStateService := services.NewNarrativeStateService(narrativeStateRepo, canonRepo)
 	validationEngine := services.NewValidationEngine(canonService, narrativeStateService)
+	consistencyGateService := services.NewConsistencyGateService(canonService, narrativeStateService, validationEngine)
 
 	// Initialize handlers
 	campaignHandlers := handlers.NewCampaignHandlers(campaignService)
 	characterHandlers := handlers.NewCharacterHandlers(characterService)
 	questHandlers := handlers.NewQuestHandlers(questService)
 	assetHandlers := handlers.NewAssetHandlers(assetService)
-	canonHandlers := handlers.NewCanonHandlers(canonService, narrativeStateService, validationEngine)
+	canonHandlers := handlers.NewCanonHandlers(canonService, narrativeStateService, validationEngine, consistencyGateService)
 
 	// Register tools
 	// Campaign management
@@ -218,6 +219,13 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithString("scope", mcp.Description("Scope: full, lore_only, acts_only, npcs_only, quests_only"), mcp.DefaultString("full")),
 	), canonHandlers.HandleCheckConsistency())
+
+	s.AddTool(mcp.NewTool("process_consistency_gate",
+		mcp.WithDescription("Process a batch of content proposals through the consistency gate"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("batch_id", mcp.Required(), mcp.Description("Batch identifier (e.g., batch-1, batch-2)")),
+		mcp.WithBoolean("fast_mode", mcp.Description("Skip non-critical validations for speed"), mcp.DefaultBool(false)),
+	), canonHandlers.HandleProcessConsistencyGate())
 
 	return s
 }

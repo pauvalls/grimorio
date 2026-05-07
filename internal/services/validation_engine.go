@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -142,9 +144,71 @@ func (e *ValidationEngine) CheckConsistency(ctx context.Context, campaignID stri
 	}
 
 	// Rule 3: lore_rule_compliance — check if any active quests violate rules (simplified)
-	// For full scope, also check acts if they existed in canon
+	// For full scope, validate across all campaign artifacts
 	if scope == domain.ConsistencyScopeFull {
-		// Additional full-scope checks can go here
+		// Full-scope cross-reference validation
+		// Check that all NPCs referenced in quests exist and are alive
+		if stateErr == nil {
+			for _, quest := range state.ActiveQuests {
+				if quest.GiverNPC != "" {
+					if entity, exists := entityMap[quest.GiverNPC]; exists {
+						if entity.CanonState == domain.EntityStateDead {
+							report.Issues = append(report.Issues, domain.CheckResult{
+								Rule:     "npc_alive_check",
+								Passed:   false,
+								Severity: "error",
+								Message:  fmt.Sprintf("Quest giver NPC %s is dead but assigned to active quest %s", entity.Name, quest.Name),
+							})
+						}
+					}
+				}
+			}
+			for _, quest := range state.CompletedQuests {
+				if quest.GiverNPC != "" {
+					if entity, exists := entityMap[quest.GiverNPC]; exists {
+						if entity.CanonState == domain.EntityStateDead {
+							report.Issues = append(report.Issues, domain.CheckResult{
+								Rule:     "npc_alive_check",
+								Passed:   false,
+								Severity: "warning",
+								Message:  fmt.Sprintf("Quest giver NPC %s is dead but was assigned to completed quest %s", entity.Name, quest.Name),
+							})
+						}
+					}
+				}
+			}
+		}
+
+		// Check timeline continuity: events should be in chronological order
+		for i := 1; i < len(doc.Timeline); i++ {
+			if doc.Timeline[i].Timestamp < doc.Timeline[i-1].Timestamp {
+				report.Issues = append(report.Issues, domain.CheckResult{
+					Rule:     "timeline_consistency",
+					Passed:   false,
+					Severity: "warning",
+					Message:  fmt.Sprintf("Timeline event %s appears before %s", doc.Timeline[i].ID, doc.Timeline[i-1].ID),
+				})
+			}
+		}
+
+		// Check for entities without relationships (orphaned entities warning)
+		if len(doc.Relationships) > 0 {
+			connected := make(map[string]bool)
+			for _, rel := range doc.Relationships {
+				connected[rel.From] = true
+				connected[rel.To] = true
+			}
+			for _, entity := range doc.Entities {
+				if entity.Type == domain.EntityTypeNPC && !connected[entity.ID] {
+					report.Issues = append(report.Issues, domain.CheckResult{
+						Rule:     "entity_isolation",
+						Passed:   false,
+						Severity: "warning",
+						Message:  fmt.Sprintf("NPC %s has no relationships in canon", entity.Name),
+					})
+				}
+			}
+		}
 	}
 
 	// Compute report statistics
@@ -252,6 +316,125 @@ func (e *ValidationEngine) validate(ctx context.Context, campaignID string, prop
 		}
 	}
 
+	// Rule 5: quest_reward_existence
+	if proposal.Type == "quest" {
+		rewards := e.extractRewardNames(proposal.Content)
+		for _, reward := range rewards {
+			found := false
+			for _, entity := range doc.Entities {
+				if entity.Type == domain.EntityTypeItem && strings.Contains(strings.ToLower(entity.Name), strings.ToLower(reward)) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				report.AddCheck("quest_reward_existence", false, "error",
+					fmt.Sprintf("Reward '%s' not found in canon entities", reward),
+					"")
+				report.AddSuggestion(
+					fmt.Sprintf("Quest reward '%s' does not exist", reward),
+					"Add the item to canon or replace with an existing canon item",
+					"All quest rewards must reference canon entities")
+			}
+		}
+	}
+
+	// Rule 6: level_encounter_balance
+	if proposal.Type == "encounter" {
+		crs := e.extractCRs(proposal.Content)
+		levelRange := e.parseLevelRange(doc)
+		maxLevel := levelRange[1]
+		for _, cr := range crs {
+			if cr > maxLevel+3 {
+				report.AddCheck("level_encounter_balance", false, "error",
+					fmt.Sprintf("CR %d incompatible with party level %d", cr, maxLevel),
+					"")
+				report.AddSuggestion(
+					fmt.Sprintf("Encounter CR %d exceeds party capability", cr),
+					fmt.Sprintf("Reduce CR to at most %d (party max + 3)", maxLevel+3),
+					"Encounter difficulty must match campaign level range")
+			}
+		}
+	}
+
+	// Rule 7: location_existence
+	if proposal.Type == "act" || proposal.Type == "encounter" || proposal.Type == "quest" {
+		locations := e.extractLocationReferences(proposal.Content)
+		for _, loc := range locations {
+			found := false
+			for _, entity := range doc.Entities {
+				if entity.Type == domain.EntityTypeLocation && strings.Contains(strings.ToLower(entity.Name), strings.ToLower(loc)) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				report.AddCheck("location_existence", false, "error",
+					fmt.Sprintf("Location '%s' not found in canon", loc),
+					"")
+				report.AddSuggestion(
+					fmt.Sprintf("Location '%s' does not exist in canon", loc),
+					"Add the location to canon or correct the reference",
+					"All referenced locations must exist in the canon document")
+			}
+		}
+	}
+
+	// Rule 8: timeline_consistency
+	if proposal.Type == "act" && len(doc.Timeline) > 0 {
+		events := e.extractTimelineEvents(proposal.Content)
+		for _, event := range events {
+			for _, prereqID := range event.Prerequisites {
+				prereq := e.findTimelineEvent(doc.Timeline, prereqID)
+				if prereq != nil && event.Ordinal <= prereq.Ordinal {
+					report.AddCheck("timeline_consistency", false, "error",
+						fmt.Sprintf("Event %s occurs before prerequisite %s", event.ID, prereqID),
+						"")
+					report.AddSuggestion(
+						fmt.Sprintf("Timeline event %s violates chronology", event.ID),
+						"Reorder events so prerequisites occur first",
+						"Timeline must maintain causal ordering")
+				}
+			}
+		}
+	}
+
+	// Rule 9: prerequisite_clue_check
+	if proposal.Type == "act" && state != nil {
+		requiredClues := e.extractRequiredClues(proposal.Content)
+		for _, clueID := range requiredClues {
+			revealed := false
+			for _, clue := range state.RevealedClues {
+				if clue.ID == clueID {
+					revealed = true
+					break
+				}
+			}
+			hasAlt := e.hasAlternativePath(proposal.Content, clueID)
+			if !revealed && !hasAlt {
+				report.AddCheck("prerequisite_clue_check", false, "error",
+					fmt.Sprintf("Act requires clue %s which has not been revealed and has no alternative", clueID),
+					"")
+				report.AddSuggestion(
+					fmt.Sprintf("Clue %s not yet revealed", clueID),
+					"Add an alternative path or ensure the clue is revealed in a prior act",
+					"Acts must be completable even if players miss optional clues")
+			}
+		}
+	}
+
+	// Rule 10: faction_reputation_gate
+	// TODO: Phase 3 - implement full faction reputation system
+	// For now, this is a no-op placeholder that extracts faction references
+	// but does not produce errors (only informational passes)
+	factionRefs := e.extractFactionReferences(proposal.Content)
+	for _, ref := range factionRefs {
+		// Placeholder: acknowledge check ran but don't validate
+		_ = ref
+		// report.AddCheck("faction_reputation_gate", true, "info",
+		//     fmt.Sprintf("Faction %s reference detected", ref.FactionID), "")
+	}
+
 	report.ComputeOverallStatus()
 	return report, nil
 }
@@ -307,4 +490,169 @@ func (e *ValidationEngine) computeConsistencyStats(report *domain.ConsistencyRep
 	default:
 		report.OverallHealth = "excellent"
 	}
+}
+
+// extractRewardNames extracts reward names from quest content
+func (e *ValidationEngine) extractRewardNames(content string) []string {
+	var rewards []string
+	// Match patterns like "Reward: Item Name" or "rewards: Item Name"
+	re := regexp.MustCompile(`(?i)(?:reward|rewards)[\s]*[:\-]?\s*([^\.\n]+)`)
+	matches := re.FindAllStringSubmatch(content, -1)
+	for _, match := range matches {
+		if len(match) > 1 {
+			reward := strings.TrimSpace(match[1])
+			if reward != "" {
+				rewards = append(rewards, reward)
+			}
+		}
+	}
+	return rewards
+}
+
+// extractCRs extracts challenge ratings from encounter content
+func (e *ValidationEngine) extractCRs(content string) []int {
+	var crs []int
+	// Match patterns like "CR 5" or "CR: 3" or "(CR 1/2)"
+	re := regexp.MustCompile(`(?i)CR\s*[:\-]?\s*(\d+)`)
+	matches := re.FindAllStringSubmatch(content, -1)
+	for _, match := range matches {
+		if len(match) > 1 {
+			cr, err := strconv.Atoi(match[1])
+			if err == nil {
+				crs = append(crs, cr)
+			}
+		}
+	}
+	return crs
+}
+
+// parseLevelRange extracts min and max level from campaign level_range
+func (e *ValidationEngine) parseLevelRange(doc *domain.CanonDocument) [2]int {
+	var result [2]int
+	// Find mcguffin entity with level_range property
+	for _, entity := range doc.Entities {
+		if entity.Role == "mcguffin" {
+			if lr, ok := entity.Properties["level_range"].(string); ok {
+				parts := strings.Split(lr, "-")
+				if len(parts) == 2 {
+					min, _ := strconv.Atoi(strings.TrimSpace(parts[0]))
+					max, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
+					result[0] = min
+					result[1] = max
+					return result
+				}
+			}
+		}
+	}
+	// Default fallback
+	result[0] = 1
+	result[1] = 20
+	return result
+}
+
+// extractLocationReferences extracts location names from content
+func (e *ValidationEngine) extractLocationReferences(content string) []string {
+	var locations []string
+	// Match patterns like "at Location Name" or "in Location Name"
+	re := regexp.MustCompile(`(?i)(?:at|in|inside|within|near|outside)\s+([A-Z][A-Za-z\s]+?)(?:\.|,|\s+(?:and|to|from|the|a|an)\s+|$)`)
+	matches := re.FindAllStringSubmatch(content, -1)
+	for _, match := range matches {
+		if len(match) > 1 {
+			loc := strings.TrimSpace(match[1])
+			if len(loc) > 2 {
+				locations = append(locations, loc)
+			}
+		}
+	}
+	return locations
+}
+
+// TimelineEvent represents a parsed timeline event reference
+type TimelineEvent struct {
+	ID            string
+	Ordinal       int
+	Prerequisites []string
+}
+
+// extractTimelineEvents extracts timeline event references from act content
+func (e *ValidationEngine) extractTimelineEvents(content string) []TimelineEvent {
+	var events []TimelineEvent
+	// Match "evt-XXX" or "event XXX" patterns
+	re := regexp.MustCompile(`(?i)(evt-[\w-]+)`)
+	matches := re.FindAllStringSubmatch(content, -1)
+	for i, match := range matches {
+		if len(match) > 1 {
+			events = append(events, TimelineEvent{
+				ID:      match[1],
+				Ordinal: i + 1,
+			})
+		}
+	}
+	return events
+}
+
+// findTimelineEvent finds a timeline event by ID
+func (e *ValidationEngine) findTimelineEvent(timeline []domain.CanonTimelineEvent, eventID string) *TimelineEvent {
+	for i, evt := range timeline {
+		if evt.ID == eventID {
+			return &TimelineEvent{
+				ID:      evt.ID,
+				Ordinal: i + 1,
+			}
+		}
+	}
+	return nil
+}
+
+// extractRequiredClues extracts clue IDs that are required from content
+func (e *ValidationEngine) extractRequiredClues(content string) []string {
+	var clues []string
+	// Match "clue ID" or "requires clue" patterns
+	re := regexp.MustCompile(`(?i)(?:clue|requires|needs)\s+([\w-]+)`)
+	matches := re.FindAllStringSubmatch(content, -1)
+	for _, match := range matches {
+		if len(match) > 1 {
+			clueID := strings.TrimSpace(match[1])
+			if clueID != "" {
+				clues = append(clues, clueID)
+			}
+		}
+	}
+	return clues
+}
+
+// hasAlternativePath checks if content mentions an alternative path for a clue
+func (e *ValidationEngine) hasAlternativePath(content string, clueID string) bool {
+	// Simple heuristic: check for words like "alternative", "or", "without"
+	lowerContent := strings.ToLower(content)
+	altPatterns := []string{"alternative", "or else", "without", "bypass", "skip"}
+	for _, pattern := range altPatterns {
+		if strings.Contains(lowerContent, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// FactionReference represents a faction mention in content
+type FactionReference struct {
+	FactionID string
+	Reaction  string
+}
+
+// extractFactionReferences extracts faction references from content
+func (e *ValidationEngine) extractFactionReferences(content string) []FactionReference {
+	var refs []FactionReference
+	// Match "faction X reacts Y" patterns
+	re := regexp.MustCompile(`(?i)(?:faction|the\s+)([A-Z][\w\s]+?)\s+(?:reacts?|is|are)\s+(\w+)`)
+	matches := re.FindAllStringSubmatch(content, -1)
+	for _, match := range matches {
+		if len(match) > 2 {
+			refs = append(refs, FactionReference{
+				FactionID: strings.TrimSpace(match[1]),
+				Reaction:  strings.ToLower(strings.TrimSpace(match[2])),
+			})
+		}
+	}
+	return refs
 }
