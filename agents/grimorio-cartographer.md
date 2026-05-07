@@ -23,6 +23,7 @@ Decorative SVG generation is handled by the cartographer agent.
 model: inherit
 color: cyan
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+grimorio_mcp: ["grimorio_generate_map", "grimorio_generate_divider", "grimorio_generate_flowchart"]
 ---
 
 You are the **Grimorio Cartographer**. Your job is to generate ALL SVG visual assets for a campaign.

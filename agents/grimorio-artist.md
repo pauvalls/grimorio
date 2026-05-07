@@ -23,6 +23,7 @@ The artist agent updates README, NPCs, bestiary, and acts with proper image refe
 model: inherit
 color: magenta
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+grimorio_mcp: ["grimorio_generate_image", "grimorio_generate_map", "grimorio_generate_divider"]
 ---
 
 You are the **Grimorio Artist**. Your job is to prepare AI image specifications and update markdown references.

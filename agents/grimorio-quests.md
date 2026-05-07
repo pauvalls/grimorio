@@ -23,6 +23,7 @@ The quests agent creates meaningful side content that deepens the story.
 model: inherit
 color: cyan
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+grimorio_mcp: ["grimorio_create_personal_quest", "grimorio_list_quests", "grimorio_update_quest_status", "grimorio_validate_canon", "grimorio_check_consistency", "grimorio_process_consistency_gate"]
 ---
 
 Eres el **Grimorio Quest Designer**. Tu especialidad son las misiones personales, side quests, y ganchos narrativos para campañas de D&D 5e. Escribís en español rioplatense.

@@ -21,6 +21,12 @@ State tracking is the core purpose of the custodian agent.
 model: inherit
 color: cyan
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+grimorio_mcp: [
+  "grimorio_validate_canon", "grimorio_check_consistency", "grimorio_process_consistency_gate",
+  "grimorio_update_narrative_state", "grimorio_evaluate_consequences",
+  "grimorio_update_faction_reputation", "grimorio_generate_random_tables",
+  "grimorio_generate_handouts", "grimorio_generate_session_prep", "grimorio_generate_flowchart"
+]
 ---
 
 You are the **Grimorio Narrative Custodian**. You are the guardian of campaign consistency. Your job is to validate that ALL generated content adheres to the canonical facts, maintains narrative coherence, and properly updates the campaign state.

@@ -383,7 +383,7 @@ clean_installation() {
     # Clean opencode.json
     local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
     if [ -f "$OPENCODE_CONFIG" ] && command_exists jq; then
-        jq 'del(.mcp.grimorio, .agent["grimorio-architect"], .agent["grimorio-artist"], .agent["grimorio-cartographer"], .agent["grimorio-lore"], .agent["grimorio-npc"], .agent["grimorio-bestiary"], .agent["grimorio-encounters"], .agent["grimorio-acts"], .agent["grimorio-quests"], .agent["grimorio-maps"], .agent["grimorio-characters"], .agent["grimorio-orchestrator"], .command.grimorio)' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        jq 'del(.mcp.grimorio, .agent["grimorio-architect"], .agent["grimorio-artist"], .agent["grimorio-cartographer"], .agent["grimorio-lore"], .agent["grimorio-npc"], .agent["grimorio-bestiary"], .agent["grimorio-encounters"], .agent["grimorio-acts"], .agent["grimorio-quests"], .agent["grimorio-maps"], .agent["grimorio-characters"], .agent["grimorio-narrative-custodian"], .agent["grimorio-orchestrator"], .command.grimorio)' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
         log "Cleaned grimorio entries from opencode.json"
         cleaned=true
     fi
@@ -650,6 +650,25 @@ configure_opencode_command() {
         success "grimorio-characters agent configured"
     fi
 
+    # Configure grimorio-narrative-custodian subagent
+    log "Configuring grimorio-narrative-custodian agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-narrative-custodian"] = {
+            "description": "Campaign narrative custodian — validates canon consistency, checks cross-references, and manages narrative state",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Narrative Custodian. You validate campaign content for narrative coherence, check canon consistency, and manage narrative state. You NEVER generate creative content — only validate, check, and fix inconsistencies. Use validate_canon, check_consistency, process_consistency_gate, update_narrative_state, evaluate_consequences, and other coherence tools.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-narrative-custodian agent configured"
+    fi
+
     # Always update command (not just add) to ensure latest template with image generation
     log "Configuring grimorio command..."
     if command_exists jq; then
@@ -771,8 +790,9 @@ print_instructions() {
     echo -e "     - grimorio-maps          (location & zone descriptions)"
     echo -e "     - grimorio-acts          (narrative acts & scenes)"
     echo -e "     - grimorio-quests        (personal quests & side missions)"
-    echo -e "     - grimorio-characters    (pre-generated character sheets)"
-    echo -e "   • Artist      → grimorio-artist (image specs + reference updates)"
+     echo -e "     - grimorio-characters    (pre-generated character sheets)"
+     echo -e "     - grimorio-narrative-custodian (canon validation + state tracking)"
+     echo -e "   • Artist      → grimorio-artist (image specs + reference updates)"
     echo -e "   • Cartographer→ grimorio-cartographer (SVG maps + dividers)"
     echo -e "   • Command     → /grimorio (single delegate, zero polling)"
     echo ""

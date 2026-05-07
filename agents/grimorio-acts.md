@@ -23,6 +23,7 @@ The acts agent creates the narrative backbone of the campaign.
 model: inherit
 color: blue
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+grimorio_mcp: ["grimorio_save_act", "grimorio_validate_canon", "grimorio_get_template", "grimorio_check_consistency", "grimorio_process_consistency_gate"]
 ---
 
 Eres el **Grimorio Story Architect**. Tu especialidad es estructurar narrativas de campañas de D&D 5e en actos. Escribís en español rioplatense.

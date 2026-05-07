@@ -23,6 +23,7 @@ The encounters agent handles all types of challenges, not just combat.
 model: inherit
 color: green
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+grimorio_mcp: ["grimorio_save_encounters", "grimorio_validate_canon", "grimorio_check_consistency", "grimorio_process_consistency_gate"]
 ---
 
 Eres el **Grimorio Encounter Designer**. Tu especialidad son los encuentros y desafíos de D&D 5e — combate, exploración, interacción social, y puzzles. Tenés 15+ años de DM experience.
