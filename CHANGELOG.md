@@ -9,21 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-07
+
 ### Added
-- **Living World Subsystem (Fase 3)** — Dynamic factions, consequences, random tables, and handouts
-  - `update_faction_reputation` — Modify faction reputation with BFS propagation to allies/enemies
+- **Narrative Coherence Subsystem (Fases 1-2)** — Complete canon and validation system
+  - `generate_adventure_bible` — Creates canon.json with immutable facts, entities, timeline, rules
+  - `validate_canon` — Validates content proposals against canon (10 rules)
+  - `update_narrative_state` — Tracks session state (clues, quests, deaths, decisions)
+  - `check_consistency` — Full campaign consistency validation
+  - `process_consistency_gate` — Batch validation gate with approve/reject/retry
+- **Living World Subsystem (Fase 3)** — Dynamic factions, consequences, random tables, handouts
+  - `update_faction_reputation` — Modify faction reputation with BFS propagation
   - `generate_random_tables` — Contextualized encounter, rumor, weather, treasure tables
   - `generate_handouts` — Dual-version handouts (player-facing + DM-only)
   - `evaluate_consequences` — Evaluate consequence rules against narrative state
-  - `FactionService` — CRUD + ReputationMatrix + propagation (2-hop cap, circular detection)
-  - `ConsequenceEngine` — Trigger matching, condition evaluation, delayed effects
-  - `RandomTableService` — Canon-seeded contextual table generation
-  - `HandoutService` — Player/DM dual-version generation
-  - `AdaptationPatch` — WorldEvent → markdown patch for DM application
+  - `FactionService`, `ConsequenceEngine`, `RandomTableService`, `HandoutService`
   - Faction Tracker appendix in PDF (Apéndice E)
-- **Validation Engine Rule 10** — `faction_reputation_gate` (hostile factions cannot be helpful without cause)
-
-## [2.0.0] - 2026-05-07
+- **DM Experience (Fase 4)** — Session prep, flowcharts, roster, hooks
+  - `generate_session_prep` — "Previously on...", scenarios, relevant NPCs, reminders
+  - `generate_flowchart` — Mermaid syntax + native SVG (3 detail levels)
+  - `AdventureRoster` — Master table: NPCs, monsters, encounters per act/area
+  - `PlayerHookService` — Template-driven hooks connecting PC backgrounds to plot
+  - Session Zero template auto-generated on campaign creation
+- **Production Polish (Fase 5)** — Caching, benchmarks, CI/CD, docs, release
+  - LRU cache for CanonService (90.9% coverage)
+  - Performance benchmarks (LoadCanon, ValidateAct, ProcessBatch)
+  - Enhanced CI/CD: Go 1.23/1.24 matrix, lint, coverage gate >60%
+  - DM guide (docs/dm-guide.md) and Developer guide (docs/developer-guide.md)
+  - Graceful degradation with CANON_LEGACY_MODE
+  - Dockerfile, Makefile, release scripts
 
 ### Added
 - **Narrative Coherence Subsystem** — Complete canon and validation system for campaign consistency
