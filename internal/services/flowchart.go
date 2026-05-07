@@ -13,11 +13,12 @@ import (
 // FlowchartService generates campaign flowcharts in Mermaid and SVG
 type FlowchartService struct {
 	canonRepo repository.CanonRepository
+	actRepo   repository.ActRepository
 }
 
 // NewFlowchartService creates a new flowchart service
-func NewFlowchartService(canonRepo repository.CanonRepository) *FlowchartService {
-	return &FlowchartService{canonRepo: canonRepo}
+func NewFlowchartService(canonRepo repository.CanonRepository, actRepo repository.ActRepository) *FlowchartService {
+	return &FlowchartService{canonRepo: canonRepo, actRepo: actRepo}
 }
 
 // GenerateMermaid generates Mermaid flowchart syntax for the campaign
@@ -28,10 +29,11 @@ func (s *FlowchartService) GenerateMermaid(ctx context.Context, campaignID strin
 
 	doc, err := s.canonRepo.Load(campaignID)
 	if err != nil {
-		return "", fmt.Errorf("campaign not found: %w", err)
+		// If canon doesn't exist, create a minimal one
+		doc = &domain.CanonDocument{CampaignID: campaignID}
 	}
 
-	nodes := s.buildNodes(doc, detailLevel)
+	nodes := s.buildNodes(ctx, campaignID, doc, detailLevel)
 	if len(nodes) == 0 {
 		return "", fmt.Errorf("campaign has no acts to chart")
 	}
@@ -68,10 +70,11 @@ func (s *FlowchartService) GenerateMermaid(ctx context.Context, campaignID strin
 func (s *FlowchartService) GenerateSVG(ctx context.Context, campaignID string, detailLevel string) (string, error) {
 	doc, err := s.canonRepo.Load(campaignID)
 	if err != nil {
-		return "", fmt.Errorf("campaign not found: %w", err)
+		// If canon doesn't exist, create a minimal one
+		doc = &domain.CanonDocument{CampaignID: campaignID}
 	}
 
-	nodes := s.buildNodes(doc, detailLevel)
+	nodes := s.buildNodes(ctx, campaignID, doc, detailLevel)
 	if len(nodes) == 0 {
 		return "", fmt.Errorf("campaign has no acts to chart")
 	}
@@ -79,7 +82,7 @@ func (s *FlowchartService) GenerateSVG(ctx context.Context, campaignID string, d
 	return s.renderFlowchartSVG(nodes), nil
 }
 
-func (s *FlowchartService) buildNodes(doc *domain.CanonDocument, detailLevel string) []domain.FlowchartNode {
+func (s *FlowchartService) buildNodes(ctx context.Context, campaignID string, doc *domain.CanonDocument, detailLevel string) []domain.FlowchartNode {
 	// Build dead NPC set
 	deadSet := make(map[string]bool)
 	for _, e := range doc.Entities {
@@ -91,7 +94,7 @@ func (s *FlowchartService) buildNodes(doc *domain.CanonDocument, detailLevel str
 	var nodes []domain.FlowchartNode
 	nodeMap := make(map[string]domain.FlowchartNode)
 
-	// Collect act nodes
+	// Collect act nodes from canon
 	for _, e := range doc.Entities {
 		if e.Role == "act" || strings.HasPrefix(e.ID, "act-") {
 			node := domain.FlowchartNode{
@@ -100,6 +103,38 @@ func (s *FlowchartService) buildNodes(doc *domain.CanonDocument, detailLevel str
 				Type:  "act",
 			}
 			nodeMap[node.ID] = node
+		}
+	}
+
+	// If no acts in canon, try loading from filesystem acts
+	if len(nodeMap) == 0 && s.actRepo != nil {
+		acts, err := s.actRepo.List(campaignID)
+		if err == nil {
+			for _, act := range acts {
+				// Extract title from content (first H1 heading)
+				title := fmt.Sprintf("Act %d", act.Number)
+				lines := strings.Split(act.Content, "\n")
+				for _, line := range lines {
+					line = strings.TrimSpace(line)
+					if strings.HasPrefix(line, "# ") {
+						title = strings.TrimPrefix(line, "# ")
+						title = strings.TrimSpace(title)
+						break
+					}
+				}
+				nodeID := sanitizeNodeID(fmt.Sprintf("act-%02d", act.Number))
+				node := domain.FlowchartNode{
+					ID:    nodeID,
+					Label: title,
+					Type:  "act",
+				}
+				// Link acts sequentially
+				if act.Number > 1 {
+					prevID := sanitizeNodeID(fmt.Sprintf("act-%02d", act.Number-1))
+					node.Dependencies = append(node.Dependencies, prevID)
+				}
+				nodeMap[nodeID] = node
+			}
 		}
 	}
 

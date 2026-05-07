@@ -13,7 +13,7 @@ func TestFlowchartService_GenerateMermaid(t *testing.T) {
 	ctx := context.Background()
 	canonRepo := repository.NewMemoryCanonRepository()
 
-	svc := NewFlowchartService(canonRepo)
+	svc := NewFlowchartService(canonRepo, nil)
 
 	seedCanon := func() {
 		doc := &domain.CanonDocument{
@@ -138,7 +138,7 @@ func TestFlowchartService_GenerateSVG(t *testing.T) {
 	ctx := context.Background()
 	canonRepo := repository.NewMemoryCanonRepository()
 
-	svc := NewFlowchartService(canonRepo)
+	svc := NewFlowchartService(canonRepo, nil)
 
 	doc := &domain.CanonDocument{
 		SchemaVersion: domain.SchemaVersionV2,

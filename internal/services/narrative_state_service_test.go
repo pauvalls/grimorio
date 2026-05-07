@@ -162,9 +162,16 @@ func TestNarrativeStateService_Update_NoState(t *testing.T) {
 		SessionSummary: "First session.",
 	}
 
-	_, err := svc.Update(ctx, "missing-campaign", update)
-	if err == nil {
-		t.Fatal("expected error for missing campaign state")
+	// Should create initial state automatically instead of failing
+	updated, err := svc.Update(ctx, "missing-campaign", update)
+	if err != nil {
+		t.Fatalf("expected no error for missing campaign state (should create initial), got: %v", err)
+	}
+	if updated.CurrentSession != 1 {
+		t.Fatalf("expected current session 1, got %d", updated.CurrentSession)
+	}
+	if len(updated.SessionLog) != 1 {
+		t.Fatalf("expected 1 session log entry, got %d", len(updated.SessionLog))
 	}
 }
 

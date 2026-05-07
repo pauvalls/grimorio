@@ -56,7 +56,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	consequenceEngine := services.NewConsequenceEngine(canonRepo)
 	adaptationPatchService := services.NewAdaptationPatchService(actRepo, canonRepo)
 	sessionPrepService := services.NewSessionPrepService(canonRepo, narrativeStateRepo)
-	flowchartService := services.NewFlowchartService(canonRepo)
+	flowchartService := services.NewFlowchartService(canonRepo, actRepo)
 	_ = adaptationPatchService
 
 	// Initialize handlers

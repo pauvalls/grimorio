@@ -13,7 +13,7 @@ import (
 
 func TestFlowchartHandler(t *testing.T) {
 	canonRepo := repository.NewMemoryCanonRepository()
-	svc := services.NewFlowchartService(canonRepo)
+	svc := services.NewFlowchartService(canonRepo, nil)
 	handler := NewFlowchartHandlers(svc)
 
 	// Seed data

@@ -87,9 +87,26 @@ func TestCharacterService_CreateCharacter(t *testing.T) {
 			if char.Status != "alive" {
 				t.Errorf("CreateCharacter() status = %v, want alive", char.Status)
 			}
-			// Check default stats
-			if char.Stats.STR != 10 {
-				t.Errorf("CreateCharacter() STR = %v, want 10", char.Stats.STR)
+			// Check that stats are calculated (not all 10s)
+			if char.Stats.STR == 10 && char.Stats.DEX == 10 && char.Stats.CON == 10 &&
+				char.Stats.INT == 10 && char.Stats.WIS == 10 && char.Stats.CHA == 10 {
+				t.Errorf("CreateCharacter() all stats are 10, expected calculated values")
+			}
+			// Check HP is calculated (not default 10)
+			if char.HP.Maximum == 10 && char.Class != "" {
+				t.Errorf("CreateCharacter() HP = %v, expected calculated value for class %s", char.HP.Maximum, char.Class)
+			}
+			// Check AC is calculated (not default 10)
+			if char.AC == 10 && char.Class != "" {
+				t.Errorf("CreateCharacter() AC = %v, expected calculated value for class %s", char.AC, char.Class)
+			}
+			// Check skills are assigned
+			if len(char.Skills) == 0 && (char.Class != "" || char.Background != "") {
+				t.Errorf("CreateCharacter() no skills assigned")
+			}
+			// Check features are assigned for valid class
+			if len(char.Features) == 0 && char.Class != "" {
+				t.Errorf("CreateCharacter() no features assigned for class %s", char.Class)
 			}
 		})
 	}

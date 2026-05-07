@@ -41,7 +41,25 @@ func (s *NarrativeStateService) Save(ctx context.Context, state *domain.Narrativ
 func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, update domain.StateUpdate) (*domain.NarrativeState, error) {
 	state, err := s.stateRepo.Load(campaignID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load narrative state: %w", err)
+		// If no state exists, create an initial one
+		state = &domain.NarrativeState{
+			SchemaVersion:  domain.SchemaVersionV2,
+			CampaignID:     campaignID,
+			CurrentSession: 0,
+			RevealedClues:  []domain.RevealedClue{},
+			ActiveQuests:   []domain.QuestState{},
+			CompletedQuests: []domain.QuestState{},
+			FailedQuests:   []domain.QuestState{},
+			DeadNPCs:       []domain.NPCDeathRecord{},
+			KeyItems:       []domain.KeyItem{},
+			SessionLog:     []domain.SessionRecord{},
+			DMOverrides:    []domain.DMOverride{},
+			LastUpdated:    time.Now(),
+		}
+		// Save the initial state
+		if saveErr := s.stateRepo.Save(campaignID, state); saveErr != nil {
+			return nil, fmt.Errorf("failed to create initial narrative state: %w", saveErr)
+		}
 	}
 
 	// Append revealed clues
