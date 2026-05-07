@@ -4,3 +4,5 @@ test_e2e
 *.pdf
 *.html
 coverage.out
+.semrel/
+.atl/
