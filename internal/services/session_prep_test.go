@@ -249,4 +249,26 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("missing narrative state returns error", func(t *testing.T) {
+		missingStateCanonRepo := repository.NewMemoryCanonRepository()
+		missingStateRepo := repository.NewMemoryNarrativeStateRepository()
+		missingSvc := NewSessionPrepService(missingStateCanonRepo, missingStateRepo)
+
+		doc := &domain.CanonDocument{
+			SchemaVersion: domain.SchemaVersionV2,
+			CampaignID:    "missing-state-campaign",
+		}
+		_ = missingStateCanonRepo.Save("missing-state-campaign", doc)
+
+		// NOTE: deliberately do NOT save narrative state
+
+		_, _, err := missingSvc.GetPrep(ctx, "missing-state-campaign", 0)
+		if err == nil {
+			t.Fatalf("expected error for missing narrative state, got nil")
+		}
+		if !strings.Contains(err.Error(), "state") {
+			t.Fatalf("expected error to mention 'state', got: %v", err)
+		}
+	})
 }
