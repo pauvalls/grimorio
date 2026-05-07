@@ -1,9 +1,11 @@
 package services
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"text/template"
 
 	"github.com/pauvalls/grimorio/internal/compiler"
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -59,7 +61,57 @@ func (s *CampaignService) CreateCampaign(name, title, setting string) (*domain.C
 		return nil, fmt.Errorf("failed to create campaign: %w", err)
 	}
 
+	if err := s.generateSessionZero(campaign); err != nil {
+		return campaign, fmt.Errorf("campaign created but session-zero generation failed: %w", err)
+	}
+
 	return campaign, nil
+}
+
+// generateSessionZero creates a default session-zero.md for the campaign
+func (s *CampaignService) generateSessionZero(campaign *domain.Campaign) error {
+	tmplStr, err := compiler.GetTemplate("session-zero")
+	if err != nil {
+		return err
+	}
+
+	tmpl, err := template.New("session-zero").Parse(tmplStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse session-zero template: %w", err)
+	}
+
+	data := struct {
+		Name                string
+		Title               string
+		Setting             string
+		LevelRange          string
+		Tone                string
+		HouseRules          string
+		StartingLevel       string
+		AllowedSources      string
+		StatMethod          string
+		SuggestedBackgrounds string
+		ToneDescription     string
+	}{
+		Name:                 campaign.Name,
+		Title:                campaign.Title,
+		Setting:              campaign.Setting,
+		LevelRange:           "1-10",
+		Tone:                 "heroic",
+		HouseRules:           "Ninguna por defecto. Agregá las reglas de casa de tu mesa aquí.",
+		StartingLevel:        "1",
+		AllowedSources:       "Player's Handbook, Dungeon Master's Guide",
+		StatMethod:           "Standard Array (15, 14, 13, 12, 10, 8) o Point Buy",
+		SuggestedBackgrounds: "Acolyte, Criminal, Folk Hero, Sage, Soldier",
+		ToneDescription:      "Una aventura épica donde los héroes enfrentan desafíos crecientes mientras descubren secretos del mundo.",
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("failed to execute session-zero template: %w", err)
+	}
+
+	return s.saveMarkdownFile(campaign.Name, "", "session-zero.md", buf.String())
 }
 
 // GetCampaign retrieves a campaign by name

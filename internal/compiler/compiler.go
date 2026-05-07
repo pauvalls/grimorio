@@ -35,6 +35,9 @@ var mapTemplate string
 //go:embed templates/lore.md.tmpl
 var loreTemplate string
 
+//go:embed templates/session-zero.md.tmpl
+var sessionZeroTemplate string
+
 type Compiler struct {
 	CampaignDir string
 	PDFEngine   string
@@ -66,6 +69,8 @@ func GetTemplate(tmplType string) (string, error) {
 		return mapTemplate, nil
 	case "lore":
 		return loreTemplate, nil
+	case "session-zero":
+		return sessionZeroTemplate, nil
 	default:
 		return "", fmt.Errorf("unknown template type: %s", tmplType)
 	}
@@ -155,6 +160,21 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 
 	htmlParts = append(htmlParts, `</div>`)
 
+	// Session Zero guidance (if available)
+	sessionZeroHTML := c.generateSessionZero()
+	if sessionZeroHTML != "" {
+		htmlParts = append(htmlParts, `<div class="section-break"></div>`)
+		htmlParts = append(htmlParts, sessionZeroHTML)
+		htmlParts = append(htmlParts, `<div class="section-break"></div>`)
+	}
+
+	// Flowchart SVG (if available)
+	flowchartHTML := c.generateFlowchartEmbed()
+	if flowchartHTML != "" {
+		htmlParts = append(htmlParts, flowchartHTML)
+		htmlParts = append(htmlParts, `<div class="section-break"></div>`)
+	}
+
 	// TOC
 	htmlParts = append(htmlParts, `<div class="toc" id="toc"><h2>Table of Contents</h2><ul>`)
 	for _, sec := range sections {
@@ -215,6 +235,13 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 		htmlParts = append(htmlParts, trackerHTML)
 	}
 
+	// Apéndice F: Adventure Roster
+	rosterHTML := c.generateAdventureRoster()
+	if rosterHTML != "" {
+		htmlParts = append(htmlParts, `<div class="section-break"></div>`)
+		htmlParts = append(htmlParts, rosterHTML)
+	}
+
 	htmlParts = append(htmlParts, "</body></html>")
 	return htmlParts, nil
 }
@@ -253,6 +280,180 @@ func (c *Compiler) generateFactionTracker() string {
 	}
 	b.WriteString(`</tbody></table>`)
 	return b.String()
+}
+
+// generateSessionZero reads session-zero.md and converts to HTML
+func (c *Compiler) generateSessionZero() string {
+	path := filepath.Join(c.CampaignDir, "session-zero.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "" // no session zero, skip
+	}
+
+	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-session-zero", new(int), c.seenImages)
+	if strings.TrimSpace(htmlResult) == "" {
+		return ""
+	}
+
+	return `<h2 id="sec-session-zero">Sesión Cero — Guía para el DM</h2>` + htmlResult
+}
+
+// generateFlowchartEmbed embeds the flowchart SVG if available
+func (c *Compiler) generateFlowchartEmbed() string {
+	path := filepath.Join(c.CampaignDir, "flowchart.svg")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "" // no flowchart, skip
+	}
+
+	return fmt.Sprintf(`<h2 id="sec-flowchart">Campaign Flowchart</h2><div class="flowchart">%s</div>`, string(data))
+}
+
+// generateAdventureRoster builds Apéndice F from scanned markdown files
+func (c *Compiler) generateAdventureRoster() string {
+	var npcs, monsters, encounters []string
+
+	// Scan acts for entities
+	actsDir := filepath.Join(c.CampaignDir, "acts")
+	if info, err := os.Stat(actsDir); err == nil && info.IsDir() {
+		files, _ := os.ReadDir(actsDir)
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".md") {
+				content, _ := os.ReadFile(filepath.Join(actsDir, f.Name()))
+				n, m, e := extractRosterEntries(string(content))
+				npcs = append(npcs, n...)
+				monsters = append(monsters, m...)
+				encounters = append(encounters, e...)
+			}
+		}
+	}
+
+	// Scan npcs dir
+	npcsDir := filepath.Join(c.CampaignDir, "npcs")
+	if info, err := os.Stat(npcsDir); err == nil && info.IsDir() {
+		files, _ := os.ReadDir(npcsDir)
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".md") {
+				content, _ := os.ReadFile(filepath.Join(npcsDir, f.Name()))
+				n, _, _ := extractRosterEntries(string(content))
+				npcs = append(npcs, n...)
+			}
+		}
+	}
+
+	// Scan bestiary
+	bestiaryDir := filepath.Join(c.CampaignDir, "bestiary")
+	if info, err := os.Stat(bestiaryDir); err == nil && info.IsDir() {
+		files, _ := os.ReadDir(bestiaryDir)
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".md") {
+				content, _ := os.ReadFile(filepath.Join(bestiaryDir, f.Name()))
+				_, m, _ := extractRosterEntries(string(content))
+				monsters = append(monsters, m...)
+			}
+		}
+	}
+
+	// Scan encounters
+	encountersDir := filepath.Join(c.CampaignDir, "encounters")
+	if info, err := os.Stat(encountersDir); err == nil && info.IsDir() {
+		files, _ := os.ReadDir(encountersDir)
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".md") {
+				content, _ := os.ReadFile(filepath.Join(encountersDir, f.Name()))
+				_, _, e := extractRosterEntries(string(content))
+				encounters = append(encounters, e...)
+			}
+		}
+	}
+
+	if len(npcs) == 0 && len(monsters) == 0 && len(encounters) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString(`<h2 id="sec-adventure-roster">Apéndice F: Adventure Roster</h2>`)
+
+	if len(npcs) > 0 {
+		b.WriteString(`<h3>NPCs</h3><table><thead><tr><th>Nombre</th><th>Rol</th></tr></thead><tbody>`)
+		for _, n := range npcs {
+			parts := strings.SplitN(n, "|", 2)
+			name := parts[0]
+			role := ""
+			if len(parts) > 1 {
+				role = parts[1]
+			}
+			b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(name), html.EscapeString(role)))
+		}
+		b.WriteString(`</tbody></table>`)
+	}
+
+	if len(monsters) > 0 {
+		b.WriteString(`<h3>Monstruos</h3><table><thead><tr><th>Nombre</th><th>CR</th></tr></thead><tbody>`)
+		for _, m := range monsters {
+			parts := strings.SplitN(m, "|", 2)
+			name := parts[0]
+			cr := ""
+			if len(parts) > 1 {
+				cr = parts[1]
+			}
+			b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(name), html.EscapeString(cr)))
+		}
+		b.WriteString(`</tbody></table>`)
+	}
+
+	if len(encounters) > 0 {
+		b.WriteString(`<h3>Encuentros</h3><table><thead><tr><th>Nombre</th></tr></thead><tbody>`)
+		for _, e := range encounters {
+			b.WriteString(fmt.Sprintf(`<tr><td>%s</td></tr>`, html.EscapeString(e)))
+		}
+		b.WriteString(`</tbody></table>`)
+	}
+
+	return b.String()
+}
+
+// extractRosterEntries parses markdown for roster entities
+func extractRosterEntries(md string) (npcs, monsters, encounters []string) {
+	lines := strings.Split(md, "\n")
+	var inNPCs, inMonsters, inEncounters bool
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		lower := strings.ToLower(trimmed)
+
+		if strings.HasPrefix(lower, "## ") || strings.HasPrefix(lower, "### ") {
+			inNPCs = strings.Contains(lower, "npc") || strings.Contains(lower, "personaje")
+			inMonsters = strings.Contains(lower, "monstruo") || strings.Contains(lower, "criatura") || strings.Contains(lower, "bestia")
+			inEncounters = strings.Contains(lower, "encuentro")
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
+			item := strings.TrimPrefix(trimmed, "- ")
+			if strings.HasPrefix(trimmed, "* ") {
+				item = strings.TrimPrefix(trimmed, "* ")
+			}
+			item = strings.TrimSpace(item)
+			// Extract bold name
+			if m := boldRegex.FindStringSubmatch(item); m != nil {
+				name := m[1]
+				rest := strings.TrimSpace(strings.TrimPrefix(item, m[0]))
+				rest = strings.TrimPrefix(rest, "—")
+				rest = strings.TrimPrefix(rest, "-")
+				rest = strings.TrimSpace(rest)
+				if inNPCs {
+					npcs = append(npcs, name+"|"+rest)
+				} else if inMonsters {
+					monsters = append(monsters, name+"|"+rest)
+				} else if inEncounters {
+					encounters = append(encounters, name)
+				}
+			} else if inEncounters && item != "" {
+				encounters = append(encounters, item)
+			}
+		}
+	}
+	return
 }
 
 // verifyImages compares the number of expected images in markdown sources

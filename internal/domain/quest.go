@@ -115,17 +115,6 @@ type TimelineEvent struct {
 	RelatedIDs  []string  `json:"related_ids,omitempty"`
 }
 
-// SessionPrep contains preparation material for a session
-type SessionPrep struct {
-	SessionNumber      int         `json:"session_number"`
-	PreviouslyOn       string      `json:"previously_on"`
-	ActiveQuests       []Quest     `json:"active_quests"`
-	RelevantNPCs       []NPC       `json:"relevant_npcs"`
-	PossibleScenes     []Scene     `json:"possible_scenes"`
-	PreparedEncounters []Encounter `json:"prepared_encounters"`
-	Hooks              []string    `json:"hooks"`
-}
-
 // Scene represents a possible scene for a session
 type Scene struct {
 	Name        string   `json:"name"`

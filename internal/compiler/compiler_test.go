@@ -418,3 +418,95 @@ func TestGenerateFactionTracker_Empty(t *testing.T) {
 		t.Errorf("expected empty tracker for campaign without factions, got: %s", tracker)
 	}
 }
+
+func TestGenerateHTML_WithNewSections(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create campaign structure with new sections
+	_ = os.WriteFile(filepath.Join(tmpDir, "lore.md"), []byte("# Lore\n\nSome lore text."), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte("# Session Zero\n\nSafety tools and guidelines."), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "flowchart.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100"/></svg>`), 0644)
+
+	// Create acts with NPCs and encounters
+	actsDir := filepath.Join(tmpDir, "acts")
+	_ = os.MkdirAll(actsDir, 0755)
+	_ = os.WriteFile(filepath.Join(actsDir, "act-01.md"), []byte(`# Acto 1
+
+## NPCs presentes
+- **Eldrin** — Mago
+
+## Monstruos
+- **Goblin** (CR 1/4)
+
+## Encuentros
+- Emboscada
+`), 0644)
+
+	c := New(tmpDir, "wkhtmltopdf")
+	htmlParts, err := c.generateHTML("Test Campaign")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	html := strings.Join(htmlParts, "\n")
+
+	// Verify Session Zero heading
+	if !strings.Contains(html, "Sesión Cero") {
+		t.Errorf("expected Session Zero heading in HTML, got: %s", html)
+	}
+
+	// Verify flowchart SVG
+	if !strings.Contains(html, "<svg") {
+		t.Errorf("expected flowchart SVG in HTML, got: %s", html)
+	}
+
+	// Verify Adventure Roster (Apéndice F)
+	if !strings.Contains(html, "Apéndice F: Adventure Roster") {
+		t.Errorf("expected Apéndice F heading in HTML, got: %s", html)
+	}
+
+	// Verify roster tables
+	if !strings.Contains(html, "Eldrin") {
+		t.Errorf("expected Eldrin in roster HTML, got: %s", html)
+	}
+	if !strings.Contains(html, "Goblin") {
+		t.Errorf("expected Goblin in roster HTML, got: %s", html)
+	}
+	if !strings.Contains(html, "Emboscada") {
+		t.Errorf("expected Emboscada in roster HTML, got: %s", html)
+	}
+}
+
+func TestExtractRosterEntries(t *testing.T) {
+	md := `# Acto 1
+
+## NPCs presentes
+- **Eldrin** — Mago
+- **Thorn** — Guerrero
+
+## Monstruos
+- **Goblin** (CR 1/4)
+
+## Encuentros
+- Emboscada
+- Defensa
+`
+	npcs, monsters, encounters := extractRosterEntries(md)
+
+	if len(npcs) != 2 {
+		t.Errorf("expected 2 NPCs, got %d", len(npcs))
+	}
+	if len(monsters) != 1 {
+		t.Errorf("expected 1 monster, got %d", len(monsters))
+	}
+	if len(encounters) != 2 {
+		t.Errorf("expected 2 encounters, got %d", len(encounters))
+	}
+
+	if !strings.Contains(npcs[0], "Eldrin") {
+		t.Errorf("expected Eldrin in NPCs, got %v", npcs)
+	}
+	if !strings.Contains(monsters[0], "Goblin") {
+		t.Errorf("expected Goblin in monsters, got %v", monsters)
+	}
+}

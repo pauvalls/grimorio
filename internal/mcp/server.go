@@ -45,6 +45,8 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	handoutService := services.NewHandoutService(questRepo, canonRepo)
 	consequenceEngine := services.NewConsequenceEngine(canonRepo)
 	adaptationPatchService := services.NewAdaptationPatchService(actRepo, canonRepo)
+	sessionPrepService := services.NewSessionPrepService(canonRepo, narrativeStateRepo)
+	flowchartService := services.NewFlowchartService(canonRepo)
 	_ = adaptationPatchService
 
 	// Initialize handlers
@@ -57,6 +59,8 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	tableHandlers := handlers.NewTableHandlers(tableService)
 	handoutHandlers := handlers.NewHandoutHandlers(handoutService)
 	consequenceHandlers := handlers.NewConsequenceHandlers(consequenceEngine, narrativeStateService)
+	sessionPrepHandlers := handlers.NewSessionPrepHandlers(sessionPrepService)
+	flowchartHandlers := handlers.NewFlowchartHandlers(flowchartService)
 
 	// Register tools
 	// Campaign management
@@ -271,6 +275,18 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithDescription("Evaluate consequence rules against narrative state"),
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 	), consequenceHandlers.HandleEvaluateConsequences())
+
+	s.AddTool(mcp.NewTool("generate_session_prep",
+		mcp.WithDescription("Generate a DM prep sheet for the next session"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithNumber("session_num", mcp.Description("Session number (defaults to current+1)")),
+	), sessionPrepHandlers.HandleGenerateSessionPrep())
+
+	s.AddTool(mcp.NewTool("generate_flowchart",
+		mcp.WithDescription("Generate a campaign flowchart in Mermaid and SVG"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("detail_level", mcp.Description("Detail level: overview, act, decision"), mcp.DefaultString("overview")),
+	), flowchartHandlers.HandleGenerateFlowchart())
 
 	return s
 }
