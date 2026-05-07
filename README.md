@@ -108,38 +108,99 @@ Phase 3-13: End-to-end orchestration by grimorio-architect
 ### Architecture
 
 ```
-OpenCode / Claude Code
-    │
-    ├─ Agent grimorio-architect → End-to-end orchestration (all phases)
-    ├─ Agent grimorio-orchestrator → DEPRECATED (architect handles this now)
-    ├─ Agent grimorio-artist → Prepares image specs + updates markdown references
-    ├─ Agent grimorio-cartographer → SVG battle maps + decorative dividers
-    ├─ Command /grimorio        → Triggers the workflow above
-    └─ Skill dnd-5e-srd         → D&D 5e rules context
-         │
-         ▼
-    MCP Server (Go, stdio)
-         │
-         ├─ create_campaign  → Directory structure
-         ├─ get_template     → Structured content templates
-         ├─ save_act         → Saves acts as Markdown
-         ├─ save_npcs        → Saves characters and factions
-         ├─ save_bestiary    → Saves stat blocks
-         ├─ save_encounters  → Saves encounters
-         ├─ save_maps        → Saves scenes
-         ├─ generate_map     → Procedural SVG battle maps (100% local)
-         ├─ generate_divider → Decorative SVG section dividers (100% local)
-         ├─ generate_image   → AI images via Pollinations.ai (FREE) or DALL-E (optional)
-         ├─ generate_images_batch → Generate multiple AI images in parallel (bulk NPC portraits, scenes)
-         ├─ compile_pdf      → Generates D&D adventure book (Lore → Acts → Appendices)
-         │
-         ├─ Narrative Coherence (v2.0)
-         │   ├─ generate_adventure_bible → Creates canon.json (facts, entities, rules, timeline)
-         │   ├─ validate_canon           → Validates content proposals against canon
-         │   ├─ update_narrative_state   → Tracks session state (clues, quests, deaths)
-         │   ├─ check_consistency        → Full campaign consistency validation
-         │   └─ process_consistency_gate → Batch validation gate (approve/reject/retry)
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         OpenCode / Claude Code                          │
+│                                                                         │
+│  ┌─────────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │
+│  │ /grimorio       │  │ grimorio-    │  │ grimorio-artist          │   │
+│  │ Command         │──│ architect    │  │ (Image specs + refs)     │   │
+│  │ (Entry point)   │  │ (Orchestrator│  └──────────────────────────┘   │
+│  └─────────────────┘  │  of ALL      │  ┌──────────────────────────┐   │
+│                       │  phases)     │  │ grimorio-cartographer    │   │
+│                       └──────┬───────┘  │ (SVG maps + dividers)    │   │
+│                              │          └──────────────────────────┘   │
+│                              │                                          │
+│  Content Sub-agents          │          Skill: dnd-5e-srd              │
+│  (delegated by architect):   │          (D&D 5e rules context)         │
+│  ├─ grimorio-lore            │                                          │
+│  ├─ grimorio-npc             │                                          │
+│  ├─ grimorio-bestiary        │                                          │
+│  ├─ grimorio-encounters      │                                          │
+│  ├─ grimorio-maps            │                                          │
+│  ├─ grimorio-acts            │                                          │
+│  ├─ grimorio-quests          │                                          │
+│  └─ grimorio-characters      │                                          │
+│                              ▼                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         MCP Server (Go, stdio)                          │
+│                                                                         │
+│  ┌────────────────────────────┐  ┌──────────────────────────────────┐  │
+│  │   Content Tools (v1)       │  │   Narrative Coherence (v2.0)     │  │
+│  ├────────────────────────────┤  ├──────────────────────────────────┤  │
+│  │ create_campaign            │  │ generate_adventure_bible         │  │
+│  │   → Directory structure    │  │   → Creates canon.json           │  │
+│  │ get_template               │  │ validate_canon                   │  │
+│  │   → Markdown templates     │  │   → Validates against canon      │  │
+│  │ save_act / save_npcs       │  │ update_narrative_state           │  │
+│  │ save_bestiary / save_maps  │  │   → Tracks session state         │  │
+│  │ save_encounters            │  │ check_consistency                │  │
+│  └────────────────────────────┘  │   → Full campaign validation     │  │
+│  ┌────────────────────────────┐  │ process_consistency_gate         │  │
+│  │   Asset Tools              │  │   → Batch approve/reject/retry   │  │
+│  ├────────────────────────────┤  └──────────────────────────────────┘  │
+│  │ generate_map               │                                        │
+│  │   → SVG battle maps        │  ┌──────────────────────────────────┐  │
+│  │ generate_divider           │  │   Output                           │  │
+│  │   → SVG dividers           │  │   compile_pdf                    │  │
+│  │ generate_image             │  │     → D&D adventure book PDF     │  │
+│  │   → AI art (FREE)          │  │     → Lore → Acts → Appendices   │  │
+│  └────────────────────────────┘  └──────────────────────────────────┘  │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Agent Hierarchy (grimorio-architect orchestrates all):**
+
+```
+grimorio-architect (Primary Orchestrator)
+    │
+    ├─ Phase 1: Requirements gathering (interactive)
+    ├─ Phase 2: Campaign creation + Adventure Bible (canon)
+    │
+    ├─ Batch 1 (PARALLEL delegate)
+    │   ├─ grimorio-npc         → NPCs + factions
+    │   ├─ grimorio-bestiary    → Monster stat blocks
+    │   └─ grimorio-maps        → Location descriptions
+    │   → Consistency Gate validation
+    │
+    ├─ Batch 2 (PARALLEL delegate)
+    │   ├─ grimorio-lore        → World backstory
+    │   ├─ grimorio-quests      → Personal quests
+    │   ├─ grimorio-encounters  → Combat challenges
+    │   └─ grimorio-characters  → Pre-gen PCs
+    │   → Consistency Gate validation
+    │   → Update narrative state
+    │
+    ├─ Batch 3 (PARALLEL delegate)
+    │   ├─ grimorio-cartographer → SVG maps + dividers
+    │   └─ grimorio-acts         → Narrative acts
+    │   → Consistency Gate validation
+    │
+    ├─ Phase 6: grimorio-artist   → Image batch spec
+    ├─ Phase 7: AI image generation (sequential MCP calls)
+    ├─ Phase 8: grimorio-artist   → Update markdown references
+    ├─ Phase 9: Final consistency check
+    └─ Phase 10: PDF compilation
+```
+
+> **Development Rule:** Every new MCP tool must update:
+> 1. The relevant agent(s) that use it
+> 2. The architecture diagrams above
+> 3. The MCP tools table in this README
+> 4. The install.sh output (if user-facing)
 
 ### Image Generation
 
@@ -574,38 +635,99 @@ Fase 3-13: Orquestación completa por grimorio-architect
 ### Arquitectura
 
 ```
-OpenCode / Claude Code
-    │
-    ├─ Agente grimorio-architect → Orquestación completa (todas las fases)
-    ├─ Agente grimorio-orchestrator → DEPRECATED (architect lo maneja ahora)
-    ├─ Agente grimorio-artist → Especificaciones de imágenes + actualiza referencias markdown
-    ├─ Agente grimorio-cartographer → Mapas de batalla SVG + divisores decorativos
-    ├─ Comando /grimorio         → Dispara el flujo de arriba
-    └─ Skill dnd-5e-srd          → Contexto de reglas D&D 5e
-         │
-         ▼
-    Servidor MCP (Go, stdio)
-         │
-         ├─ create_campaign  → Estructura de carpetas
-         ├─ get_template     → Templates de contenido estructurado
-         ├─ save_act         → Guarda actos en Markdown
-         ├─ save_npcs        → Guarda personajes y facciones
-         ├─ save_bestiary    → Guarda stat blocks
-         ├─ save_encounters  → Guarda encuentros
-         ├─ save_maps        → Guarda escenas
-         ├─ generate_map     → Mapas SVG procedurales (100% local)
-         ├─ generate_divider → Divisores decorativos SVG (100% local)
-         ├─ generate_image   → Imágenes IA vía Pollinations.ai (GRATIS) o DALL-E (opcional)
-         ├─ generate_images_batch → Genera múltiples imágenes IA en paralelo (retratos NPCs, escenas)
-         ├─ compile_pdf      → Genera PDF estilo libro de aventura D&D (Lore → Actos → Apéndices)
-         │
-         ├─ Coherencia Narrativa (v2.0)
-         │   ├─ generate_adventure_bible → Crea canon.json (hechos, entidades, reglas, timeline)
-         │   ├─ validate_canon           → Valida propuestas de contenido contra el canon
-         │   ├─ update_narrative_state   → Seguimiento de estado de sesión (pistas, quests, muertes)
-         │   ├─ check_consistency        → Validación completa de consistencia de campaña
-         │   └─ process_consistency_gate → Gate de validación por lotes (aprobar/rechazar/reintentar)
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         OpenCode / Claude Code                          │
+│                                                                         │
+│  ┌─────────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │
+│  │ Comando         │  │ grimorio-    │  │ grimorio-artist          │   │
+│  │ /grimorio       │──│ architect    │  │ (Specs imágenes + refs)  │   │
+│  │ (Punto entrada) │  │ (Orquestador │  └──────────────────────────┘   │
+│  └─────────────────┘  │  de TODAS    │  ┌──────────────────────────┐   │
+│                       │  las fases)  │  │ grimorio-cartographer    │   │
+│                       └──────┬───────┘  │ (Mapas SVG + divisores)  │   │
+│                              │          └──────────────────────────┘   │
+│                              │                                          │
+│  Sub-agentes de contenido    │          Skill: dnd-5e-srd              │
+│  (delegados por architect):  │          (Contexto reglas D&D 5e)       │
+│  ├─ grimorio-lore            │                                          │
+│  ├─ grimorio-npc             │                                          │
+│  ├─ grimorio-bestiary        │                                          │
+│  ├─ grimorio-encounters      │                                          │
+│  ├─ grimorio-maps            │                                          │
+│  ├─ grimorio-acts            │                                          │
+│  ├─ grimorio-quests          │                                          │
+│  └─ grimorio-characters      │                                          │
+│                              ▼                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Servidor MCP (Go, stdio)                        │
+│                                                                         │
+│  ┌────────────────────────────┐  ┌──────────────────────────────────┐  │
+│  │   Herramientas v1          │  │   Coherencia Narrativa (v2.0)    │  │
+│  ├────────────────────────────┤  ├──────────────────────────────────┤  │
+│  │ create_campaign            │  │ generate_adventure_bible         │  │
+│  │   → Estructura directorios │  │   → Crea canon.json              │  │
+│  │ get_template               │  │ validate_canon                   │  │
+│  │   → Templates Markdown     │  │   → Valida contra canon          │  │
+│  │ save_act / save_npcs       │  │ update_narrative_state           │  │
+│  │ save_bestiary / save_maps  │  │   → Seguimiento de estado        │  │
+│  │ save_encounters            │  │ check_consistency                │  │
+│  └────────────────────────────┘  │   → Validación completa          │  │
+│  ┌────────────────────────────┐  │ process_consistency_gate         │  │
+│  │   Herramientas de Assets   │  │   → Gate aprobar/rechazar/retry  │  │
+│  ├────────────────────────────┤  └──────────────────────────────────┘  │
+│  │ generate_map               │                                        │
+│  │   → Mapas batalla SVG      │  ┌──────────────────────────────────┐  │
+│  │ generate_divider           │  │   Output                           │  │
+│  │   → Divisores SVG          │  │ compile_pdf                      │  │
+│  │ generate_image             │  │   → PDF libro aventura D&D       │  │
+│  │   → Arte IA (GRATIS)       │  │   → Lore → Actos → Apéndices     │  │
+│  └────────────────────────────┘  └──────────────────────────────────┘  │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Jerarquía de Agentes (grimorio-architect orquesta todo):**
+
+```
+grimorio-architect (Orquestador Principal)
+    │
+    ├─ Fase 1: Requisitos (interactivo)
+    ├─ Fase 2: Crear campaña + Biblia de Aventura (canon)
+    │
+    ├─ Batch 1 (PARALELO delegate)
+    │   ├─ grimorio-npc         → NPCs + facciones
+    │   ├─ grimorio-bestiary    → Stat blocks monstruos
+    │   └─ grimorio-maps        → Descripciones ubicaciones
+    │   → Validación Consistency Gate
+    │
+    ├─ Batch 2 (PARALELO delegate)
+    │   ├─ grimorio-lore        → Trasfondo mundo
+    │   ├─ grimorio-quests      → Misiones personales
+    │   ├─ grimorio-encounters  → Desafíos combate
+    │   └─ grimorio-characters  → PJs pre-generados
+    │   → Validación Consistency Gate
+    │   → Actualizar estado narrativo
+    │
+    ├─ Batch 3 (PARALELO delegate)
+    │   ├─ grimorio-cartographer → Mapas SVG + divisores
+    │   └─ grimorio-acts         → Actos narrativos
+    │   → Validación Consistency Gate
+    │
+    ├─ Fase 6: grimorio-artist   → Especificación batch imágenes
+    ├─ Fase 7: Generación imágenes IA (llamadas MCP secuenciales)
+    ├─ Fase 8: grimorio-artist   → Actualizar referencias markdown
+    ├─ Fase 9: Consistency check final
+    └─ Fase 10: Compilación PDF
+```
+
+> **Regla de Desarrollo:** Cada nueva herramienta MCP debe actualizar:
+> 1. El/los agente(s) relevante(s) que la usen
+> 2. Los diagramas de arquitectura de arriba
+> 3. La tabla de herramientas MCP en este README
+> 4. La salida de install.sh (si es visible para el usuario)
 
 ### Estructura del Plugin
 
