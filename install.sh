@@ -163,12 +163,16 @@ build_binary() {
     export PATH="${HOME}/.local/go/bin:$PATH"
 
     go build -o grimorio ./cmd/grimorio
+    go build -o migrate-v1-to-v2 ./cmd/migrate-v1-to-v2
 
     mkdir -p "$BINARY_DIR"
     cp grimorio "$BINARY_DIR/"
+    cp migrate-v1-to-v2 "$BINARY_DIR/"
     chmod +x "$BINARY_DIR/grimorio"
+    chmod +x "$BINARY_DIR/migrate-v1-to-v2"
 
     success "Binary built and installed to $BINARY_DIR/grimorio"
+    success "Migration tool built and installed to $BINARY_DIR/migrate-v1-to-v2"
 }
 
 setup_plugin() {
@@ -181,6 +185,7 @@ setup_plugin() {
     cp -rf "$INSTALL_DIR/agents" "$CLAUDE_PLUGIN_DIR/"
     cp -rf "$INSTALL_DIR/skills" "$CLAUDE_PLUGIN_DIR/"
     cp -f "$BINARY_DIR/grimorio" "$CLAUDE_PLUGIN_DIR/"
+    cp -f "$BINARY_DIR/migrate-v1-to-v2" "$CLAUDE_PLUGIN_DIR/"
 
     # Always update commands/grimorio.md to latest version
     if [ -f "$INSTALL_DIR/commands/grimorio.md" ]; then
@@ -219,6 +224,7 @@ EOF
     cp -rf "$INSTALL_DIR/agents" "$OPENCODE_PLUGIN_DIR/"
     cp -rf "$INSTALL_DIR/skills" "$OPENCODE_PLUGIN_DIR/"
     cp -f "$BINARY_DIR/grimorio" "$OPENCODE_PLUGIN_DIR/"
+    cp -f "$BINARY_DIR/migrate-v1-to-v2" "$OPENCODE_PLUGIN_DIR/"
 
     # Always update commands/grimorio.md to latest version
     if [ -f "$INSTALL_DIR/commands/grimorio.md" ]; then
@@ -619,6 +625,33 @@ TEMPLATE_EOF
     fi
 }
 
+migrate_existing_campaigns() {
+    local CAMPAIGNS_DIR="${HOME}/campaigns"
+    
+    if [ ! -d "$CAMPAIGNS_DIR" ]; then
+        return 0
+    fi
+
+    # Check if there are any campaigns without canon.json (v1 format)
+    local needs_migration=false
+    for campaign_dir in "$CAMPAIGNS_DIR"/*/; do
+        if [ -d "$campaign_dir" ] && [ ! -f "$campaign_dir/canon.json" ]; then
+            needs_migration=true
+            break
+        fi
+    done
+
+    if [ "$needs_migration" = true ]; then
+        log "Found existing v1 campaigns. Running migration..."
+        if [ -f "$BINARY_DIR/migrate-v1-to-v2" ]; then
+            "$BINARY_DIR/migrate-v1-to-v2" "$CAMPAIGNS_DIR" || warn "Migration had issues, but installation continues"
+            success "Migration complete. Backups saved as .v1-backup/"
+        else
+            warn "Migration tool not found. Run manually: migrate-v1-to-v2 ~/campaigns"
+        fi
+    fi
+}
+
 print_instructions() {
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
@@ -665,11 +698,21 @@ print_instructions() {
     echo -e "     - Raphael AI (raphael.app, fallback)"
     echo -e "   • DALL-E (optional) → Set OPENAI_API_KEY for higher quality"
     echo ""
-    echo -e "7. ${YELLOW}Update grimorio later:${NC}"
+    echo -e "7. ${YELLOW}Narrative Coherence Tools (NEW v2.0):${NC}"
+    echo -e "   • generate_adventure_bible → Creates canon.json with facts, entities, rules"
+    echo -e "   • validate_canon → Validates content against canon (prevents NPC resurrections!)"
+    echo -e "   • update_narrative_state → Track session state (clues, quests, deaths)"
+    echo -e "   • check_consistency → Full campaign validation before PDF"
+    echo ""
+    echo -e "8. ${YELLOW}Update grimorio later:${NC}"
     echo -e "   Just re-run: ${GREEN}curl -sSL ${REPO_URL}/raw/main/install.sh | bash${NC}"
+    echo ""
+    echo -e "9. ${YELLOW}Migration from v1:${NC}"
+    echo -e "   If you have old campaigns: ${GREEN}migrate-v1-to-v2 ~/campaigns${NC}"
     echo ""
     echo -e "${BLUE}Manual usage (without AI tools):${NC}"
     echo -e "   ${GREEN}grimorio${NC} - Runs the MCP server"
+    echo -e "   ${GREEN}migrate-v1-to-v2 ~/campaigns${NC} - Migrate old campaigns"
     echo ""
     echo -e "${YELLOW}Need help?${NC} Check the README at: ${GREEN}${INSTALL_DIR}/README.md${NC}"
     echo ""
@@ -693,6 +736,7 @@ main() {
     install_wkhtmltopdf
     setup_repo
     build_binary
+    migrate_existing_campaigns
     setup_plugin
     configure_shell
     configure_opencode_command

@@ -131,7 +131,13 @@ OpenCode / Claude Code
          ├─ generate_divider → Decorative SVG section dividers (100% local)
          ├─ generate_image   → AI images via Pollinations.ai (FREE) or DALL-E (optional)
          ├─ generate_images_batch → Generate multiple AI images in parallel (bulk NPC portraits, scenes)
-         └─ compile_pdf      → Generates D&D adventure book (Lore → Acts → Appendices)
+         ├─ compile_pdf      → Generates D&D adventure book (Lore → Acts → Appendices)
+         │
+         ├─ Narrative Coherence (v2.0)
+         │   ├─ generate_adventure_bible → Creates canon.json (facts, entities, rules, timeline)
+         │   ├─ validate_canon           → Validates content proposals against canon
+         │   ├─ update_narrative_state   → Tracks session state (clues, quests, deaths)
+         │   └─ check_consistency        → Full campaign consistency validation
 ```
 
 ### Image Generation
@@ -215,9 +221,14 @@ All images (SVG maps, AI-generated PNGs, dividers) are automatically embedded in
 
 Source code structure:
     │
-    ├─ cmd/grimorio/                     # Entry point (stdio MCP server)
+    ├─ cmd/
+    │   ├─ grimorio/                     # Entry point (stdio MCP server)
+    │   └─ migrate-v1-to-v2/             # Migration tool v1→v2
     ├─ internal/
+    │   ├── domain/                      # Domain models (Canon, NarrativeState, Validation)
     │   ├── mcp/server.go                # MCP tool definitions + handlers
+    │   ├── services/                    # Business logic (CanonService, ValidationEngine)
+    │   ├── repository/                  # Persistence layer (filesystem + memory)
     │   ├── compiler/compiler.go         # Markdown → HTML → PDF pipeline
     │   ├── svg/svg.go                   # Procedural SVG generator (maps, dividers)
     │   ├── image/                       # Image provider abstraction (Pollinations.ai, DALL-E)
@@ -263,6 +274,8 @@ Every generated campaign lives in its own directory:
 └── sunken-city/
     ├── README.md
     ├── lore.md
+    ├── canon.json              ← NEW: Canonical facts, entities, timeline, rules
+    ├── narrative_state.json    ← NEW: Session state (clues, quests, deaths, decisions)
     ├── acts/
     │   ├── act_1_the_descent.md
     │   ├── act_2_the_feast.md
@@ -338,6 +351,107 @@ All tools available through the MCP server:
 | `generate_image` | AI | Single image generation via Pollinations.ai (FREE) or DALL-E (optional) |
 | `generate_images_batch` | AI | Bulk image generation — generates multiple images in parallel (NPC portraits, scene illustrations) |
 | `compile_pdf` | PDF | Compiles all content into styled D&D adventure PDF (Lore → Acts → Apéndices) |
+
+#### Narrative Coherence Tools (NEW v2.0)
+
+Grimorio now includes a **narrative coherence subsystem** that validates campaign consistency across all generated content:
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `generate_adventure_bible` | Canon | Creates the canonical document with facts, entities, timeline, and world rules |
+| `validate_canon` | Validation | Validates content proposals against canon (checks NPC deaths, lore consistency, entity existence) |
+| `update_narrative_state` | State | Updates campaign state after sessions (revealed clues, completed quests, dead NPCs, key decisions) |
+| `check_consistency` | Validation | Runs full campaign consistency check (dead NPCs appearing alive, lore violations, missing entities) |
+
+**How it works:**
+1. **Adventure Bible** (`generate_adventure_bible`) — Creates a `canon.json` with immutable facts, entities (NPCs, locations, items), timeline, and world rules
+2. **Content Validation** (`validate_canon`) — Before saving any act, quest, or encounter, the system checks:
+   - Are referenced NPCs still alive?
+   - Do entities exist in the canon?
+   - Does content violate world rules (e.g., "magic is banned in this city")?
+3. **State Tracking** (`update_narrative_state`) — After each session, record:
+   - Which clues were revealed
+   - Which quests were completed
+   - Which NPCs died
+   - Key decisions made by players
+4. **Consistency Check** (`check_consistency`) — Validates the entire campaign before PDF compilation
+
+### Campaign File Structure (v2.0)
+
+Every generated campaign now includes coherence metadata:
+
+```
+~/campaigns/
+└── sunken-city/
+    ├── README.md
+    ├── lore.md
+    ├── canon.json              ← NEW: Canonical facts, entities, timeline, rules
+    ├── narrative_state.json    ← NEW: Session state (clues, quests, deaths, decisions)
+    ├── acts/
+    │   ├── act_1_the_descent.md
+    │   ├── act_2_the_feast.md
+    │   └── act_3_the_ritual.md
+    ├── npcs/
+    │   └── npcs_and_factions.md
+    ├── bestiary/
+    │   └── bestiary.md
+    ├── encounters/
+    │   └── encounters.md
+    ├── maps/
+    │   └── maps_and_scenes.md
+    ├── assets/
+    │   ├── cover-art.png
+    │   ├── npc-eldric.png
+    │   ├── dungeon-map.svg
+    │   └── ornate-divider.svg
+    ├── campaign.html
+    └── campaign.pdf
+```
+
+** canon.json structure:**
+```json
+{
+  "schema_version": "2.0",
+  "campaign_id": "sunken-city",
+  "facts": [
+    {
+      "id": "fact-001",
+      "category": "lore",
+      "statement": "The curse comes from the dead god Morbus",
+      "immutable": true
+    }
+  ],
+  "entities": [
+    {
+      "id": "npc-lord-vex",
+      "name": "Lord Vex",
+      "type": "npc",
+      "role": "ally",
+      "canon_state": "alive",
+      "motivation": "Protect the city at all costs",
+      "secret": "His family awakened Morbus 200 years ago"
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule-001",
+      "domain": "magic",
+      "statement": "Arcane magic is banned in the city"
+    }
+  ]
+}
+```
+
+### Migration from v1 to v2
+
+If you have existing campaigns created before v2.0:
+
+```bash
+# Migrate all campaigns in ~/campaigns/
+go run ./cmd/migrate-v1-to-v2 ~/campaigns
+```
+
+This creates `canon.json` and `narrative_state.json` for each campaign, with a `.v1-backup/` directory for safety.
 
 ### Development
 
@@ -477,7 +591,13 @@ OpenCode / Claude Code
          ├─ generate_divider → Divisores decorativos SVG (100% local)
          ├─ generate_image   → Imágenes IA vía Pollinations.ai (GRATIS) o DALL-E (opcional)
          ├─ generate_images_batch → Genera múltiples imágenes IA en paralelo (retratos NPCs, escenas)
-         └─ compile_pdf      → Genera PDF estilo libro de aventura D&D (Lore → Actos → Apéndices)
+         ├─ compile_pdf      → Genera PDF estilo libro de aventura D&D (Lore → Actos → Apéndices)
+         │
+         ├─ Coherencia Narrativa (v2.0)
+         │   ├─ generate_adventure_bible → Crea canon.json (hechos, entidades, reglas, timeline)
+         │   ├─ validate_canon           → Valida propuestas de contenido contra el canon
+         │   ├─ update_narrative_state   → Seguimiento de estado de sesión (pistas, quests, muertes)
+         │   └─ check_consistency        → Validación completa de consistencia de campaña
 ```
 
 ### Estructura del Plugin
@@ -501,9 +621,14 @@ OpenCode / Claude Code
 
 Estructura del código fuente:
     │
-    ├─ cmd/grimorio/                     # Punto de entrada (servidor MCP stdio)
+    ├─ cmd/
+    │   ├─ grimorio/                     # Punto de entrada (servidor MCP stdio)
+    │   └─ migrate-v1-to-v2/             # Herramienta de migración v1→v2
     ├─ internal/
+    │   ├── domain/                      # Modelos de dominio (Canon, NarrativeState, Validation)
     │   ├── mcp/server.go                # Definiciones de herramientas MCP + handlers
+    │   ├── services/                    # Lógica de negocio (CanonService, ValidationEngine)
+    │   ├── repository/                  # Capa de persistencia (filesystem + memory)
     │   ├── compiler/compiler.go         # Pipeline Markdown → HTML → PDF
     │   ├── svg/svg.go                   # Generador SVG procedural (mapas, divisores)
     │   ├── image/                       # Abstracción de proveedores de imagen (Pollinations.ai, DALL-E)
@@ -549,6 +674,8 @@ Cada campaña generada vive en su propio directorio:
 └── ciudad-sumergida/
     ├── README.md
     ├── lore.md
+    ├── canon.json              ← NUEVO: Hechos canónicos, entidades, timeline, reglas
+    ├── narrative_state.json    ← NUEVO: Estado de sesión (pistas, quests, muertes, decisiones)
     ├── acts/
     │   ├── act_1_el_descenso.md
     │   ├── act_2_el_festin.md
@@ -624,6 +751,41 @@ Todas las herramientas disponibles a través del servidor MCP:
 | `generate_image` | IA | Generación individual de imágenes vía Pollinations.ai (GRATIS) o DALL-E (opcional) |
 | `generate_images_batch` | IA | Generación masiva de imágenes en paralelo (retratos NPCs, ilustraciones de escenas) |
 | `compile_pdf` | PDF | Compila todo en PDF estilo aventura D&D profesional (Lore → Actos → Apéndices) |
+
+#### Herramientas de Coherencia Narrativa (NUEVO v2.0)
+
+Grimorio ahora incluye un **subsistema de coherencia narrativa** que valida la consistencia de la campaña en todo el contenido generado:
+
+| Herramienta | Tipo | Descripción |
+|------------|------|-------------|
+| `generate_adventure_bible` | Canon | Crea el documento canónico con hechos, entidades, timeline y reglas del mundo |
+| `validate_canon` | Validación | Valida propuestas de contenido contra el canon (verifica muertes de NPCs, consistencia del lore, existencia de entidades) |
+| `update_narrative_state` | Estado | Actualiza el estado de la campaña después de sesiones (pistas reveladas, quests completadas, NPCs muertos, decisiones clave) |
+| `check_consistency` | Validación | Ejecuta validación completa de consistencia de campaña (NPCs muertos que aparecen vivos, violaciones de lore, entidades faltantes) |
+
+**Cómo funciona:**
+1. **Biblia de Aventura** (`generate_adventure_bible`) — Crea un `canon.json` con hechos inmutables, entidades (NPCs, localizaciones, items), timeline y reglas del mundo
+2. **Validación de Contenido** (`validate_canon`) — Antes de guardar cualquier acto, quest o encuentro, el sistema verifica:
+   - ¿Los NPCs referenciados siguen vivos?
+   - ¿Las entidades existen en el canon?
+   - ¿El contenido viola reglas del mundo (ej., "la magia está prohibida en esta ciudad")?
+3. **Seguimiento de Estado** (`update_narrative_state`) — Después de cada sesión, registra:
+   - Qué pistas fueron reveladas
+   - Qué quests se completaron
+   - Qué NPCs murieron
+   - Decisiones clave de los jugadores
+4. **Verificación de Consistencia** (`check_consistency`) — Valida toda la campaña antes de la compilación del PDF
+
+### Migración de v1 a v2
+
+Si tenés campañas existentes creadas antes de v2.0:
+
+```bash
+# Migra todas las campañas en ~/campaigns/
+go run ./cmd/migrate-v1-to-v2 ~/campaigns
+```
+
+Esto crea `canon.json` y `narrative_state.json` para cada campaña, con un directorio `.v1-backup/` por seguridad.
 
 ### Generación de Imágenes
 
