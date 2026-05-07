@@ -364,3 +364,57 @@ func TestVerifyImages_Mismatch(t *testing.T) {
 		t.Error("ok = true, want false")
 	}
 }
+
+func TestGenerateFactionTracker(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create factions directory and reputation matrix
+	factionDir := filepath.Join(tmpDir, "factions")
+	if err := os.MkdirAll(factionDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	matrixData := `{
+		"campaign_id": "test-campaign",
+		"entries": [
+			{"faction_id": "faction-thieves", "party_id": "party-1", "score": 15, "status": "friendly"},
+			{"faction_id": "faction-guards", "party_id": "party-1", "score": -20, "status": "hostile"}
+		]
+	}`
+	if err := os.WriteFile(filepath.Join(factionDir, "reputation_matrix.json"), []byte(matrixData), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := New(tmpDir, "wkhtmltopdf")
+	tracker := c.generateFactionTracker()
+
+	if tracker == "" {
+		t.Fatal("expected tracker HTML, got empty string")
+	}
+
+	if !strings.Contains(tracker, "Apéndice E: Faction Tracker") {
+		t.Errorf("tracker missing title, got: %s", tracker)
+	}
+	if !strings.Contains(tracker, "faction-thieves") {
+		t.Errorf("tracker missing faction-thieves, got: %s", tracker)
+	}
+	if !strings.Contains(tracker, "faction-guards") {
+		t.Errorf("tracker missing faction-guards, got: %s", tracker)
+	}
+	if !strings.Contains(tracker, "friendly") {
+		t.Errorf("tracker missing friendly status, got: %s", tracker)
+	}
+	if !strings.Contains(tracker, "hostile") {
+		t.Errorf("tracker missing hostile status, got: %s", tracker)
+	}
+}
+
+func TestGenerateFactionTracker_Empty(t *testing.T) {
+	tmpDir := t.TempDir()
+	c := New(tmpDir, "wkhtmltopdf")
+	tracker := c.generateFactionTracker()
+
+	if tracker != "" {
+		t.Errorf("expected empty tracker for campaign without factions, got: %s", tracker)
+	}
+}

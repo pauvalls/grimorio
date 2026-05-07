@@ -13,7 +13,7 @@ func setupGateService(t *testing.T) (*ConsistencyGateService, *repository.Memory
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 	canonSvc := NewCanonService(canonRepo, stateRepo)
 	stateSvc := NewNarrativeStateService(stateRepo, canonRepo)
-	validator := NewValidationEngine(canonSvc, stateSvc)
+	validator := NewValidationEngine(canonSvc, stateSvc, nil)
 
 	gateSvc := NewConsistencyGateService(canonSvc, stateSvc, validator)
 	return gateSvc, canonRepo, stateRepo

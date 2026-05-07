@@ -14,7 +14,7 @@ func setupTestCanonHandlers() (*CanonHandlers, *services.CanonService, *services
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 	canonService := services.NewCanonService(canonRepo, stateRepo)
 	stateService := services.NewNarrativeStateService(stateRepo, canonRepo)
-	validator := services.NewValidationEngine(canonService, stateService)
+	validator := services.NewValidationEngine(canonService, stateService, nil)
 	gateService := services.NewConsistencyGateService(canonService, stateService, validator)
 	return NewCanonHandlers(canonService, stateService, validator, gateService), canonService, stateService, validator
 }

@@ -8,19 +8,22 @@ import (
 	"strings"
 
 	"github.com/pauvalls/grimorio/internal/domain"
+	"github.com/pauvalls/grimorio/internal/repository"
 )
 
 // ValidationEngine performs rule-based validation of content proposals and campaign consistency
 type ValidationEngine struct {
 	canonService *CanonService
 	stateService *NarrativeStateService
+	factionRepo  repository.FactionReputationRepository
 }
 
 // NewValidationEngine creates a new validation engine
-func NewValidationEngine(canonService *CanonService, stateService *NarrativeStateService) *ValidationEngine {
+func NewValidationEngine(canonService *CanonService, stateService *NarrativeStateService, factionRepo repository.FactionReputationRepository) *ValidationEngine {
 	return &ValidationEngine{
 		canonService: canonService,
 		stateService: stateService,
+		factionRepo:  factionRepo,
 	}
 }
 
@@ -424,15 +427,76 @@ func (e *ValidationEngine) validate(ctx context.Context, campaignID string, prop
 	}
 
 	// Rule 10: faction_reputation_gate
-	// TODO: Phase 3 - implement full faction reputation system
-	// For now, this is a no-op placeholder that extracts faction references
-	// but does not produce errors (only informational passes)
 	factionRefs := e.extractFactionReferences(proposal.Content)
-	for _, ref := range factionRefs {
-		// Placeholder: acknowledge check ran but don't validate
-		_ = ref
-		// report.AddCheck("faction_reputation_gate", true, "info",
-		//     fmt.Sprintf("Faction %s reference detected", ref.FactionID), "")
+	if proposal.FactionContext != "" {
+		report.AddCheck("faction_context", true, "info",
+			fmt.Sprintf("Faction context provided: %s", proposal.FactionContext), "")
+	}
+	if len(factionRefs) > 0 && e.factionRepo != nil {
+		matrix, matrixErr := e.factionRepo.Load(campaignID)
+		for _, ref := range factionRefs {
+			// Resolve faction name to ID via canon entities
+			factionID := ref.FactionID
+			for _, entity := range doc.Entities {
+				if entity.Type == domain.EntityTypeFaction {
+					if strings.EqualFold(entity.ID, ref.FactionID) || strings.EqualFold(entity.Name, ref.FactionID) {
+						factionID = entity.ID
+						break
+					}
+				}
+			}
+
+			if matrixErr != nil {
+				// No reputation matrix yet — just informational
+				report.AddCheck("faction_reputation_gate", true, "info",
+					fmt.Sprintf("Faction %s referenced — no reputation data available yet", factionID), "")
+				continue
+			}
+
+			// Find reputation entry for default party
+			var entry *domain.ReputationEntry
+			for i := range matrix.Entries {
+				if matrix.Entries[i].FactionID == factionID {
+					entry = &matrix.Entries[i]
+					break
+				}
+			}
+
+			if entry == nil {
+				// No reputation recorded — neutral, allow with info
+				report.AddCheck("faction_reputation_gate", true, "info",
+					fmt.Sprintf("Faction %s has no recorded reputation — assumed neutral", factionID), "")
+				continue
+			}
+
+			score := entry.Score
+			status := domain.ScoreToStatus(score)
+
+			// Check for hostile factions being helpful
+			if score <= -80 && isHelpfulReaction(ref.Reaction) {
+				report.AddCheck("faction_reputation_gate", false, "error",
+					fmt.Sprintf("Faction %s is hostile (score %d) but described as %s without cause", factionID, score, ref.Reaction),
+					"")
+				report.AddSuggestion(
+					fmt.Sprintf("Hostile faction %s cannot be helpful", factionID),
+					"Provide a narrative cause for the change or adjust the faction's behavior",
+					"Hostile factions require explicit cause to aid the party")
+				continue
+			}
+
+			// Friendly/allied factions aiding is normal
+			if score >= 30 && isHelpfulReaction(ref.Reaction) {
+				report.AddCheck("faction_reputation_gate", true, "info",
+					fmt.Sprintf("Faction %s is %s (score %d) and described as %s — consistent", factionID, status, score, ref.Reaction),
+					"")
+				continue
+			}
+
+			// Default: check passes with info
+			report.AddCheck("faction_reputation_gate", true, "info",
+				fmt.Sprintf("Faction %s reputation: %s (%d), described as %s", factionID, status, score, ref.Reaction),
+				"")
+		}
 	}
 
 	report.ComputeOverallStatus()
@@ -643,16 +707,29 @@ type FactionReference struct {
 // extractFactionReferences extracts faction references from content
 func (e *ValidationEngine) extractFactionReferences(content string) []FactionReference {
 	var refs []FactionReference
-	// Match "faction X reacts Y" patterns
-	re := regexp.MustCompile(`(?i)(?:faction|the\s+)([A-Z][\w\s]+?)\s+(?:reacts?|is|are)\s+(\w+)`)
+	// Match "faction X reacts Y" or "the X is Y" patterns
+	re := regexp.MustCompile(`(?i)(?:\bthe\s+)?(?:\bfaction\s+)?([A-Z][\w\s]+?)\s+(?:reacts?|is|are)\s+(\w+)`)
 	matches := re.FindAllStringSubmatch(content, -1)
 	for _, match := range matches {
 		if len(match) > 2 {
+			factionName := strings.TrimSpace(match[1])
+			// Avoid capturing "faction" as part of the name
+			factionName = strings.TrimPrefix(factionName, "faction ")
+			factionName = strings.TrimPrefix(factionName, "Faction ")
 			refs = append(refs, FactionReference{
-				FactionID: strings.TrimSpace(match[1]),
+				FactionID: factionName,
 				Reaction:  strings.ToLower(strings.TrimSpace(match[2])),
 			})
 		}
 	}
 	return refs
+}
+
+func isHelpfulReaction(reaction string) bool {
+	switch reaction {
+	case "helpful", "friendly", "allied", "supportive", "aiding":
+		return true
+	default:
+		return false
+	}
 }

@@ -3,6 +3,7 @@ package compiler
 import (
 	_ "embed"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"html"
 	"os"
@@ -207,8 +208,51 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 		}
 	}
 
+	// Apéndice E: Faction Tracker
+	trackerHTML := c.generateFactionTracker()
+	if trackerHTML != "" {
+		htmlParts = append(htmlParts, `<div class="section-break"></div>`)
+		htmlParts = append(htmlParts, trackerHTML)
+	}
+
 	htmlParts = append(htmlParts, "</body></html>")
 	return htmlParts, nil
+}
+
+// generateFactionTracker reads the reputation matrix and generates an HTML appendix.
+func (c *Compiler) generateFactionTracker() string {
+	matrixPath := filepath.Join(c.CampaignDir, "factions", "reputation_matrix.json")
+	data, err := os.ReadFile(matrixPath)
+	if err != nil {
+		return "" // no factions, no tracker
+	}
+
+	var matrix struct {
+		CampaignID string `json:"campaign_id"`
+		Entries    []struct {
+			FactionID string `json:"faction_id"`
+			PartyID   string `json:"party_id"`
+			Score     int8   `json:"score"`
+			Status    string `json:"status"`
+		} `json:"entries"`
+	}
+	if err := json.Unmarshal(data, &matrix); err != nil {
+		return ""
+	}
+	if len(matrix.Entries) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString(`<h2 id="sec-faction-tracker">Apéndice E: Faction Tracker</h2>`)
+	b.WriteString(`<table><thead><tr><th>Faction</th><th>Party</th><th>Score</th><th>Status</th></tr></thead><tbody>`)
+	for _, e := range matrix.Entries {
+		statusClass := "status-" + strings.ToLower(e.Status)
+		b.WriteString(fmt.Sprintf(`<tr class="%s"><td>%s</td><td>%s</td><td>%d</td><td>%s</td></tr>`,
+			statusClass, html.EscapeString(e.FactionID), html.EscapeString(e.PartyID), e.Score, html.EscapeString(e.Status)))
+	}
+	b.WriteString(`</tbody></table>`)
+	return b.String()
 }
 
 // verifyImages compares the number of expected images in markdown sources

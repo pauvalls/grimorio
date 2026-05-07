@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -13,7 +14,7 @@ func setupValidationEngine() (*ValidationEngine, *CanonService, *NarrativeStateS
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 	canonSvc := NewCanonService(canonRepo, stateRepo)
 	stateSvc := NewNarrativeStateService(stateRepo, canonRepo)
-	validator := NewValidationEngine(canonSvc, stateSvc)
+	validator := NewValidationEngine(canonSvc, stateSvc, nil)
 	return validator, canonSvc, stateSvc
 }
 
@@ -743,5 +744,37 @@ func TestValidationEngine_CheckConsistency_FullScope(t *testing.T) {
 	}
 	if report.Errors > 0 {
 		t.Fatalf("expected 0 errors in healthy campaign, got %d", report.Errors)
+	}
+}
+
+func TestValidationEngine_FactionContext(t *testing.T) {
+	validator, canonSvc, _ := setupValidationEngine()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	canonSvc.InitializeCanon(ctx, brief)
+
+	report, err := validator.validate(ctx, "test-campaign", domain.ContentProposal{
+		ID:             "act-1",
+		Type:           "act",
+		Content:        "The party meets with faction leaders.",
+		FactionContext: "diplomatic-summit",
+	})
+	if err != nil {
+		t.Fatalf("validate error: %v", err)
+	}
+
+	var foundContextCheck bool
+	for _, check := range report.Checks {
+		if check.Rule == "faction_context" && check.Passed {
+			foundContextCheck = true
+			if !strings.Contains(check.Message, "diplomatic-summit") {
+				t.Fatalf("expected faction_context to mention 'diplomatic-summit', got: %s", check.Message)
+			}
+			break
+		}
+	}
+	if !foundContextCheck {
+		t.Fatalf("expected faction_context check to pass, got checks: %+v", report.Checks)
 	}
 }

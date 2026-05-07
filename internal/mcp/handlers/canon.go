@@ -106,11 +106,13 @@ func (h *CanonHandlers) HandleValidateCanon() server.ToolHandlerFunc {
 		proposalID := getStringArg(args, "proposal_id")
 		proposalType := getStringArg(args, "proposal_type")
 		content := getStringArg(args, "content")
+		factionContext := getStringArg(args, "faction_context")
 
 		proposal := domain.ContentProposal{
-			ID:      proposalID,
-			Type:    proposalType,
-			Content: content,
+			ID:             proposalID,
+			Type:           proposalType,
+			Content:        content,
+			FactionContext: factionContext,
 		}
 
 		report, err := h.canonService.ValidateProposal(ctx, campaignID, proposal)

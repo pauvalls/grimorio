@@ -26,6 +26,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	questRepo := repository.NewFilesystemQuestRepository(cfg.OutputDir)
 	canonRepo := repository.NewFilesystemCanonRepository(cfg.OutputDir)
 	narrativeStateRepo := repository.NewFilesystemNarrativeStateRepository(cfg.OutputDir)
+	factionRepo := repository.NewFilesystemFactionRepository(cfg.OutputDir)
 
 	// Initialize services
 	campaignService := services.NewCampaignService(
@@ -37,8 +38,14 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	assetService := services.NewAssetService(cfg.OutputDir, cfg.Config)
 	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
 	narrativeStateService := services.NewNarrativeStateService(narrativeStateRepo, canonRepo)
-	validationEngine := services.NewValidationEngine(canonService, narrativeStateService)
+	validationEngine := services.NewValidationEngine(canonService, narrativeStateService, factionRepo)
 	consistencyGateService := services.NewConsistencyGateService(canonService, narrativeStateService, validationEngine)
+	factionService := services.NewFactionService(canonRepo, factionRepo)
+	tableService := services.NewRandomTableService(canonRepo)
+	handoutService := services.NewHandoutService(questRepo, canonRepo)
+	consequenceEngine := services.NewConsequenceEngine(canonRepo)
+	adaptationPatchService := services.NewAdaptationPatchService(actRepo, canonRepo)
+	_ = adaptationPatchService
 
 	// Initialize handlers
 	campaignHandlers := handlers.NewCampaignHandlers(campaignService)
@@ -46,6 +53,10 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	questHandlers := handlers.NewQuestHandlers(questService)
 	assetHandlers := handlers.NewAssetHandlers(assetService)
 	canonHandlers := handlers.NewCanonHandlers(canonService, narrativeStateService, validationEngine, consistencyGateService)
+	factionHandlers := handlers.NewFactionHandlers(factionService)
+	tableHandlers := handlers.NewTableHandlers(tableService)
+	handoutHandlers := handlers.NewHandoutHandlers(handoutService)
+	consequenceHandlers := handlers.NewConsequenceHandlers(consequenceEngine, narrativeStateService)
 
 	// Register tools
 	// Campaign management
@@ -206,6 +217,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("proposal_id", mcp.Required(), mcp.Description("Proposal ID")),
 		mcp.WithString("proposal_type", mcp.Required(), mcp.Description("Type: act, quest, encounter, npc, lore, item")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content markdown or JSON to validate")),
+		mcp.WithString("faction_context", mcp.Description("Optional faction context for reputation-aware validation")),
 	), canonHandlers.HandleValidateCanon())
 
 	s.AddTool(mcp.NewTool("update_narrative_state",
@@ -226,6 +238,39 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("batch_id", mcp.Required(), mcp.Description("Batch identifier (e.g., batch-1, batch-2)")),
 		mcp.WithBoolean("fast_mode", mcp.Description("Skip non-critical validations for speed"), mcp.DefaultBool(false)),
 	), canonHandlers.HandleProcessConsistencyGate())
+
+	// Faction and living world tools
+	s.AddTool(mcp.NewTool("update_faction_reputation",
+		mcp.WithDescription("Update faction reputation and propagate to allies/enemies"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("faction_id", mcp.Required(), mcp.Description("Target faction ID")),
+		mcp.WithString("party_id", mcp.Required(), mcp.Description("Party identifier")),
+		mcp.WithNumber("delta", mcp.Required(), mcp.Description("Reputation delta (-100 to 100)")),
+		mcp.WithString("reason", mcp.Required(), mcp.Description("Human-readable reason")),
+	), factionHandlers.HandleUpdateFactionReputation())
+
+	s.AddTool(mcp.NewTool("generate_random_tables",
+		mcp.WithDescription("Generate contextual random tables from canon data"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("table_type", mcp.Required(), mcp.Description("Table type: encounter, rumor, weather, treasure")),
+		mcp.WithString("level_range", mcp.Description("Level range filter (e.g., 5-8)")),
+		mcp.WithString("setting_type", mcp.Description("Setting type filter")),
+		mcp.WithNumber("party_size", mcp.Description("Party size")),
+		mcp.WithString("location_hint", mcp.Description("Location hint")),
+	), tableHandlers.HandleGenerateRandomTables())
+
+	s.AddTool(mcp.NewTool("generate_handouts",
+		mcp.WithDescription("Generate player and/or DM handouts"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("handout_type", mcp.Required(), mcp.Description("Handout type: summary, encounter, quest, lore, faction")),
+		mcp.WithArray("content_refs", mcp.Required(), mcp.Description("Content IDs to include")),
+		mcp.WithString("version", mcp.Description("Version: player, dm, both (default)")),
+	), handoutHandlers.HandleGenerateHandouts())
+
+	s.AddTool(mcp.NewTool("evaluate_consequences",
+		mcp.WithDescription("Evaluate consequence rules against narrative state"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+	), consequenceHandlers.HandleEvaluateConsequences())
 
 	return s
 }

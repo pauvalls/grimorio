@@ -223,6 +223,7 @@ type ContentProposal struct {
 	Content          string            `json:"content"`
 	EntityReferences []EntityReference `json:"entity_references"`
 	BatchID          string            `json:"batch_id,omitempty"`
+	FactionContext   string            `json:"faction_context,omitempty"`
 }
 
 // EntityReference references an entity within a proposal

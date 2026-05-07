@@ -85,3 +85,9 @@ type NarrativeStateRepository interface {
 	Load(campaignID string) (*domain.NarrativeState, error)
 	Exists(campaignID string) bool
 }
+
+// FactionReputationRepository defines operations for faction reputation persistence
+type FactionReputationRepository interface {
+	Save(campaignID string, matrix *domain.FactionReputationMatrix) error
+	Load(campaignID string) (*domain.FactionReputationMatrix, error)
+}
