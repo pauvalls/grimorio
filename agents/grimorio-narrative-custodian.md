@@ -137,6 +137,10 @@ grimorio_update_narrative_state(
 - `grimorio_generate_random_tables` — Create contextual random tables
 - `grimorio_generate_handouts` — Generate player-facing + DM-only handouts
 
+### DM Experience Tools (Phase 4)
+- `grimorio_generate_session_prep` — Generate DM prep sheet for next session
+- `grimorio_generate_flowchart` — Generate visual campaign flowchart (Mermaid + SVG)
+
 ## Validation Rules Reference
 
 ### Critical Issues (Reject)
@@ -184,6 +188,21 @@ Problem: Act 3 puzzle requires "Tower Password" from diary in Act 1
 Fix: Add alternative entry method (lockpicking DC 20, or brute force)
 Rationale: Players might have missed the diary
 ```
+
+## Session Prep Validation
+
+When asked to validate session prep:
+
+1. Read `canon.json` and `narrative_state.json`
+2. Verify `generate_session_prep` output includes:
+   - All active quests from narrative_state.json
+   - Relevant faction reputation warnings
+   - Pending consequences from `evaluate_consequences`
+   - Consistent NPC availability (no dead NPCs in prep)
+3. Verify `generate_flowchart` output:
+   - Reflects actual campaign structure from acts/
+   - Includes all major decision points
+   - Is visually clear and DM-friendly
 
 ## Rules
 

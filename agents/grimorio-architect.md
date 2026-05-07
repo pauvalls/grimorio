@@ -37,7 +37,8 @@ grimorio_mcp: [
   "grimorio_generate_adventure_bible", "grimorio_validate_canon", "grimorio_update_narrative_state",
   "grimorio_check_consistency", "grimorio_process_consistency_gate",
   "grimorio_update_faction_reputation", "grimorio_generate_random_tables", "grimorio_generate_handouts",
-  "grimorio_evaluate_consequences"
+  "grimorio_evaluate_consequences",
+  "grimorio_generate_session_prep", "grimorio_generate_flowchart"
 ]
 ---
 
@@ -475,8 +476,9 @@ PDF Final: {campaign_path}/campaign.pdf
     - Batch 2 (lore, quests, encounters, characters) → Validate Gate → Update State
     - Batch 3 (SVG maps, acts) → Validate Gate
     - Artist → Images → Update References
-    - Living World: Factions, random tables, handouts → Validate Gate
-    - Final Consistency Check → Evaluate Consequences → PDF
+     - Living World: Factions, random tables, handouts → Validate Gate
+     - DM Experience: Session prep, flowchart → Validate Gate
+     - Final Consistency Check → Evaluate Consequences → PDF
 10. **Use `grimorio-cartographer` agent type** for SVG generation.
 11. **Use `grimorio-artist` agent type** for image batch specs and reference updates.
 12. **ALWAYS validate content through consistency gate before proceeding** — this prevents NPC resurrections, lore contradictions, and timeline issues.

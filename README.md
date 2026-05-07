@@ -36,7 +36,7 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 
 | Step | Claude Code | OpenCode |
 |------|-------------|----------|
-| Go 1.23+ | Installs if missing | Installs if missing |
+| Go 1.24+ | Installs if missing | Installs if missing |
 | wkhtmltopdf | Installs if missing | Installs if missing |
 | Build binary | `~/.local/bin/grimorio` | `~/.local/bin/grimorio` |
 | Plugin files | `~/.claude/plugins/grimorio/` | `~/.config/opencode/plugins/grimorio/` |
@@ -50,7 +50,7 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 
 | Dependency | Auto-installed | Purpose |
 |------------|---------------|---------|
-| Go 1.23+ | ✅ Yes | Build the MCP server binary |
+| Go 1.24+ | ✅ Yes | Build the MCP server binary |
 | wkhtmltopdf | ✅ Yes | Compile HTML to PDF |
 | Git | ❌ Must have | Clone the repository |
 
@@ -164,6 +164,14 @@ Phase 3-13: End-to-end orchestration by grimorio-architect
 │                                  │   → Trigger rules from state     │  │
 │                                  └──────────────────────────────────┘  │
 │                                  ┌──────────────────────────────────┐  │
+│                                  │   DM Experience (Phase 4)        │  │
+│                                  ├──────────────────────────────────┤  │
+│                                  │ generate_session_prep            │  │
+│                                  │   → DM prep sheet                │  │
+│                                  │ generate_flowchart               │  │
+│                                  │   → Campaign flowchart (Mermaid) │  │
+│                                  └──────────────────────────────────┘  │
+│                                  ┌──────────────────────────────────┐  │
 │                                  │   Output                           │  │
 │                                  │   compile_pdf                    │  │
 │                                  │     → Lore → Acts → Appendices   │  │
@@ -203,7 +211,8 @@ grimorio-architect (Primary Orchestrator)
     ├─ Phase 7: AI image generation (sequential MCP calls)
     ├─ Phase 8: grimorio-artist   → Update markdown references
     ├─ Phase 9: grimorio-narrative-custodian → Final consistency check
-    └─ Phase 10: PDF compilation
+    ├─ Phase 10: DM Tools → Session prep + flowchart
+    └─ Phase 11: PDF compilation
 ```
 
 > **Development Rule:** Every new MCP tool must update:
@@ -404,39 +413,73 @@ The MCP server exposes structured templates for each content type:
 | `encounter`| Encounter with difficulty balancing            |
 | `map`      | Scene description with zones                   |
 | `lore`     | World-building and conflicts                   |
+| `session-zero` | Session zero guide for DMs                 |
 
 ### MCP Tools
 
-All tools available through the MCP server:
+All **29 tools** available through the MCP server, organized by category:
+
+#### Content Tools (v1)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `create_campaign` | File | Creates campaign directory structure |
-| `get_template` | Template | Returns structured Markdown template |
+| `get_template` | Template | Returns structured Markdown template (types: act, npc, monster, encounter, map, lore, session-zero) |
 | `save_act` | File | Saves act as Markdown file |
 | `save_npcs` | File | Saves NPCs and factions |
 | `save_bestiary` | File | Saves monster stat blocks |
 | `save_encounters` | File | Saves combat encounters |
 | `save_maps` | File | Saves scene descriptions |
-| `generate_map` | SVG | Procedural battle map generator (free) |
-| `generate_divider` | SVG | Decorative section dividers (free) |
-| `generate_image` | AI | Single image generation via Pollinations.ai (FREE) or DALL-E (optional) |
-| `generate_images_batch` | AI | Bulk image generation — generates multiple images in parallel (NPC portraits, scene illustrations) |
-| `compile_pdf` | PDF | Compiles all content into styled D&D adventure PDF (Lore → Acts → Apéndices) |
+| `save_lore` | File | Saves world lore and history |
+| `compile_pdf` | PDF | Compiles all content into styled D&D adventure PDF |
 
-#### Narrative Coherence Tools (NEW v2.0)
-
-Grimorio now includes a **narrative coherence subsystem** that validates campaign consistency across all generated content:
+#### Character & Quest Tools
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `generate_adventure_bible` | Canon | Creates the canonical document with facts, entities, timeline, and world rules |
-| `validate_canon` | Validation | Validates content proposals against canon (checks NPC deaths, lore consistency, entity existence) |
-| `update_narrative_state` | State | Updates campaign state after sessions (revealed clues, completed quests, dead NPCs, key decisions) |
-| `check_consistency` | Validation | Runs full campaign consistency check (dead NPCs appearing alive, lore violations, missing entities) |
-| `process_consistency_gate` | Gate | **Batch validation gate** — processes multiple content proposals atomically, returns approve/reject/retry with detailed feedback |
+| `generate_character` | Character | Generates a player character with stats and abilities |
+| `get_character` | Character | Retrieves a character sheet |
+| `list_characters` | Character | Lists all characters in a campaign |
+| `create_personal_quest` | Quest | Creates a personal quest for a character |
+| `update_quest_status` | Quest | Updates the status of a quest (active, completed, failed, on_hold) |
+| `list_quests` | Quest | Lists all quests in a campaign |
 
-**How it works:**
+#### Asset Tools
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `generate_map` | SVG | Procedural battle map generator (dungeon, landscape, city) — free, no API |
+| `generate_divider` | SVG | Decorative section dividers — free, no API |
+| `generate_image` | AI | Single image generation via Pollinations.ai (FREE) or DALL-E (optional) |
+| `generate_images_batch` | AI | Bulk image generation — sequential with fallback |
+
+#### Narrative Coherence (v2.0)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `generate_adventure_bible` | Canon | Creates `canon.json` with facts, entities, timeline, and world rules |
+| `validate_canon` | Validation | Validates content proposals against canon |
+| `update_narrative_state` | State | Updates campaign state after sessions |
+| `check_consistency` | Validation | Runs full campaign consistency check |
+| `process_consistency_gate` | Gate | Batch validation gate — approve/reject/retry |
+
+#### Living World (v2.1)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `update_faction_reputation` | Faction | Updates faction reputation with propagation to allies |
+| `generate_random_tables` | Tables | Contextual random tables for improvisation |
+| `generate_handouts` | Handout | Player-facing + DM-only handouts |
+| `evaluate_consequences` | Consequence | Evaluates consequence rules from player decisions |
+
+#### DM Experience (Phase 4)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `generate_session_prep` | DM Tool | Generates DM prep sheet for next session |
+| `generate_flowchart` | DM Tool | Campaign flowchart (Mermaid diagram + SVG) |
+
+**How Narrative Coherence works:**
 1. **Adventure Bible** (`generate_adventure_bible`) — Creates a `canon.json` with immutable facts, entities (NPCs, locations, items), timeline, and world rules
 2. **Content Validation** (`validate_canon`) — Before saving any act, quest, or encounter, the system checks:
    - Are referenced NPCs still alive?
@@ -452,6 +495,13 @@ Grimorio now includes a **narrative coherence subsystem** that validates campaig
    - `approved` — All proposals pass validation
    - `rejected` — With detailed feedback on which proposals failed and why
    - `retry` — With specific instructions on how to fix the issues
+
+**How the Consequence System works:**
+1. **Track decisions** in `update_narrative_state` with `key_decisions`
+2. **Evaluate consequences** with `evaluate_consequences` to see what ripples through the world
+3. **Update factions** with `update_faction_reputation` — changes propagate to allied factions automatically
+4. **Generate handouts** with `generate_handouts` to give players tangible clues and rewards
+5. **Create random tables** with `generate_random_tables` for improvisation based on current world state
 
 ### Campaign File Structure (v2.0)
 
@@ -530,6 +580,277 @@ go run ./cmd/migrate-v1-to-v2 ~/campaigns
 
 This creates `canon.json` and `narrative_state.json` for each campaign, with a `.v1-backup/` directory for safety.
 
+### Complete User Guide
+
+This guide covers the full Grimorio workflow — from creating a campaign to running sessions and maintaining narrative coherence.
+
+> **Additional documentation:** See [`docs/dm-guide.md`](docs/dm-guide.md) for detailed DM advice and [`docs/developer-guide.md`](docs/developer-guide.md) for contributing to Grimorio.
+
+#### 1. Creating a Campaign
+
+**Step-by-step workflow using `/grimorio`:**
+
+```
+User: /grimorio A sunken city where the nobles are aquatic vampires
+
+Grimorio:
+  Phase 1: "What's the campaign name? (kebab-case)"
+  User: "sunken-city"
+  Phase 1: "One-shot or full campaign?"
+  User: "Full campaign"
+  Phase 1: "Player level range?"
+  User: "4-6"
+  ... (5 questions total)
+
+  Phase 2: Creating campaign structure... ✅
+  Phase 3-13: Generating all content... (reports progress)
+  
+  ✅ Campaign complete!
+  PDF: ~/campaigns/sunken-city/campaign.pdf
+```
+
+**What happens behind the scenes:**
+1. **Requirements gathering** — 5 interactive questions
+2. **Campaign creation** — `create_campaign` builds directory structure
+3. **Adventure Bible** — `generate_adventure_bible` creates `canon.json`
+4. **Content generation** — Parallel subagents create lore, NPCs, bestiary, encounters, maps
+5. **Acts** — Narrative acts referencing all generated content
+6. **Visual assets** — SVG maps, dividers, AI-generated images
+7. **PDF compilation** — `compile_pdf` produces the final book
+
+#### 2. Playing a Session
+
+**Before the session:**
+```
+grimorio_generate_session_prep(
+  campaign="sunken-city",
+  session_num=3,
+  focus="The players are heading to the sunken cathedral"
+)
+```
+
+This generates a DM prep sheet with:
+- Active quests and their current status
+- Relevant NPCs (alive, their locations, motivations)
+- Faction reputation warnings
+- Pending consequences from previous sessions
+- Random tables for improvisation
+
+**During the session:**
+- Use the generated acts as your guide
+- Reference encounters, maps, and NPCs inline
+- Track player decisions mentally or in notes
+
+**After the session:**
+```
+grimorio_update_narrative_state(
+  campaign_id="sunken-city",
+  session_num=3,
+  revealed_clues=["clue-cathedral-key", "clue-vampire-weakness"],
+  dead_npcs=["npc-guard-captain"],
+  completed_quests=["quest-find-cathedral"],
+  key_decisions=["Players spared the vampire noble's daughter"],
+  xp_awarded=450,
+  loot_acquired=["Silver Dagger +1", "Cathedral Key"],
+  session_summary="Party reached the cathedral, defeated the guard captain..."
+)
+```
+
+#### 3. Maintaining Coherence
+
+**How validation works:**
+
+Every piece of content is validated against `canon.json` before being saved:
+
+```
+grimorio_validate_canon(
+  campaign_id="sunken-city",
+  proposal={
+    id: "act-3",
+    type: "act",
+    content: "...",
+    entity_references: [
+      { entity_id: "npc-guard-captain", location: "act_3" }
+    ]
+  }
+)
+```
+
+**Example — Preventing NPC resurrections:**
+
+If `npc-guard-captain` was marked dead in session 2, the validator returns:
+```json
+{
+  "status": "rejected",
+  "issues": [
+    {
+      "rule": "npc_death_state",
+      "severity": "critical",
+      "message": "NPC 'Guard Captain' is dead (session 2) but appears in Act 3",
+      "fix_suggestion": "Replace with Lieutenant Mara or use a written letter"
+    }
+  ]
+}
+```
+
+**Pre-PDF consistency check:**
+```
+grimorio_check_consistency(campaign_id="sunken-city")
+```
+
+This validates the entire campaign before compilation — checking for dead NPCs appearing alive, lore contradictions, missing entities, and timeline issues.
+
+#### 4. Consequence System
+
+After each session, evaluate what the players' actions mean for the world:
+
+```
+grimorio_evaluate_consequences(
+  campaign_id="sunken-city",
+  trigger_decisions=["Players killed Lord Vex, the noble"]
+)
+```
+
+**Example — If players killed a noble:**
+- **Immediate:** His daughter swears vengeance (new quest)
+- **Faction:** House Vex reputation drops to Hostile
+- **Political:** Power vacuum — other nobles scramble for his territory
+- **Economic:** Trade routes through his district become dangerous
+- **Military:** His guards disband or join mercenary groups
+
+**Faction reputation changes:**
+```
+grimorio_update_faction_reputation(
+  campaign="sunken-city",
+  faction="house-vex",
+  party="default",
+  delta=-30,
+  reason="Players killed Lord Vex"
+)
+```
+
+This propagates to allied factions (House Vex allies also drop) and may trigger new consequences.
+
+#### 5. DM Tools
+
+**Session Prep Sheet (`generate_session_prep`):**
+- Lists all active quests with current objectives
+- Shows relevant NPCs and their current status/location
+- Warns about faction reputation issues
+- Includes random tables for improvisation (encounters, rumors, weather)
+- Notes pending consequences that may trigger
+
+**Campaign Flowchart (`generate_flowchart`):**
+```
+grimorio_generate_flowchart(
+  campaign="sunken-city",
+  title="Sunken City Campaign"
+)
+```
+
+Generates a visual flowchart (Mermaid diagram + SVG) showing:
+- All acts and their decision points
+- Quest branches and consequences
+- NPC relationship map
+- Faction standing overview
+
+**Random Tables (`generate_random_tables`):**
+```
+grimorio_generate_random_tables(
+  campaign="sunken-city",
+  context="sunken cathedral district"
+)
+```
+
+Generates contextual tables for improvisation:
+- Random encounters (appropriate to location and level)
+- Rumors and overheard conversations
+- Environmental events
+- NPC reactions based on faction reputation
+
+**Handouts (`generate_handouts`):**
+```
+grimorio_generate_handouts(
+  campaign="sunken-city",
+  type="clue",
+  subject="The Cathedral Seal"
+)
+```
+
+Creates both:
+- **Player version** — What the players see (aged letter, cryptic note)
+- **DM version** — Full context and secrets the players don't know
+
+#### 6. Updating Based on Player Decisions
+
+**Track decisions in narrative state:**
+
+After every session, update the state with key decisions:
+```
+grimorio_update_narrative_state(
+  campaign_id="sunken-city",
+  session_num=3,
+  key_decisions=[
+    "Players allied with the Merfolk instead of the Vampires",
+    "Players destroyed the Blood Crystal instead of using it"
+  ]
+)
+```
+
+**Adapt the campaign with consequences:**
+
+The next time you generate content, consequences from previous decisions will affect:
+- Which NPCs are available (allies vs enemies)
+- Faction reactions to the party
+- Available quests and paths
+- Random encounter tables
+
+**Update faction standings after diplomatic choices:**
+```
+grimorio_update_faction_reputation(
+  campaign="sunken-city",
+  faction="merfolk-alliance",
+  party="default",
+  delta=+20,
+  reason="Players helped rescue merfolk prisoners"
+)
+```
+
+This automatically updates allied factions too (e.g., the Sea Temple priests also improve).
+
+#### 7. Compiling the Final PDF
+
+**When to compile:**
+- After initial campaign generation (complete book)
+- Before each session (quick reference with latest state)
+- After major content updates (new acts, NPCs, images)
+
+**How to compile:**
+```
+grimorio_compile_pdf(
+  campaign="sunken-city",
+  title="The Sunken City"
+)
+```
+
+**What gets included:**
+1. Cover page (with AI-generated cover art)
+2. Table of Contents
+3. Session Zero guide (if generated)
+4. Campaign flowchart (if generated)
+5. Lore and World Setting
+6. All Acts (with embedded NPCs, encounters, maps, scenes)
+7. Appendix A: NPCs & Factions
+8. Appendix B: Bestiary
+9. Appendix C: Encounters
+10. Appendix D: Maps
+11. Appendix E: Faction Tracker
+12. Appendix F: Adventure Roster
+
+All images (SVG maps, AI-generated PNGs, dividers) are automatically embedded.
+
+---
+
 ### Development
 
 #### Manual Build
@@ -574,7 +895,7 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 
 | Paso | Claude Code | OpenCode |
 |------|-------------|----------|
-| Go 1.23+ | Instala si falta | Instala si falta |
+| Go 1.24+ | Instala si falta | Instala si falta |
 | wkhtmltopdf | Instala si falta | Instala si falta |
 | Compilar binario | `~/.local/bin/grimorio` | `~/.local/bin/grimorio` |
 | Archivos del plugin | `~/.claude/plugins/grimorio/` | `~/.config/opencode/plugins/grimorio/` |
@@ -588,7 +909,7 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 
 | Dependencia | Auto-instalada | Propósito |
 |------------|---------------|-----------|
-| Go 1.23+ | ✅ Sí | Compilar el binario del servidor MCP |
+| Go 1.24+ | ✅ Sí | Compilar el binario del servidor MCP |
 | wkhtmltopdf | ✅ Sí | Compilar HTML a PDF |
 | Git | ❌ Requerido | Clonar el repositorio |
 
@@ -688,13 +1009,32 @@ Fase 3-13: Orquestación completa por grimorio-architect
 │  ┌────────────────────────────┐  │ process_consistency_gate         │  │
 │  │   Herramientas de Assets   │  │   → Gate aprobar/rechazar/retry  │  │
 │  ├────────────────────────────┤  └──────────────────────────────────┘  │
-│  │ generate_map               │                                        │
-│  │   → Mapas batalla SVG      │  ┌──────────────────────────────────┐  │
-│  │ generate_divider           │  │   Output                           │  │
-│  │   → Divisores SVG          │  │ compile_pdf                      │  │
-│  │ generate_image             │  │   → PDF libro aventura D&D       │  │
-│  │   → Arte IA (GRATIS)       │  │   → Lore → Actos → Apéndices     │  │
-│  └────────────────────────────┘  └──────────────────────────────────┘  │
+│  │ generate_map               │  ├──────────────────────────────────┤  │
+│  │   → Mapas batalla SVG      │  │   Mundo Vivo (v2.1)              │  │
+│  │ generate_divider           │  ├──────────────────────────────────┤  │
+│  │   → Divisores SVG          │  │ update_faction_reputation        │  │
+│  │ generate_image             │  │   → Propaga rep a aliados        │  │
+│  │   → Arte IA (GRATIS)       │  │ generate_random_tables           │  │
+│  └────────────────────────────┘  │   → Tablas de encuentro          │  │
+│                                  │ generate_handouts                │  │
+│                                  │   → Versiones jugador + DM       │  │
+│                                  │ evaluate_consequences            │  │
+│                                  │   → Reglas desde estado          │  │
+│                                  └──────────────────────────────────┘  │
+│                                  ┌──────────────────────────────────┐  │
+│                                  │   Experiencia de DM (Fase 4)     │  │
+│                                  ├──────────────────────────────────┤  │
+│                                  │ generate_session_prep            │  │
+│                                  │   → Hoja prep DM                 │  │
+│                                  │ generate_flowchart               │  │
+│                                  │   → Flowchart campaña (Mermaid)  │  │
+│                                  └──────────────────────────────────┘  │
+│                                  ┌──────────────────────────────────┐  │
+│                                  │   Output                           │  │
+│                                  │ compile_pdf                      │  │
+│                                  │   → PDF libro aventura D&D       │  │
+│                                  │   → Lore → Actos → Apéndices     │  │
+│                                  └──────────────────────────────────┘  │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -730,7 +1070,8 @@ grimorio-architect (Orquestador Principal)
     ├─ Fase 7: Generación imágenes IA (llamadas MCP secuenciales)
     ├─ Fase 8: grimorio-artist   → Actualizar referencias markdown
     ├─ Fase 9: grimorio-narrative-custodian → Check final
-    └─ Fase 10: Compilación PDF
+    ├─ Fase 10: Herramientas de DM → Prep sesión + flowchart
+    └─ Fase 11: Compilación PDF
 ```
 
 > **Regla de Desarrollo:** Cada nueva herramienta MCP debe actualizar:
@@ -880,39 +1221,73 @@ El servidor MCP expone templates estructurados para cada tipo de contenido:
 | `encounter` | Encuentro con balance de dificultad                 |
 | `map`       | Descripción de escena con zonas                     |
 | `lore`      | Ambientación y conflictos                           |
+| `session-zero` | Guía de sesión cero para DMs                    |
 
 ### Herramientas MCP
 
-Todas las herramientas disponibles a través del servidor MCP:
+Todas las **29 herramientas** disponibles a través del servidor MCP, organizadas por categoría:
+
+#### Herramientas de Contenido (v1)
 
 | Herramienta | Tipo | Descripción |
 |------------|------|-------------|
-| `create_campaign` | Archivo | Crea estructura de directorios |
-| `get_template` | Template | Devuelve template Markdown estructurado |
+| `create_campaign` | Archivo | Crea estructura de directorios de campaña |
+| `get_template` | Template | Devuelve template Markdown estructurado (tipos: act, npc, monster, encounter, map, lore, session-zero) |
 | `save_act` | Archivo | Guarda acto como archivo Markdown |
 | `save_npcs` | Archivo | Guarda NPCs y facciones |
 | `save_bestiary` | Archivo | Guarda stat blocks de monstruos |
 | `save_encounters` | Archivo | Guarda encuentros de combate |
 | `save_maps` | Archivo | Guarda descripciones de escenas |
-| `generate_map` | SVG | Generador de mapas procedurales (gratis) |
-| `generate_divider` | SVG | Divisores decorativos (gratis) |
-| `generate_image` | IA | Generación individual de imágenes vía Pollinations.ai (GRATIS) o DALL-E (opcional) |
-| `generate_images_batch` | IA | Generación masiva de imágenes en paralelo (retratos NPCs, ilustraciones de escenas) |
-| `compile_pdf` | PDF | Compila todo en PDF estilo aventura D&D profesional (Lore → Actos → Apéndices) |
+| `save_lore` | Archivo | Guarda lore e historia del mundo |
+| `compile_pdf` | PDF | Compila todo en PDF estilo aventura D&D |
 
-#### Herramientas de Coherencia Narrativa (NUEVO v2.0)
-
-Grimorio ahora incluye un **subsistema de coherencia narrativa** que valida la consistencia de la campaña en todo el contenido generado:
+#### Herramientas de Personajes y Misiones
 
 | Herramienta | Tipo | Descripción |
 |------------|------|-------------|
-| `generate_adventure_bible` | Canon | Crea el documento canónico con hechos, entidades, timeline y reglas del mundo |
-| `validate_canon` | Validación | Valida propuestas de contenido contra el canon (verifica muertes de NPCs, consistencia del lore, existencia de entidades) |
-| `update_narrative_state` | Estado | Actualiza el estado de la campaña después de sesiones (pistas reveladas, quests completadas, NPCs muertos, decisiones clave) |
-| `check_consistency` | Validación | Ejecuta validación completa de consistencia de campaña (NPCs muertos que aparecen vivos, violaciones de lore, entidades faltantes) |
-| `process_consistency_gate` | Gate | **Gate de validación por lotes** — procesa múltiples propuestas de contenido atómicamente, devuelve aprobar/rechazar/reintentar con feedback detallado |
+| `generate_character` | Personaje | Genera un personaje jugador con stats y habilidades |
+| `get_character` | Personaje | Obtiene la ficha de un personaje |
+| `list_characters` | Personaje | Lista todos los personajes de una campaña |
+| `create_personal_quest` | Misión | Crea una misión personal para un personaje |
+| `update_quest_status` | Misión | Actualiza el estado de una misión (active, completed, failed, on_hold) |
+| `list_quests` | Misión | Lista todas las misiones de una campaña |
 
-**Cómo funciona:**
+#### Herramientas de Assets
+
+| Herramienta | Tipo | Descripción |
+|------------|------|-------------|
+| `generate_map` | SVG | Generador de mapas de batalla procedurales (dungeon, landscape, city) — gratis, sin API |
+| `generate_divider` | SVG | Divisores decorativos — gratis, sin API |
+| `generate_image` | IA | Generación individual de imágenes vía Pollinations.ai (GRATIS) o DALL-E (opcional) |
+| `generate_images_batch` | IA | Generación masiva de imágenes — secuencial con fallback |
+
+#### Coherencia Narrativa (v2.0)
+
+| Herramienta | Tipo | Descripción |
+|------------|------|-------------|
+| `generate_adventure_bible` | Canon | Crea `canon.json` con hechos, entidades, timeline y reglas del mundo |
+| `validate_canon` | Validación | Valida propuestas de contenido contra el canon |
+| `update_narrative_state` | Estado | Actualiza estado de campaña después de sesiones |
+| `check_consistency` | Validación | Ejecuta validación completa de consistencia |
+| `process_consistency_gate` | Gate | Gate de validación por lotes — aprobar/rechazar/reintentar |
+
+#### Mundo Vivo (v2.1)
+
+| Herramienta | Tipo | Descripción |
+|------------|------|-------------|
+| `update_faction_reputation` | Facción | Actualiza reputación de facción con propagación a aliados |
+| `generate_random_tables` | Tablas | Tablas aleatorias contextuales para improvisación |
+| `generate_handouts` | Handout | Handouts para jugadores y secretos para DM |
+| `evaluate_consequences` | Consecuencia | Evalúa reglas de consecuencia de decisiones de jugadores |
+
+#### Experiencia de DM (Fase 4)
+
+| Herramienta | Tipo | Descripción |
+|------------|------|-------------|
+| `generate_session_prep` | DM Tool | Genera hoja de preparación de sesión para el DM |
+| `generate_flowchart` | DM Tool | Diagrama de flujo de campaña (Mermaid + SVG) |
+
+**Cómo funciona la Coherencia Narrativa:**
 1. **Biblia de Aventura** (`generate_adventure_bible`) — Crea un `canon.json` con hechos inmutables, entidades (NPCs, localizaciones, items), timeline y reglas del mundo
 2. **Validación de Contenido** (`validate_canon`) — Antes de guardar cualquier acto, quest o encuentro, el sistema verifica:
    - ¿Los NPCs referenciados siguen vivos?
@@ -928,6 +1303,13 @@ Grimorio ahora incluye un **subsistema de coherencia narrativa** que valida la c
    - `approved` — Todas las propuestas pasan la validación
    - `rejected` — Con feedback detallado sobre qué propuestas fallaron y por qué
    - `retry` — Con instrucciones específicas sobre cómo corregir los problemas
+
+**Cómo funciona el Sistema de Consecuencias:**
+1. **Trackeá decisiones** en `update_narrative_state` con `key_decisions`
+2. **Evaluá consecuencias** con `evaluate_consequences` para ver qué repercusiones tiene en el mundo
+3. **Actualizá facciones** con `update_faction_reputation` — los cambios se propagan automáticamente a facciones aliadas
+4. **Generá handouts** con `generate_handouts` para dar pistas tangibles y recompensas a los jugadores
+5. **Creá tablas aleatorias** con `generate_random_tables` para improvisación basada en el estado actual del mundo
 
 ### Migración de v1 a v2
 
@@ -999,6 +1381,277 @@ Todas las imágenes (mapas SVG, PNGs generados por IA, divisores) se embeben aut
 - Las imágenes referenciadas en Markdown con `![alt](assets/archivo.png)` aparecen inline
 - Todas las imágenes en `assets/` se incluyen en una galería "Visuales de la Campaña" al final
 - Los SVGs se embeben como gráficos vectoriales, los PNGs como base64
+
+### Guía de Uso Completa
+
+Esta guía cubre el flujo de trabajo completo de Grimorio — desde crear una campaña hasta jugar sesiones y mantener la coherencia narrativa.
+
+> **Documentación adicional:** Ver [`docs/dm-guide.md`](docs/dm-guide.md) para consejos detallados de DM y [`docs/developer-guide.md`](docs/developer-guide.md) para contribuir a Grimorio.
+
+#### 1. Crear una Campaña
+
+**Flujo de trabajo paso a paso usando `/grimorio`:**
+
+```
+Usuario: /grimorio Una ciudad sumergida donde los nobles son vampiros acuáticos
+
+Grimorio:
+  Fase 1: "¿Nombre de la campaña? (kebab-case)"
+  Usuario: "ciudad-sumergida"
+  Fase 1: "¿One-shot o campaña completa?"
+  Usuario: "Campaña completa"
+  Fase 1: "¿Rango de nivel de los jugadores?"
+  Usuario: "4-6"
+  ... (5 preguntas en total)
+
+  Fase 2: Creando estructura de campaña... ✅
+  Fase 3-13: Generando todo el contenido... (reporta progreso)
+  
+  ✅ ¡Campaña completa!
+  PDF: ~/campaigns/ciudad-sumergida/campaign.pdf
+```
+
+**Qué pasa detrás de escena:**
+1. **Recopilación de requisitos** — 5 preguntas interactivas
+2. **Creación de campaña** — `create_campaign` construye la estructura de directorios
+3. **Biblia de Aventura** — `generate_adventure_bible` crea `canon.json`
+4. **Generación de contenido** — Subagentes en paralelo crean lore, NPCs, bestiario, encuentros, mapas
+5. **Actos** — Actos narrativos que referencian todo el contenido generado
+6. **Assets visuales** — Mapas SVG, divisores, imágenes generadas por IA
+7. **Compilación PDF** — `compile_pdf` produce el libro final
+
+#### 2. Jugar una Sesión
+
+**Antes de la sesión:**
+```
+grimorio_generate_session_prep(
+  campaign="ciudad-sumergida",
+  session_num=3,
+  focus="Los jugadores se dirigen a la catedral sumergida"
+)
+```
+
+Esto genera una hoja de preparación para el DM con:
+- Quests activas y su estado actual
+- NPCs relevantes (vivos, sus ubicaciones, motivaciones)
+- Advertencias de reputación de facciones
+- Consecuencias pendientes de sesiones anteriores
+- Tablas aleatorias para improvisación
+
+**Durante la sesión:**
+- Usá los actos generados como guía
+- Referenciá encuentros, mapas y NPCs inline
+- Trackeá las decisiones de los jugadores mentalmente o en notas
+
+**Después de la sesión:**
+```
+grimorio_update_narrative_state(
+  campaign_id="ciudad-sumergida",
+  session_num=3,
+  revealed_clues=["pista-llave-catedral", "pista-debilidad-vampiro"],
+  dead_npcs=["npc-capitan-guardia"],
+  completed_quests=["quest-encontrar-catedral"],
+  key_decisions=["Los jugadores perdonaron a la hija del noble vampiro"],
+  xp_awarded=450,
+  loot_acquired=["Daga de Plata +1", "Llave de la Catedral"],
+  session_summary="El grupo llegó a la catedral, derrotó al capitán de la guardia..."
+)
+```
+
+#### 3. Mantener la Coherencia
+
+**Cómo funciona la validación:**
+
+Cada pieza de contenido se valida contra `canon.json` antes de guardarse:
+
+```
+grimorio_validate_canon(
+  campaign_id="ciudad-sumergida",
+  proposal={
+    id: "act-3",
+    type: "act",
+    content: "...",
+    entity_references: [
+      { entity_id: "npc-capitan-guardia", location: "act_3" }
+    ]
+  }
+)
+```
+
+**Ejemplo — Previniendo resurrecciones de NPCs:**
+
+Si `npc-capitan-guardia` fue marcado como muerto en la sesión 2, el validador devuelve:
+```json
+{
+  "status": "rejected",
+  "issues": [
+    {
+      "rule": "npc_death_state",
+      "severity": "critical",
+      "message": "El NPC 'Capitán de la Guardia' está muerto (sesión 2) pero aparece en el Acto 3",
+      "fix_suggestion": "Reemplazar con la Teniente Mara o usar una carta escrita"
+    }
+  ]
+}
+```
+
+**Verificación de coherencia previa al PDF:**
+```
+grimorio_check_consistency(campaign_id="ciudad-sumergida")
+```
+
+Esto valida toda la campaña antes de la compilación — verificando NPCs muertos que aparecen vivos, contradicciones de lore, entidades faltantes y problemas de timeline.
+
+#### 4. Sistema de Consecuencias
+
+Después de cada sesión, evaluá qué significan las acciones de los jugadores para el mundo:
+
+```
+grimorio_evaluate_consequences(
+  campaign_id="ciudad-sumergida",
+  trigger_decisions=["Los jugadores mataron al Lord Vex, el noble"]
+)
+```
+
+**Ejemplo — Si los jugadores mataron a un noble:**
+- **Inmediato:** Su hija jura venganza (nueva quest)
+- **Facción:** La reputación de la Casa Vex cae a Hostil
+- **Político:** Vacío de poder — otros nobles compiten por su territorio
+- **Económico:** Las rutas comerciales a través de su distrito se vuelven peligrosas
+- **Militar:** Sus guardias se disuelven o se unen a grupos mercenarios
+
+**Cambios de reputación de facciones:**
+```
+grimorio_update_faction_reputation(
+  campaign="ciudad-sumergida",
+  faction="casa-vex",
+  party="default",
+  delta=-30,
+  reason="Los jugadores mataron a Lord Vex"
+)
+```
+
+Esto se propaga a facciones aliadas (los aliados de la Casa Vex también caen) y puede desencadenar nuevas consecuencias.
+
+#### 5. Herramientas de DM
+
+**Hoja de Preparación de Sesión (`generate_session_prep`):**
+- Lista todas las quests activas con objetivos actuales
+- Muestra NPCs relevantes y su estado/ubicación actual
+- Advierte sobre problemas de reputación de facciones
+- Incluye tablas aleatorias para improvisación (encuentros, rumores, clima)
+- Nota consecuencias pendientes que pueden activarse
+
+**Diagrama de Flujo de Campaña (`generate_flowchart`):**
+```
+grimorio_generate_flowchart(
+  campaign="ciudad-sumergida",
+  title="Campaña Ciudad Sumergida"
+)
+```
+
+Genera un diagrama de flujo visual (diagrama Mermaid + SVG) mostrando:
+- Todos los actos y sus puntos de decisión
+- Ramas de quests y consecuencias
+- Mapa de relaciones entre NPCs
+- Visión general de facciones
+
+**Tablas Aleatorias (`generate_random_tables`):**
+```
+grimorio_generate_random_tables(
+  campaign="ciudad-sumergida",
+  context="distrito de la catedral sumergida"
+)
+```
+
+Genera tablas contextuales para improvisación:
+- Encuentros aleatorios (apropiados a la ubicación y nivel)
+- Rumores y conversaciones escuchadas
+- Eventos ambientales
+- Reacciones de NPCs basadas en reputación de facciones
+
+**Handouts (`generate_handouts`):**
+```
+grimorio_generate_handouts(
+  campaign="ciudad-sumergida",
+  type="pista",
+  subject="El Sello de la Catedral"
+)
+```
+
+Crea tanto:
+- **Versión para jugadores** — Lo que ven los jugadores (carta envejecida, nota críptica)
+- **Versión para DM** — Contexto completo y secretos que los jugadores no saben
+
+#### 6. Actualizar según Jugadores
+
+**Trackeá decisiones en el estado narrativo:**
+
+Después de cada sesión, actualizá el estado con decisiones clave:
+```
+grimorio_update_narrative_state(
+  campaign_id="ciudad-sumergida",
+  session_num=3,
+  key_decisions=[
+    "Los jugadores se aliaron con los Tritones en vez de los Vampiros",
+    "Los jugadores destruyeron el Cristal de Sangre en vez de usarlo"
+  ]
+)
+```
+
+**Adaptá la campaña con consecuencias:**
+
+La próxima vez que generés contenido, las consecuencias de decisiones previas afectarán:
+- Qué NPCs están disponibles (aliados vs enemigos)
+- Reacciones de facciones hacia el grupo
+- Quests y caminos disponibles
+- Tablas de encuentros aleatorios
+
+**Actualizá reputación de facciones después de elecciones diplomáticas:**
+```
+grimorio_update_faction_reputation(
+  campaign="ciudad-sumergida",
+  faction="alianza-triton",
+  party="default",
+  delta=+20,
+  reason="Los jugadores ayudaron a rescatar prisioneros tritones"
+)
+```
+
+Esto actualiza automáticamente facciones aliadas también (ej. los sacerdotes del Templo del Mar también mejoran).
+
+#### 7. Compilar PDF Final
+
+**Cuándo compilar:**
+- Después de la generación inicial de campaña (libro completo)
+- Antes de cada sesión (referencia rápida con estado actual)
+- Después de actualizaciones importantes de contenido (nuevos actos, NPCs, imágenes)
+
+**Cómo compilar:**
+```
+grimorio_compile_pdf(
+  campaign="ciudad-sumergida",
+  title="La Ciudad Sumergida"
+)
+```
+
+**Qué se incluye:**
+1. Portada (con arte de portada generado por IA)
+2. Índice
+3. Guía de Sesión Cero (si fue generada)
+4. Diagrama de flujo de campaña (si fue generado)
+5. Lore y Ambientación del Mundo
+6. Todos los Actos (con NPCs, encuentros, mapas y escenas embebidos)
+7. Apéndice A: NPCs y Facciones
+8. Apéndice B: Bestiario
+9. Apéndice C: Encuentros
+10. Apéndice D: Mapas
+11. Apéndice E: Faction Tracker
+12. Apéndice F: Adventure Roster
+
+Todas las imágenes (mapas SVG, PNGs generados por IA, divisores) se embeben automáticamente.
+
+---
 
 ### Desarrollo
 
