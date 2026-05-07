@@ -1,6 +1,9 @@
 package mcp
 
 import (
+	"log"
+	"os"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pauvalls/grimorio/internal/config"
@@ -37,6 +40,13 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	questService := services.NewQuestService(questRepo)
 	assetService := services.NewAssetService(cfg.OutputDir, cfg.Config)
 	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
+
+	// Degraded mode: if CANON_LEGACY_MODE is set or repo initialization fails
+	if os.Getenv("CANON_LEGACY_MODE") == "1" {
+		log.Println("WARNING: CANON_LEGACY_MODE is enabled. Canon consistency gates will be bypassed.")
+		canonService.SetDegraded(true)
+	}
+
 	narrativeStateService := services.NewNarrativeStateService(narrativeStateRepo, canonRepo)
 	validationEngine := services.NewValidationEngine(canonService, narrativeStateService, factionRepo)
 	consistencyGateService := services.NewConsistencyGateService(canonService, narrativeStateService, validationEngine)

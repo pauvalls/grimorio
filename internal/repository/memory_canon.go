@@ -51,6 +51,12 @@ func (r *MemoryCanonRepository) Exists(campaignID string) bool {
 	return exists
 }
 
+func (r *MemoryCanonRepository) Delete(campaignID string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.canon, campaignID)
+}
+
 // Ensure interface is implemented
 var _ CanonRepository = (*MemoryCanonRepository)(nil)
 

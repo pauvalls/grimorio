@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -372,4 +373,62 @@ func containsStr(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func BenchmarkConsistencyGate_ProcessBatch(b *testing.B) {
+	canonRepo := repository.NewMemoryCanonRepository()
+	stateRepo := repository.NewMemoryNarrativeStateRepository()
+	canonSvc := NewCanonService(canonRepo, stateRepo)
+	stateSvc := NewNarrativeStateService(stateRepo, canonRepo)
+	validator := NewValidationEngine(canonSvc, stateSvc, nil)
+	gateSvc := NewConsistencyGateService(canonSvc, stateSvc, validator)
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{
+		Name:         "bench-campaign",
+		LevelRange:   "1-3",
+		Tone:         "grim",
+		SettingType:  "urban",
+		VillainType:  "lich",
+		McGuffinType: "amulet",
+	}
+	canonSvc.InitializeCanon(ctx, brief)
+
+	doc, _ := canonRepo.Load("bench-campaign")
+	for i := 0; i < 10; i++ {
+		doc.Entities = append(doc.Entities, domain.CanonEntity{
+			ID:         fmt.Sprintf("npc-%03d", i),
+			Name:       fmt.Sprintf("NPC %d", i),
+			Type:       domain.EntityTypeNPC,
+			Role:       "ally",
+			CanonState: domain.EntityStateAlive,
+		})
+	}
+	canonRepo.Save("bench-campaign", doc)
+
+	batch := domain.BatchProposal{
+		BatchID:    "bench-batch",
+		CampaignID: "bench-campaign",
+		Attempt:    1,
+		Artifacts: []domain.ContentProposal{
+			{ID: "prop-1", Type: "act", Content: "Content 1", EntityReferences: []domain.EntityReference{{EntityID: "npc-000", Location: "act_1"}}},
+			{ID: "prop-2", Type: "quest", Content: "Content 2", EntityReferences: []domain.EntityReference{{EntityID: "npc-001", Location: "quest_1"}}},
+			{ID: "prop-3", Type: "lore", Content: "Content 3"},
+			{ID: "prop-4", Type: "npc", Content: "Content 4", EntityReferences: []domain.EntityReference{{EntityID: "npc-002", Location: "npc_1"}}},
+			{ID: "prop-5", Type: "encounter", Content: "Content 5"},
+			{ID: "prop-6", Type: "act", Content: "Content 6"},
+			{ID: "prop-7", Type: "quest", Content: "Content 7"},
+			{ID: "prop-8", Type: "lore", Content: "Content 8"},
+			{ID: "prop-9", Type: "npc", Content: "Content 9"},
+			{ID: "prop-10", Type: "encounter", Content: "Content 10"},
+		},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := gateSvc.ProcessBatch(ctx, batch, false)
+		if err != nil {
+			b.Fatalf("unexpected error: %v", err)
+		}
+	}
 }

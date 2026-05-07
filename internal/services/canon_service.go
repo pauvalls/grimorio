@@ -3,9 +3,12 @@ package services
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pauvalls/grimorio/internal/cache"
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
 	"golang.org/x/text/cases"
@@ -14,16 +17,45 @@ import (
 
 // CanonService handles canon document business logic
 type CanonService struct {
-	canonRepo repository.CanonRepository
-	stateRepo repository.NarrativeStateRepository
+	canonRepo    repository.CanonRepository
+	stateRepo    repository.NarrativeStateRepository
+	cache        *cache.LRUCache[string, *domain.CanonDocument]
+	cacheEnabled bool
+	degraded     bool
 }
 
 // NewCanonService creates a new canon service
 func NewCanonService(canonRepo repository.CanonRepository, stateRepo repository.NarrativeStateRepository) *CanonService {
-	return &CanonService{
+	svc := &CanonService{
 		canonRepo: canonRepo,
 		stateRepo: stateRepo,
 	}
+
+	// Cache configuration from environment
+	if os.Getenv("CANON_CACHE_DISABLED") == "1" {
+		svc.cacheEnabled = false
+	} else {
+		svc.cacheEnabled = true
+		size := 100
+		if v := os.Getenv("CANON_CACHE_SIZE"); v != "" {
+			if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+				size = parsed
+			}
+		}
+		svc.cache = cache.NewLRU[string, *domain.CanonDocument](size)
+	}
+
+	return svc
+}
+
+// SetDegraded sets the degraded mode flag.
+func (s *CanonService) SetDegraded(degraded bool) {
+	s.degraded = degraded
+}
+
+// IsDegraded returns whether the service is in degraded mode.
+func (s *CanonService) IsDegraded() bool {
+	return s.degraded
 }
 
 // InitializeCanon creates a new CanonDocument from a campaign brief
@@ -64,13 +96,18 @@ func (s *CanonService) InitializeCanon(ctx context.Context, brief domain.Campaig
 				},
 			},
 		},
-		Timeline: []domain.CanonTimelineEvent{},
-		Rules:    []domain.CanonRule{},
+		Timeline:      []domain.CanonTimelineEvent{},
+		Rules:         []domain.CanonRule{},
 		Relationships: []domain.CanonRelationship{},
 	}
 
 	if err := s.canonRepo.Save(brief.Name, doc); err != nil {
 		return nil, fmt.Errorf("failed to save initial canon: %w", err)
+	}
+
+	// Invalidate cache
+	if s.cacheEnabled && s.cache != nil {
+		s.cache.Remove(brief.Name)
 	}
 
 	// Initialize empty narrative state
@@ -89,7 +126,36 @@ func (s *CanonService) InitializeCanon(ctx context.Context, brief domain.Campaig
 
 // LoadCanon retrieves the canon document for a campaign
 func (s *CanonService) LoadCanon(ctx context.Context, campaignID string) (*domain.CanonDocument, error) {
-	return s.canonRepo.Load(campaignID)
+	if s.degraded {
+		return &domain.CanonDocument{
+			SchemaVersion: domain.SchemaVersionV2,
+			CampaignID:    campaignID,
+			Facts:         []domain.CanonFact{},
+			Entities:      []domain.CanonEntity{},
+			Timeline:      []domain.CanonTimelineEvent{},
+			Rules:         []domain.CanonRule{},
+			Relationships: []domain.CanonRelationship{},
+		}, nil
+	}
+
+	// Check cache
+	if s.cacheEnabled && s.cache != nil {
+		if doc, ok := s.cache.Get(campaignID); ok {
+			return doc, nil
+		}
+	}
+
+	doc, err := s.canonRepo.Load(campaignID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache
+	if s.cacheEnabled && s.cache != nil {
+		s.cache.Put(campaignID, doc)
+	}
+
+	return doc, nil
 }
 
 // SaveCanon persists a canon document
@@ -98,7 +164,14 @@ func (s *CanonService) SaveCanon(ctx context.Context, doc *domain.CanonDocument)
 		return domain.NewValidationError("doc", "canon document is required")
 	}
 	doc.UpdatedAt = time.Now()
-	return s.canonRepo.Save(doc.CampaignID, doc)
+	if err := s.canonRepo.Save(doc.CampaignID, doc); err != nil {
+		return err
+	}
+	// Invalidate cache
+	if s.cacheEnabled && s.cache != nil {
+		s.cache.Remove(doc.CampaignID)
+	}
+	return nil
 }
 
 // RegisterFact adds a fact to the canon document
@@ -115,12 +188,23 @@ func (s *CanonService) RegisterFact(ctx context.Context, campaignID string, fact
 	doc.Facts = append(doc.Facts, fact)
 	doc.UpdatedAt = time.Now()
 
-	return s.canonRepo.Save(campaignID, doc)
+	if err := s.canonRepo.Save(campaignID, doc); err != nil {
+		return err
+	}
+	// Invalidate cache
+	if s.cacheEnabled && s.cache != nil {
+		s.cache.Remove(campaignID)
+	}
+	return nil
 }
 
 // QueryEntity searches entities in the canon by filter
 func (s *CanonService) QueryEntity(ctx context.Context, campaignID string, filter domain.EntityFilter) ([]domain.CanonEntity, error) {
-	doc, err := s.canonRepo.Load(campaignID)
+	if s.degraded {
+		return []domain.CanonEntity{}, nil
+	}
+
+	doc, err := s.LoadCanon(ctx, campaignID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load canon: %w", err)
 	}
@@ -166,7 +250,14 @@ func (s *CanonService) UpdateEntityState(ctx context.Context, campaignID string,
 	}
 
 	doc.UpdatedAt = time.Now()
-	return s.canonRepo.Save(campaignID, doc)
+	if err := s.canonRepo.Save(campaignID, doc); err != nil {
+		return err
+	}
+	// Invalidate cache
+	if s.cacheEnabled && s.cache != nil {
+		s.cache.Remove(campaignID)
+	}
+	return nil
 }
 
 // ValidateProposal validates a content proposal against the canon
@@ -179,7 +270,11 @@ func (s *CanonService) ValidateProposal(ctx context.Context, campaignID string, 
 		Suggestions:   []domain.Suggestion{},
 	}
 
-	doc, err := s.canonRepo.Load(campaignID)
+	if s.degraded {
+		return report, nil
+	}
+
+	doc, err := s.LoadCanon(ctx, campaignID)
 	if err != nil {
 		report.AddCheck("canon_load", false, "critical", fmt.Sprintf("Failed to load canon: %v", err), "")
 		report.ComputeOverallStatus()
@@ -248,7 +343,7 @@ func (s *CanonService) ValidateProposal(ctx context.Context, campaignID string, 
 
 // GetRelationshipGraph builds the relationship graph for a campaign
 func (s *CanonService) GetRelationshipGraph(ctx context.Context, campaignID string) (*domain.RelationshipGraph, error) {
-	doc, err := s.canonRepo.Load(campaignID)
+	doc, err := s.LoadCanon(ctx, campaignID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load canon: %w", err)
 	}

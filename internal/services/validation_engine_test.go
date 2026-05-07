@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -776,5 +777,56 @@ func TestValidationEngine_FactionContext(t *testing.T) {
 	}
 	if !foundContextCheck {
 		t.Fatalf("expected faction_context check to pass, got checks: %+v", report.Checks)
+	}
+}
+
+func BenchmarkValidationEngine_ValidateAct(b *testing.B) {
+	validator, canonSvc, stateSvc := setupValidationEngine()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "bench-campaign", McGuffinType: "artifact"}
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		b.Fatalf("failed to initialize canon: %v", err)
+	}
+
+	doc, _ := canonSvc.LoadCanon(ctx, "bench-campaign")
+	// Add entities and rules
+	for i := 0; i < 25; i++ {
+		doc.Entities = append(doc.Entities, domain.CanonEntity{
+			ID:         fmt.Sprintf("npc-%03d", i),
+			Name:       fmt.Sprintf("NPC %d", i),
+			Type:       domain.EntityTypeNPC,
+			Role:       "ally",
+			CanonState: domain.EntityStateAlive,
+		})
+	}
+	doc.Rules = append(doc.Rules, domain.CanonRule{
+		ID:        "rule-001",
+		Domain:    "magic",
+		Statement: "Arcane magic is banned in the city",
+	})
+	canonSvc.SaveCanon(ctx, doc)
+
+	// Mark one NPC as dead
+	state, _ := stateSvc.Load(ctx, "bench-campaign")
+	state.DeadNPCs = append(state.DeadNPCs, domain.NPCDeathRecord{
+		NPCID:   "npc-001",
+		Name:    "NPC 0",
+		Session: 1,
+		Cause:   "combat",
+	})
+	stateSvc.Save(ctx, state)
+
+	refs := []domain.EntityReference{
+		{EntityID: "npc-001", Location: "act_1"},
+		{EntityID: "npc-002", Location: "act_1"},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := validator.ValidateAct(ctx, "bench-campaign", "bench-act", "The wizards hold a public arcane fair in the city square.", refs)
+		if err != nil {
+			b.Fatalf("unexpected error: %v", err)
+		}
 	}
 }

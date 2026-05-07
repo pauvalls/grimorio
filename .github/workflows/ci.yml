@@ -10,13 +10,16 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.23', '1.24']
     steps:
     - uses: actions/checkout@v4
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: ${{ matrix.go-version }}
 
     - name: Cache Go modules
       uses: actions/cache@v4
@@ -75,12 +78,43 @@ jobs:
       with:
         go-version: '1.24'
 
-    - name: Build
+    - name: Build grimorio
       run: |
         VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
         COMMIT=$(git rev-parse --short HEAD)
         DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" -v -o grimorio ./cmd/grimorio
 
-    - name: Test build
+    - name: Build migrate-v1-to-v2
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        COMMIT=$(git rev-parse --short HEAD)
+        DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" -v -o migrate-v1-to-v2 ./cmd/migrate-v1-to-v2
+
+    - name: Test grimorio binary
       run: ./grimorio version
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run benchmarks
+      run: go test ./internal/services/... -bench=. -benchmem -run=^$ -benchtime=1s

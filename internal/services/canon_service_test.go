@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -331,5 +332,225 @@ func TestCanonService_GetRelationshipGraph(t *testing.T) {
 
 	if graph.CampaignID != brief.Name {
 		t.Fatalf("expected campaign ID %s, got %s", brief.Name, graph.CampaignID)
+	}
+}
+
+func TestCanonService_CacheHit(t *testing.T) {
+	svc, canonRepo, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "cache-test", McGuffinType: "artifact"}
+	if _, err := svc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
+
+	// First load — cache miss
+	_, err := svc.LoadCanon(ctx, brief.Name)
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
+
+	// Corrupt repo directly to prove second load comes from cache
+	canonRepo.Delete(brief.Name)
+
+	// Second load — should be cache hit
+	loaded, err := svc.LoadCanon(ctx, brief.Name)
+	if err != nil {
+		t.Fatalf("expected cache hit, got error: %v", err)
+	}
+	if loaded == nil {
+		t.Fatal("expected cached document, got nil")
+	}
+	if loaded.CampaignID != brief.Name {
+		t.Fatalf("expected campaign ID %s, got %s", brief.Name, loaded.CampaignID)
+	}
+}
+
+func TestCanonService_CacheInvalidateOnSave(t *testing.T) {
+	svc, canonRepo, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "invalidate-test", McGuffinType: "artifact"}
+	doc, _ := svc.InitializeCanon(ctx, brief)
+
+	// Load to warm cache
+	svc.LoadCanon(ctx, brief.Name)
+
+	// Save modified doc
+	doc.Facts = append(doc.Facts, domain.CanonFact{ID: "fact-002", Category: "test", Statement: "test"})
+	if err := svc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
+
+	// Corrupt repo to prove cache was invalidated
+	canonRepo.Delete(brief.Name)
+
+	// Should fail because cache was invalidated and repo is corrupted
+	_, err := svc.LoadCanon(ctx, brief.Name)
+	if err == nil {
+		t.Fatal("expected error after cache invalidation, got nil")
+	}
+}
+
+func TestCanonService_CacheInvalidateOnRegisterFact(t *testing.T) {
+	svc, canonRepo, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "fact-invalidate", McGuffinType: "artifact"}
+	svc.InitializeCanon(ctx, brief)
+
+	// Warm cache
+	svc.LoadCanon(ctx, brief.Name)
+
+	// Register fact
+	fact := domain.CanonFact{ID: "fact-002", Category: "test", Statement: "test"}
+	if err := svc.RegisterFact(ctx, brief.Name, fact); err != nil {
+		t.Fatalf("failed to register fact: %v", err)
+	}
+
+	// Corrupt repo
+	canonRepo.Delete(brief.Name)
+
+	// Should fail — cache invalidated
+	_, err := svc.LoadCanon(ctx, brief.Name)
+	if err == nil {
+		t.Fatal("expected error after RegisterFact invalidation")
+	}
+}
+
+func TestCanonService_CacheInvalidateOnUpdateEntityState(t *testing.T) {
+	svc, canonRepo, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "entity-invalidate", McGuffinType: "artifact"}
+	doc, _ := svc.InitializeCanon(ctx, brief)
+	doc.Entities = append(doc.Entities, domain.CanonEntity{ID: "npc-001", Name: "Test", Type: domain.EntityTypeNPC, CanonState: domain.EntityStateAlive})
+	svc.SaveCanon(ctx, doc)
+
+	// Warm cache
+	svc.LoadCanon(ctx, brief.Name)
+
+	// Update entity state
+	if err := svc.UpdateEntityState(ctx, brief.Name, "npc-001", domain.EntityStateDead); err != nil {
+		t.Fatalf("failed to update entity state: %v", err)
+	}
+
+	// Corrupt repo
+	canonRepo.Delete(brief.Name)
+
+	// Should fail — cache invalidated
+	_, err := svc.LoadCanon(ctx, brief.Name)
+	if err == nil {
+		t.Fatal("expected error after UpdateEntityState invalidation")
+	}
+}
+
+func TestCanonService_DegradedMode_LoadCanon(t *testing.T) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	// No canon initialized — set degraded
+	svc.SetDegraded(true)
+
+	doc, err := svc.LoadCanon(ctx, "nonexistent")
+	if err != nil {
+		t.Fatalf("expected no error in degraded mode, got %v", err)
+	}
+	if doc == nil {
+		t.Fatal("expected empty document in degraded mode, got nil")
+	}
+	if doc.CampaignID != "nonexistent" {
+		t.Fatalf("expected campaign ID 'nonexistent', got %s", doc.CampaignID)
+	}
+}
+
+func TestCanonService_DegradedMode_ValidateProposal(t *testing.T) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	svc.SetDegraded(true)
+
+	proposal := domain.ContentProposal{
+		ID:      "test-proposal",
+		Type:    "act",
+		Content: "Test content",
+	}
+
+	report, err := svc.ValidateProposal(ctx, "any-campaign", proposal)
+	if err != nil {
+		t.Fatalf("expected no error in degraded mode, got %v", err)
+	}
+	if report == nil {
+		t.Fatal("expected report in degraded mode, got nil")
+	}
+	if report.OverallStatus != "approved" {
+		t.Fatalf("expected auto-approved in degraded mode, got %s", report.OverallStatus)
+	}
+}
+
+func TestCanonService_DegradedMode_QueryEntity(t *testing.T) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	svc.SetDegraded(true)
+
+	results, err := svc.QueryEntity(ctx, "any-campaign", domain.EntityFilter{Type: domain.EntityTypeNPC})
+	if err != nil {
+		t.Fatalf("expected no error in degraded mode, got %v", err)
+	}
+	if results == nil {
+		t.Fatal("expected empty slice, got nil")
+	}
+	if len(results) != 0 {
+		t.Fatalf("expected 0 results in degraded mode, got %d", len(results))
+	}
+}
+
+func TestCanonService_IsDegraded(t *testing.T) {
+	svc, _, _ := setupCanonService()
+
+	if svc.IsDegraded() {
+		t.Fatal("expected degraded to be false by default")
+	}
+
+	svc.SetDegraded(true)
+	if !svc.IsDegraded() {
+		t.Fatal("expected degraded to be true after SetDegraded(true)")
+	}
+
+	svc.SetDegraded(false)
+	if svc.IsDegraded() {
+		t.Fatal("expected degraded to be false after SetDegraded(false)")
+	}
+}
+
+func BenchmarkCanonService_LoadCanon(b *testing.B) {
+	svc, _, _ := setupCanonService()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "bench-campaign", McGuffinType: "artifact"}
+	doc, _ := svc.InitializeCanon(ctx, brief)
+
+	// Add 50 entities
+	for i := 0; i < 50; i++ {
+		doc.Entities = append(doc.Entities, domain.CanonEntity{
+			ID:         fmt.Sprintf("npc-%03d", i),
+			Name:       fmt.Sprintf("NPC %d", i),
+			Type:       domain.EntityTypeNPC,
+			Role:       "ally",
+			CanonState: domain.EntityStateAlive,
+		})
+	}
+	svc.SaveCanon(ctx, doc)
+
+	// Warm cache
+	svc.LoadCanon(ctx, brief.Name)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := svc.LoadCanon(ctx, brief.Name)
+		if err != nil {
+			b.Fatalf("unexpected error: %v", err)
+		}
 	}
 }
