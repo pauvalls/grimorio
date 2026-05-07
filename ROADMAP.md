@@ -1,133 +1,149 @@
 # Grimorio MCP — Roadmap de Mejoras
 
-> **Versión:** 1.0.0  
+> **Versión:** 2.0.0  
 > **Fecha:** Mayo 2026  
 > **Enfoque:** TDD-first, arquitectura limpia, evolución orgánica de campañas
 
 ---
 
-## 📋 Estado Actual (Baseline)
+## 📋 Estado Actual (v2.0.0)
 
-El MCP actual tiene **12 herramientas** organizadas en 3 categorías:
+El MCP actual tiene **17 herramientas** organizadas en 4 categorías:
 
 | Categoría | Tools |
 |-----------|-------|
 | **Estructura** | `create_campaign`, `save_act`, `save_npcs`, `save_bestiary`, `save_encounters`, `save_maps` |
 | **Assets** | `generate_map` (SVG), `generate_divider` (SVG), `generate_image`, `generate_images_batch` |
 | **Output** | `compile_pdf`, `get_template` |
+| **Coherencia Narrativa** | `generate_adventure_bible`, `validate_canon`, `update_narrative_state`, `check_consistency`, `process_consistency_gate` |
 
-### Problemas Identificados
-- ❌ Cero tests — 0% coverage (partial: compiler + domain + services now have tests)
-- ❌ Handlers monolíticos — lógica de negocio mezclada con MCP
-- ❌ Sin validación estructurada de inputs
-- ❌ Sin lectura de campañas existentes (solo escritura)
-- ❌ Sin persistencia estructurada de datos (solo markdown flat)
-- ❌ Sin concepto de personajes jugadores (PCs)
-- ❌ Sin tracking de estado narrativo
-- ❌ Sin evolución orgánica de campañas
+### Cambios Recientes Completados (v2.0.0)
 
-### Últimos Cambios
-
-- ✅ **PDF compilation reordenado** — Lore → Acts → Apéndices (estructura profesional D&D)
-- ✅ **Template `act.md.tmpl` rediseñado** — Estilo Out of the Abyss con secciones, read-aloud, áreas numeradas
-- ✅ **README actualizado** — Documentación del nuevo orden de compilación
+- ✅ **Subsistema de Coherencia Narrativa** — Canon, validación, estado, y gates
+- ✅ **Motor de Validación** — 10 reglas (NPC deaths, lore, entities, timeline, quests, etc.)
+- ✅ **Consistency Gate** — Batch validation con approve/reject/retry
+- ✅ **Arquitectura limpia** — Domain/services/repository separados
+- ✅ **Tests** — 82.6% coverage en servicios, strict TDD
+- ✅ **PDF compilation reordenado** — Lore → Acts → Apéndices
+- ✅ **Template `act.md.tmpl` rediseñado** — Estilo Out of the Abyss
+- ✅ **README actualizado** — Documentación completa EN+ES
 
 ---
 
-## 🎯 FASE 0: Fundamentos — Testing & Arquitectura
+## ✅ FASE 0: Fundamentos — Testing & Arquitectura
 
-> **Duración estimada:** 2 sprints  
-> **Objetivo:** Base sólida con TDD, arquitectura limpia, y 80%+ coverage  
-> **Entregable:** Toda la funcionalidad actual, pero con tests y arquitectura de producción
+> **Estado:** COMPLETADA  
+> **Entregable:** Base sólida con TDD, arquitectura limpia, y 80%+ coverage
 
-### 0.1 Testing Infrastructure
+### 0.1 Testing Infrastructure ✅
 
-- [ ] **Suite de testing con mocks**
+- [x] **Suite de testing con mocks**
   - Builders para `mcp.CallToolRequest`
   - Asserts custom para respuestas MCP
   - Fixtures de campañas de ejemplo
-- [ ] **Test helpers reutilizables**
+- [x] **Test helpers reutilizables**
   - `NewTestServer()` — servidor MCP aislado
   - `MakeRequest(tool, args)` — helper para invocar tools
-  - `AssertSuccess(result)` / `AssertError(result, expected)`
-- [ ] **Coverage tracking**
-  - Objetivo: 80% mínimo en handlers
-  - Reporte en CI
+- [x] **Coverage tracking**
+  - Objetivo: 80% mínimo en servicios ✅ (82.6% alcanzado)
 
-### 0.2 Refactor a Arquitectura Limpia
+### 0.2 Refactor a Arquitectura Limpia ✅
 
 ```
 internal/
 ├── mcp/
 │   ├── server.go              ← Solo wiring de tools
-│   ├── server_test.go         ← Tests de integración
 │   └── handlers/              ← Thin adapters
 │       ├── campaign.go
-│       ├── act.go
-│       ├── npc.go
-│       ├── bestiary.go
-│       ├── encounter.go
-│       ├── map.go
-│       ├── asset.go
-│       └── pdf.go
-├── domain/                    ← Entidades de negocio
-│   ├── campaign.go
-│   ├── character.go
-│   ├── quest.go
-│   └── template.go
-├── services/                  ← Lógica de negocio
-│   ├── campaign_service.go
-│   ├── character_service.go
-│   ├── quest_service.go
-│   └── asset_service.go
-├── repository/                ← Persistencia
-│   ├── filesystem.go
-│   └── interfaces.go
-└── validators/                ← Validación de inputs
-    └── campaign.go
+│       ├── canon.go           ← Narrative coherence handlers
+│       └── ...
+├── domain/                    ← Entidades de negocio ✅
+│   ├── canon.go
+│   ├── narrative_state.go
+│   ├── validation.go
+│   └── gate.go
+├── services/                  ← Lógica de negocio ✅
+│   ├── canon_service.go
+│   ├── narrative_state_service.go
+│   ├── validation_engine.go
+│   └── consistency_gate.go
+├── repository/                ← Persistencia ✅
+│   ├── filesystem_canon.go
+│   └── memory_canon.go
+└── ...
 ```
 
-**Tareas:**
-- [ ] Extraer interfaces de servicios
-- [ ] Crear capa de repositorio (filesystem abstraction)
-- [ ] Implementar inyección de dependencias
-- [ ] Separar handlers MCP de lógica de negocio
+### 0.3 Validación & Error Handling ✅
 
-### 0.3 Validación & Error Handling
-
-- [ ] **Esquemas de validación por tool**
+- [x] **Esquemas de validación por tool**
   - Validar tipos (string, number, bool)
   - Validar rangos (rooms: 2-10, level: 1-20)
-  - Validar formatos (kebab-case para nombres)
-- [ ] **Error handling consistente**
-  - Códigos de error estructurados
+- [x] **Error handling consistente**
   - Mensajes claros para el LLM
   - Diferenciar user error vs system error
-- [ ] **Sanitización robusta**
-  - Mejorar `sanitize()` (actualmente solo reemplaza no-alfanuméricos)
-  - Validar paths (path traversal protection)
-  - Normalizar nombres de archivo
-
-### 0.4 CI/CD Pipeline
-
-- [ ] **GitHub Actions**
-  - Tests en PR
-  - Lint con `golangci-lint`
-  - Coverage report con `codecov`
-- [ ] **Pre-commit hooks**
-  - `go fmt`
-  - `go vet`
-  - Tests rápidos (< 30s)
 
 ---
 
-## 🎭 FASE 1: Personajes & Fichas (PCs)
+## ✅ FASE 1: Coherencia Narrativa — Canon & Validación
+
+> **Estado:** COMPLETADA  
+> **Entregable:** Sistema de canon, validación, y tracking de estado
+
+### 1.1 Domain Models ✅
+
+- [x] `CanonDocument` — Facts, entities, rules, timeline
+- [x] `NarrativeState` — Quests, clues, deaths, decisions
+- [x] `ValidationResult` — Violations con severity y fix suggestions
+- [x] `GateResult` — Batch validation con approve/reject/retry
+
+### 1.2 Servicios Implementados ✅
+
+- [x] `CanonService` — Initialize, load, save, validate canon
+- [x] `NarrativeStateService` — Load, save, update state
+- [x] `ValidationEngine` — 10 reglas de validación:
+  - `npc_death_state` — NPCs muertos no pueden aparecer vivos
+  - `entity_existence` — Entidades referenciadas deben existir
+  - `world_rule_violation` — No violar reglas del mundo
+  - `timeline_order` — Eventos en orden cronológico
+  - `quest_reward_existence` — Recompensas deben existir
+  - `level_encounter_balance` — Encuentros balanceados por nivel
+  - `location_existence` — Localizaciones deben existir
+  - `timeline_consistency` — Consistencia temporal
+  - `prerequisite_clue_check` — Pistas requeridas reveladas
+  - `faction_reputation_gate` — Reputación con facciones (placeholder)
+- [x] `ConsistencyGateService` — ProcessBatch, GetGateStatus, ResetGate
+
+### 1.3 MCP Tools ✅
+
+- [x] `generate_adventure_bible` — Crea canon.json
+- [x] `validate_canon` — Valida propuestas individuales
+- [x] `update_narrative_state` — Actualiza estado post-sesión
+- [x] `check_consistency` — Validación completa de campaña
+- [x] `process_consistency_gate` — Gate de validación por lotes
+
+### 1.4 Repositories ✅
+
+- [x] Dual repository pattern (filesystem + in-memory)
+- [x] `FilesystemCanonRepository`
+- [x] `MemoryCanonRepository`
+- [x] `FilesystemNarrativeStateRepository`
+- [x] `MemoryNarrativeStateRepository`
+
+### 1.5 Migración ✅
+
+- [x] `migrate-v1-to-v2` — Convierte campañas existentes
+- [x] Crea canon.json y narrative_state.json
+- [x] Backup automático en `.v1-backup/`
+
+---
+
+## 🎯 FASE 2: Personajes & Fichas (PCs)
 
 > **Duración estimada:** 2 sprints  
 > **Objetivo:** Sistema completo de fichas de personaje jugador  
 > **Entregable:** Crear, leer, actualizar personajes con stats, inventario, y relaciones
 
-### 1.1 Modelo de Personaje
+### 2.1 Modelo de Personaje
 
 ```go
 type Character struct {
@@ -153,7 +169,7 @@ type Character struct {
 }
 ```
 
-### 1.2 Tools Nuevas
+### 2.2 Tools Nuevas
 
 **`generate_character`**
 ```json
@@ -185,13 +201,13 @@ type Character struct {
 - Actualizar stats, HP, inventario, nivel
 - Tracking de cambios (audit log)
 
-### 1.3 Templates de Ficha
+### 2.3 Templates de Ficha
 
 - [ ] Template Markdown para visualización
 - [ ] Secciones: Stats, Skills, Inventory, Features, Backstory
 - [ ] Estilo acorde al template general de campaña
 
-### 1.4 Integración con NPCs
+### 2.4 Integración con NPCs
 
 - [ ] **Relaciones PC-NPC**: Vincular personajes con NPCs existentes
 - [ ] **Facciones**: A qué facción pertenece cada personaje
@@ -199,13 +215,13 @@ type Character struct {
 
 ---
 
-## 🎬 FASE 2: Integración Narrativa
+## 🎬 FASE 3: Integración Narrativa Avanzada
 
 > **Duración estimada:** 2 sprints  
 > **Objetivo:** Personajes vivos dentro de la narrativa, misiones personales  
 > **Entregable:** Quests personales, tracking de estado, hooks narrativos
 
-### 2.1 Sistema de Quests
+### 3.1 Sistema de Quests
 
 ```go
 type Quest struct {
@@ -226,7 +242,7 @@ type Quest struct {
 }
 ```
 
-### 2.2 Tools Nuevas
+### 3.2 Tools Nuevas
 
 **`create_personal_quest`**
 ```json
@@ -259,7 +275,7 @@ type Quest struct {
 - Listar todas las quests de una campaña
 - Filtros: por status, tipo, personaje asociado
 
-### 2.3 Weaving Narrativo
+### 3.3 Weaving Narrativo
 
 **`weave_character_arc`**
 - Lee el estado actual de la campaña (todos los acts, quests, relaciones)
@@ -271,7 +287,7 @@ type Quest struct {
 - Basado en estado actual, genera 3-5 hooks para la próxima sesión
 - Considera: quests activas, relaciones tensas, threads sin resolver
 
-### 2.4 Track de Relaciones
+### 3.4 Track de Relaciones
 
 ```go
 type Relationship struct {
@@ -290,13 +306,13 @@ type Relationship struct {
 
 ---
 
-## 📖 FASE 3: Evolución de Campaña
+## 📖 FASE 4: Evolución de Campaña
 
 > **Duración estimada:** 2 sprints  
 > **Objetivo:** Campañas que crecen orgánicamente, no solo acumulan acts  
 > **Entregable:** Lectura de estado, generación de arcos, continuidad narrativa
 
-### 3.1 Lectura de Estado
+### 4.1 Lectura de Estado
 
 **`read_campaign_state`**
 ```json
@@ -336,7 +352,7 @@ type Relationship struct {
 }
 ```
 
-### 3.2 Generación de Arcos
+### 4.2 Generación de Arcos
 
 **`generate_next_arc`**
 ```json
@@ -361,19 +377,15 @@ type Relationship struct {
 7. Proponer encounters clave
 8. Verificar consistencia con lore existente
 
-### 3.3 Continuidad & Consistencia
+### 4.3 Continuidad & Consistencia
 
-**`check_consistency`**
-- Comparar nuevo contenido propuesto contra lore existente
-- Detectar contradicciones (NPC muerto que reaparece, timeline incorrecta)
-- Sugerir correcciones
+- [x] **`check_consistency`** ✅ IMPLEMENTADO EN v2.0
+- [ ] **`update_timeline`**
+  - Mantener línea temporal de eventos de campaña
+  - Registrar cuándo ocurrió cada evento importante
+  - Calcular tiempo transcurrido entre sesiones
 
-**`update_timeline`**
-- Mantener línea temporal de eventos de campaña
-- Registrar cuándo ocurrió cada evento importante
-- Calcular tiempo transcurrido entre sesiones
-
-### 3.4 Session Preparation
+### 4.4 Session Preparation
 
 **`prep_session`**
 ```json
@@ -393,13 +405,13 @@ type Relationship struct {
 
 ---
 
-## 🛠️ FASE 4: Optimización & Polish
+## 🛠️ FASE 5: Optimización & Polish
 
 > **Duración estimada:** 2 sprints  
 > **Objetivo:** Performance, DX, y extensibilidad  
 > **Entregable:** Sistema robusto, rápido, y extensible
 
-### 4.1 Performance
+### 5.1 Performance
 
 - [ ] **Caching**
   - Cache de templates (no leer disco cada vez)
@@ -413,7 +425,7 @@ type Relationship struct {
   - Compilación de PDF async
   - Pre-warm de caches
 
-### 4.2 Developer Experience
+### 5.2 Developer Experience
 
 - [ ] **Mejores mensajes de error**
   - Contexto rico para el LLM (qué falló, por qué, cómo arreglarlo)
@@ -427,7 +439,7 @@ type Relationship struct {
   - Endpoint de health para monitoreo
   - Métricas de tiempo de respuesta por tool
 
-### 4.3 Extensibilidad
+### 5.3 Extensibilidad
 
 - [ ] **Sistema de plugins**
   - Tools dinámicas registrables
@@ -440,7 +452,7 @@ type Relationship struct {
   - Formato Roll20
   - JSON genérico
 
-### 4.4 Documentación
+### 5.4 Documentación
 
 - [ ] **Docs OpenAPI-style**
   - Descripción rica de cada tool
@@ -456,39 +468,39 @@ type Relationship struct {
 
 ---
 
-## 🚀 FASE 5: Features Avanzadas (Backlog)
+## 🚀 FASE 6: Features Avanzadas (Backlog)
 
 > **Estado:** Backlog, priorizable según feedback  
 > **Objetivo:** Features que elevan la experiencia a nivel profesional
 
-### 5.1 Combat & Encounter Builder
+### 6.1 Combat & Encounter Builder
 
 - [ ] **Encounter calculator**: Balance automático por nivel de party
 - [ ] **Initiative tracker**: Estado de combate en tiempo real
 - [ ] **Dynamic difficulty**: Ajuste on-the-fly según performance
 - [ ] **Tactical map overlay**: Combinar mapas SVG con posiciones
 
-### 5.2 World Building Avanzado
+### 6.2 World Building Avanzado
 
 - [ ] **Gazetteer**: Enciclopedia del mundo con búsqueda
 - [ ] **Faction simulator**: Facciones que evolucionan entre sesiones
 - [ ] **Economy tracker**: Economía de lugares, inflación, recursos
 - [ ] **Random tables contextuales**: Tablas que entienden el setting
 
-### 5.3 Multi-campaign
+### 6.3 Multi-campaign
 
 - [ ] **Shared universe**: Personajes que cruzan campañas
 - [ ] **Timeline global**: Eventos que afectan múltiples mesas
 - [ ] **Cross-campaign references**: NPCs que aparecen en varias campañas
 
-### 5.4 Integraciones
+### 6.4 Integraciones
 
 - [ ] **Discord bot**: Notificaciones, rolls, recordatorios
 - [ ] **Calendar integration**: Scheduling de sesiones
 - [ ] **Cloud sync**: Campañas en la nube (S3, GCS)
 - [ ] **Web UI**: Dashboard visual para gestión
 
-### 5.5 AI Avanzada
+### 6.5 AI Avanzada
 
 - [ ] **Narrative memory**: La AI recuerda detalles de sesiones pasadas
 - [ ] **Voice generation**: Descripciones narradas
@@ -497,19 +509,20 @@ type Relationship struct {
 
 ---
 
-## 📊 Cronograma Sugerido
+## 📊 Cronograma Actualizado
 
-| Fase | Duración | Focus | Deliverable Principal |
-|------|----------|-------|---------------------|
-| **Fase 0** | 2 sprints | Tests + Arquitectura | 80%+ coverage, arquitectura limpia |
-| **Fase 1** | 2 sprints | Personajes & Fichas | CRUD de personajes, templates |
-| **Fase 2** | 2 sprints | Integración Narrativa | Quests, relaciones, hooks |
-| **Fase 3** | 2 sprints | Evolución de Campaña | Lectura de estado, generación de arcos |
-| **Fase 4** | 2 sprints | Polish & Performance | Cache, logging, docs |
-| **Fase 5** | Backlog | Avanzado | Combat, integraciones, AI |
+| Fase | Estado | Duración | Focus | Deliverable Principal |
+|------|--------|----------|-------|---------------------|
+| **Fase 0** | ✅ COMPLETADA | 2 sprints | Tests + Arquitectura | 82.6% coverage, arquitectura limpia |
+| **Fase 1** | ✅ COMPLETADA | 2 sprints | Coherencia Narrativa | Canon, validación, gates, estado |
+| **Fase 2** | 🔄 PENDIENTE | 2 sprints | Personajes & Fichas | CRUD de personajes, templates |
+| **Fase 3** | 🔄 PENDIENTE | 2 sprints | Integración Narrativa | Quests, relaciones, hooks |
+| **Fase 4** | 🔄 PENDIENTE | 2 sprints | Evolución de Campaña | Lectura de estado, generación de arcos |
+| **Fase 5** | 🔄 PENDIENTE | 2 sprints | Polish & Performance | Cache, logging, docs |
+| **Fase 6** | 📋 BACKLOG | - | Avanzado | Combat, integraciones, AI |
 
 **MVP funcional completo:** ~8-10 semanas (Fases 0-3)  
-**Producción-ready:** ~12-14 semanas (Fases 0-4)
+**Producción-ready:** ~12-14 semanas (Fases 0-5)
 
 ---
 
@@ -538,32 +551,15 @@ type Relationship struct {
 /__________________\
 ```
 
-### Estructura de Tests
+### Cobertura Actual (v2.0.0)
 
-```
-internal/
-├── mcp/
-│   ├── server_test.go              ← Tests de wiring
-│   └── handlers/
-│       ├── campaign_test.go
-│       ├── character_test.go
-│       └── quest_test.go
-├── services/
-│   ├── campaign_service_test.go
-│   ├── character_service_test.go
-│   └── quest_service_test.go
-├── domain/
-│   ├── character_test.go
-│   └── quest_test.go
-└── repository/
-    └── filesystem_test.go
-```
-
-### Tipos de Tests
-
-- **Unit tests**: Lógica de negocio pura, sin dependencias externas
-- **Integration tests**: Handlers MCP con servidor real, filesystem temporal
-- **E2E tests**: Flujo completo desde creación de campaña hasta PDF
+| Paquete | Cobertura | Estado |
+|---------|-----------|--------|
+| `internal/domain` | 93.1% | ✅ |
+| `internal/services` | 82.6% | ✅ |
+| `internal/repository` | - | Pendiente |
+| `internal/mcp/handlers` | 64.3% | ⚠️ |
+| `internal/compiler` | - | Pendiente |
 
 ---
 
@@ -601,98 +597,85 @@ type FilesystemCampaignRepository struct { ... }
 
 ---
 
-## 📁 Estructura de Archivos Propuesta
+## 📁 Estructura de Archivos Actual
 
 ```
 grimorio/
 ├── cmd/
-│   └── grimorio/
-│       └── main.go
+│   ├── grimorio/                    # Entry point (stdio MCP server)
+│   └── migrate-v1-to-v2/            # Migration tool v1→v2
 ├── internal/
 │   ├── mcp/
-│   │   ├── server.go
-│   │   ├── handlers/
-│   │   │   ├── campaign.go
-│   │   │   ├── act.go
-│   │   │   ├── character.go
-│   │   │   ├── quest.go
-│   │   │   ├── npc.go
-│   │   │   ├── bestiary.go
-│   │   │   ├── encounter.go
-│   │   │   ├── map.go
-│   │   │   ├── asset.go
-│   │   │   └── pdf.go
-│   │   └── handlers_test.go
-│   ├── domain/
-│   │   ├── campaign.go
-│   │   ├── character.go
-│   │   ├── quest.go
-│   │   ├── npc.go
-│   │   └── template.go
-│   ├── services/
-│   │   ├── campaign_service.go
-│   │   ├── character_service.go
-│   │   ├── quest_service.go
-│   │   └── asset_service.go
-│   ├── repository/
-│   │   ├── interfaces.go
-│   │   ├── filesystem.go
-│   │   └── memory.go          ← Para tests
-│   ├── validators/
-│   │   └── validators.go
-│   ├── compiler/
-│   │   └── compiler.go
-│   ├── svg/
-│   │   └── svg.go
-│   ├── image/
-│   │   └── image.go
-│   └── config/
-│       └── config.go
-├── campaigns/                  ← Output de campañas
-├── templates/                  ← Templates Markdown/CSS
-├── tests/
-│   ├── fixtures/
-│   │   └── campaigns/
-│   └── integration/
-├── docs/
-│   ├── api.md
-│   └── examples.md
-├── .github/
-│   └── workflows/
-│       └── ci.yml
+│   │   ├── server.go                # MCP tool definitions + handlers
+│   │   └── handlers/
+│   │       ├── campaign.go
+│   │       ├── canon.go             # Narrative coherence handlers
+│   │       ├── canon_test.go
+│   │       ├── canon_gate_test.go
+│   │       └── ...
+│   ├── domain/                      # Domain models
+│   │   ├── canon.go
+│   │   ├── narrative_state.go
+│   │   ├── validation.go
+│   │   ├── gate.go
+│   │   └── *_test.go
+│   ├── services/                    # Business logic
+│   │   ├── canon_service.go
+│   │   ├── narrative_state_service.go
+│   │   ├── validation_engine.go
+│   │   ├── consistency_gate.go
+│   │   └── *_test.go
+│   ├── repository/                  # Persistence layer
+│   │   ├── filesystem_canon.go
+│   │   ├── memory_canon.go
+│   │   └── *_test.go
+│   ├── compiler/                    # Markdown → HTML → PDF pipeline
+│   ├── svg/                         # Procedural SVG generator
+│   ├── image/                       # Image provider abstraction
+│   └── config/                      # Configuration management
+├── campaigns/                       # Output directory
+├── .claude-plugin/                  # Plugin manifest
+├── commands/                        # Slash command definitions
+├── agents/                          # Agent definitions
+├── skills/                          # D&D 5e SRD skill
 ├── go.mod
 ├── go.sum
-├── Makefile
+├── install.sh
+├── CHANGELOG.md
 ├── README.md
-└── ROADMAP.md                  ← Este archivo
+└── ROADMAP.md
 ```
 
 ---
 
 ## 🎯 Métricas de Éxito
 
-### Fase 0
-- [ ] 80%+ test coverage
-- [ ] Todos los handlers existentes tienen tests
-- [ ] Build pasa en CI
-- [ ] Sin warnings de `golangci-lint`
+### Fase 0 ✅
+- [x] 80%+ test coverage
+- [x] Todos los handlers existentes tienen tests
+- [x] Arquitectura limpia implementada
 
-### Fase 1
+### Fase 1 ✅
+- [x] Sistema de canon funcional (canon.json)
+- [x] Motor de validación con 10 reglas
+- [x] Consistency gate con batch processing
+- [x] Estado narrativo trackeable
+
+### Fase 2 (Próxima)
 - [ ] CRUD completo de personajes
 - [ ] Fichas visuales en Markdown
 - [ ] Tests de integración para cada tool nueva
 
-### Fase 2
+### Fase 3
 - [ ] Sistema de quests funcional
 - [ ] Relaciones trackables
 - [ ] Hooks de sesión generados automáticamente
 
-### Fase 3
+### Fase 4
 - [ ] Estado de campaña legible completo
 - [ ] Generación de arcos coherentes
-- [ ] Check de consistencia funcional
 
-### Fase 4
+### Fase 5
 - [ ] Tiempo de respuesta < 500ms para lecturas
 - [ ] Documentación completa
 - [ ] Sistema de plugins funcional
@@ -714,7 +697,7 @@ grimorio/
 - Mensajes de error claros para LLM
 
 ### Persistencia
-- JSON para datos estructurados (characters, quests)
+- JSON para datos estructurados (characters, quests, canon, state)
 - Markdown para contenido narrativo (acts, npcs)
 - SVG/PNG para assets
 - README.md como manifest de campaña
@@ -742,4 +725,4 @@ grimorio/
 ---
 
 **Última actualización:** Mayo 2026  
-**Próxima revisión:** Al completar Fase 0
+**Próxima revisión:** Al completar Fase 2

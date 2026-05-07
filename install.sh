@@ -703,6 +703,7 @@ print_instructions() {
     echo -e "   • validate_canon → Validates content against canon (prevents NPC resurrections!)"
     echo -e "   • update_narrative_state → Track session state (clues, quests, deaths)"
     echo -e "   • check_consistency → Full campaign validation before PDF"
+    echo -e "   • process_consistency_gate → Batch validation gate (approve/reject/retry)"
     echo ""
     echo -e "8. ${YELLOW}Update grimorio later:${NC}"
     echo -e "   Just re-run: ${GREEN}curl -sSL ${REPO_URL}/raw/main/install.sh | bash${NC}"
