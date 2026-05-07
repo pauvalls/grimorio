@@ -673,13 +673,20 @@ Ask the user these questions (one at a time, interactively):
 ### Phase 2: Create Campaign Structure
 Use the grimorio MCP tool `create_campaign` to create the structure.
 
-### Phase 3-10: End-to-End Orchestration (sequential batches)
+### Phase 3-13: End-to-End Orchestration (sequential batches)
 The architect follows strict batch ordering — each batch waits for the previous:
 
-- **Batch 1** (parallel): NPCs, bestiary, maps
-- **Batch 2** (parallel): lore, quests, encounters, characters
-- **Batch 3** (parallel): SVG maps, acts (needs ALL prior content)
-- **Sequential**: artist batch-spec (cover + NPCs + scenes + monsters) → generate images (1x1, retry missing) → update ALL references → PDF
+- **Batch 1** (parallel): NPCs, bestiary, maps → Consistency Gate
+- **Batch 2** (parallel): lore, quests, encounters, characters → Consistency Gate → Update Narrative State
+- **Batch 3** (parallel): SVG maps, acts → Consistency Gate
+- **Phase 6**: Artist batch-spec (cover + NPCs + scenes + monsters)
+- **Phase 7**: Generate AI images (1x1 sequential, retry missing)
+- **Phase 8**: Update ALL markdown references
+- **Phase 9**: Living World tools (factions, random tables, handouts, consequences) → Consistency Gate
+- **Phase 10**: DM Experience tools (session prep, flowchart)
+- **Phase 11**: Final consistency check
+- **Phase 12**: Compile PDF (embeds all images + flowchart)
+- **Phase 13**: Final report
 
 The architect reports progress to the user after each phase.
 
