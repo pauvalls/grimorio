@@ -11,9 +11,15 @@ import (
 	mcpserver "github.com/pauvalls/grimorio/internal/mcp"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "version" {
-		fmt.Println("grimorio v1.0.0")
+		fmt.Printf("grimorio %s (commit: %s, built: %s)\n", version, commit, date)
 		os.Exit(0)
 	}
 
