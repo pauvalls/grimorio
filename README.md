@@ -137,7 +137,8 @@ OpenCode / Claude Code
          │   ├─ generate_adventure_bible → Creates canon.json (facts, entities, rules, timeline)
          │   ├─ validate_canon           → Validates content proposals against canon
          │   ├─ update_narrative_state   → Tracks session state (clues, quests, deaths)
-         │   └─ check_consistency        → Full campaign consistency validation
+         │   ├─ check_consistency        → Full campaign consistency validation
+         │   └─ process_consistency_gate → Batch validation gate (approve/reject/retry)
 ```
 
 ### Image Generation
@@ -362,6 +363,7 @@ Grimorio now includes a **narrative coherence subsystem** that validates campaig
 | `validate_canon` | Validation | Validates content proposals against canon (checks NPC deaths, lore consistency, entity existence) |
 | `update_narrative_state` | State | Updates campaign state after sessions (revealed clues, completed quests, dead NPCs, key decisions) |
 | `check_consistency` | Validation | Runs full campaign consistency check (dead NPCs appearing alive, lore violations, missing entities) |
+| `process_consistency_gate` | Gate | **Batch validation gate** — processes multiple content proposals atomically, returns approve/reject/retry with detailed feedback |
 
 **How it works:**
 1. **Adventure Bible** (`generate_adventure_bible`) — Creates a `canon.json` with immutable facts, entities (NPCs, locations, items), timeline, and world rules
@@ -375,6 +377,10 @@ Grimorio now includes a **narrative coherence subsystem** that validates campaig
    - Which NPCs died
    - Key decisions made by players
 4. **Consistency Check** (`check_consistency`) — Validates the entire campaign before PDF compilation
+5. **Batch Gate** (`process_consistency_gate`) — Atomically validates multiple content proposals (e.g., an entire act + encounters + NPCs) and returns:
+   - `approved` — All proposals pass validation
+   - `rejected` — With detailed feedback on which proposals failed and why
+   - `retry` — With specific instructions on how to fix the issues
 
 ### Campaign File Structure (v2.0)
 
@@ -597,7 +603,8 @@ OpenCode / Claude Code
          │   ├─ generate_adventure_bible → Crea canon.json (hechos, entidades, reglas, timeline)
          │   ├─ validate_canon           → Valida propuestas de contenido contra el canon
          │   ├─ update_narrative_state   → Seguimiento de estado de sesión (pistas, quests, muertes)
-         │   └─ check_consistency        → Validación completa de consistencia de campaña
+         │   ├─ check_consistency        → Validación completa de consistencia de campaña
+         │   └─ process_consistency_gate → Gate de validación por lotes (aprobar/rechazar/reintentar)
 ```
 
 ### Estructura del Plugin
@@ -762,6 +769,7 @@ Grimorio ahora incluye un **subsistema de coherencia narrativa** que valida la c
 | `validate_canon` | Validación | Valida propuestas de contenido contra el canon (verifica muertes de NPCs, consistencia del lore, existencia de entidades) |
 | `update_narrative_state` | Estado | Actualiza el estado de la campaña después de sesiones (pistas reveladas, quests completadas, NPCs muertos, decisiones clave) |
 | `check_consistency` | Validación | Ejecuta validación completa de consistencia de campaña (NPCs muertos que aparecen vivos, violaciones de lore, entidades faltantes) |
+| `process_consistency_gate` | Gate | **Gate de validación por lotes** — procesa múltiples propuestas de contenido atómicamente, devuelve aprobar/rechazar/reintentar con feedback detallado |
 
 **Cómo funciona:**
 1. **Biblia de Aventura** (`generate_adventure_bible`) — Crea un `canon.json` con hechos inmutables, entidades (NPCs, localizaciones, items), timeline y reglas del mundo
@@ -775,6 +783,10 @@ Grimorio ahora incluye un **subsistema de coherencia narrativa** que valida la c
    - Qué NPCs murieron
    - Decisiones clave de los jugadores
 4. **Verificación de Consistencia** (`check_consistency`) — Valida toda la campaña antes de la compilación del PDF
+5. **Gate por Lotes** (`process_consistency_gate`) — Valida atómicamente múltiples propuestas de contenido (ej., un acto completo + encuentros + NPCs) y devuelve:
+   - `approved` — Todas las propuestas pasan la validación
+   - `rejected` — Con feedback detallado sobre qué propuestas fallaron y por qué
+   - `retry` — Con instrucciones específicas sobre cómo corregir los problemas
 
 ### Migración de v1 a v2
 
