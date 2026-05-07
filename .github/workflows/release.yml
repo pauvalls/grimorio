@@ -36,6 +36,15 @@ jobs:
           changelog-file: CHANGELOG.md
           allow-initial-development-versions: true
 
+      - name: Commit changelog changes
+        if: steps.semver.outputs.version != ''
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md .semrel/
+          git diff --cached --quiet || git commit -m "chore(release): update changelog for v${{ steps.semver.outputs.version }}"
+          git push
+
       - name: Run GoReleaser
         if: steps.semver.outputs.version != ''
         uses: goreleaser/goreleaser-action@v6
