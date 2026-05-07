@@ -221,6 +221,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("level_range", mcp.Description("Level range (e.g., 1-10)")),
 		mcp.WithString("tone", mcp.Description("Campaign tone (grim, whimsical, heroic, horror, political, mystery)")),
 		mcp.WithString("setting_type", mcp.Description("Setting type (urban, wilderness, dungeon, maritime, planar)")),
+		mcp.WithArray("themes", mcp.Description("Campaign themes")),
 		mcp.WithString("villain_type", mcp.Description("Type of main villain")),
 		mcp.WithString("mcguffin_type", mcp.Description("Type of McGuffin")),
 	), canonHandlers.HandleGenerateAdventureBible())
@@ -238,6 +239,10 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithDescription("Update the narrative state after a session"),
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithNumber("session_num", mcp.Required(), mcp.Description("Session number (1, 2, 3...)")),
+		mcp.WithArray("revealed_clues", mcp.Description("Clues revealed this session")),
+		mcp.WithArray("completed_quests", mcp.Description("Quest IDs completed this session")),
+		mcp.WithArray("dead_npcs", mcp.Description("NPCs who died this session")),
+		mcp.WithArray("key_decisions", mcp.Description("Key decisions made this session")),
 	), canonHandlers.HandleUpdateNarrativeState())
 
 	s.AddTool(mcp.NewTool("check_consistency",
@@ -250,6 +255,8 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithDescription("Process a batch of content proposals through the consistency gate"),
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithString("batch_id", mcp.Required(), mcp.Description("Batch identifier (e.g., batch-1, batch-2)")),
+		mcp.WithArray("proposals", mcp.Required(), mcp.Description("Array of content proposals with id, type, content, and optional entity_references")),
+		mcp.WithNumber("attempt", mcp.Description("Attempt number (1-3)"), mcp.DefaultNumber(1)),
 		mcp.WithBoolean("fast_mode", mcp.Description("Skip non-critical validations for speed"), mcp.DefaultBool(false)),
 	), canonHandlers.HandleProcessConsistencyGate())
 

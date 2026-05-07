@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -114,6 +115,97 @@ func TestCanonHandlers_HandleProcessConsistencyGate_Approve(t *testing.T) {
 	}
 	if gateResult.Status != domain.GateStatusApproved {
 		t.Fatalf("expected approved, got %s", gateResult.Status)
+	}
+}
+
+func TestCanonHandlers_HandleProcessConsistencyGate_WithProposals_Approve(t *testing.T) {
+	// Use SAME setup for canon initialization and handler
+	handlers, canonSvc, _, _ := setupCanonHandlersWithGate()
+	ctx := context.Background()
+
+	// Setup campaign
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	canonSvc.InitializeCanon(ctx, brief)
+
+	// Add NPC
+	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
+	doc.Entities = append(doc.Entities, domain.CanonEntity{
+		ID:         "npc-001",
+		Name:       "Test NPC",
+		Type:       domain.EntityTypeNPC,
+		CanonState: domain.EntityStateAlive,
+	})
+	canonSvc.SaveCanon(ctx, doc)
+
+	// Use the REAL handler with same services
+	handler := handlers.HandleProcessConsistencyGate()
+
+	request := mcp.CallToolRequest{}
+	request.Params.Arguments = map[string]any{
+		"campaign_id": "test-campaign",
+		"batch_id":    "batch-001",
+		"fast_mode":   false,
+		"attempt":     float64(1),
+		"proposals": []interface{}{
+			map[string]any{
+				"id":      "npc-001-ref",
+				"type":    "npc",
+				"content": "Test NPC is present.",
+				"entity_references": []interface{}{
+					map[string]any{"entity_id": "npc-001"},
+				},
+			},
+		},
+	}
+
+	result, err := handler(ctx, request)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %s", getResultText(result))
+	}
+
+	var gateResult domain.GateResult
+	if err := json.Unmarshal([]byte(getResultText(result)), &gateResult); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if gateResult.Status != domain.GateStatusApproved {
+		t.Fatalf("expected approved, got %s. Full result: %s", gateResult.Status, getResultText(result))
+	}
+}
+
+func TestCanonHandlers_HandleProcessConsistencyGate_WithoutProposals_Fails(t *testing.T) {
+	_, canonSvc, _, _ := setupCanonHandlersWithGate()
+	ctx := context.Background()
+
+	// Setup campaign
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	canonSvc.InitializeCanon(ctx, brief)
+
+	// Use the REAL handler
+	handlers, _, _, _ := setupCanonHandlersWithGate()
+	handler := handlers.HandleProcessConsistencyGate()
+
+	request := mcp.CallToolRequest{}
+	request.Params.Arguments = map[string]any{
+		"campaign_id": "test-campaign",
+		"batch_id":    "batch-001",
+		"fast_mode":   false,
+		// NO proposals - should fail
+	}
+
+	result, err := handler(ctx, request)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	// Should return error because no proposals = invalid batch
+	if !result.IsError {
+		t.Fatal("expected error for missing proposals")
+	}
+	resultText := getResultText(result)
+	if !strings.Contains(resultText, "artifacts") && !strings.Contains(resultText, "invalid") {
+		t.Fatalf("expected validation error about missing artifacts, got: %s", resultText)
 	}
 }
 
