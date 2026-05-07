@@ -68,7 +68,16 @@ For each piece of content to validate, check:
 - Does the content require clues that haven't been revealed yet?
 - If yes and no alternative path, ERROR
 
-#### Check 6: Level Appropriateness
+#### Check 6: Faction Reputation
+- Does the content reference factions with appropriate reputation scores?
+- Are hostile factions acting helpful without narrative cause? ERROR
+- Are secret factions exposed to players incorrectly? ERROR
+
+#### Check 7: Handout Consistency
+- Are handouts canon-compliant (no secret info leaked to player version)?
+- Do handout references match existing NPCs, locations, items?
+
+#### Check 8: Level Appropriateness
 - Do encounters match the party level?
 - Is loot balanced for the level?
 
@@ -112,6 +121,22 @@ grimorio_update_narrative_state(
 )
 ```
 
+## Tools You Can Use
+
+### Validation Tools
+- `grimorio_validate_canon` — Validate a single content proposal against canon
+- `grimorio_check_consistency` — Full campaign-wide consistency check
+- `grimorio_process_consistency_gate` — Batch validation with approve/reject
+
+### State Management Tools
+- `grimorio_update_narrative_state` — Update narrative state after sessions or batches
+- `grimorio_evaluate_consequences` — Evaluate consequence rules against current state
+
+### Living World Tools (NEW v2.1)
+- `grimorio_update_faction_reputation` — Modify faction reputation with propagation
+- `grimorio_generate_random_tables` — Create contextual random tables
+- `grimorio_generate_handouts` — Generate player-facing + DM-only handouts
+
 ## Validation Rules Reference
 
 ### Critical Issues (Reject)
@@ -120,17 +145,22 @@ grimorio_update_narrative_state(
 - World rule violation
 - Missing prerequisite clue without alternative
 - Encounter CR wildly inappropriate for party level
+- Hostile faction aiding party without cause
+- Secret faction information leaked to players
+- Handout contains canon contradictions
 
 ### Warnings (Approve with notes)
 - NPC motivation seems inconsistent
 - Location description slightly contradicts canon
 - Loot is generous but not game-breaking
 - Minor timeline inconsistency
+- Faction reputation change without clear cause
 
 ### Info (Note only)
 - New entity introduced (will be added to canon)
 - Alternative path provided for missing clue
 - Creative interpretation of lore
+- Handout generated with canon references
 
 ## Examples of Common Issues
 

@@ -151,13 +151,23 @@ Phase 3-13: End-to-end orchestration by grimorio-architect
 │  ┌────────────────────────────┐  │ process_consistency_gate         │  │
 │  │   Asset Tools              │  │   → Batch approve/reject/retry   │  │
 │  ├────────────────────────────┤  └──────────────────────────────────┘  │
-│  │ generate_map               │                                        │
-│  │   → SVG battle maps        │  ┌──────────────────────────────────┐  │
-│  │ generate_divider           │  │   Output                           │  │
-│  │   → SVG dividers           │  │   compile_pdf                    │  │
-│  │ generate_image             │  │     → D&D adventure book PDF     │  │
-│  │   → AI art (FREE)          │  │     → Lore → Acts → Appendices   │  │
-│  └────────────────────────────┘  └──────────────────────────────────┘  │
+│  │ generate_map               │  ┌──────────────────────────────────┐  │
+│  │   → SVG battle maps        │  │   Living World (v2.1)            │  │
+│  │ generate_divider           │  ├──────────────────────────────────┤  │
+│  │   → SVG dividers           │  │ update_faction_reputation        │  │
+│  │ generate_image             │  │   → Propagate rep to allies      │  │
+│  │   → AI art (FREE)          │  │ generate_random_tables           │  │
+│  └────────────────────────────┘  │   → Contextual encounter tables  │  │
+│                                  │ generate_handouts                │  │
+│                                  │   → Player + DM versions         │  │
+│                                  │ evaluate_consequences            │  │
+│                                  │   → Trigger rules from state     │  │
+│                                  └──────────────────────────────────┘  │
+│                                  ┌──────────────────────────────────┐  │
+│                                  │   Output                           │  │
+│                                  │   compile_pdf                    │  │
+│                                  │     → Lore → Acts → Appendices   │  │
+│                                  └──────────────────────────────────┘  │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```

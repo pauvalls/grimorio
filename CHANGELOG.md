@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Unreleased]
+
+### Added
+- **Living World Subsystem (Fase 3)** — Dynamic factions, consequences, random tables, and handouts
+  - `update_faction_reputation` — Modify faction reputation with BFS propagation to allies/enemies
+  - `generate_random_tables` — Contextualized encounter, rumor, weather, treasure tables
+  - `generate_handouts` — Dual-version handouts (player-facing + DM-only)
+  - `evaluate_consequences` — Evaluate consequence rules against narrative state
+  - `FactionService` — CRUD + ReputationMatrix + propagation (2-hop cap, circular detection)
+  - `ConsequenceEngine` — Trigger matching, condition evaluation, delayed effects
+  - `RandomTableService` — Canon-seeded contextual table generation
+  - `HandoutService` — Player/DM dual-version generation
+  - `AdaptationPatch` — WorldEvent → markdown patch for DM application
+  - Faction Tracker appendix in PDF (Apéndice E)
+- **Validation Engine Rule 10** — `faction_reputation_gate` (hostile factions cannot be helpful without cause)
+
 ## [2.0.0] - 2026-05-07
 
 ### Added

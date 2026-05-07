@@ -19,13 +19,19 @@ El MCP actual tiene **17 herramientas** organizadas en 4 categorías:
 
 ### Cambios Recientes Completados (v2.0.0)
 
-- ✅ **Subsistema de Coherencia Narrativa** — Canon, validación, estado, y gates
-- ✅ **Motor de Validación** — 10 reglas (NPC deaths, lore, entities, timeline, quests, etc.)
+- ✅ **Subsistema de Coherencia Narrativa (Fase 1-2)** — Canon, validación, estado, y gates
+- ✅ **Motor de Validación** — 10 reglas (NPC deaths, lore, entities, timeline, quests, factions)
 - ✅ **Consistency Gate** — Batch validation con approve/reject/retry
 - ✅ **Arquitectura limpia** — Domain/services/repository separados
-- ✅ **Tests** — 82.6% coverage en servicios, strict TDD
+- ✅ **Tests** — 81.2% coverage en servicios, strict TDD
 - ✅ **PDF compilation reordenado** — Lore → Acts → Apéndices
 - ✅ **Template `act.md.tmpl` rediseñado** — Estilo Out of the Abyss
+- ✅ **Sistemas de Mundo Vivo (Fase 3)** — Factions, consequences, random tables, handouts
+  - FactionService con BFS propagation y ReputationMatrix
+  - ConsequenceEngine con triggers, conditions, delayed effects
+  - RandomTableService contextualizado desde canon
+  - HandoutService dual-version (player + DM)
+  - Faction Tracker en PDF (Apéndice E)
 - ✅ **README actualizado** — Documentación completa EN+ES
 
 ---
@@ -515,9 +521,9 @@ type Relationship struct {
 |------|--------|----------|-------|---------------------|
 | **Fase 0** | ✅ COMPLETADA | 2 sprints | Tests + Arquitectura | 82.6% coverage, arquitectura limpia |
 | **Fase 1** | ✅ COMPLETADA | 2 sprints | Coherencia Narrativa | Canon, validación, gates, estado |
-| **Fase 2** | 🔄 PENDIENTE | 2 sprints | Personajes & Fichas | CRUD de personajes, templates |
-| **Fase 3** | 🔄 PENDIENTE | 2 sprints | Integración Narrativa | Quests, relaciones, hooks |
-| **Fase 4** | 🔄 PENDIENTE | 2 sprints | Evolución de Campaña | Lectura de estado, generación de arcos |
+| **Fase 2** | ✅ COMPLETADA | 2 sprints | Personajes & Fichas | generate_character, get_character, list_characters |
+| **Fase 3** | ✅ COMPLETADA | 2 sprints | Sistemas de Mundo Vivo | Factions, consequences, tables, handouts |
+| **Fase 4** | 🔄 EN PROGRESO | 2 sprints | Experiencia de DM | Session prep, flowchart, roster, hooks |
 | **Fase 5** | 🔄 PENDIENTE | 2 sprints | Polish & Performance | Cache, logging, docs |
 | **Fase 6** | 📋 BACKLOG | - | Avanzado | Combat, integraciones, AI |
 
@@ -551,15 +557,15 @@ type Relationship struct {
 /__________________\
 ```
 
-### Cobertura Actual (v2.0.0)
+### Cobertura Actual (v2.1.0)
 
 | Paquete | Cobertura | Estado |
 |---------|-----------|--------|
-| `internal/domain` | 93.1% | ✅ |
-| `internal/services` | 82.6% | ✅ |
-| `internal/repository` | - | Pendiente |
-| `internal/mcp/handlers` | 64.3% | ⚠️ |
-| `internal/compiler` | - | Pendiente |
+| `internal/domain` | 94.9% | ✅ |
+| `internal/services` | 81.2% | ✅ |
+| `internal/repository` | 60.1% | ⚠️ |
+| `internal/mcp/handlers` | 54.1% | ⚠️ |
+| `internal/compiler` | 48.8% | ⚠️ |
 
 ---
 

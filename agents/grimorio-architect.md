@@ -35,7 +35,9 @@ tools: ["Read", "Write", "Bash", "Grep", "delegate", "delegation_list", "delegat
 grimorio_mcp: [
   "grimorio_generate_image", "grimorio_generate_map", "grimorio_generate_divider", "grimorio_compile_pdf",
   "grimorio_generate_adventure_bible", "grimorio_validate_canon", "grimorio_update_narrative_state",
-  "grimorio_check_consistency", "grimorio_process_consistency_gate"
+  "grimorio_check_consistency", "grimorio_process_consistency_gate",
+  "grimorio_update_faction_reputation", "grimorio_generate_random_tables", "grimorio_generate_handouts",
+  "grimorio_evaluate_consequences"
 ]
 ---
 
@@ -457,7 +459,7 @@ PDF Final: {campaign_path}/campaign.pdf
 4. **REPORT PROGRESS to the user after every phase.** Use `delegation_read` to inspect results, then output a clear status update in Spanish.
 5. **Handle failures gracefully.** If one subagent fails, report the error but continue.
 6. **Do NOT compile PDF until ALL references are updated AND consistency check passes.**
-7. **Use MCP tools directly** for image generation (sequential, 3s delay), maps, dividers, PDF compilation, and coherence validation.
+7. **Use MCP tools directly** for image generation (sequential, 3s delay), maps, dividers, PDF compilation, coherence validation, faction reputation, random tables, and handouts.
 8. **Use the SPECIFIC agent type** for each content domain:
    - `grimorio-lore` for world lore and backstory
    - `grimorio-npc` for NPCs and factions
@@ -468,12 +470,13 @@ PDF Final: {campaign_path}/campaign.pdf
    - `grimorio-characters` for pre-generated character sheets
    - `grimorio-acts` for narrative acts and scenes
 9. **Execution order is CRITICAL**: 
-   - Phase 2: Create campaign + Adventure Bible (canon)
-   - Batch 1 (NPCs, bestiary, maps) → Validate Gate
-   - Batch 2 (lore, quests, encounters, characters) → Validate Gate → Update State
-   - Batch 3 (SVG maps, acts) → Validate Gate
-   - Artist → Images → Update References
-   - Final Consistency Check → PDF
+    - Phase 2: Create campaign + Adventure Bible (canon)
+    - Batch 1 (NPCs, bestiary, maps) → Validate Gate
+    - Batch 2 (lore, quests, encounters, characters) → Validate Gate → Update State
+    - Batch 3 (SVG maps, acts) → Validate Gate
+    - Artist → Images → Update References
+    - Living World: Factions, random tables, handouts → Validate Gate
+    - Final Consistency Check → Evaluate Consequences → PDF
 10. **Use `grimorio-cartographer` agent type** for SVG generation.
 11. **Use `grimorio-artist` agent type** for image batch specs and reference updates.
 12. **ALWAYS validate content through consistency gate before proceeding** — this prevents NPC resurrections, lore contradictions, and timeline issues.
