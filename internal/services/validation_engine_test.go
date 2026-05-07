@@ -23,27 +23,39 @@ func TestValidationEngine_ValidateAct_DeadNPC(t *testing.T) {
 
 	// Initialize campaign
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add NPC to canon
-	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
+	doc, err := canonSvc.LoadCanon(ctx, "test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
 		ID:         "npc-informador",
 		Name:       "El Informador",
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Mark NPC as dead in narrative state
-	state, _ := stateSvc.Load(ctx, "test-campaign")
+	state, err := stateSvc.Load(ctx, "test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load state: %v", err)
+	}
 	state.DeadNPCs = append(state.DeadNPCs, domain.NPCDeathRecord{
 		NPCID:   "npc-informador",
 		Name:    "El Informador",
 		Session: 2,
 		Cause:   "combat",
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	report, err := validator.ValidateAct(ctx, "test-campaign", "act-3", "El Informador enters the tavern.", []domain.EntityReference{
 		{EntityID: "npc-informador", Location: "act_3"},
@@ -73,7 +85,9 @@ func TestValidationEngine_ValidateQuest_MissingEntity(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	report, err := validator.ValidateQuest(ctx, "test-campaign", "quest-1", "Find the lost artifact.", []domain.EntityReference{
 		{EntityID: "npc-zarth", Location: "quest_1"},
@@ -103,16 +117,23 @@ func TestValidationEngine_ValidateAct_LoreViolation(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add lore rule
-	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
+	doc, err := canonSvc.LoadCanon(ctx, "test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 	doc.Rules = append(doc.Rules, domain.CanonRule{
 		ID:        "rule-001",
 		Domain:    "magic",
 		Statement: "Arcane magic is banned in the city",
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	report, err := validator.ValidateAct(ctx, "test-campaign", "act-3", "The wizards hold a public arcane fair in the city square.", nil)
 	if err != nil {
@@ -140,16 +161,23 @@ func TestValidationEngine_ValidateAct_Approved(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
-	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
+	doc, err := canonSvc.LoadCanon(ctx, "test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
 		ID:         "npc-guard",
 		Name:       "City Guard",
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	report, err := validator.ValidateAct(ctx, "test-campaign", "act-1", "The party talks to the City Guard.", []domain.EntityReference{
 		{EntityID: "npc-guard", Location: "act_1"},
@@ -168,13 +196,18 @@ func TestValidationEngine_CheckConsistency_McguffinMissing(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// State says party has the mcguffin but canon mcguffin is not marked as found in key items
 	// Actually, mcguffin_continuity checks that if there's a mcguffin in canon,
 	// and state has it as a key item, they match.
 	// Let's create a scenario where state says they have the mcguffin but it's not in canon entities.
-	state, _ := stateSvc.Load(ctx, "test-campaign")
+	state, err := stateSvc.Load(ctx, "test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load state: %v", err)
+	}
 	state.KeyItems = append(state.KeyItems, domain.KeyItem{
 		ID:           "mcguffin-missing",
 		Name:         "The Missing Orb",
@@ -182,7 +215,9 @@ func TestValidationEngine_CheckConsistency_McguffinMissing(t *testing.T) {
 		SessionFound: 1,
 		IsMcGuffin:   true,
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	report, err := validator.CheckConsistency(ctx, "test-campaign", domain.ConsistencyScopeFull)
 	if err != nil {
@@ -207,10 +242,15 @@ func TestValidationEngine_CheckConsistency_Healthy(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add matching mcguffin to state
-	state, _ := stateSvc.Load(ctx, "test-campaign")
+	state, err := stateSvc.Load(ctx, "test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load state: %v", err)
+	}
 	state.KeyItems = append(state.KeyItems, domain.KeyItem{
 		ID:           "mcguffin-test-campaign",
 		Name:         "The Artifact McGuffin",
@@ -218,7 +258,9 @@ func TestValidationEngine_CheckConsistency_Healthy(t *testing.T) {
 		SessionFound: 1,
 		IsMcGuffin:   true,
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	report, err := validator.CheckConsistency(ctx, "test-campaign", domain.ConsistencyScopeFull)
 	if err != nil {

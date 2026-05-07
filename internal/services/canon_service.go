@@ -8,6 +8,8 @@ import (
 
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // CanonService handles canon document business logic
@@ -52,7 +54,7 @@ func (s *CanonService) InitializeCanon(ctx context.Context, brief domain.Campaig
 		Entities: []domain.CanonEntity{
 			{
 				ID:         fmt.Sprintf("mcguffin-%s", brief.Name),
-				Name:       fmt.Sprintf("The %s McGuffin", strings.Title(brief.McGuffinType)),
+				Name:       fmt.Sprintf("The %s McGuffin", cases.Title(language.English).String(brief.McGuffinType)),
 				Type:       domain.EntityTypeItem,
 				Role:       "mcguffin",
 				CanonState: domain.EntityStateAlive,

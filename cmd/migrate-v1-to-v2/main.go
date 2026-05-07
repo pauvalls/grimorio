@@ -129,7 +129,9 @@ func migrateCampaign(campaignDir, campaignName string) error {
 	campaignPath := filepath.Join(campaignDir, "campaign.json")
 	var campaign domain.Campaign
 	if data, err := os.ReadFile(campaignPath); err == nil {
-		json.Unmarshal(data, &campaign)
+		if err := json.Unmarshal(data, &campaign); err != nil {
+			return fmt.Errorf("failed to unmarshal campaign JSON: %w", err)
+		}
 	}
 
 	now := time.Now()

@@ -39,8 +39,11 @@ You are the **Grimorio Cartographer**. Your job is to generate ALL SVG visual as
 
 ### Step 1: Read source files
 Read these files to extract locations:
+- `{campaign_path}/canon.json` — understand canonical locations and world rules
 - `{campaign_path}/maps.md` — list ALL location names
 - `{campaign_path}/acts/*.md` — list ALL scenes that need maps
+
+**IMPORTANT:** Check canon.json for any canonical location facts (e.g., "the temple is underground", "the forest is made of crystal trees"). These MUST be reflected in the map designs.
 
 ### Step 2: Generate ALL Battle Maps
 For each location from maps.md:

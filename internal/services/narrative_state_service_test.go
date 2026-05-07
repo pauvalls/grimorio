@@ -55,7 +55,9 @@ func TestNarrativeStateService_Update(t *testing.T) {
 			{ID: "q-001", Name: "Find the Sword", Status: "active", SourceAct: "act-1", GiverNPC: "npc-giver"},
 		},
 	}
-	svc.Save(ctx, state)
+	if err := svc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	update := domain.StateUpdate{
 		SessionNum: 2,
@@ -179,7 +181,9 @@ func TestNarrativeStateService_GetSessionPrepContext(t *testing.T) {
 			{ID: "npc-villain", Name: "Lord Dark", Type: domain.EntityTypeNPC, Role: "villain", CanonState: domain.EntityStateAlive},
 		},
 	}
-	canonRepo.Save("test-campaign", canon)
+	if err := canonRepo.Save("test-campaign", canon); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	state := &domain.NarrativeState{
 		SchemaVersion:  domain.SchemaVersionV2,
@@ -196,7 +200,9 @@ func TestNarrativeStateService_GetSessionPrepContext(t *testing.T) {
 			{SessionNum: 2, Summary: "The party defeated Lord Dark."},
 		},
 	}
-	svc.Save(ctx, state)
+	if err := svc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	prep, err := svc.GetSessionPrepContext(ctx, "test-campaign", 3)
 	if err != nil {
@@ -239,7 +245,9 @@ func TestNarrativeStateService_GetSessionPrepContext_NoLog(t *testing.T) {
 		CampaignID:     "test-campaign",
 		CurrentSession: 0,
 	}
-	svc.Save(ctx, state)
+	if err := svc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	prep, err := svc.GetSessionPrepContext(ctx, "test-campaign", 1)
 	if err != nil {

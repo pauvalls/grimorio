@@ -41,14 +41,19 @@ func TestConsistencyGateService_ProcessBatch_Approve(t *testing.T) {
 	setupCampaign(t, gateSvc.canonSvc, "test-campaign")
 
 	// Add an NPC to canon
-	doc, _ := canonRepo.Load("test-campaign")
+	doc, err := canonRepo.Load("test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
 		ID:         "npc-001",
 		Name:       "Test NPC",
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonRepo.Save("test-campaign", doc)
+	if err := canonRepo.Save("test-campaign", doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	proposal := domain.BatchProposal{
 		BatchID:    "batch-001",
@@ -87,23 +92,33 @@ func TestConsistencyGateService_ProcessBatch_Reject(t *testing.T) {
 	setupCampaign(t, gateSvc.canonSvc, "test-campaign")
 
 	// Add an NPC to canon
-	doc, _ := canonRepo.Load("test-campaign")
+	doc, err := canonRepo.Load("test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
 		ID:         "npc-001",
 		Name:       "Test NPC",
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonRepo.Save("test-campaign", doc)
+	if err := canonRepo.Save("test-campaign", doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Kill the NPC in narrative state
-	state, _ := stateRepo.Load("test-campaign")
+	state, err := stateRepo.Load("test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load state: %v", err)
+	}
 	state.DeadNPCs = append(state.DeadNPCs, domain.NPCDeathRecord{
 		NPCID:   "npc-001",
 		Name:    "Test NPC",
 		Session: 1,
 	})
-	stateRepo.Save("test-campaign", state)
+	if err := stateRepo.Save("test-campaign", state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	proposal := domain.BatchProposal{
 		BatchID:    "batch-001",
@@ -145,14 +160,19 @@ func TestConsistencyGateService_ProcessBatch_LockPreventsConcurrent(t *testing.T
 	setupCampaign(t, gateSvc.canonSvc, "test-campaign")
 
 	// Add an NPC
-	doc, _ := canonRepo.Load("test-campaign")
+	doc, err := canonRepo.Load("test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
 		ID:         "npc-001",
 		Name:       "Test NPC",
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonRepo.Save("test-campaign", doc)
+	if err := canonRepo.Save("test-campaign", doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Manually acquire lock
 	gateSvc.acquireLock("test-campaign", "batch-000")
@@ -166,7 +186,7 @@ func TestConsistencyGateService_ProcessBatch_LockPreventsConcurrent(t *testing.T
 		Attempt: 1,
 	}
 
-	_, err := gateSvc.ProcessBatch(ctx, proposal, false)
+	_, err = gateSvc.ProcessBatch(ctx, proposal, false)
 	if err == nil {
 		t.Fatal("expected error due to lock, got nil")
 	}
@@ -244,22 +264,32 @@ func TestConsistencyGateService_MaxRetries(t *testing.T) {
 	setupCampaign(t, gateSvc.canonSvc, "test-campaign")
 
 	// Setup: dead NPC referenced as alive
-	doc, _ := canonRepo.Load("test-campaign")
+	doc, err := canonRepo.Load("test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
 		ID:         "npc-001",
 		Name:       "Test NPC",
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonRepo.Save("test-campaign", doc)
+	if err := canonRepo.Save("test-campaign", doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
-	state, _ := stateRepo.Load("test-campaign")
+	state, err := stateRepo.Load("test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load state: %v", err)
+	}
 	state.DeadNPCs = append(state.DeadNPCs, domain.NPCDeathRecord{
 		NPCID:   "npc-001",
 		Name:    "Test NPC",
 		Session: 1,
 	})
-	stateRepo.Save("test-campaign", state)
+	if err := stateRepo.Save("test-campaign", state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	proposal := domain.BatchProposal{
 		BatchID:    "batch-001",

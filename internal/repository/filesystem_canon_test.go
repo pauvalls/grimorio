@@ -68,9 +68,13 @@ func TestFilesystemCanonRepository_SchemaVersionRejection(t *testing.T) {
 
 	// Write a file with missing schema version directly
 	dir := filepath.Join(tmpDir, campaignID, "canon")
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("failed to create dir: %v", err)
+	}
 	badJSON := []byte(`{"campaign_id":"test-campaign","facts":[]}`)
-	os.WriteFile(filepath.Join(dir, "canon.json"), badJSON, 0644)
+	if err := os.WriteFile(filepath.Join(dir, "canon.json"), badJSON, 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
 
 	_, err := repo.Load(campaignID)
 	if err == nil {

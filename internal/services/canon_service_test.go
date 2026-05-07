@@ -102,7 +102,9 @@ func TestCanonService_RegisterFact(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	svc.InitializeCanon(ctx, brief)
+	if _, err := svc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	fact := domain.CanonFact{
 		ID:        "fact-002",
@@ -115,7 +117,10 @@ func TestCanonService_RegisterFact(t *testing.T) {
 		t.Fatalf("failed to register fact: %v", err)
 	}
 
-	doc, _ := svc.LoadCanon(ctx, brief.Name)
+	doc, err := svc.LoadCanon(ctx, brief.Name)
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 	if len(doc.Facts) != 2 {
 		t.Fatalf("expected 2 facts, got %d", len(doc.Facts))
 	}
@@ -142,7 +147,9 @@ func TestCanonService_QueryEntity(t *testing.T) {
 		Role:       "villain",
 		CanonState: domain.EntityStateAlive,
 	})
-	svc.SaveCanon(ctx, doc)
+	if err := svc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Query by type
 	npcs, err := svc.QueryEntity(ctx, brief.Name, domain.EntityFilter{Type: domain.EntityTypeNPC})
@@ -177,7 +184,10 @@ func TestCanonService_UpdateEntityState(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	doc, _ := svc.InitializeCanon(ctx, brief)
+	doc, err := svc.InitializeCanon(ctx, brief)
+	if err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
 		ID:         "npc-001",
@@ -185,13 +195,18 @@ func TestCanonService_UpdateEntityState(t *testing.T) {
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	svc.SaveCanon(ctx, doc)
+	if err := svc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	if err := svc.UpdateEntityState(ctx, brief.Name, "npc-001", domain.EntityStateDead); err != nil {
 		t.Fatalf("failed to update entity state: %v", err)
 	}
 
-	loaded, _ := svc.LoadCanon(ctx, brief.Name)
+	loaded, err := svc.LoadCanon(ctx, brief.Name)
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 	for _, e := range loaded.Entities {
 		if e.ID == "npc-001" {
 			if e.CanonState != domain.EntityStateDead {
@@ -208,10 +223,15 @@ func TestCanonService_ValidateProposal(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	svc.InitializeCanon(ctx, brief)
+	if _, err := svc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add an NPC and a rule to the canon
-	doc, _ := svc.LoadCanon(ctx, brief.Name)
+	doc, err := svc.LoadCanon(ctx, brief.Name)
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
 		ID:         "npc-informador",
 		Name:       "El Informador",
@@ -223,17 +243,24 @@ func TestCanonService_ValidateProposal(t *testing.T) {
 		Domain:    "magic",
 		Statement: "Arcane magic is banned in the city",
 	})
-	svc.SaveCanon(ctx, doc)
+	if err := svc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Set NPC as dead in narrative state
-	state, _ := stateRepo.Load(brief.Name)
+	state, err := stateRepo.Load(brief.Name)
+	if err != nil {
+		t.Fatalf("failed to load state: %v", err)
+	}
 	state.DeadNPCs = append(state.DeadNPCs, domain.NPCDeathRecord{
 		NPCID:   "npc-informador",
 		Name:    "El Informador",
 		Session: 2,
 		Cause:   "combat",
 	})
-	stateRepo.Save(brief.Name, state)
+	if err := stateRepo.Save(brief.Name, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	// Test 1: Valid proposal referencing existing entity
 	proposal1 := domain.ContentProposal{
