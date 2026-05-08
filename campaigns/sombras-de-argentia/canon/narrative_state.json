@@ -1,0 +1,14 @@
+{
+  "schema_version": "2.0",
+  "campaign_id": "sombras-de-argentia",
+  "current_session": 0,
+  "last_updated": "2026-05-08T11:58:00.981656713+02:00",
+  "revealed_clues": null,
+  "active_quests": null,
+  "completed_quests": null,
+  "failed_quests": null,
+  "dead_npcs": null,
+  "key_items": null,
+  "session_log": null,
+  "dm_overrides": null
+}

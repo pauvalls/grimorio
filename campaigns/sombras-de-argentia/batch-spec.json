@@ -1,0 +1,32 @@
+[
+  {
+    "filename": "cover_argentia.png",
+    "prompt": "A dark, gothic cityscape of Argentia under a permanent eclipse. Towering spires, wrought iron architecture, black ash falling like snow, a dark sun with a crimson iris in the sky. Moody, oppressive atmosphere, epic scale, high fantasy art style, cinematic lighting.",
+    "type": "cover"
+  },
+  {
+    "filename": "npc_julian_valerius.png",
+    "prompt": "Character portrait of Viscount Julian Valerius, a noble vampire. Elegant but predatory, pale skin, sharp features, wearing aristocratic crimson and black Victorian-style clothing, a subtle cruel smile. High fantasy digital art, professional character concept.",
+    "type": "portrait"
+  },
+  {
+    "filename": "npc_kaelen_vance.png",
+    "prompt": "Character portrait of Kaelen Vance, a rugged resistance leader. Weathered face, tactical scars, wearing a worn leather duster and carrying a glowing alchemical device. Determined expression, dark gritty background. High fantasy digital art, professional character concept.",
+    "type": "portrait"
+  },
+  {
+    "filename": "scene_obsidian_palace.png",
+    "prompt": "Exterior view of the Obsidian Palace in Argentia at night. A massive gothic fortress built from polished black stone, reflecting the dark sky. Glowing crimson windows, sharp pinnacles reaching for the eclipsed sun. Cinematic lighting, epic scale, dark fantasy.",
+    "type": "scene"
+  },
+  {
+    "filename": "scene_shadow_docks_alley.png",
+    "prompt": "A narrow, dark alleyway in the Shadow Docks of Argentia. Wet cobblestones, weathered wooden crates, flickering oil lanterns casting long shadows, sea mist, oppressive noir-fantasy aesthetic. High detail, atmospheric.",
+    "type": "scene"
+  },
+  {
+    "filename": "monster_blood_starved_ghoul.png",
+    "prompt": "A Blood-starved Ghoul, a horrifying undead creature with pale, stretched skin, elongated limbs, and a jaw unhinged in a silent scream. Sunken red eyes, dried blood stains, predatory stance. Dark fantasy horror art, high detail.",
+    "type": "monster"
+  }
+]

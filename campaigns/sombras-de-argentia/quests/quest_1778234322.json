@@ -1,0 +1,22 @@
+{
+  "id": "quest_1778234322",
+  "campaign_id": "sombras-de-argentia",
+  "title": "El Legado del Sol",
+  "type": "descubrimiento",
+  "status": "active",
+  "hook": "Un viejo diario de su abuelo que describe el color del cielo antes de la Umbra Perpetua.",
+  "description": "",
+  "objectives": [],
+  "stakes": "Si no recupera las páginas perdidas del diario en el Palacio de Obsidiana, el secreto para sintonizar el Corazón de Argentia se perderá para siempre.",
+  "reward": {
+    "type": "",
+    "description": "",
+    "value": ""
+  },
+  "character_id": "Elara",
+  "related_npcs": null,
+  "related_acts": null,
+  "progress_notes": [],
+  "created_at": "2026-05-08T11:58:42.627941339+02:00",
+  "updated_at": "2026-05-08T11:58:42.627941262+02:00"
+}
