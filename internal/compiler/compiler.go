@@ -409,7 +409,7 @@ func (c *Compiler) generateSessionZero() string {
 		return ""
 	}
 
-	return `<h2 id="sec-session-zero">Sesión Cero — Guía para el DM</h2>` + htmlResult
+	return htmlResult // markdown already contains the heading with proper id
 }
 
 // generateFlowchartEmbed embeds the flowchart SVG if available

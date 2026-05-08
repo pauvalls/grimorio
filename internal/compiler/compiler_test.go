@@ -426,7 +426,7 @@ func TestGenerateHTML_WithNewSections(t *testing.T) {
 
 	// Create campaign structure with new sections
 	_ = os.WriteFile(filepath.Join(tmpDir, "lore.md"), []byte("# Lore\n\nSome lore text."), 0644)
-	_ = os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte("# Session Zero\n\nSafety tools and guidelines."), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte("# Sesión Cero — Guía para el DM\n\nSafety tools and guidelines."), 0644)
 	_ = os.WriteFile(filepath.Join(tmpDir, "flowchart.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100"/></svg>`), 0644)
 
 	// Create acts with NPCs and encounters
@@ -452,9 +452,9 @@ func TestGenerateHTML_WithNewSections(t *testing.T) {
 
 	html := strings.Join(htmlParts, "\n")
 
-	// Verify Session Zero heading
+	// Verify Session Zero heading (markdown converts to h1 with id)
 	if !strings.Contains(html, "Sesión Cero") {
-		t.Errorf("expected Session Zero heading in HTML, got: %s", html)
+		t.Errorf("expected Sesión Cero heading in HTML, got: %s", html)
 	}
 
 	// Verify flowchart SVG
