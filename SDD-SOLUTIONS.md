@@ -400,3 +400,121 @@ grep "delegate(" agents/grimorio-architect.md | wc -l
 
 **Última actualización**: 2026-05-08  
 **Versión**: 1.0
+
+---
+
+## 🔧 Agentes No Usan Templates
+
+### Problema
+Los agentes (grimorio-areas, grimorio-npc, etc.) tienen acceso a `get_template` pero NO LO USAN antes de generar contenido.
+
+### Síntomas
+- Áreas sin formato WotC (falta Developments, Character Hooks, Boxed Text)
+- NPCs sin estructura completa (falta Apariencia, Personalidad, Voz, Secretos)
+- Quests sin objectives/rewards completos
+- Contenido generado no sigue el template oficial
+
+### Solución SDD
+
+#### 1. Actualizar Agentes
+
+Agregar instrucción CRÍTICA al principio de cada agent file:
+
+```markdown
+---
+
+## CRITICAL: READ TEMPLATE FIRST
+
+**BEFORE generating ANY content, you MUST:**
+
+1. **Read the template** using `get_template` MCP tool:
+   ```
+   get_template(type="{template_type}")
+   ```
+
+2. **Study the template structure** - note all required sections
+
+3. **Follow the template EXACTLY** - do not skip any sections
+
+4. **Fill in all required fields** - use your specialized knowledge
+
+**Template Types by Agent:**
+- grimorio-areas → `get_template(type="areas")`
+- grimorio-npc → `get_template(type="npc")`
+- grimorio-bestiary → `get_template(type="monster")`
+- grimorio-encounters → `get_template(type="encounter")`
+- grimorio-maps → `get_template(type="map")`
+- grimorio-lore → `get_template(type="lore")`
+
+**DO NOT generate content without reading the template first.**
+
+---
+```
+
+#### 2. Verificar en el Prompt de Delegación
+
+Cuando delegués a un sub-agente, incluí la instrucción explícita:
+
+```markdown
+delegate(agent="grimorio-areas", prompt="Generate AREAS for campaign '{campaign}'.
+
+**CRITICAL:** 
+1. FIRST call get_template(type='areas') to read the WotC template
+2. Study the template structure (Developments, Character Hooks, Boxed Text, etc.)
+3. Generate areas FOLLOWING the template EXACTLY
+4. Do NOT skip any sections
+
+Read these files first:
+- lore.md
+- npcs/npcs_and_factions.md
+- bestiary/bestiary.md
+- quests/*.md
+
+Then generate {act_count} acts with 10-15 numbered areas each.")
+```
+
+#### 3. Validar Post-Generación
+
+```bash
+# Checkear si las áreas tienen formato WotC
+grep -c "### Developments" campaigns/{campaign}/areas/*.md
+grep -c "### Character Hooks" campaigns/{campaign}/areas/*.md
+grep -c ">> \*\*Texto para Leer\*\*" campaigns/{campaign}/areas/*.md
+
+# Si es 0, el agente NO usó el template
+# Si es >0, el agente SIGUIÓ el template
+```
+
+### Fix Permanente
+
+1. **Actualizar CADA agent file** (`grimorio-areas.md`, `grimorio-npc.md`, etc.):
+   - Agregar sección "CRITICAL: READ TEMPLATE FIRST" después de la línea 27
+   - Incluir lista de template types por agente
+   - Mostrar comando `get_template` explícito
+
+2. **Actualizar prompts de delegación**:
+   - Incluir instrucción "FIRST call get_template(...)" en cada delegate()
+   - Verificar que el agente leyó el template antes de generar
+
+3. **Validar post-generación**:
+   - Usar grep para checkear secciones WotC
+   - Si faltan, regenerar con instrucción explícita
+
+### Comandos de Verificación
+
+```bash
+# Verificar que los agentes tienen la instrucción
+grep -l "READ TEMPLATE FIRST" agents/grimorio-*.md | wc -l
+
+# Verificar contenido generado
+grep -c "### Developments" campaigns/{campaign}/areas/*.md
+# Debería ser > 0 para cada área
+
+grep -c "### Character Hooks" campaigns/{campaign}/areas/*.md
+# Debería ser > 0 para cada área
+
+grep -c ">>" campaigns/{campaign}/areas/*.md
+# Debería ser > 0 (boxed text)
+```
+
+---
