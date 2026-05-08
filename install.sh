@@ -181,9 +181,9 @@ setup_plugin() {
     mkdir -p "$CLAUDE_PLUGIN_DIR"
 
     cp -rf "$INSTALL_DIR/.claude-plugin" "$CLAUDE_PLUGIN_DIR/"
-    cp -rf "$INSTALL_DIR/commands" "$CLAUDE_PLUGIN_DIR/"
-    cp -rf "$INSTALL_DIR/agents" "$CLAUDE_PLUGIN_DIR/"
-    cp -rf "$INSTALL_DIR/skills" "$CLAUDE_PLUGIN_DIR/"
+    [ -d "$INSTALL_DIR/commands" ] && cp -rf "$INSTALL_DIR/commands" "$CLAUDE_PLUGIN_DIR/"
+    [ -d "$INSTALL_DIR/agents" ] && cp -rf "$INSTALL_DIR/agents" "$CLAUDE_PLUGIN_DIR/"
+    [ -d "$INSTALL_DIR/skills" ] && cp -rf "$INSTALL_DIR/skills" "$CLAUDE_PLUGIN_DIR/"
     cp -f "$BINARY_DIR/grimorio" "$CLAUDE_PLUGIN_DIR/"
     cp -f "$BINARY_DIR/migrate-v1-to-v2" "$CLAUDE_PLUGIN_DIR/"
 
@@ -220,9 +220,9 @@ EOF
     mkdir -p "$OPENCODE_PLUGIN_DIR"
 
     cp -rf "$INSTALL_DIR/.claude-plugin" "$OPENCODE_PLUGIN_DIR/"
-    cp -rf "$INSTALL_DIR/commands" "$OPENCODE_PLUGIN_DIR/"
-    cp -rf "$INSTALL_DIR/agents" "$OPENCODE_PLUGIN_DIR/"
-    cp -rf "$INSTALL_DIR/skills" "$OPENCODE_PLUGIN_DIR/"
+    [ -d "$INSTALL_DIR/commands" ] && cp -rf "$INSTALL_DIR/commands" "$OPENCODE_PLUGIN_DIR/"
+    [ -d "$INSTALL_DIR/agents" ] && cp -rf "$INSTALL_DIR/agents" "$OPENCODE_PLUGIN_DIR/"
+    [ -d "$INSTALL_DIR/skills" ] && cp -rf "$INSTALL_DIR/skills" "$OPENCODE_PLUGIN_DIR/"
     cp -f "$BINARY_DIR/grimorio" "$OPENCODE_PLUGIN_DIR/"
     cp -f "$BINARY_DIR/migrate-v1-to-v2" "$OPENCODE_PLUGIN_DIR/"
 
