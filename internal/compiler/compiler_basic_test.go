@@ -54,6 +54,9 @@ func TestGetTemplate(t *testing.T) {
 		{"encounter", "encounter", false},
 		{"map", "map", false},
 		{"lore", "lore", false},
+		{"introduction", "introduction", false},
+		{"setting-guide", "setting-guide", false},
+		{"appendices", "appendices", false},
 		{"unknown", "unknown", true},
 	}
 
