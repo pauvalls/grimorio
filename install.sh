@@ -775,7 +775,7 @@ print_instructions() {
     local VERSION=$(get_version)
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║         Grimorio v${VERSION} - Installed Successfully!           ║${NC}"
+    echo -e "${GREEN}║         Grimorio ${VERSION} - Installed Successfully!           ║${NC}"
     echo -e "${GREEN}║         D&D One-shot & Campaign Generator                  ║${NC}"
     echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
     echo ""
