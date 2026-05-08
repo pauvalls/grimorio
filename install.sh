@@ -184,34 +184,33 @@ build_binary() {
 }
 
 setup_plugin() {
-    # Install for Claude Code
-    log "Setting up Claude Code plugin..."
-    mkdir -p "$CLAUDE_PLUGIN_DIR"
+    for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
+        if [ "$plugin_dir" = "$CLAUDE_PLUGIN_DIR" ]; then
+            log "Setting up Claude Code plugin..."
+        else
+            log "Setting up OpenCode plugin..."
+        fi
+        mkdir -p "$plugin_dir"
 
-    cp -rf "$INSTALL_DIR/.claude-plugin" "$CLAUDE_PLUGIN_DIR/"
-    [ -d "$INSTALL_DIR/commands" ] && cp -rf "$INSTALL_DIR/commands" "$CLAUDE_PLUGIN_DIR/"
-    [ -d "$INSTALL_DIR/agents" ] && cp -rf "$INSTALL_DIR/agents" "$CLAUDE_PLUGIN_DIR/"
-    [ -d "$INSTALL_DIR/skills" ] && cp -rf "$INSTALL_DIR/skills" "$CLAUDE_PLUGIN_DIR/"
-    cp -f "$BINARY_DIR/grimorio" "$CLAUDE_PLUGIN_DIR/"
-    cp -f "$BINARY_DIR/migrate-v1-to-v2" "$CLAUDE_PLUGIN_DIR/"
+        [ -f "$BINARY_DIR/grimorio" ] && cp -f "$BINARY_DIR/grimorio" "$plugin_dir/"
+        [ -f "$BINARY_DIR/migrate-v1-to-v2" ] && cp -f "$BINARY_DIR/migrate-v1-to-v2" "$plugin_dir/"
 
-    # Always update commands/grimorio.md to latest version
-    if [ -f "$INSTALL_DIR/commands/grimorio.md" ]; then
-        cp -f "$INSTALL_DIR/commands/grimorio.md" "$CLAUDE_PLUGIN_DIR/commands/"
-    fi
+        if [ -d "$INSTALL_DIR/agents" ]; then
+            mkdir -p "$plugin_dir/agents"
+            for agent_file in "$INSTALL_DIR/agents"/grimorio-*.md; do
+                [ -f "$agent_file" ] && cp -f "$agent_file" "$plugin_dir/agents/"
+            done
+        fi
 
-    # Copy new cartographer agent if it exists in repo but not in plugin
-    if [ -f "$INSTALL_DIR/agents/grimorio-cartographer.md" ]; then
-        cp -f "$INSTALL_DIR/agents/grimorio-cartographer.md" "$CLAUDE_PLUGIN_DIR/agents/"
-    fi
+        if [ -d "$INSTALL_DIR/skills" ]; then
+            mkdir -p "$plugin_dir/skills"
+            for skill_file in "$INSTALL_DIR/skills"/grimorio-*.md; do
+                [ -f "$skill_file" ] && cp -f "$skill_file" "$plugin_dir/skills/"
+            done
+        fi
 
-    # Copy artist agent
-    if [ -f "$INSTALL_DIR/agents/grimorio-artist.md" ]; then
-        cp -f "$INSTALL_DIR/agents/grimorio-artist.md" "$CLAUDE_PLUGIN_DIR/agents/"
-    fi
-
-    # Fix .mcp.json for Claude Code (uses ${CLAUDE_PLUGIN_ROOT})
-    cat > "$CLAUDE_PLUGIN_DIR/.mcp.json" << 'EOF'
+        if [ "$plugin_dir" = "$CLAUDE_PLUGIN_DIR" ]; then
+            cat > "$plugin_dir/.mcp.json" << 'EOF'
 {
   "grimorio": {
     "command": "${CLAUDE_PLUGIN_ROOT}/grimorio",
@@ -220,64 +219,21 @@ setup_plugin() {
   }
 }
 EOF
-
-    success "Plugin installed to $CLAUDE_PLUGIN_DIR"
-
-    # Install for OpenCode
-    log "Setting up OpenCode plugin..."
-    mkdir -p "$OPENCODE_PLUGIN_DIR"
-
-    cp -rf "$INSTALL_DIR/.claude-plugin" "$OPENCODE_PLUGIN_DIR/"
-    [ -d "$INSTALL_DIR/commands" ] && cp -rf "$INSTALL_DIR/commands" "$OPENCODE_PLUGIN_DIR/"
-    [ -d "$INSTALL_DIR/agents" ] && cp -rf "$INSTALL_DIR/agents" "$OPENCODE_PLUGIN_DIR/"
-    [ -d "$INSTALL_DIR/skills" ] && cp -rf "$INSTALL_DIR/skills" "$OPENCODE_PLUGIN_DIR/"
-    cp -f "$BINARY_DIR/grimorio" "$OPENCODE_PLUGIN_DIR/"
-    cp -f "$BINARY_DIR/migrate-v1-to-v2" "$OPENCODE_PLUGIN_DIR/"
-
-    # Always update commands/grimorio.md to latest version
-    if [ -f "$INSTALL_DIR/commands/grimorio.md" ]; then
-        cp -f "$INSTALL_DIR/commands/grimorio.md" "$OPENCODE_PLUGIN_DIR/commands/"
-    fi
-
-    # Copy new cartographer agent if it exists in repo but not in plugin
-    if [ -f "$INSTALL_DIR/agents/grimorio-cartographer.md" ]; then
-        cp -f "$INSTALL_DIR/agents/grimorio-cartographer.md" "$OPENCODE_PLUGIN_DIR/agents/"
-    fi
-
-    # Copy artist agent
-    if [ -f "$INSTALL_DIR/agents/grimorio-artist.md" ]; then
-        cp -f "$INSTALL_DIR/agents/grimorio-artist.md" "$OPENCODE_PLUGIN_DIR/agents/"
-    fi
-
-    # Fix .mcp.json for OpenCode (uses absolute path, not ${CLAUDE_PLUGIN_ROOT})
-    cat > "$OPENCODE_PLUGIN_DIR/.mcp.json" << EOF
+        else
+            cat > "$plugin_dir/.mcp.json" << EOF
 {
   "grimorio": {
-    "command": "$OPENCODE_PLUGIN_DIR/grimorio",
+    "command": "$plugin_dir/grimorio",
     "args": [],
     "env": {}
   }
 }
 EOF
-
-    success "Plugin installed to $OPENCODE_PLUGIN_DIR"
-
-    # Clean up stale grimorio.md files from old installation locations
-    log "Cleaning up stale template files..."
-    local stale_files=(
-        "${HOME}/.config/opencode/commands/grimorio.md"
-        "${HOME}/.local/share/grimorio/.opencode/commands/grimorio.md"
-        "${HOME}/.local/share/grimorio/commands/grimorio.md"
-        "${HOME}/Grimorio/.opencode/commands/grimorio.md"
-    )
-    for stale in "${stale_files[@]}"; do
-        if [ -f "$stale" ]; then
-            rm -f "$stale"
-            log "Removed stale file: $stale"
         fi
+
+        success "Plugin installed to $plugin_dir"
     done
 
-    # Configure grimorio in opencode.json for versions that don't support .mcp.json
     configure_opencode_mcp
 }
 
@@ -352,43 +308,32 @@ configure_opencode_mcp() {
 }
 
 clean_installation() {
-    log "Cleaning previous installation..."
+    log "Cleaning previous Grimorio installation..."
     local cleaned=false
 
-    # Remove plugin directories
-    if [ -d "$CLAUDE_PLUGIN_DIR" ]; then
-        rm -rf "$CLAUDE_PLUGIN_DIR"
-        log "Removed: $CLAUDE_PLUGIN_DIR"
-        cleaned=true
-    fi
+    for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
+        if [ -d "$plugin_dir" ]; then
+            rm -f "$plugin_dir/grimorio"
+            rm -f "$plugin_dir/migrate-v1-to-v2"
+            rm -f "$plugin_dir/.mcp.json"
+            rm -rf "$plugin_dir/.claude-plugin"
+            [ -d "$plugin_dir/commands" ] && rm -f "$plugin_dir/commands/grimorio.md"
+            [ -d "$plugin_dir/agents" ] && rm -f "$plugin_dir/agents/grimorio-*.md"
+            [ -d "$plugin_dir/skills" ] && rm -f "$plugin_dir/skills/grimorio-*.md"
+            log "Cleaned Grimorio files from: $plugin_dir"
+            cleaned=true
+        fi
+    done
 
-    if [ -d "$OPENCODE_PLUGIN_DIR" ]; then
-        rm -rf "$OPENCODE_PLUGIN_DIR"
-        log "Removed: $OPENCODE_PLUGIN_DIR"
-        cleaned=true
-    fi
+    [ -f "$BINARY_DIR/grimorio" ] && rm -f "$BINARY_DIR/grimorio" && log "Removed: $BINARY_DIR/grimorio" && cleaned=true
+    [ -f "$BINARY_DIR/migrate-v1-to-v2" ] && rm -f "$BINARY_DIR/migrate-v1-to-v2" && log "Removed: $BINARY_DIR/migrate-v1-to-v2" && cleaned=true
 
-    # Remove binaries
-    if [ -f "$BINARY_DIR/grimorio" ]; then
-        rm -f "$BINARY_DIR/grimorio"
-        log "Removed: $BINARY_DIR/grimorio"
-        cleaned=true
-    fi
-
-    if [ -f "$BINARY_DIR/migrate-v1-to-v2" ]; then
-        rm -f "$BINARY_DIR/migrate-v1-to-v2"
-        log "Removed: $BINARY_DIR/migrate-v1-to-v2"
-        cleaned=true
-    fi
-
-    # Remove repo clone
     if [ -d "$INSTALL_DIR" ]; then
         rm -rf "$INSTALL_DIR"
         log "Removed: $INSTALL_DIR"
         cleaned=true
     fi
 
-    # Clean opencode.json
     local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
     if [ -f "$OPENCODE_CONFIG" ] && command_exists jq; then
         jq 'del(.mcp.grimorio, .agent["grimorio-architect"], .agent["grimorio-artist"], .agent["grimorio-cartographer"], .agent["grimorio-lore"], .agent["grimorio-npc"], .agent["grimorio-bestiary"], .agent["grimorio-encounters"], .agent["grimorio-acts"], .agent["grimorio-quests"], .agent["grimorio-maps"], .agent["grimorio-characters"], .agent["grimorio-narrative-custodian"], .agent["grimorio-orchestrator"], .command.grimorio)' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
@@ -396,17 +341,14 @@ clean_installation() {
         cleaned=true
     fi
 
-    # Clean shell rc files
     local shell_rcs=("${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.config/fish/config.fish" "${HOME}/.profile")
     for rc in "${shell_rcs[@]}"; do
         if [ -f "$rc" ]; then
-            # Remove marked blocks
             awk '
                 /^# === GRIMORIO CONFIG BEGIN ===$/ { in_block=1; next }
                 /^# === GRIMORIO CONFIG END ===$/   { in_block=0; next }
                 !in_block { print }
             ' "$rc" > "${rc}.tmp" && mv "${rc}.tmp" "$rc"
-            # Remove legacy standalone lines
             sed -i '/^# Grimorio$/d' "$rc"
             sed -i '/^export PATH="\$HOME\/\.local\/go\/bin:\$PATH"$/d' "$rc"
             sed -i '/^export PATH="\$HOME\/\.local\/bin:\$PATH"$/d' "$rc"
@@ -414,26 +356,7 @@ clean_installation() {
     done
     log "Cleaned shell configuration files"
 
-    # Clean up stale template files from old installations
-    local stale_files=(
-        "${HOME}/.config/opencode/commands/grimorio.md"
-        "${HOME}/.local/share/grimorio/.opencode/commands/grimorio.md"
-        "${HOME}/.local/share/grimorio/commands/grimorio.md"
-        "${HOME}/Grimorio/.opencode/commands/grimorio.md"
-    )
-    for stale in "${stale_files[@]}"; do
-        if [ -f "$stale" ]; then
-            rm -f "$stale"
-            log "Removed stale file: $stale"
-            cleaned=true
-        fi
-    done
-
-    if [ "$cleaned" = true ]; then
-        success "Previous installation cleaned successfully"
-    else
-        log "No previous installation found — fresh install"
-    fi
+    [ "$cleaned" = true ] && success "Previous Grimorio installation cleaned" || log "No previous installation found"
 }
 
 configure_opencode_command() {
@@ -798,8 +721,9 @@ print_instructions() {
     echo ""
     echo -e "3. ${YELLOW}OpenCode auto-configured:${NC}"
     echo -e "   • MCP server  → ${GREEN}~/.config/opencode/opencode.json${NC} (mcp section)"
-    echo -e "   • Architect   → grimorio-architect (orchestrates all phases via delegate)"
-    echo -e "   • Content agents (delegated by architect):"
+    echo -e "   • Command     → /grimorio (orchestrated by grimorio-architect)"
+    echo -e "   • Agents configured:"
+    echo -e "     - grimorio-architect     (orchestrates all phases)"
     echo -e "     - grimorio-lore          (world backstory & atmosphere)"
     echo -e "     - grimorio-npc           (NPCs & factions)"
     echo -e "     - grimorio-bestiary      (monster stat blocks)"
@@ -807,11 +731,10 @@ print_instructions() {
     echo -e "     - grimorio-maps          (location & zone descriptions)"
     echo -e "     - grimorio-acts          (narrative acts & scenes)"
     echo -e "     - grimorio-quests        (personal quests & side missions)"
-     echo -e "     - grimorio-characters    (pre-generated character sheets)"
-     echo -e "     - grimorio-narrative-custodian (canon validation + state tracking)"
-     echo -e "   • Artist      → grimorio-artist (image specs + reference updates)"
-    echo -e "   • Cartographer→ grimorio-cartographer (SVG maps + dividers)"
-    echo -e "   • Command     → /grimorio (single delegate, zero polling)"
+    echo -e "     - grimorio-characters    (pre-generated character sheets)"
+    echo -e "     - grimorio-narrative-custodian (canon validation + state tracking)"
+    echo -e "     - grimorio-artist        (image specs + reference updates)"
+    echo -e "     - grimorio-cartographer  (SVG maps + dividers)"
     echo ""
     echo -e "4. ${YELLOW}Generate your first campaign:${NC}"
     echo -e "   Type in OpenCode or Claude Code:"
@@ -827,7 +750,7 @@ print_instructions() {
     echo -e "     - Raphael AI (raphael.app, fallback)"
     echo -e "   • DALL-E (optional) → Set OPENAI_API_KEY for higher quality"
     echo ""
-   echo -e "7. ${YELLOW}Narrative Coherence Tools (v2.0):${NC}"
+echo -e "7. ${YELLOW}Narrative Coherence Tools (v2.0):${NC}"
    echo -e "   • generate_adventure_bible → Creates canon.json with facts, entities, rules"
    echo -e "   • validate_canon → Validates content against canon (prevents NPC resurrections!)"
    echo -e "   • update_narrative_state → Track session state (clues, quests, deaths)"
@@ -839,7 +762,7 @@ print_instructions() {
    echo -e "   • generate_random_tables → Contextual encounter, rumor, weather, treasure tables"
    echo -e "   • generate_handouts → Player-facing + DM-only handouts (letters, maps, codes)"
    echo -e "   • evaluate_consequences → Evaluate consequence rules against narrative state"
-    echo ""
+   echo -e ""
    echo -e "9. ${YELLOW}Update grimorio later:${NC}"
    echo -e "   Just re-run: ${GREEN}curl -sSL ${REPO_URL}/raw/main/install.sh | bash${NC}"
    echo -e ""
