@@ -153,7 +153,9 @@ func TestHandleCheckConsistency(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	handler := handlers.HandleCheckConsistency()
 	args := map[string]any{
