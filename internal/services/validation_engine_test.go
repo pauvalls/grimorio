@@ -537,7 +537,9 @@ func TestValidationEngine_LocationExistence_Valid(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
@@ -573,7 +575,9 @@ func TestValidationEngine_LocationExistence_Missing(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	report, err := validator.validate(ctx, "test-campaign", domain.ContentProposal{
 		ID:      "act-1",
@@ -643,7 +647,9 @@ func TestValidationEngine_PrerequisiteClueCheck_MissingClue(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Clue not revealed in state
 	report, err := validator.validate(ctx, "test-campaign", domain.ContentProposal{

@@ -108,14 +108,18 @@ func TestHandleUpdateNarrativeState(t *testing.T) {
 
 	// Initialize campaign
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Set up initial state with an active quest
 	state, _ := stateSvc.Load(ctx, "test-campaign")
 	state.ActiveQuests = append(state.ActiveQuests, domain.QuestState{
 		ID: "q-001", Name: "Find the Sword", Status: "active", SourceAct: "act-1", GiverNPC: "npc-giver",
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	handler := handlers.HandleUpdateNarrativeState()
 	args := map[string]any{

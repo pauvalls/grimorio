@@ -40,7 +40,9 @@ func TestCanonHandlers_HandleProcessConsistencyGate_Approve(t *testing.T) {
 
 	// Setup campaign
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add NPC
 	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
@@ -50,7 +52,9 @@ func TestCanonHandlers_HandleProcessConsistencyGate_Approve(t *testing.T) {
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Create handler
 	handler := func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -125,7 +129,9 @@ func TestCanonHandlers_HandleProcessConsistencyGate_WithProposals_Approve(t *tes
 
 	// Setup campaign
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add NPC
 	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
@@ -135,7 +141,9 @@ func TestCanonHandlers_HandleProcessConsistencyGate_WithProposals_Approve(t *tes
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Use the REAL handler with same services
 	handler := handlers.HandleProcessConsistencyGate()
@@ -214,7 +222,9 @@ func TestCanonHandlers_HandleProcessConsistencyGate_Reject(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
@@ -223,7 +233,9 @@ func TestCanonHandlers_HandleProcessConsistencyGate_Reject(t *testing.T) {
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	state, _ := stateSvc.Load(ctx, "test-campaign")
 	state.DeadNPCs = append(state.DeadNPCs, domain.NPCDeathRecord{
@@ -231,7 +243,9 @@ func TestCanonHandlers_HandleProcessConsistencyGate_Reject(t *testing.T) {
 		Name:    "Test NPC",
 		Session: 1,
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	handler := func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]any)
