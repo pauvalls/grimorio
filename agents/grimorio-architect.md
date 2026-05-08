@@ -483,6 +483,226 @@ If only warnings:
 - Note them in the final report for the DM
 - Proceed with PDF compilation
 
+### Phase X: WotC Validation (Mandatory Gate)
+
+**CRITICAL:** This phase MUST pass before PDF compilation can proceed. This is a hard gate.
+
+#### X.1: Run Validation Script
+
+```bash
+./scripts/validate-campaign.sh {campaign_path} --check=all
+```
+
+**Expected output format:**
+```
+=====================================
+  Campaign Validation Report
+=====================================
+Campaign: {campaign-name}
+Date: {date}
+
+✅ Structure Check: PASS
+✅ WotC Format Check: PASS
+✅ Cross-Reference Check: PASS
+✅ Content Completeness: PASS
+
+=====================================
+  VALIDATION PASSED
+=====================================
+Exit code: 0
+```
+
+#### X.2: Validate Boxed Text (Exact grep)
+
+```bash
+# Count boxed text sections
+boxed_count=$(grep -c '^>>' {campaign_path}/acts/*.md | awk -F: '{sum+=$2} END {print sum}')
+
+# Validate word count per boxed text section
+grep -A 20 '^>>' {campaign_path}/acts/*.md | while read -r line; do
+  if [[ $line == ">>"* ]]; then
+    # Extract boxed text and count words
+    word_count=$(echo "$boxed_text" | wc -w)
+    if [ $word_count -lt 100 ] || [ $word_count -gt 600 ]; then
+      echo "❌ Boxed Text: $word_count words (required: 100-600)"
+      exit 1
+    fi
+  fi
+done
+
+echo "✅ Boxed Text: $boxed_count sections (100-600 words each)"
+```
+
+**Threshold:** 100-600 words per boxed text section
+**Reject if:** Any section <100 or >600 words
+**Recovery:** "Expand boxed text in {area} (add sensory details)" or "Condense boxed text in {area} (remove redundant descriptions)"
+
+#### X.3: Validate Character Hooks (Exact grep)
+
+```bash
+# Count character hooks per area
+for act_file in {campaign_path}/acts/*.md; do
+  area_count=$(grep -c '^## Area' "$act_file")
+  hook_count=$(grep -ci 'hook\|gancho' "$act_file")
+  hooks_per_area=$((hook_count / area_count))
+  
+  if [ $hooks_per_area -lt 2 ]; then
+    echo "❌ Character Hooks: $hooks_per_area per area (required: ≥2)"
+    echo "   Areas missing hooks: $(grep -B 5 -i 'hook\|gancho' "$act_file" | grep -v -i 'hook\|gancho' | grep '^## Area' | head -5)"
+    exit 1
+  fi
+done
+
+echo "✅ Character Hooks: $hooks_per_area per area (≥2 required)"
+```
+
+**Threshold:** ≥2 character hooks per area
+**Reject if:** Any area has <2 hooks
+**Recovery:** "Add character hooks to Areas {list} (tie to PC backgrounds/classes)"
+
+#### X.4: Validate Developments (Exact grep)
+
+```bash
+# Count developments per area
+for act_file in {campaign_path}/acts/*.md; do
+  dev_count=$(grep -ci 'development\|desarrollo' "$act_file")
+  area_count=$(grep -c '^## Area' "$act_file")
+  devs_per_area=$((dev_count / area_count))
+  
+  if [ $devs_per_area -lt 3 ]; then
+    echo "❌ Developments: $devs_per_area per area (required: ≥3)"
+    exit 1
+  fi
+  
+  # Check recovery paths
+  recovery_count=$(grep -ci 'if.*fail\|si.*fallan' "$act_file")
+  if [ $recovery_count -lt $dev_count ]; then
+    echo "❌ Recovery Paths: $recovery_count/$dev_count developments have recovery paths"
+    exit 1
+  fi
+done
+
+echo "✅ Developments: $devs_per_area per area with recovery paths (≥3 required)"
+```
+
+**Threshold:** ≥3 development branches per area, 100% with recovery paths
+**Reject if:** Any area has <3 developments OR any development lacks recovery path
+**Recovery:** "Add recovery paths to developments in {area} (add 'If PCs fail...' clause)"
+
+#### X.5: Validate Running Guidance (Exact grep + word count)
+
+```bash
+# Count running guidance sections and validate word count
+guidance_count=$(grep -c '^### Cómo Dirigir esta Escena\|^### Running the Scene' {campaign_path}/acts/*.md | awk -F: '{sum+=$2} END {print sum}')
+
+# Validate word count per guidance section (simplified - check section length)
+for act_file in {campaign_path}/acts/*.md; do
+  # Extract each guidance section and count words
+  # (Implementation: use awk to extract sections between headers)
+  word_count=$(awk '/^### Cómo Dirigir esta Escena/,/^### |^## /' "$act_file" | wc -w)
+  if [ $word_count -lt 150 ] || [ $word_count -gt 400 ]; then
+    echo "❌ Running Guidance: $word_count words (required: 150-400)"
+    exit 1
+  fi
+done
+
+echo "✅ Running Guidance: $guidance_count sections (150-400 words each)"
+```
+
+**Threshold:** 150-400 words per running guidance section
+**Reject if:** Any section <150 or >400 words
+**Recovery:** "Expand running guidance in {area} (add Prep, Pacing, Signals, Improvisation, Script subsections)"
+
+#### X.6: Validate Sidebars (Exact grep)
+
+```bash
+# Count sidebars per act
+for act_file in {campaign_path}/acts/*.md; do
+  sidebar_count=$(grep -c '^> #####' "$act_file")
+  act_title=$(basename "$act_file")
+  
+  if [ $sidebar_count -lt 1 ]; then
+    echo "❌ Sidebars: $sidebar_count in $act_title (required: ≥1 per act)"
+    exit 1
+  fi
+done
+
+echo "✅ Sidebars: $(grep -c '^> #####') total (≥1 per act)"
+```
+
+**Threshold:** ≥1 sidebar per act
+**Reject if:** Any act has 0 sidebars
+**Recovery:** "Add sidebar to {act} (rules clarification, DM tip, or lore excerpt)"
+
+#### X.7: Validate Cross-References (Exact grep)
+
+```bash
+# Check creature references exist in bestiary
+creature_refs=$(grep -oE '\[([A-Z][a-z]+ [A-Z][a-z]+)\]' {campaign_path}/acts/*.md | sort -u)
+for creature in $creature_refs; do
+  if ! grep -q "$creature" {campaign_path}/bestiary/bestiary.md; then
+    echo "❌ Creature reference: $creature not found in bestiary"
+    exit 1
+  fi
+done
+
+echo "✅ Creature References: All $(echo "$creature_refs" | wc -l) creatures exist in bestiary"
+
+# Check NPC references exist in npcs_and_factions.md
+npc_refs=$(grep -oE '\*([A-Z][a-z]+ [A-Z][a-z]+)\*' {campaign_path}/acts/*.md | sort -u)
+for npc in $npc_refs; do
+  if ! grep -q "$npc" {campaign_path}/npcs/npcs_and_factions.md; then
+    echo "❌ NPC reference: $npc not found in npcs_and_factions.md"
+    exit 1
+  fi
+done
+
+echo "✅ NPC References: All $(echo "$npc_refs" | wc -l) NPCs exist in npcs_and_factions.md"
+```
+
+**Threshold:** 100% of creature/NPC references must exist in source files
+**Reject if:** Any reference points to non-existent entity
+**Recovery:** "Add {creature/npc} to bestiary/npcs file OR fix reference in {area}"
+
+#### X.8: Validation Failure Handling
+
+If validation fails:
+
+```markdown
+## Phase X: WotC Validation FAILED
+
+❌ Issues Found: {count}
+
+{Specific failures from validation script}
+
+**Remediation Steps:**
+1. {Step 1 from script output}
+2. {Step 2 from script output}
+3. {Step 3 from script output}
+
+**Next Action:**
+- Fix the issues above
+- Re-run: `./scripts/validate-campaign.sh {campaign_path}`
+- PDF compilation will proceed after validation passes
+```
+
+**DO NOT proceed to Phase 10 (PDF Compilation) until validation passes.**
+
+#### X.9: Validation Success Report
+
+If validation passes:
+
+```markdown
+## Phase X: WotC Validation PASSED
+
+✅ Structure Check: PASS
+✅ WotC Format Check: PASS
+✅ Cross-Reference Check: PASS
+✅ Content Completeness: PASS
+
+Proceeding to Phase 10: PDF Compilation...
+```
+
 ### Phase 10: Compile PDF
 
 1. **Report start to user:**

@@ -5,6 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-05-09
+
+### Added
+- **Documentation Consolidation** — Comprehensive documentation for WotC validation and campaign management
+  - **README.md**: 6 new sections:
+    - Story Brief Template (copy-paste template with examples)
+    - Timeout Configuration (table with 15 agents, env vars, defaults)
+    - Campaign Paths (default + custom path configuration)
+    - Folder Structure (complete ASCII diagrams for project + campaign)
+    - WotC Validation Checklist (17 checks with numerical thresholds)
+    - Pre-flight Scripts (5 validation commands with expected output)
+  - **scripts/validate-campaign.sh**: Standalone validation script (see below)
+  - **Validation thresholds documented**: All WotC quality gates now explicit (boxed text 100-600 words, 2+ hooks/area, 3+ developments/area, etc.)
+
+- **WotC Validation Script** — `scripts/validate-campaign.sh` for automated quality checks
+  - **Structure validation**: Checks all required directories and files exist
+  - **WotC format validation**: grep-based checks for boxed text, hooks, developments, sidebars
+  - **Cross-reference validation**: Verifies creature/NPC/quest/location references exist
+  - **Content completeness**: Ensures all required sections are present
+  - **Formatted output**: Human-readable pass/fail with ✅/❌ indicators
+  - **Exit codes**: 0=pass, 1=fail (CI/CD integration ready)
+  - **Remediation guidance**: Specific fix suggestions for each failure type
+  - **Usage**: `./scripts/validate-campaign.sh {campaign-name} [--check=structure|wotc|references|all]`
+
+- **grimorio-architect Phase X** — Explicit WotC validation phase before PDF compilation
+  - Runs `validate-campaign.sh` automatically before Phase 11 (PDF compilation)
+  - Blocks compilation if validation fails (hard gate)
+  - Reports specific failures to user with remediation steps
+  - Retry logic: allows re-validation after fixes
+
+- **Validation thresholds** — Numerical quality gates enforced across all content
+  - Boxed Text: 100-600 words (enforced by validator, not just guideline)
+  - Character Hooks: ≥2 per area (hard requirement)
+  - Developments: ≥3 branches per area with recovery paths (100% required)
+  - Running Guidance: 150-400 words per area (validated)
+  - Sidebars: ≥1 per act (new requirement for rules clarifications)
+  - Area Mechanics: ≥90% of areas must have DC checks or mechanics
+  - Combat Treasure: ≥70% of combat areas must have treasure
+  - Chapter Mode Variety: Max 2 consecutive acts with same game mode
+  - Asset Handoff: 100% of acts must pass asset to next act
+  - Chapter Objectives: 2-3 per act (validated)
+
+### Changed
+- **grimorio-architect workflow** — Added Phase X (WotC Validation) between Phase 9 (Final Consistency Check) and Phase 10 (PDF Compilation)
+  - Phase X is mandatory — cannot skip validation
+  - Validation report shown to user before compilation proceeds
+  - Failed validation blocks PDF compilation until issues are resolved
+
+- **Validation enforcement** — WotC thresholds changed from guidelines to requirements
+  - Previously: Narrative custodian checked thresholds as soft guidelines
+  - Now: validate-campaign.sh enforces thresholds as hard gates
+  - PDF compilation fails if any threshold is not met
+
+- **Error reporting** — Validation failures now include specific remediation steps
+  - Previously: Generic "validation failed" message
+  - Now: "Expand boxed text in Area A3, A7, B2 (add sensory details)"
+
+### Documentation
+- **README.md**: +450 lines of documentation (Story Brief, Timeouts, Paths, Structure, Checklist, Pre-flight)
+- **CHANGELOG.md**: Complete v2.4.0 entry with all changes documented
+- **grimorio-architect.md**: Phase X added with exact grep commands and thresholds
+- **scripts/validate-campaign.sh**: 350-line bash script with full validation logic
+
+### Technical Details
+- **validate-campaign.sh**: 350 lines, 4 check types, 17 validation rules
+- **grep patterns**: Exact patterns for boxed text (`^>>`), hooks (`Hook:|Gancho:`), developments (`Development:|Desarrollo:`), sidebars (`^> #####`)
+- **Exit codes**: 0 (pass), 1 (fail), 2 (error/invalid arguments)
+- **CI/CD ready**: Script designed for automation with machine-parseable output
+
+[2.4.0]: https://github.com/pauvalls/grimorio/compare/v2.3.0...v2.4.0
+
 ## [2.3.0] - 2026-05-08
 
 ### Added

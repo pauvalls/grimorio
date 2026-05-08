@@ -113,6 +113,365 @@ Phase 3-13: End-to-end orchestration by grimorio-architect
 
 > **Important:** The grimorio-architect agent does everything end-to-end: gathers requirements, creates structure, delegates content subagents, generates images directly via MCP, and compiles the PDF. The architect reports progress to the user after every phase.
 
+### Story Brief Template
+
+Copy and fill out this template to generate your campaign:
+
+```
+**Campaign Name:** (kebab-case, e.g., "sunken-city", "la-hora-de-vlad")
+**Setting:** (one-sentence premise, e.g., "A sunken city where nobles are aquatic vampires")
+**Tone:** (heroic, dark, humorous, political intrigue, horror, mystery)
+**Level Range:** (1-3, 4-6, 7-10, 11-15, 16-20)
+**Duration:** (one-shot, 3-5 sessions, long campaign)
+**Themes:** (comma-separated, e.g., "betrayal, redemption, cosmic horror")
+**Optional - Villain Type:** (lich, vampire lord, corrupt noble, ancient dragon, cult leader)
+**Optional - McGuffin:** (artifact, ancient text, magical item, prophecy)
+```
+
+**Example:**
+```
+**Campaign Name:** sunken-city
+**Setting:** A sunken city where nobles are aquatic vampires
+**Tone:** Dark political intrigue
+**Level Range:** 4-6
+**Duration:** 3-5 sessions
+**Themes:** Betrayal, redemption, cosmic horror
+**Villain Type:** Vampire lord
+**McGuffin:** Ancient artifact that controls water
+```
+
+### Timeout Configuration
+
+Different agents have different timeout thresholds based on their complexity. Configure timeouts via environment variables:
+
+| Agent | Default Timeout | Can Override | Environment Variable |
+|-------|----------------|--------------|---------------------|
+| `grimorio-architect` | 300s | ✅ Yes | `ARCHITECT_TIMEOUT=300` |
+| `grimorio-lore` | 180s | ✅ Yes | `LORE_TIMEOUT=180` |
+| `grimorio-npc` | 180s | ✅ Yes | `NPC_TIMEOUT=180` |
+| `grimorio-bestiary` | 180s | ✅ Yes | `BESTIARY_TIMEOUT=180` |
+| `grimorio-areas` | 240s | ✅ Yes | `AREAS_TIMEOUT=240` |
+| `grimorio-quests` | 120s | ✅ Yes | `QUESTS_TIMEOUT=120` |
+| `grimorio-encounters` | 120s | ✅ Yes | `ENCOUNTERS_TIMEOUT=120` |
+| `grimorio-maps` | 120s | ✅ Yes | `MAPS_TIMEOUT=120` |
+| `grimorio-artist` | 180s | ✅ Yes | `ARTIST_TIMEOUT=180` |
+| `grimorio-cartographer` | 120s | ✅ Yes | `CARTOGRAPHER_TIMEOUT=120` |
+| `grimorio-narrative-custodian` | 180s | ✅ Yes | `CUSTODIAN_TIMEOUT=180` |
+| `grimorio-integrator` | 180s | ✅ Yes | `INTEGRATOR_TIMEOUT=180` |
+| `grimorio-introduction` | 120s | ✅ Yes | `INTRODUCTION_TIMEOUT=120` |
+| `grimorio-setting-guide` | 120s | ✅ Yes | `SETTING_GUIDE_TIMEOUT=120` |
+| `grimorio-appendices` | 120s | ✅ Yes | `APPENDICES_TIMEOUT=120` |
+| `grimorio-characters` | 120s | ✅ Yes | `CHARACTERS_TIMEOUT=120` |
+
+**Note:** Timeouts are soft limits — agents continue execution but log a warning. For hard timeouts, set `STRICT_TIMEOUTS=true`.
+
+**Example configuration:**
+```bash
+export ARCHITECT_TIMEOUT=600  # 10 minutes for complex campaigns
+export STRICT_TIMEOUTS=false  # Allow agents to exceed timeout
+```
+
+### Campaign Paths
+
+**Default Campaign Root:** `~/campaigns/`
+
+All campaigns are stored under this directory unless overridden:
+
+```
+~/campaigns/
+└── {campaign-name}/
+    ├── README.md
+    ├── lore.md
+    ├── canon.json
+    ├── narrative_state.json
+    ├── acts/
+    ├── npcs/
+    ├── bestiary/
+    ├── encounters/
+    ├── maps/
+    ├── quests/
+    ├── characters/
+    ├── assets/
+    │   ├── *.png (AI-generated images)
+    │   └── *.svg (procedural maps and dividers)
+    ├── campaign.html
+    └── campaign.pdf
+```
+
+**Custom Campaign Root:**
+
+Set the `CAMPAIGN_ROOT` environment variable to change the default location:
+
+```bash
+# ~/.bashrc or ~/.zshrc
+export CAMPAIGN_ROOT="/path/to/your/campaigns"
+
+# Or inline
+CAMPAIGN_ROOT="/mnt/data/dnd-campaigns" /grimorio "campaign idea"
+```
+
+**Per-Campaign Path:**
+
+You can also specify an absolute path for a single campaign:
+
+```bash
+# Generate campaign in specific directory
+grimorio-architect --output="/absolute/path/to/campaign" "campaign idea"
+```
+
+**Asset Paths:**
+
+- **AI Images:** `{campaign-path}/assets/*.png`
+- **SVG Maps:** `{campaign-path}/assets/*.svg`
+- **PDF Output:** `{campaign-path}/campaign.pdf`
+- **HTML Output:** `{campaign-path}/campaign.html`
+
+### Folder Structure
+
+```
+grimorio/
+├── cmd/
+│   ├── grimorio/              # MCP server entry point
+│   └── migrate-v1-to-v2/      # Migration tool for v1→v2
+├── internal/
+│   ├── domain/                # Domain models (Canon, NarrativeState, etc.)
+│   ├── mcp/                   # MCP tool handlers
+│   ├── services/              # Business logic
+│   ├── repository/            # Persistence layer
+│   ├── compiler/              # Markdown → HTML → PDF pipeline
+│   ├── svg/                   # Procedural SVG generator
+│   ├── image/                 # Image provider abstraction
+│   ├── validators/            # WotC format validators
+│   └── config/                # Configuration management
+├── agents/
+│   ├── grimorio-architect.md         # Primary orchestrator
+│   ├── grimorio-artist.md            # Image specs + reference updates
+│   ├── grimorio-cartographer.md      # SVG maps + dividers
+│   ├── grimorio-areas.md             # Area generation (WotC format)
+│   ├── grimorio-npc.md               # NPC generation
+│   ├── grimorio-bestiary.md          # Bestiary generation
+│   ├── grimorio-lore.md              # Lore generation
+│   ├── grimorio-quests.md            # Quest generation
+│   ├── grimorio-encounters.md        # Encounter generation
+│   ├── grimorio-maps.md              # Map descriptions
+│   ├── grimorio-characters.md        # Pre-gen characters
+│   ├── grimorio-introduction.md      # Campaign introduction
+│   ├── grimorio-setting-guide.md     # DM-only setting reference
+│   ├── grimorio-appendices.md        # Consolidated appendices
+│   └── grimorio-narrative-custodian.md # Validation + state tracking
+├── skills/
+│   └── dnd-5e-srd/SKILL.md    # D&D 5e rules reference
+├── scripts/
+│   ├── validate-campaign.sh   # WotC validation script (v2.4.0)
+│   ├── bench.sh               # Performance benchmarks
+│   └── release.sh             # Release automation
+├── openspec/
+│   └── changes/               # Change specifications
+├── CHANGELOG.md               # Version history
+├── README.md                  # This file
+└── install.sh                 # Installation script
+```
+
+**Generated Campaign Structure:**
+
+```
+{campaign-name}/
+├── README.md                  # Campaign overview (auto-generated)
+├── lore.md                    # World backstory and setting
+├── canon.json                 # Canonical facts, entities, rules
+├── narrative_state.json       # Session state tracking
+├── introduction.md            # Campaign introduction (WotC format)
+├── setting-guide.md           # DM-only setting reference (spoilers)
+├── acts/
+│   ├── act_1_{title}.md       # Act 1 with 10-15 numbered areas
+│   ├── act_2_{title}.md       # Act 2 with 10-15 numbered areas
+│   └── act_3_{title}.md       # Act 3 with 10-15 numbered areas
+├── npcs/
+│   └── npcs_and_factions.md   # NPC profiles + faction relationships
+├── bestiary/
+│   └── bestiary.md            # Monster stat blocks (D&D 5e format)
+├── encounters/
+│   └── encounters.md          # Combat encounters with tactics
+├── maps/
+│   └── maps_and_scenes.md     # Location descriptions + scene layouts
+├── quests/
+│   ├── personal-quests.md     # Character-specific quests
+│   └── character-hooks.md     # Plot hooks per PC
+├── characters/
+│   └── pre-generated/         # Pre-generated character sheets
+├── handouts/
+│   └── handouts.md            # Player-facing materials
+├── assets/
+│   ├── cover-art.png          # AI-generated cover art
+│   ├── npc-{name}.png         # AI NPC portraits
+│   ├── scene-{act}-{desc}.png # AI scene illustrations
+│   ├── monster-{name}.png     # AI monster illustrations
+│   ├── {location}-map.svg     # Procedural battle maps
+│   └── ornate-divider.svg     # Decorative section dividers
+├── campaign.html              # HTML version (intermediate)
+└── campaign.pdf               # Final PDF (print-ready)
+```
+
+### WotC Validation Checklist
+
+Before compiling a campaign to PDF, verify these quality gates:
+
+| Check | Threshold | Verification Method | Status |
+|-------|-----------|---------------------|--------|
+| **Boxed Text** | 100-600 words per area | `grep -c '>>' acts/*.md` | ☐ |
+| **Character Hooks** | ≥2 per area | Count "Hook:" or "Gancho:" occurrences | ☐ |
+| **Developments** | ≥3 branches per area | Count "Development" or "Desarrollo" sections | ☐ |
+| **Recovery Paths** | 100% of developments | Each development has "If PCs fail..." clause | ☐ |
+| **Running the Scene** | 5 subsections | Prep, Pacing, Signals, Improvisation, Script | ☐ |
+| **Running Guidance** | 150-400 words | Word count per area's guidance section | ☐ |
+| **NPC Depth** | ≥5 paragraphs | Per major NPC in npcs_and_factions.md | ☐ |
+| **NPC Secrets** | 3-5 per NPC | Count "Secret:" entries per NPC | ☐ |
+| **NPC Dialogue** | 3-5 lines per major NPC | Count quoted dialogue lines | ☐ |
+| **Area Mechanics** | ≥90% of areas | Areas with DC checks, saves, or mechanics | ☐ |
+| **Combat Treasure** | ≥70% of combat areas | Combat areas with treasure entries | ☐ |
+| **Cross-References** | All creature refs exist | Creatures in areas match bestiary entries | ☐ |
+| **Chapter Mode Variety** | Max 2 consecutive same mode | No more than 2 acts with identical game mode | ☐ |
+| **Asset Handoff** | 100% of acts | Each act passes asset to next act | ☐ |
+| **Chapter Objectives** | 2-3 per act | Count objectives in chapter opener | ☐ |
+| **Sidebars** | ≥1 per act | Count sidebar patterns (`> #####`) | ☐ |
+| **Inline NPC Stats** | All major NPCs | NPC stats inline at first mention | ☐ |
+
+**Run automated validation:**
+```bash
+./scripts/validate-campaign.sh {campaign-name}
+```
+
+**Manual verification:**
+```bash
+# Count boxed text sections
+grep -c '^>>' acts/*.md
+
+# Count character hooks
+grep -ci 'hook\|gancho' acts/*.md
+
+# Count developments
+grep -ci 'development\|desarrollo' acts/*.md
+
+# Count sidebars
+grep -c '^> #####' acts/*.md
+```
+
+### Pre-flight Scripts
+
+Run these commands before compiling a campaign to PDF:
+
+#### 1. Structure Validation
+
+```bash
+./scripts/validate-campaign.sh {campaign-name} --check=structure
+```
+
+**Expected output:**
+```
+✅ Structure Check: PASS
+  - lore.md: exists
+  - npcs/npcs_and_factions.md: exists
+  - bestiary/bestiary.md: exists
+  - acts/: 3 files found
+  - assets/: 12 files found
+```
+
+#### 2. WotC Format Validation
+
+```bash
+./scripts/validate-campaign.sh {campaign-name} --check=wotc
+```
+
+**Expected output:**
+```
+✅ WotC Format Check: PASS
+  - Boxed Text: 45 sections (100-600 words each)
+  - Character Hooks: 92 hooks (≥2 per area)
+  - Developments: 138 branches (≥3 per area)
+  - Running Guidance: 45 sections (150-400 words each)
+  - Sidebars: 8 sidebars (≥1 per act)
+```
+
+#### 3. Cross-Reference Validation
+
+```bash
+./scripts/validate-campaign.sh {campaign-name} --check=references
+```
+
+**Expected output:**
+```
+✅ Cross-Reference Check: PASS
+  - Creature references: 34/34 exist in bestiary
+  - NPC references: 28/28 exist in npcs_and_factions.md
+  - Quest references: 15/15 exist in quests/
+  - Location references: 45/45 exist in maps/
+```
+
+#### 4. Full Validation (All Checks)
+
+```bash
+./scripts/validate-campaign.sh {campaign-name}
+```
+
+**Expected output:**
+```
+=====================================
+  Campaign Validation Report
+=====================================
+Campaign: sunken-city
+Date: 2026-05-09
+
+✅ Structure Check: PASS
+✅ WotC Format Check: PASS
+✅ Cross-Reference Check: PASS
+✅ Content Completeness: PASS
+
+=====================================
+  VALIDATION PASSED
+=====================================
+Exit code: 0
+```
+
+**If validation fails:**
+```
+=====================================
+  Campaign Validation Report
+=====================================
+Campaign: sunken-city
+Date: 2026-05-09
+
+✅ Structure Check: PASS
+❌ WotC Format Check: FAIL
+  - Boxed Text: 3 sections under 100 words
+  - Character Hooks: 5 areas with <2 hooks
+  - Sidebars: 0 sidebars (required: ≥1 per act)
+✅ Cross-Reference Check: PASS
+
+=====================================
+  VALIDATION FAILED: 3 issues
+=====================================
+
+Remediation:
+1. Expand boxed text in Area A3, A7, B2 (add sensory details)
+2. Add character hooks to Areas C1, C4, D2, D5, E3
+3. Add at least 3 sidebars with rules clarifications or DM tips
+
+Exit code: 1
+```
+
+#### 5. CI/CD Integration
+
+```bash
+# In CI/CD pipeline
+if ! ./scripts/validate-campaign.sh {campaign-name}; then
+  echo "Validation failed - cannot compile PDF"
+  exit 1
+fi
+
+# Compile only if validation passes
+grimorio compile_pdf --campaign={campaign-name}
+```
+
 ### Architecture
 
 ```

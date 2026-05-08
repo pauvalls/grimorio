@@ -1,3 +1,5 @@
+> ⚠️ **DEPRECATED (v2.4.0)** — Este archivo está siendo reemplazado por la documentación consolidada en README.md y el script `scripts/validate-campaign.sh`. La información aquí contenida puede estar desactualizada. Para validación de campañas, usar `./scripts/validate-campaign.sh {campaign-name}`.
+
 # SDD Solutions — Problemas Comunes y Soluciones
 
 Este archivo documenta problemas frecuentes y sus soluciones usando el workflow SDD.
