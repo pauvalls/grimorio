@@ -962,3 +962,344 @@ This is because the working directory is `/home/pau/Grimorio/` and relative path
 
 **TL;DR:** Working directory es `/home/pau/Grimorio/` pero las campañas viven en `/home/pau/campaigns/`. Usar SIEMPRE paths absolutos en agents y MCP tools. Si se generó en el lugar equivocado, mover manualmente y validar estructura.
 
+
+---
+
+## 📖 Contexto Narrativo: Pedir Historia Antes de Generar
+
+### Problema
+Los agentes grimorio generan contenido SIN pedir primero una descripción de la historia/trama que el DM quiere. Resultado: contenido genérico, desconectado de la visión del DM.
+
+### Síntomas
+- Áreas sin conexión con el arco narrativo principal
+- NPCs sin relación con la trama específica
+- Encuentros que no avanzan la historia que el DM quería contar
+- El DM tiene que regenerar múltiples veces hasta que "encaja"
+- **Falta contexto narrativo:** ¿qué historia quiere contar el DM?
+
+### Ejemplo Real
+
+**Sin contexto (INCORRECTO):**
+```
+User: "Generá áreas para la-hoja-de-vlad"
+Agente: → Genera 12 áreas genéricas de vampiros
+Result: Áreas técnicamente correctas pero sin conexión con la historia específica
+```
+
+**Con contexto (CORRECTO):**
+```
+User: "Generá áreas para la-hoja-de-vlad"
+Agente: "¿Podés describir la historia/trama que querés contar? 
+         - ¿Qué arco narrativo tiene Act 1, 2, 3?
+         - ¿Qué eventos clave deben ocurrir?
+         - ¿Qué tono buscás (terror político, acción, misterio)?
+         - ¿Hay escenas específicas que querés incluir?"
+User: "Act 1: Investigación en la corte, Act 2: Viaje a las montañas, Act 3: Confrontación final"
+Agente: → Genera 12 áreas alineadas con esa estructura
+Result: Áreas que cuentan LA historia que el DM quería
+```
+
+### Causa Raíz
+
+**Los agentes asumen que con `canon.json` y `lore.md` es suficiente:**
+- `canon.json` → Entidades y reglas del mundo
+- `lore.md` → Historia del mundo, no la trama específica
+
+**Falta:**
+- `story_brief.md` o `trama.md` → La historia específica que el DM quiere contar
+- Arco narrativo por actos
+- Escenas clave que DEBEN ocurrir
+- Tono y ritmo deseado
+
+### Solución SDD
+
+#### 1. Agregar Paso de "Story Brief" al Workflow
+
+**Antes de generar CUALQUIER contenido (áreas, NPCs, encuentros):**
+
+```markdown
+## CRITICAL: Request Story Brief First
+
+**BEFORE generating content, you MUST ask:**
+
+> "Para generar contenido alineado con tu visión, necesito que me describas:
+> 
+> 1. **Arco narrativo por actos:**
+>    - Act 1: ¿Qué establece la historia? (3-4 áreas)
+>    - Act 2: ¿Qué complica la trama? (4-5 áreas)
+>    - Act 3: ¿Cómo resuelve? (3-4 áreas)
+> 
+> 2. **Escenas clave que DEBEN ocurrir:**
+>    - ¿Hay encuentros específicos que querés incluir?
+>    - ¿Revelaciones importantes?
+>    - ¿Momentos emocionales para los PCs?
+> 
+> 3. **Tono y ritmo:**
+>    - ¿Terror político? ¿Acción constante? ¿Misterio?
+>    - ¿Ritmo: lento (exploración) o rápido (combate)?
+> 
+> 4. **Personajes importantes:**
+>    - ¿NPCs que deben aparecer sí o sí?
+>    - ¿Villanos específicos?
+>    - ¿Aliados clave?
+> 
+> 5. **Tema central:**
+>    - ¿De qué trata LA HISTORIA (no el mundo)?
+>    - Ej: 'Redención', 'Venganza', 'Sacrificio', 'Traición'"
+
+**Wait for user response BEFORE proceeding.**
+```
+
+#### 2. Crear Archivo `story_brief.md` o `trama.md`
+
+**Estructura del archivo:**
+
+```markdown
+# Story Brief: {Campaign Name}
+
+## Arco Narrativo
+
+### Act 1: [Nombre]
+- **Objetivo:** Establecer conflicto principal
+- **Áreas:** 3-4
+- **Eventos clave:**
+  1. Los PCs reciben la misión en la corte
+  2. Descubren la primera pista (carta cifrada)
+  3. Encuentro con el villano (sin saber que lo es)
+- **Tono:** Misterio político, tensión social
+- **Revelación:** Alguien en la corte está traicionando
+
+### Act 2: [Nombre]
+- **Objetivo:** Complicar la trama, subir apuestas
+- **Áreas:** 4-5
+- **Eventos clave:**
+  1. Viaje a las montañas (encuentro aleatorio)
+  2. Descubren el ritual en la cueva
+  3. Traición de aliado
+  4. Persecución
+- **Tono:** Acción, peligro creciente
+- **Revelación:** El villano quiere revivir al antiguo señor vampiro
+
+### Act 3: [Nombre]
+- **Objetivo:** Confrontación final
+- **Áreas:** 3-4
+- **Eventos clave:**
+  1. Infiltración en la fortaleza
+  2. Enfrentamiento con el villano
+  3. Decisión moral (sacrificio o victoria pírrica)
+- **Tono:** Épico, emocional
+- **Resolución:** Los PCs deciden el destino del reino
+
+## Personajes Clave
+
+### NPCs que DEBEN aparecer:
+- **Lord Volkov:** Villano principal, aparece en Act 1 y 3
+- **Elena Corvus:** Aliada, traiciona en Act 2
+- **El Cuervo:** Informante, aparece en Act 1 y 2
+
+### Momentos para PCs:
+- **PC 1 (Paladín):** Enfrentar su juramento vs. bien mayor
+- **PC 2 (Mago):** Descubrir secreto de su linaje
+- **PC 3 (Pícaro):** Redimirse por traición pasada
+
+## Temas Centrales
+- **Principal:** Traición y confianza
+- **Secundario:** Sacrificio por el bien común
+- **Terciario:** Poder corrompe
+
+## Escenas Obligatorias
+1. Baile en la corte donde alguien es envenenado (Act 1)
+2. Cruce de puente colgante bajo ataque (Act 2)
+3. Decisión: salvar al aliado o detener el ritual (Act 3)
+```
+
+#### 3. Actualizar Agents para Leer `story_brief.md`
+
+**Para grimorio-areas.md:**
+
+```markdown
+## CRITICAL: Read Story Brief First
+
+**BEFORE generating areas:**
+
+1. **Check if story brief exists:**
+   ```bash
+   ls /home/pau/campaigns/{campaign}/story_brief.md
+   ```
+
+2. **If EXISTS:** Read it first
+   ```markdown
+   Read file: /home/pau/campaigns/{campaign}/story_brief.md
+   ```
+   
+3. **If NOT EXISTS:** Ask user to provide it
+   > "No encontré `story_brief.md`. Para generar áreas alineadas con tu visión, necesito que describas:
+   > - Arco narrativo por actos
+   > - Escenas clave que deben ocurrir
+   > - Tono y ritmo deseado
+   > 
+   > ¿Querés que te genere una plantilla de story_brief.md para completar?"
+
+4. **Use story brief to structure areas:**
+   - Act 1 areas → Establish conflict (story brief Act 1)
+   - Act 2 areas → Complicate plot (story brief Act 2)
+   - Act 3 areas → Resolve (story brief Act 3)
+```
+
+**Para grimorio-npc.md:**
+
+```markdown
+## CRITICAL: Read Story Brief for NPC Roles
+
+**BEFORE generating NPCs:**
+
+1. **Read story_brief.md** to identify:
+   - NPCs que DEBEN aparecer (villanos, aliados, informantes)
+   - Roles narrativos (mentor, antagonista, aliado, traidor)
+   - Arcos personales vinculados a PCs
+
+2. **Map NPCs to story beats:**
+   - Lord Volkov → Aparece en Act 1 (corte) y Act 3 (confrontación)
+   - Elena Corvus → Aliada en Act 1-2, traiciona en Act 2
+   - El Cuervo → Informante en Act 1 y 2
+
+3. **Generate NPCs with narrative purpose:**
+   - Each NPC should advance the story
+   - Not just "random tavern keeper" but "tavern keeper who witnessed the murder"
+```
+
+**Para grimorio-encounters.md:**
+
+```markdown
+## CRITICAL: Read Story Brief for Encounter Design
+
+**BEFORE generating encounters:**
+
+1. **Read story_brief.md** to identify:
+   - Encuentros obligatorios (baile envenenado, puente, ritual)
+   - Momentos emocionales para PCs
+   - Revelaciones que deben ocurrir
+
+2. **Design encounters that advance the plot:**
+   - Combat → Not just "fight goblins" but "fight mercenaries protecting the evidence"
+   - Social → Not just "talk to noble" but "interrogate noble who knows the traitor"
+   - Exploration → Not just "explore cave" but "find the ritual site before it's too late"
+
+3. **Place encounters according to story arc:**
+   - Act 1: Lower stakes, introduce threat
+   - Act 2: Rising action, complications
+   - Act 3: Climax, final confrontation
+```
+
+#### 4. Workflow Actualizado
+
+```
+1. User crea campaña → canon.json (reglas del mundo)
+2. User escribe lore.md (historia del mundo)
+3. User escribe story_brief.md (trama específica) ← NUEVO
+4. Agente lee story_brief.md → genera áreas alineadas
+5. Agente lee story_brief.md → genera NPCs con roles narrativos
+6. Agente lee story_brief.md → genera encuentros que avanzan la trama
+```
+
+### Comandos de Verificación
+
+```bash
+# Verificar si existe story brief
+ls /home/pau/campaigns/{campaign}/story_brief.md
+
+# Si no existe, crear plantilla
+cat > /home/pau/campaigns/{campaign}/story_brief.md << 'TEMPLATE'
+# Story Brief: {Campaign Name}
+
+## Arco Narrativo
+
+### Act 1: [Nombre]
+- **Objetivo:** 
+- **Áreas:** 3-4
+- **Eventos clave:**
+  1. 
+  2. 
+  3. 
+- **Tono:** 
+
+### Act 2: [Nombre]
+- **Objetivo:** 
+- **Áreas:** 4-5
+- **Eventos clave:**
+  1. 
+  2. 
+  3. 
+  4. 
+- **Tono:** 
+
+### Act 3: [Nombre]
+- **Objetivo:** 
+- **Áreas:** 3-4
+- **Eventos clave:**
+  1. 
+  2. 
+  3. 
+- **Tono:** 
+
+## Personajes Clave
+
+### NPCs que DEBEN aparecer:
+- 
+
+### Momentos para PCs:
+- 
+
+## Temas Centrales
+- **Principal:** 
+- **Secundario:** 
+- **Terciario:** 
+
+## Escenas Obligatorias
+1. 
+2. 
+3. 
+TEMPLATE
+```
+
+### Checklist de Story Brief
+
+**Antes de generar contenido, verificar:**
+
+| Check | Pregunta | Estado |
+|-------|----------|--------|
+| Arco por actos | ¿Están definidos Act 1, 2, 3? | ☐ |
+| Eventos clave | ¿Hay 3-4 eventos por acto? | ☐ |
+| NPCs obligatorios | ¿Lista de NPCs que deben aparecer? | ☐ |
+| Momentos para PCs | ¿Arcos personales definidos? | ☐ |
+| Temas | ¿Tema principal + secundarios? | ☐ |
+| Escenas obligatorias | ¿Escenas que SÍ o SÍ deben ocurrir? | ☐ |
+| Tono por acto | ¿Tono especificado (terror, acción, misterio)? | ☐ |
+
+### Ejemplo de Prompt Inicial
+
+**Cuando el usuario pide generar contenido SIN story brief:**
+
+```
+⚠️ **No encontré story_brief.md para esta campaña**
+
+Para generar contenido alineado con TU visión (no contenido genérico), necesito que me describas:
+
+1. **Arco narrativo:** ¿Qué historia querés contar en Act 1, 2, 3?
+2. **Escenas clave:** ¿Hay momentos específicos que DEBEN ocurrir?
+3. **Personajes:** ¿NPCs que deben aparecer sí o sí?
+4. **Tono:** ¿Terror político? ¿Acción? ¿Misterio?
+5. **Tema:** ¿De qué trata la historia? (traición, redención, venganza, etc.)
+
+**Opciones:**
+A) Me describís la historia ahora y yo genero el story_brief.md
+B) Te genero una plantilla vacía para que completes
+C) Genero contenido genérico (no recomendado)
+
+¿Qué preferís?
+```
+
+---
+
+**TL;DR:** Los agentes NO deben generar contenido sin antes pedir/leer `story_brief.md`. Sin contexto narrativo, el contenido es genérico y desconectado de la visión del DM. Agregar paso obligatorio: "Pedir historia → Crear story_brief.md → Leer story_brief.md → Generar contenido alineado".
+
