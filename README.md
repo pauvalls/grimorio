@@ -179,7 +179,8 @@ Phase 3-13: End-to-end orchestration by grimorio-architect
 │                                  ┌──────────────────────────────────┐  │
 │                                  │   Output                           │  │
 │                                  │   compile_pdf                    │  │
-│                                  │     → Lore → Acts → Appendices   │  │
+│                                  │     → Intro → Lore → Acts →        │  │
+│                                  │       Setting → Appendices         │  │
 │                                  └──────────────────────────────────┘  │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -192,6 +193,7 @@ grimorio-architect (Primary Orchestrator)
     │
     ├─ Phase 1: Requirements gathering (interactive)
     ├─ Phase 2: Campaign creation + Adventure Bible (canon)
+    ├─ Phase 3a: grimorio-introduction → Introduction/overview (WotC format)
     │
     ├─ Batch 1 (PARALLEL delegate)
     │   ├─ grimorio-npc         → NPCs + factions
@@ -201,6 +203,7 @@ grimorio-architect (Primary Orchestrator)
     │
     ├─ Batch 2 (PARALLEL delegate)
     │   ├─ grimorio-lore        → World backstory
+    │   ├─ grimorio-setting-guide → DM-only setting reference (spoilers)
     │   ├─ grimorio-quests      → Personal quests
     │   ├─ grimorio-encounters  → Combat challenges
     │   └─ grimorio-characters  → Pre-gen PCs
@@ -210,6 +213,8 @@ grimorio-architect (Primary Orchestrator)
     ├─ Batch 3: Areas (SEQUENTIAL)
     │   └─ grimorio-areas        → 10-15 numbered areas per act (WotC format)
     │      → grimorio-encounters → Combat templates referenced by areas
+    │
+    ├─ Phase 5e: grimorio-appendices → Consolidated reference (Items, NPCs, Handouts)
     │
     ├─ Batch 4: Integration (OBLIGATORY gate)
     │   └─ grimorio-integrator   → Cross-reference validation, XP balance,
@@ -613,7 +618,7 @@ This creates `canon.json` and `narrative_state.json` for each campaign, with a `
 
 **Backwards Compatibility**
 - `--compiler-version=1` flag for legacy PDF generation
-- `grimorio-acts-legacy.md` preserved for old campaigns
+- `grimorio-areas` — The ONLY area generator (no legacy version)
 - Migration tool converts scene-based acts to area-based format
 
 ### Complete User Guide
@@ -1382,8 +1387,14 @@ Esto crea `canon.json` y `narrative_state.json` para cada campaña, con un direc
 
 **Compatibilidad Hacia Atrás**
 - Flag `--compiler-version=1` para generación de PDF legacy
-- `grimorio-acts-legacy.md` preservado para campañas viejas
+- `grimorio-areas` es el ÚNICO generador de áreas (sin versión legacy)
 - Herramienta de migración convierte actos basados en escenas a formato basado en áreas
+
+**Formato WotC Profesional (v2.1+)**
+- `grimorio-introduction` — Introduction/overview con Foreword, Story Overview, Adventure Background, Running the Adventure
+- `grimorio-setting-guide` — DM-only setting reference con Geography, History, Culture, Factions, Secrets
+- `grimorio-appendices` — Consolidated appendices con Magic Items, NPCs/Monsters, Handouts, Maps, Reference Tables
+- Pipeline: Introduction → Lore → Acts → Setting Guide → Individual Appendices → Appendices.md
 
 ### Guía de Uso Completa
 

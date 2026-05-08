@@ -7,11 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-05-08
+
+### Added
+- **Professional WotC Format** — Introduction, Setting Guide, and Appendices as formal campaign chapters
+  - `grimorio-introduction` — New agent: Foreword, Story Overview, Adventure Background timeline, Running the Adventure, Character Creation Guidelines
+  - `grimorio-setting-guide` — New agent (DM-only): Geography, History, Culture, Factions, Secrets and Lies, Economy
+  - `grimorio-appendices` — New agent: Magic Items (A), NPCs/Monsters (B), Handouts (C), Maps (D), Reference Tables (E)
+  - 3 new MCP handlers: `save_introduction`, `save_setting_guide`, `save_appendices`
+  - 3 new Go templates: `introduction.md.tmpl`, `setting-guide.md.tmpl`, `appendices.md.tmpl`
+  - Compiler v2 updated: Introduction → Lore → Acts → Setting Guide → Individual Appendices → Appendices
+- **Area Enhancements** — Inline NPC stat summaries (*alignment race class*) and sidebar support (> ##### pattern)
+  - `grimorio-areas` agent updated: inline stats, sidebars, rule 11 (≥1 sidebar/act), rule 12 (inline NPC stats)
+  - Sidebar CSS styling: red left border, dashed edges, Cinzel h5 heading
+- **Pipeline Updates** — 12-phase flow with Introduction, Setting Guide, and Appendices phases
+
+### Changed
+- **Compiler sections order** — Introduction, Lore, Acts, Setting Guide (DM-only), individual appendices, unified Appendices.md
+- **Pipeline** — grimorio-architect now orchestrates 12 phases (was 11)
+- **Agent hierarchy** — grimorio-areas is the ONLY area generator (grimorio-acts-legacy.md removed)
+
+### Fixed
+- Duplicate "Sesión Cero — Guía para el DM" heading in HTML output (hardcoded h2 removed)
+- `grimorio-architect` was referencing non-existent `grimorio-acts` agent — updated to `grimorio-areas`
+
+### Changed
+- **grimorio-acts-legacy.md** — REMOVED (replaced by grimorio-areas.md)
+
 ## [2.0.0] - 2026-05-08
 
 ### Added
 - **Area-Based Generation (v2.0 Migration)** — Complete rewrite from scene-based to WotC-style area-based modules
-  - `grimorio-areas` — New agent replacing `grimorio-acts`, generates 10-15 numbered areas per act (150-200 words each)
+  - `grimorio-areas` — New agent (the ONLY area generator), generates 10-15 numbered areas per act (150-200 words each)
   - `grimorio-integrator` — New mandatory validation agent: cross-reference checks, XP balance audit, consistency validation, auto-fixes
   - Area format: Features → Mechanics (bold) → Treasure → Secrets → Connections, with specific DCs and XP values
   - 90%+ areas have mechanics (vs 50% in v1.x), 70% of combat areas have treasure (vs 30%)
@@ -20,7 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `internal/services/handout.go` — HandoutGenerator for player maps, clue lists, NPC rosters, session recaps
   - Compiler v2: hierarchical TOC with links, clickable cross-references, inline stat blocks for unique creatures, area number highlighting
   - `--compiler-version={1|2}` flag for backwards compatibility
-  - `grimorio-acts-legacy.md` preserved for old campaigns
   - `cmd/migrate-v1-to-v2` — Converts scene-based acts to area-based format (best-effort)
 - **Narrative Coherence Subsystem (Fases 1-2)** — Complete canon and validation system
   - `generate_adventure_bible` — Creates canon.json with immutable facts, entities, timeline, rules
