@@ -1,6 +1,7 @@
 package validators
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -314,4 +315,103 @@ func containsMechanics(text string) bool {
 	// Check for DCs, stats, monster names
 	mechanicsPattern := regexp.MustCompile(`(?i)(CD\s*\d+|DC\s*\d+|AC|HP|CR|XP|proficienc|saving throw|skill bonus)`)
 	return mechanicsPattern.MatchString(text)
+}
+
+// ValidateNPCStatLinks checks that NPCs reference stat blocks in bestiary
+func ValidateNPCStatLinks(npcsMD, bestiaryMD string) ValidationResult {
+	result := ValidationResult{Valid: true}
+	
+	// Extract NPC names from npcs.md
+	npcNamePattern := regexp.MustCompile(`(?i)###\s+([A-Za-z][A-Za-z\s']+?)\s*\n`)
+	npcMatches := npcNamePattern.FindAllStringSubmatch(npcsMD, -1)
+	
+	var npcNames []string
+	for _, m := range npcMatches {
+		name := strings.TrimSpace(m[1])
+		if len(name) > 2 {
+			npcNames = append(npcNames, name)
+		}
+	}
+	
+	// Check each NPC has a stat block reference
+	for _, npcName := range npcNames {
+		// Look for "Ver bestiary.md: [Name]" or "[Name]" in bestiary
+		refPattern := regexp.MustCompile(`(?i)(ver\s+bestiary\.md:\s*` + regexp.QuoteMeta(npcName) + `|` + regexp.QuoteMeta(npcName) + `)`)
+		
+		hasRef := refPattern.MatchString(npcsMD) || strings.Contains(bestiaryMD, npcName)
+		
+		if !hasRef {
+			result.Errors = append(result.Errors, ValidationError{
+				Field:   "npc_stat_link",
+				Message: fmt.Sprintf("NPC '%s' has no stat block reference in bestiary.md", npcName),
+			})
+		}
+	}
+	
+	// Check for stat blocks in bestiary without corresponding NPC
+	bestiaryNPCPattern := regexp.MustCompile(`(?i)###\s+([A-Za-z][A-Za-z\s']+?)\s*\n.*?\*[A-Z][a-z]+\s+(male|female|neutral)\s+`)
+	bestiaryMatches := bestiaryNPCPattern.FindAllStringSubmatch(bestiaryMD, -1)
+	
+	for _, m := range bestiaryMatches {
+		name := strings.TrimSpace(m[1])
+		found := false
+		for _, npcName := range npcNames {
+			if strings.EqualFold(name, npcName) {
+				found = true
+				break
+			}
+		}
+		
+		if !found {
+			result.Warnings = append(result.Warnings, fmt.Sprintf("Stat block '%s' in bestiary has no corresponding NPC in npcs.md", name))
+		}
+	}
+	
+	result.Valid = len(result.Errors) == 0
+	return result
+}
+
+// ValidateNPCWordCount checks that NPCs meet WotC word count standards
+func ValidateNPCWordCount(npcsMD string) ValidationResult {
+	result := ValidationResult{Valid: true}
+	
+	// Split by NPC sections
+	sections := regexp.MustCompile(`(?m)^###\s+`).Split(npcsMD, -1)
+	
+	for i, section := range sections {
+		if i == 0 {
+			continue // Skip content before first NPC
+		}
+		
+		lines := strings.Split(section, "\n")
+		npcName := strings.TrimSpace(lines[0])
+		wordCount := CountWords(section)
+		
+		// Determine if major or minor NPC
+		isMajor := strings.Contains(strings.ToLower(section), "apariencia física") ||
+			strings.Contains(strings.ToLower(section), "personalidad") ||
+			strings.Contains(strings.ToLower(section), "secretos")
+		
+		if isMajor {
+			if wordCount < 500 {
+				result.Errors = append(result.Errors, ValidationError{
+					Field:   "npc_word_count",
+					Message: fmt.Sprintf("Major NPC '%s' has %d words, minimum is 500", npcName, wordCount),
+				})
+			}
+			if wordCount > 800 {
+				result.Warnings = append(result.Warnings, fmt.Sprintf("Major NPC '%s' has %d words, recommended maximum is 800", npcName, wordCount))
+			}
+		} else {
+			if wordCount < 200 {
+				result.Errors = append(result.Errors, ValidationError{
+					Field:   "npc_word_count",
+					Message: fmt.Sprintf("Minor NPC '%s' has %d words, minimum is 200", npcName, wordCount),
+				})
+			}
+		}
+	}
+	
+	result.Valid = len(result.Errors) == 0
+	return result
 }

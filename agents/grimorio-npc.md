@@ -154,3 +154,198 @@ Cada facción debe tener:
 5. **Escalá al nivel**: Para nivel 1, los NPCs no deberían ser invencibles ni tener recursos infinitos.
 6. **Incluí citas**: Una buena cita le da al DM material para rolear sin esfuerzo.
 7. **Diversificá**: Mezclá edades, géneros, razas, y personalidades. Que no sean todos iguales.
+
+---
+
+## WotC Enhanced NPC Standards (MANDATORY)
+
+### NPC Description Requirements
+
+Cada NPC principal DEBE tener:
+
+#### 1. Physical Appearance (3-5 párrafos)
+
+```markdown
+### Apariencia Física
+
+**Altura y Complexión:** [Descripción detallada - 2-3 oraciones]
+**Rostro:** [Ojos, nariz, boca, expresión característica - 2-3 oraciones]
+**Cabello:** [Color, estilo, textura - 1-2 oraciones]
+**Vestimenta:** [Ropa típica, accesorios, símbolos - 2-3 oraciones]
+**Características Distintivas:** [Cicatrices, tatuajes, postura - 1-2 oraciones]
+```
+
+**EJEMPLO WotC:**
+```markdown
+### Apariencia Física
+
+**Altura y Complexión:** Mastro Aldric es un hombre alto y fornido de aproximadamente 1.85m, con hombros anchos 
+que delatan años de trabajo como herrero. Su complexión es robusta pero ágil, con músculos definidos que aún 
+mantienen la fuerza de su juventud militar.
+
+**Rostro:** Su cara cuadrada está marcada por arrugas profundas alrededor de los ojos azules, que brillan con 
+inteligencia y experiencia. Una cicatriz pálida cruza su ceja izquierda, recuerdo de una batalla olvidada. 
+Su mandíbula fuerte suele estar apretada, pero cuando sonríe, todo su rostro se ilumina.
+
+**Cabello:** El cabello castaño grisáceo lo lleva corto y desordenado, con entradas pronunciadas que revelan 
+sus cincuenta años. Una barba corta y bien cuidada enmarca su rostro.
+
+**Vestimenta:** Viste un delantal de cuero sobre una túnica simple, ambos manchados de hollín y trabajo. 
+En su cuello cuelga un medallón de plata con el símbolo de su antiguo regimiento.
+
+**Características Distintivas:** Camina con el paso firme de un soldado, siempre alerta. Sus manos callosas 
+se mueven con precisión cuando trabaja el metal.
+```
+
+#### 2. Personality (2-3 párrafos)
+
+```markdown
+### Personalidad
+
+**Mannerisms:** [Gestos, tics, hábitos - 2-3 oraciones]
+**Speech Patterns:** [Cómo habla, vocabulario, tono - 2-3 oraciones]
+**Motivations:** [Qué lo impulsa, metas, miedos - 2-3 oraciones]
+```
+
+#### 3. Voice Description (1 párrafo)
+
+```markdown
+### Voz
+
+**Tono:** [Grave, agudo, ronco, suave]
+**Accent:** [Regional, social, educativo]
+**Catchphrases:** [Frases típicas, muletillas - 1-2 ejemplos]
+```
+
+**EJEMPLO:**
+```markdown
+### Voz
+
+Su voz es grave y ronca, gastada por años de gritar órdenes en el campo de batalla y trabajar junto al fuego 
+de la forja. Habla con el acento característico de las tierras altas, arrastrando las vocales finales. 
+Frecuentemente dice "Por el acero y el fuego" cuando hace un juramento, y "El metal no miente" cuando 
+quiere enfatizar una verdad.
+```
+
+#### 4. Secrets (3-5 secrets)
+
+```markdown
+### Secretos
+
+**Secreto Trivial (Flavor):** [Algo curioso pero sin impacto en la trama]
+**Secreto Importante #1 (Quest-relevant):** [Información que puede iniciar una quest]
+**Secreto Importante #2 (Quest-relevant):** [Otra información relevante]
+**Secreto de Campaña (Plot-altering):** [Información que cambia la trama principal]
+```
+
+**EJEMPLO:**
+```markdown
+### Secretos
+
+**Secreto Trivial:** Aldric colecciona piedras interesantes que encuentra cerca de la forja. Tiene un frasco 
+lleno de ellas en su escritorio y cada una tiene un nombre.
+
+**Secreto Importante #1:** Conoce la ubicación de una entrada secreta a las ruinas antiguas, pero ha jurado 
+no revelarla a menos que la ciudad esté en peligro mortal.
+
+**Secreto Importante #2:** Fue testigo del asesinato del magistrado hace 10 años, pero nunca habló porque 
+temía por su familia. El asesino todavía está en la ciudad.
+
+**Secreto de Campaña:** El medallón que lleva es en realidad una llave que abre la cámara donde se esconde 
+el artefacto principal de la campaña. Él no lo sabe conscientemente, pero tiene pesadillas recurrentes 
+sobre "la puerta que debe permanecer cerrada".
+```
+
+#### 5. Plot Hooks (2-3 hooks)
+
+```markdown
+### Ganchos de Trama
+
+**Hook #1:** [Por qué interactúa con los PJs, qué necesita de ellos]
+**Hook #2:** [Cómo puede ayudar u obstaculizar a los PJs]
+**Hook #3:** [Conexión con la trama principal]
+```
+
+#### 6. Read-Aloud Dialogue (3-5 líneas)
+
+```markdown
+### Diálogo para Leer
+
+*"[Línea 1 - saludo o apertura]"*
+*"[Línea 2 - información o reacción]"*
+*"[Línea 3 - cierre o llamada a la acción]"*
+```
+
+**EJEMPLO:**
+```markdown
+### Diálogo para Leer
+
+*"¿Qué buscan en mi forja, viajeros? El acero está caliente y mi paciencia es corta."*
+
+*"Escuché rumores sobre las ruinas. Si buscan entrar, necesitarán más que espadas. Necesitarán confianza."*
+
+*"Vuelvan cuando el sol se ponga. Les contaré lo que sé. Pero no digan que yo los envié."*
+```
+
+---
+
+## NPC Stat Block Requirements
+
+Cada NPC mencionado en npcs.md DEBE tener su stat block en bestiary.md:
+
+```markdown
+### [NPC Name]
+
+*"[Alignment] [Race] [Class]"*
+
+**AC** XX | **HP** XX | **Speed** XX ft.
+
+| STR | DEX | CON | INT | WIS | CHA |
+|-----|-----|-----|-----|-----|-----|
+| +X  | +X  | +X  | +X  | +X  | +X  |
+
+**Skills** [Skill +X, ...]
+**Senses** [darkvision 60 ft., passive Perception XX]
+**Languages** [idiomas]
+**Challenge** X (XXX XP)
+
+**Actions**
+**[Attack Name].** *Melee/Ranged Weapon Attack:* +X to hit, reach/range X ft., one target. *Hit:* X (XdX + X) damage type.
+
+**[Special Action].** [Description with mechanics]
+```
+
+**VALIDACIÓN:** El validator `ValidateNPCStatLinks()` verificará que cada NPC en npcs.md tenga referencia en bestiary.md.
+
+---
+
+## Updated NPC Checklist (v2.5 WotC Enhanced)
+
+- [ ] **Apariencia Física:** 3-5 párrafos detallados
+- [ ] **Personalidad:** 2-3 párrafos (mannerisms, speech, motivations)
+- [ ] **Voz:** 1 párrafo (tono, accent, catchphrases)
+- [ ] **Secretos:** 3-5 secretos (1 trivial, 2 importantes, 1 de campaña)
+- [ ] **Plot Hooks:** 2-3 hooks explicando interacción con PJs
+- [ ] **Diálogo:** 3-5 líneas para read-aloud
+- [ ] **Stat Block:** En bestiary.md con formato completo
+- [ ] **Referencia Cruzada:** "Ver bestiary.md: [NPC Name]" en npcs.md
+
+---
+
+## Word Count Standards
+
+**NPCs Principales:** 500-800 palabras totales
+- Apariencia: 150-250 palabras
+- Personalidad: 100-150 palabras
+- Voz: 50-80 palabras
+- Secretos: 150-200 palabras
+- Hooks: 50-80 palabras
+- Diálogo: 30-50 palabras
+
+**NPCs Secundarios:** 200-400 palabras totales
+- Descripción combinada: 100-200 palabras
+- Secretos: 50-100 palabras
+- Hooks: 30-50 palabras
+- Diálogo: 20-40 palabras
+
+**VALIDACIÓN:** El validator `ValidateNPCWordCount()` rechazará NPCs principales con menos de 500 palabras.

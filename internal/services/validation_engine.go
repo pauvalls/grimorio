@@ -502,7 +502,7 @@ func (e *ValidationEngine) validate(ctx context.Context, campaignID string, prop
 
 	// WotC Format Validations (NEW)
 	if proposal.Type == "act" {
-		e.validateWotCFormat(report, proposal.Content)
+		e.validateWotCFormat(report, proposal.Content, proposal.Type)
 	}
 
 	report.ComputeOverallStatus()
@@ -510,7 +510,7 @@ func (e *ValidationEngine) validate(ctx context.Context, campaignID string, prop
 }
 
 // validateWotCFormat applies WotC professional format validations
-func (e *ValidationEngine) validateWotCFormat(report *domain.ValidationReport, content string) {
+func (e *ValidationEngine) validateWotCFormat(report *domain.ValidationReport, content string, proposalType string) {
 	// Validation 1: Developments structure (3-5 branches with IF-THEN)
 	devResult := validators.ValidateDevelopments(content)
 	if !devResult.Valid {
@@ -548,15 +548,29 @@ func (e *ValidationEngine) validateWotCFormat(report *domain.ValidationReport, c
 	}
 
 	// Validation 4: Boxed text quality (100-600 words, second person, present tense)
-	boxarResult := validators.ValidateBoxedText(content)
-	if !boxarResult.Valid {
-		for _, err := range boxarResult.Errors {
+	boxedResult := validators.ValidateBoxedText(content)
+	if !boxedResult.Valid {
+		for _, err := range boxedResult.Errors {
 			report.AddCheck("wotc_boxed_text", false, "warning", err.Message, "")
 		}
 		report.AddSuggestion(
 			"Boxed text needs improvement",
 			"Write 100-600 words in second person present tense (ves, escuchas, sientes) with sensory details only",
 			"Boxed text sets the scene for players")
+	}
+
+	// Validation 5: NPC word count (for NPC content proposals)
+	if proposalType == "npc" {
+		npcResult := validators.ValidateNPCWordCount(content)
+		if !npcResult.Valid {
+			for _, err := range npcResult.Errors {
+				report.AddCheck("wotc_npc_word_count", false, "error", err.Message, "")
+			}
+			report.AddSuggestion(
+				"NPC descriptions too short",
+				"Major NPCs need 500-800 words (appearance, personality, voice, secrets, hooks, dialogue)",
+				"WotC NPCs have detailed descriptions for DM reference")
+		}
 	}
 }
 
