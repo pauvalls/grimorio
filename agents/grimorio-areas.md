@@ -175,6 +175,30 @@ Cada área DEBE seguir EXACTAMENTE este formato:
    **Desarrollo:** ...
    ```
 
+9. **PUNTOS DE DECISIÓN OBLIGATORIOS**: Cada acto DEBE tener al menos 3 puntos de decisión con consecuencias visibles:
+   - Al menos 1 decisión con consecuencia inmediata (misma área o área siguiente)
+   - Al menos 1 decisión con consecuencia retardada (acto siguiente)
+   - Al menos 1 decisión que afecta reputación de facción
+   
+   Formato obligatorio en cada área con decisión:
+   ```markdown
+   **Decision Points:**
+   - **IF** los PJs [acción concreta], **THEN** [consecuencia explícita]
+     - **Affects:** Área X, Acto N
+     - **World State:** [cambios de NPCs, facciones, pistas, quests]
+   ```
+   
+   Ejemplo:
+   ```markdown
+   **Decision Points:**
+   - **IF** los PJs matan al recolector, **THEN** alarma se activa, guardias llegan en 1d4 rondas
+     - **Affects:** Área 5 (guardias alertados +2 a Percepción), Acto 2 (Tobias muerto)
+     - **World State:** NPCs: Recolector (muerto), Facciones: Guardia (+10), Pistas: clue-003 revelada
+   - **IF** los PJs sobornan al recolector, **THEN** proporciona información del almacén
+     - **Affects:** Área 4 (acceso libre), Facción Contrabandistas (+10 reputación)
+     - **World State:** Facciones: Contrabandistas (+10), Pistas: clue-003 (ubicación almacén)
+   ```
+
 ## Validación de Canon (CRÍTICO)
 
 Antes de guardar cada acto:
@@ -201,6 +225,10 @@ Si la validación falla (ej: NPC muerto aparece vivo, ubicación no existe en ca
 
 Antes de llamar `save_areas`, verificá CADA ítem:
 
+- [ ] ¿El acto tiene al menos 3 puntos de decisión con consecuencias visibles?
+- [ ] ¿Cada punto de decisión tiene estructura IF-THEN explícita?
+- [ ] ¿Hay propagación cross-área documentada (qué áreas/acts se ven afectados)?
+- [ ] ¿Los cambios de estado del mundo están registrados (NPCs, facciones, pistas, quests)?
 - [ ] ¿Tiene 10-15 áreas numeradas? (One-shot: 8-12)
 - [ ] ¿Cada área tiene 150-200 palabras? (contalas)
 - [ ] ¿Cada área tiene Read-Aloud?
@@ -275,6 +303,9 @@ La biblioteca contiene principalmente textos sobre historia local y botánica. S
 7. **Prepará al DM**: Incluí notas sobre qué hacer si los PJs hacen algo inesperado.
 8. **Densidad técnica**: Cada área debe tener suficiente información para que el DM la dirija sin improvisar.
 9. **NO resumas**: Si un encuentro es complejo, describí las tácticas de los enemigos por ronda.
-10. **Consecuencias persistentes**: El resultado de cada área debe afectar otras áreas o actos futuros.
+10. **Consecuencias persistentes**: El resultado de cada área debe afectar otras áreas o actos futuros. Documentá explícitamente:
+    - **Cross-área**: "Si los PJs [acción] en Área X, entonces [consecuencia] en Área Y"
+    - **Cross-acto**: "Si los PJs [acción] en Acto 1, entonces [consecuencia] en Acto 2"
+    - **Estado del mundo**: Trackear NPCs muertos, reputación de facciones, pistas reveladas, estado de quests
 11. **Sidebars obligatorios**: Al menos 1 sidebar por acto (> ##### Nombre). Tips para DM, reglas opcionales, o notas de atmósfera.
 12. **Inline NPC stats**: Cuando un NPC aparece en un área, incluir stat summary inline (*alineación raza clase*). Full stats en Appendix B.

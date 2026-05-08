@@ -33,6 +33,69 @@
 
 ## Running the Adventure
 
+### Manejo de Ramas Narrativas
+
+Esta campaña tiene **puntos de decisión** que cambian el curso de la historia. Como DM:
+
+1. **Trackear decisiones**: Usá la tabla de "Puntos de Decisión" en cada área. Después de cada sesión, revisá qué decisiones tomaron los PJs y actualizá las consecuencias.
+2. **Propagar consecuencias**: Las decisiones en el Acto 1 deben tener eco en el Acto 2 y 3. Si los PJs mataron a un NPC clave en el Acto 1, ese NPC no puede aparecer vivo en el Acto 2 (usá diarios, visiones, o NPCs secundarios si necesitás transmitir información).
+3. **Improvisar off-rails**: Si los PJs evitan un punto de decisión (ej: rodean una ciudad en lugar de entrar), usá las consecuencias alternativas. Ej: si evitan al recolector, la información llega por otro medio (un prisionero, un carta interceptada).
+
+### Ejemplos de Ramificación
+
+**Ejemplo 1: Decisión con consecuencia inmediata**
+- **Situación**: Área 3, los PJs interrogan al recolector
+- **IF** los PJs matan al recolector:
+  - **THEN** alarma se activa, guardias llegan en 1d4 rondas
+  - **Propagación**: Área 5 tiene guardias alertados (+2 a Percepción), Tobias (contacto en Acto 2) está muerto y no puede proporcionar información
+  - **Alternativa**: Si los PJs necesitan la información del recolector, usá su diario personal o una visión mágica
+- **IF** los PJs sobornan al recolector:
+  - **THEN** recolector proporciona información sobre el almacén
+  - **Propagación**: Área 4 tiene acceso libre (guardias sobornados), Facción del Contrabandista (reputación +10)
+
+**Ejemplo 2: Decisión con consecuencia retardada**
+- **Situación**: Acto 1, los PJs eligen ayudar a la Facción A en lugar de la Facción B
+- **IF** los PJs ayudan a la Facción A:
+  - **THEN** Facción A (reputación +20), Facción B (reputación -20)
+  - **Propagación**: En Acto 2, Facción B es hostil (negada entrada a la ciudad, ataques de emboscada 1d4 por sesión)
+  - **Propagación secundaria**: Facción C (aliada de B) también es hostil (reputación -10)
+- **IF** los PJs mantienen neutralidad:
+  - **THEN** Ambas facciones respetan a los PJs pero no ayudan
+  - **Propagación**: En Acto 2, ambas facciones piden favores pero no proporcionan recursos gratuitos
+
+### Trackeo de Estado del Mundo
+
+Después de cada sesión, actualizá esta checklist:
+
+```markdown
+## Sesión N: Estado del Mundo
+
+**Fecha:** [fecha de la sesión]
+
+### NPCs
+- [ ] **NPC 1:** [vivo/muerto/desaparecido] — [ubicación actual]
+- [ ] **NPC 2:** [vivo/muerto/desaparecido] — [ubicación actual]
+
+### Facciones
+- [ ] **Facción A:** [reputación actual ±X] — [cambio: +X/-X por qué]
+- [ ] **Facción B:** [reputación actual ±X] — [cambio: +X/-X por qué]
+
+### Pistas Reveladas
+- [ ] **clue-001:** [descripción] — revelada en [área/sesión]
+- [ ] **clue-002:** [descripción] — revelada en [área/sesión]
+
+### Quests
+- [ ] **Quest 1:** [active/completed/failed] — [notas]
+- [ ] **Quest 2:** [active/completed/failed] — [notas]
+
+### Consecuencias Pendientes
+- [ ] [Consecuencia que se activará en futura sesión/área]
+```
+
+**Consejo:** Guardá este estado del mundo en un archivo separado (`campaign_state.md`) o en tu nota de sesión. No lo incluyas en los materiales que los jugadores pueden ver.
+
+---
+
 ### Abbreviations and Conventions
 
 | Abbreviation | Meaning |

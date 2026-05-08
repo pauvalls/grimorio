@@ -107,6 +107,31 @@
 - **Investigación DC XX:** Qué descubren si examinan
 - **Arcano/Religión/Naturaleza DC XX:** Conocimiento especializado
 
+### Puntos de Decisión
+
+| Decisión | Condición | Consecuencia Inmediata | Propagación |
+|----------|-----------|------------------------|-------------|
+| **IF** | los PJs [acción concreta] | **THEN** [consecuencia en esta área] | Affects: Área X, Acto N |
+| **IF** | los PJs [acción alternativa] | **THEN** [consecuencia alternativa] | Affects: Área Y, Acto N+1 |
+
+**Cambios de Estado del Mundo:**
+- **NPCs:** [quién muere/sobrevive/cambia actitud]
+- **Facciones:** [cambios de reputación ±X]
+- **Pistas:** [pistas reveladas: clue-id-1, clue-id-2]
+- **Quests:** [quests completadas/falladas/activadas]
+
+> **Ejemplo:**
+> | Decisión | Condición | Consecuencia Inmediata | Propagación |
+> |----------|-----------|------------------------|-------------|
+> | **IF** | los PJs matan al recolector | **THEN** alarma se activa, guardias llegan en 1d4 rondas | Affects: Área 5 (guardias alertados), Acto 2 (Tobias muerto) |
+> | **IF** | los PJs sobornan al recolector | **THEN** recolector proporciona información sobre el almacén | Affects: Área 4 (acceso libre), Facción X (reputación +10) |
+>
+> **Cambios de Estado del Mundo:**
+> - **NPCs:** Recolector (vivo/muerto según decisión)
+> - **Facciones:** Guardia de la Ciudad (+10 si soborno, -10 si asesinato)
+> - **Pistas:** clue-003 (ubicación del almacén) revelada
+> - **Quests:** "El Contrabandista" completada si obtienen información
+
 **Características:**
 - **Luces:** {{Iluminación}}
 - **Sonidos:** {{Ambiente sonoro}}

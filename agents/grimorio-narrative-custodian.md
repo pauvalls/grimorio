@@ -87,6 +87,25 @@ For each piece of content to validate, check:
 - Do encounters match the party level?
 - Is loot balanced for the level?
 
+#### Check 9: Decision Branch Completeness
+- Does each act have at least 3 decision points with IF-THEN structure?
+- Do decision points have explicit consequences (not vague "things change")?
+- Are consequences specific enough to track (which areas/acts affected)?
+- **If no**: WARN with specific area references: "Act N has only X decision points, needs 3 minimum. Add decision points in areas: [list areas without decisions]"
+
+#### Check 10: Cross-Area Consequence Propagation
+- Do consequences in Act N explicitly propagate to Act N+1 or future areas?
+- Are affected areas/acts explicitly listed in "Affects:" field?
+- Are world state changes documented (NPCs, factions, clues, quests)?
+- **If no**: ERROR with fix suggestion: "Decision point in Area X lacks cross-area propagation. Add: 'Affects: Área Y, Acto N+1' and document world state changes"
+
+#### Check 11: World State Consistency
+- Do NPC deaths persist across acts? (dead NPC cannot appear alive in later acts)
+- Do faction reputation changes propagate to allies/enemies? (helping faction A should affect faction B if they're allies/enemies)
+- Do revealed clues not reappear as "new discoveries" in later acts?
+- Do quest states remain consistent? (completed quest cannot be active again)
+- **If no**: REJECT with specific fix: "NPC [name] died in session/act X but appears alive in act Y. Fix: replace with letter/vision/flashback, or use different NPC"
+
 ### Phase 3: Generate Validation Report
 
 ```json
@@ -158,6 +177,10 @@ update_narrative_state(
 - Hostile faction aiding party without cause
 - Secret faction information leaked to players
 - Handout contains canon contradictions
+- Decision point without documented consequence (ERROR: must have IF-THEN structure)
+- Cross-area propagation missing for major decision (ERROR: must list affected areas/acts)
+- World state inconsistency (dead NPC appearing alive, reputation contradiction without cause)
+- Faction benefit granted without meeting reputation threshold (ERROR: check tier requirements)
 
 ### Warnings (Approve with notes)
 - NPC motivation seems inconsistent
@@ -171,6 +194,46 @@ update_narrative_state(
 - Alternative path provided for missing clue
 - Creative interpretation of lore
 - Handout generated with canon references
+
+### Validation Rule: Decision Branch Validation
+```
+FOR each act:
+  COUNT decision_points
+  IF decision_points < 3:
+    RETURN warning "Act has {count} decision points, minimum is 3"
+  
+  FOR each decision_point:
+    IF NOT has_IF_THEN_structure:
+      RETURN error "Decision point missing IF-THEN structure"
+    IF NOT has_consequence:
+      RETURN error "Decision point has no documented consequence"
+    IF NOT has_propagation:
+      RETURN warning "Decision point has no cross-area propagation listed"
+```
+
+### Validation Rule: World State Validation
+```
+FOR each act N > 1:
+  FOR each NPC referenced in act N:
+    IF NPC.death_session <= current_session:
+      RETURN error "NPC {name} is dead (session {N}) but appears in act {N+1}"
+  
+  FOR each faction referenced:
+    IF faction.reputation_change WITHOUT narrative_cause:
+      RETURN warning "Faction {name} reputation changed without documented cause"
+  
+  FOR each clue referenced:
+    IF clue.revealed_in_session < current_session:
+      RETURN warning "Clue {clue_id} was already revealed, cannot be 'discovered' again"
+```
+
+### Validation Rule: Faction Benefit Validation
+```
+FOR each faction_benefit_granted:
+  required_threshold = benefit.tier.threshold  # Rank 1: 1, Rank 2: 31, Rank 3: 71
+  IF faction.reputation < required_threshold:
+    RETURN error "Faction benefit '{benefit}' granted at reputation {rep}, requires {threshold}"
+```
 
 ## Examples of Common Issues
 
