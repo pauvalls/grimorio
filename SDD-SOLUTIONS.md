@@ -1561,3 +1561,704 @@ delegate(
 
 **TL;DR:** Timeout de 15 min es insuficiente para grimorio-areas (genera 10-15 áreas × WotC format = 27-41 min reales). Configurar timeout a 30 min (1800000 ms) para grimorio-areas. Alternativa: dividir en batches de 4 áreas (8-12 min c/u). Timeout recommendations: areas=30min, npc=20min, bestiary=20min, encounters/lore/maps/quests=15min.
 
+
+---
+
+## 📂 Estructura de Carpetas Incorrecta en Campañas
+
+### Problema
+Los agentes grimorio están guardando archivos en carpetas incorrectas dentro de la campaña. Ejemplo: `lore.md` se guarda en la raíz pero los otros agentes no lo encuentran porque asumen otra estructura.
+
+### Síntomas
+- `grimorio-areas` no encuentra `lore.md` (busca en `/lore/lore.md` pero está en `/lore.md`)
+- `grimorio-npc` no encuentra `bestiary.md` (busca en `/bestiary/bestiary.md` pero está en otra ubicación)
+- `grimorio-encounters` no encuentra `npcs_and_factions.md`
+- **Error común:** `File not found: /home/pau/campaigns/{campaign}/lore/lore.md`
+- **Realidad:** El archivo está en `/home/pau/campaigns/{campaign}/lore.md` (sin subcarpeta)
+
+### Causa Raíz
+
+**Inconsistencia en paths entre agentes:**
+
+| Agente | Asume que lore está en | Asume que npcs está en | Realidad |
+|--------|----------------------|----------------------|----------|
+| grimorio-areas | `/lore/lore.md` ❌ | `/npcs/npcs_and_factions.md` ✅ | `lore.md` en raíz |
+| grimorio-npc | `/lore.md` ✅ | `/npcs/npcs_and_factions.md` ✅ | Correcto |
+| grimorio-bestiary | `/lore.md` ✅ | N/A | Correcto |
+| grimorio-encounters | `/lore.md` ✅ | `/npcs/npcs_and_factions.md` ✅ | Correcto |
+| grimorio-maps | `/canon.json` ✅ | `/npcs/npcs_and_factions.md` ✅ | Correcto |
+
+**Problema:** Algunos agentes usan `/lore/lore.md` (subcarpeta) pero el archivo está en `/lore.md` (raíz).
+
+### Estructura CORRECTA de Campañas
+
+```
+/home/pau/campaigns/{campaign_name}/
+├── lore.md                    ✅ (archivo único en raíz)
+├── canon.json                 ✅ (archivo único en raíz)
+├── story_brief.md            ✅ (archivo único en raíz, opcional)
+├── introduction.md           ✅ (archivo único en raíz, opcional)
+├── README.md                 ✅ (archivo único en raíz, opcional)
+│
+├── areas/                    ✅ (subcarpeta para áreas numeradas)
+│   ├── chapter_01_sombras_en_la_corte.md
+│   ├── chapter_02_traiciones_y_alianzas.md
+│   └── chapter_03_guerra_abierta.md
+│
+├── npcs/                     ✅ (subcarpeta para NPCs)
+│   └── npcs_and_factions.md
+│
+├── bestiary/                 ✅ (subcarpeta para monstruos)
+│   └── bestiary.md
+│
+├── encounters/               ✅ (subcarpeta para encuentros)
+│   └── encounters.md
+│
+├── maps/                     ✅ (subcarpeta para mapas)
+│   └── maps.md
+│
+├── quests/                   ✅ (subcarpeta para quests)
+│   └── quests.md
+│
+├── characters/               ✅ (subcarpeta para PCs)
+│   ├── dmitri_volkov.md
+│   ├── elena_corvus.md
+│   └── ...
+│
+└── appendices/               ✅ (subcarpeta para anexos)
+    ├── items.md
+    ├── monsters.md
+    └── handouts.md
+```
+
+### Paths CORRECTOS por Agente
+
+**Todos los agentes deben usar ESTA estructura:**
+
+```markdown
+## File Paths (CRITICAL)
+
+**ALWAYS use these exact paths:**
+
+| File | Path | Notes |
+|------|------|-------|
+| Lore | `/home/pau/campaigns/{campaign}/lore.md` | NOT `/lore/lore.md` |
+| Canon | `/home/pau/campaigns/{campaign}/canon.json` | Root level |
+| Story Brief | `/home/pau/campaigns/{campaign}/story_brief.md` | Optional |
+| NPCs | `/home/pau/campaigns/{campaign}/npcs/npcs_and_factions.md` | In subfolder |
+| Bestiary | `/home/pau/campaigns/{campaign}/bestiary/bestiary.md` | In subfolder |
+| Encounters | `/home/pau/campaigns/{campaign}/encounters/encounters.md` | In subfolder |
+| Maps | `/home/pau/campaigns/{campaign}/maps/maps.md` | In subfolder |
+| Quests | `/home/pau/campaigns/{campaign}/quests/quests.md` | In subfolder |
+| Characters | `/home/pau/campaigns/{campaign}/characters/` | In subfolder |
+| Areas | `/home/pau/campaigns/{campaign}/areas/` | In subfolder |
+```
+
+### Solución SDD
+
+#### 1. Actualizar TODOS los Agents con Paths Correctos
+
+**Para grimorio-areas.md:**
+
+```markdown
+## CRITICAL: File Paths
+
+**BEFORE reading any files, use these EXACT paths:**
+
+```bash
+# Root files (NO subfolder)
+/home/pau/campaigns/{campaign}/lore.md
+/home/pau/campaigns/{campaign}/canon.json
+/home/pau/campaigns/{campaign}/story_brief.md
+
+# Subfolder files
+/home/pau/campaigns/{campaign}/npcs/npcs_and_factions.md
+/home/pau/campaigns/{campaign}/bestiary/bestiary.md
+/home/pau/campaigns/{campaign}/encounters/encounters.md
+/home/pau/campaigns/{campaign}/maps/maps.md
+/home/pau/campaigns/{campaign}/quests/quests.md
+```
+
+**DO NOT use:**
+- ❌ `/home/pau/campaigns/{campaign}/lore/lore.md` (wrong!)
+- ❌ `/home/pau/campaigns/{campaign}/npcs/npc.md` (wrong!)
+- ❌ Relative paths like `lore.md` or `npcs/npcs.md`
+
+**ALWAYS use absolute paths from `/home/pau/campaigns/{campaign}/`**
+```
+
+**Para grimorio-npc.md:**
+
+```markdown
+## CRITICAL: File Paths
+
+**Read files in this order:**
+
+1. `/home/pau/campaigns/{campaign}/canon.json` (root)
+2. `/home/pau/campaigns/{campaign}/lore.md` (root, NOT lore/lore.md)
+3. `/home/pau/campaigns/{campaign}/story_brief.md` (root, if exists)
+4. `/home/pau/campaigns/{campaign}/bestiary/bestiary.md` (subfolder)
+```
+
+**Para grimorio-encounters.md:**
+
+```markdown
+## CRITICAL: File Paths
+
+**Read files in this order:**
+
+1. `/home/pau/campaigns/{campaign}/canon.json` (root)
+2. `/home/pau/campaigns/{campaign}/lore.md` (root, NOT lore/lore.md)
+3. `/home/pau/campaigns/{campaign}/npcs/npcs_and_factions.md` (subfolder)
+4. `/home/pau/campaigns/{campaign}/bestiary/bestiary.md` (subfolder)
+5. `/home/pau/campaigns/{campaign}/story_brief.md` (root, if exists)
+```
+
+#### 2. Validación Pre-Lectura
+
+Agregar verificación de que los archivos existen antes de leer:
+
+```markdown
+## Pre-Flight Check
+
+**BEFORE generating content, verify all required files exist:**
+
+```bash
+# Check root files
+test -f /home/pau/campaigns/{campaign}/lore.md && echo "✅ lore.md" || echo "❌ lore.md MISSING"
+test -f /home/pau/campaigns/{campaign}/canon.json && echo "✅ canon.json" || echo "❌ canon.json MISSING"
+
+# Check subfolder files
+test -f /home/pau/campaigns/{campaign}/npcs/npcs_and_factions.md && echo "✅ npcs" || echo "❌ npcs MISSING"
+test -f /home/pau/campaigns/{campaign}/bestiary/bestiary.md && echo "✅ bestiary" || echo "❌ bestiary MISSING"
+```
+
+**If any file is missing:**
+1. Stop generation
+2. Report which file is missing
+3. Ask user to generate that file first
+4. DO NOT proceed with incomplete context
+```
+
+#### 3. Script de Verificación de Estructura
+
+```bash
+#!/bin/bash
+# verify_campaign_structure.sh
+
+CAMPAIGN=$1
+BASE="/home/pau/campaigns/$CAMPAIGN"
+
+echo "=== Verifying Campaign Structure: $CAMPAIGN ==="
+echo ""
+
+# Root files
+echo "Root Files:"
+test -f "$BASE/lore.md" && echo "  ✅ lore.md" || echo "  ❌ lore.md MISSING"
+test -f "$BASE/canon.json" && echo "  ✅ canon.json" || echo "  ❌ canon.json MISSING"
+test -f "$BASE/story_brief.md" && echo "  ✅ story_brief.md" || echo "  ℹ️  story_brief.md (optional)"
+
+# Subfolders
+echo ""
+echo "Subfolders:"
+for dir in areas npcs bestiary encounters maps quests characters; do
+  test -d "$BASE/$dir" && echo "  ✅ $dir/" || echo "  ❌ $dir/ MISSING"
+done
+
+# Key files in subfolders
+echo ""
+echo "Key Files:"
+test -f "$BASE/npcs/npcs_and_factions.md" && echo "  ✅ npcs/npcs_and_factions.md" || echo "  ❌ npcs/npcs_and_factions.md MISSING"
+test -f "$BASE/bestiary/bestiary.md" && echo "  ✅ bestiary/bestiary.md" || echo "  ❌ bestiary/bestiary.md MISSING"
+test -f "$BASE/encounters/encounters.md" && echo "  ✅ encounters/encounters.md" || echo "  ❌ encounters/encounters.md MISSING"
+test -f "$BASE/maps/maps.md" && echo "  ✅ maps/maps.md" || echo "  ❌ maps/maps.md MISSING"
+
+echo ""
+echo "=== Verification Complete ==="
+```
+
+**Uso:**
+```bash
+chmod +x verify_campaign_structure.sh
+./verify_campaign_structure.sh la-hoja-de-vlad
+```
+
+#### 4. Migración de Estructura Incorrecta
+
+**Si la campaña tiene estructura incorrecta:**
+
+```bash
+# Estructura incorrecta (ejemplo)
+/home/pau/campaigns/{campaign}/
+├── lore/
+│   └── lore.md          ❌ (debería estar en raíz)
+├── npcs/
+│   └── npcs_and_factions.md ✅
+└── ...
+
+# Migrar a estructura correcta
+cd /home/pau/campaigns/{campaign}/
+
+# Mover lore.md a raíz
+mv lore/lore.md ./lore.md
+rmdir lore/
+
+# Mover canon.json a raíz (si está en subcarpeta)
+mv canon/canon.json ./canon.json 2>/dev/null || true
+rmdir canon/ 2>/dev/null || true
+
+# Verificar nueva estructura
+tree -L 2
+```
+
+### Checklist de Estructura
+
+**Antes de generar contenido, verificar:**
+
+| Check | Path | Estado |
+|-------|------|--------|
+| Lore en raíz | `/home/pau/campaigns/{camp}/lore.md` | ☐ |
+| Canon en raíz | `/home/pau/campaigns/{camp}/canon.json` | ☐ |
+| Story brief en raíz | `/home/pau/campaigns/{camp}/story_brief.md` | ☐ |
+| NPCs en subcarpeta | `/home/pau/campaigns/{camp}/npcs/npcs_and_factions.md` | ☐ |
+| Bestiary en subcarpeta | `/home/pau/campaigns/{camp}/bestiary/bestiary.md` | ☐ |
+| Encounters en subcarpeta | `/home/pau/campaigns/{camp}/encounters/encounters.md` | ☐ |
+| Maps en subcarpeta | `/home/pau/campaigns/{camp}/maps/maps.md` | ☐ |
+| Quests en subcarpeta | `/home/pau/campaigns/{camp}/quests/quests.md` | ☐ |
+| Characters en subcarpeta | `/home/pau/campaigns/{camp}/characters/` | ☐ |
+| Areas en subcarpeta | `/home/pau/campaigns/{camp}/areas/` | ☐ |
+
+### Error Común: "File not found: lore/lore.md"
+
+**Cuando veas este error:**
+
+```
+Error: File not found: /home/pau/campaigns/la-hoja-de-vlad/lore/lore.md
+```
+
+**Solución:**
+
+1. **Verificar dónde está realmente el archivo:**
+   ```bash
+   find /home/pau/campaigns/la-hoja-de-vlad/ -name "lore.md"
+   # Resultado probable: /home/pau/campaigns/la-hoja-de-vlad/lore.md
+   ```
+
+2. **Si está en la raíz pero el agente busca en subcarpeta:**
+   - El agente tiene un bug de path
+   - Actualizar el agente para usar `/lore.md` en vez de `/lore/lore.md`
+
+3. **Si está en subcarpeta pero debería estar en raíz:**
+   ```bash
+   mv /home/pau/campaigns/la-hoja-de-vlad/lore/lore.md /home/pau/campaigns/la-hoja-de-vlad/lore.md
+   rmdir /home/pau/campaigns/la-hoja-de-vlad/lore/
+   ```
+
+### Tabla Resumen: Paths Correctos
+
+| Tipo | Path Correcto | Path Incorrecto |
+|------|--------------|-----------------|
+| **Lore** | `/home/pau/campaigns/{camp}/lore.md` | ❌ `/lore/lore.md` |
+| **Canon** | `/home/pau/campaigns/{camp}/canon.json` | ❌ `/canon/canon.json` |
+| **Story Brief** | `/home/pau/campaigns/{camp}/story_brief.md` | ❌ `/story_brief/story_brief.md` |
+| **NPCs** | `/home/pau/campaigns/{camp}/npcs/npcs_and_factions.md` | ❌ `/npcs.md` |
+| **Bestiary** | `/home/pau/campaigns/{camp}/bestiary/bestiary.md` | ❌ `/bestiary.md` |
+| **Encounters** | `/home/pau/campaigns/{camp}/encounters/encounters.md` | ❌ `/encounters.md` |
+| **Maps** | `/home/pau/campaigns/{camp}/maps/maps.md` | ❌ `/maps.md` |
+| **Quests** | `/home/pau/campaigns/{camp}/quests/quests.md` | ❌ `/quests.md` |
+| **Characters** | `/home/pau/campaigns/{camp}/characters/*.md` | ❌ `/characters.json` |
+| **Areas** | `/home/pau/campaigns/{camp}/areas/chapter_*.md` | ❌ `/areas.md` |
+
+---
+
+**TL;DR:** Lore y canon van en RAÍZ (`/lore.md`, `/canon.json`). NPCs, bestiary, encounters, maps, quests, characters, areas van en SUBCARPETAS (`/npcs/`, `/bestiary/`, etc.). Todos los agents deben usar paths absolutos desde `/home/pau/campaigns/{campaign}/`. Verificar estructura con script antes de generar.
+
+
+---
+
+## 🗂️ Estructura Real de Campañas vs Paths que Buscan los Agents
+
+### Problema Documentado con Ejemplos Reales
+
+**Campaña:** `la-hoja-de-vlad` en `/home/pau/campaigns/la-hoja-de-vlad/`
+
+**Lo que buscan los agents ❌:**
+```
+/home/pau/campaigns/la-hoja-de-vlad/lore/lore.md          ❌ File not found
+/home/pau/campaigns/la-hoja-de-vlad/npcs/npcs.md          ❌ File not found
+/home/pau/campaigns/la-hoja-de-vlad/quests/quests.md      ❌ File not found
+/home/pau/campaigns/la-hoja-de-vlad/characters/characters.md ❌ File not found
+```
+
+**Lo que REALMENTE existe ✅:**
+```
+/home/pau/campaigns/la-hoja-de-vlad/lore.md               ✅ (en raíz, no subcarpeta)
+/home/pau/campaigns/la-hoja-de-vlad/npcs/npcs_and_factions.md ✅ (nombre completo)
+/home/pau/campaigns/la-hoja-de-vlad/quests/quest_1778275935.json ⚠️ (JSON, no MD)
+/home/pau/campaigns/la-hoja-de-vlad/characters/dmitri_volkov.json ⚠️ (múltiples .json)
+/home/pau/campaigns/la-hoja-de-vlad/canon/canon.json      ⚠️ (en subcarpeta, debería estar en raíz)
+```
+
+### Estructura CORRECTA Confirmada
+
+```
+/home/pau/campaigns/{campaign_name}/
+├── lore.md                    ✅ RAÍZ (no lore/lore.md)
+├── canon.json                 ✅ RAÍZ (no canon/canon.json)
+├── narrative_state.json       ✅ RAÍZ (no canon/narrative_state.json)
+├── story_brief.md            ✅ RAÍZ (opcional)
+├── README.md                 ✅ RAÍZ
+├── session-zero.md           ✅ RAÍZ
+│
+├── acts/                     ✅ CARPETA para actos/capítulos
+│   ├── chapter_01_sombras_en_la_corte.md
+│   ├── chapter_02_traiciones_y_alianzas.md
+│   └── chapter_03_la_revelaci_n_de_vlad.md
+│
+├── areas/                    ❌ OBSOLETA - eliminar
+│
+├── npcs/
+│   └── npcs_and_factions.md  ✅ (NO npcs.md)
+│
+├── bestiary/
+│   └── bestiary.md           ✅
+│
+├── encounters/
+│   └── encounters.md         ✅
+│
+├── maps/
+│   └── maps.md               ✅
+│
+├── quests/
+│   └── quest_*.json          ⚠️ (JSONs individuales, no quests.md)
+│
+├── characters/
+│   ├── dmitri_volkov.json    ⚠️ (JSONs individuales, no characters.md)
+│   ├── elena_corvus.json
+│   └── ...
+│
+└── assets/                   ✅ SVGs, imágenes, battle maps
+    ├── callejon-dagas-rotas.svg
+    ├── castillo-sombria.svg
+    └── santuario-juramentos.svg
+```
+
+### Paths CORRECTOS por Tipo de Archivo
+
+| Tipo | Path CORRECTO | Path INCORRECTO | Estado |
+|------|--------------|-----------------|--------|
+| **Lore** | `/home/pau/campaigns/{camp}/lore.md` | ❌ `/lore/lore.md` | File not found |
+| **Canon** | `/home/pau/campaigns/{camp}/canon.json` | ❌ `/canon/canon.json` | File not found |
+| **Narrative State** | `/home/pau/campaigns/{camp}/narrative_state.json` | ❌ `/canon/narrative_state.json` | File not found |
+| **NPCs** | `/home/pau/campaigns/{camp}/npcs/npcs_and_factions.md` | ❌ `/npcs/npcs.md` | File not found |
+| **Bestiary** | `/home/pau/campaigns/{camp}/bestiary/bestiary.md` | ❌ `/bestiary.md` | File not found |
+| **Encounters** | `/home/pau/campaigns/{camp}/encounters/encounters.md` | ❌ `/encounters.md` | File not found |
+| **Maps** | `/home/pau/campaigns/{camp}/maps/maps.md` | ❌ `/maps.md` | File not found |
+| **Quests** | `/home/pau/campaigns/{camp}/quests/*.json` | ❌ `/quests/quests.md` | File not found |
+| **Characters** | `/home/pau/campaigns/{camp}/characters/*.json` | ❌ `/characters/characters.md` | File not found |
+| **Acts** | `/home/pau/campaigns/{camp}/acts/chapter_*.md` | ❌ `/areas/chapter_*.md` | Obsoleto |
+| **Assets** | `/home/pau/campaigns/{camp}/assets/*.svg` | ✅ Correcto | OK |
+
+### Solución SDD
+
+#### 1. Eliminar Carpeta `areas/` Obsoleta
+
+```bash
+# Verificar que acts/ ya tiene el contenido
+ls -la /home/pau/campaigns/{campaign}/acts/
+
+# Si acts/ tiene los capítulos, eliminar areas/
+rm -rf /home/pau/campaigns/{campaign}/areas/
+
+# Verificar eliminación
+ls -la /home/pau/campaigns/{campaign}/ | grep -E "acts|areas"
+# Debería mostrar solo: acts/
+```
+
+#### 2. Mover `canon.json` y `narrative_state.json` a Raíz
+
+```bash
+# Mover archivos de canon/ a raíz
+cd /home/pau/campaigns/{campaign}/
+mv canon/canon.json ./canon.json
+mv canon/narrative_state.json ./narrative_state.json
+
+# Eliminar carpeta canon/ vacía
+rmdir canon/
+
+# Verificar
+ls -la *.json
+# Debería mostrar: canon.json, narrative_state.json, campaign.json
+```
+
+#### 3. Actualizar Agents con Paths Reales
+
+**grimorio-areas.md (debería ser grimorio-acts.md):**
+
+```markdown
+## CRITICAL: File Paths (VERIFIED)
+
+**ALWAYS use these EXACT paths:**
+
+```bash
+# Root files
+/home/pau/campaigns/{campaign}/lore.md
+/home/pau/campaigns/{campaign}/canon.json
+/home/pau/campaigns/{campaign}/narrative_state.json
+/home/pau/campaigns/{campaign}/story_brief.md
+
+# Subfolder files
+/home/pau/campaigns/{campaign}/npcs/npcs_and_factions.md
+/home/pau/campaigns/{campaign}/bestiary/bestiary.md
+/home/pau/campaigns/{campaign}/encounters/encounters.md
+/home/pau/campaigns/{campaign}/maps/maps.md
+
+# Output folder
+/home/pau/campaigns/{campaign}/acts/chapter_{N}_{title}.md
+```
+
+**DO NOT use:**
+- ❌ `/lore/lore.md` (should be `/lore.md`)
+- ❌ `/canon/canon.json` (should be `/canon.json`)
+- ❌ `/npcs/npcs.md` (should be `/npcs/npcs_and_factions.md`)
+- ❌ `/areas/` folder (obsolete, use `/acts/`)
+```
+
+**grimorio-npc.md:**
+
+```markdown
+## CRITICAL: File Paths
+
+**Read order:**
+1. `/home/pau/campaigns/{campaign}/canon.json`
+2. `/home/pau/campaigns/{campaign}/lore.md`
+3. `/home/pau/campaigns/{campaign}/npcs/npcs_and_factions.md` (read existing, append new)
+4. `/home/pau/campaigns/{campaign}/bestiary/bestiary.md`
+
+**Write to:**
+- `/home/pau/campaigns/{campaign}/npcs/npcs_and_factions.md`
+```
+
+**grimorio-quests.md:**
+
+```markdown
+## CRITICAL: File Paths
+
+**Quests are stored as individual JSON files:**
+- `/home/pau/campaigns/{campaign}/quests/quest_{timestamp}.json`
+
+**DO NOT try to read/write quests.md (does not exist)**
+
+**To list existing quests:**
+```bash
+ls /home/pau/campaigns/{campaign}/quests/*.json
+```
+
+**To create new quest:**
+Use `create_personal_quest` MCP tool - it handles JSON creation automatically
+```
+
+**grimorio-generate-character.md:**
+
+```markdown
+## CRITICAL: File Paths
+
+**Characters are stored as individual JSON files:**
+- `/home/pau/campaigns/{campaign}/characters/{character_name}.json`
+
+**DO NOT try to read/write characters.md (does not exist)**
+
+**To list existing characters:**
+```bash
+ls /home/pau/campaigns/{campaign}/characters/*.json
+```
+
+**To create new character:**
+Use `generate_character` or `save_characters` MCP tool - handles JSON format
+```
+
+#### 4. Script de Migración Completa
+
+```bash
+#!/bin/bash
+# migrate_campaign_structure.sh
+
+CAMPAIGN=$1
+BASE="/home/pau/campaigns/$CAMPAIGN"
+
+echo "=== Migrating Campaign Structure: $CAMPAIGN ==="
+echo ""
+
+# 1. Move canon files to root
+if [ -d "$BASE/canon" ]; then
+  echo "Moving canon files to root..."
+  mv "$BASE/canon/canon.json" "$BASE/canon.json" 2>/dev/null || true
+  mv "$BASE/canon/narrative_state.json" "$BASE/narrative_state.json" 2>/dev/null || true
+  rmdir "$BASE/canon/" 2>/dev/null || true
+  echo "  ✅ canon.json and narrative_state.json moved to root"
+else
+  echo "  ℹ️  canon/ folder not found (already migrated?)"
+fi
+
+# 2. Remove obsolete areas/ folder
+if [ -d "$BASE/areas" ]; then
+  echo "Removing obsolete areas/ folder..."
+  # First check if acts/ exists and has content
+  if [ -d "$BASE/acts" ] && [ "$(ls -A $BASE/acts)" ]; then
+    rm -rf "$BASE/areas/"
+    echo "  ✅ areas/ removed (acts/ has content)"
+  else
+    echo "  ⚠️  WARNING: acts/ is empty or missing. Review before deleting areas/"
+  fi
+else
+  echo "  ℹ️  areas/ folder not found (already removed?)"
+fi
+
+# 3. Verify structure
+echo ""
+echo "=== Verifying New Structure ==="
+echo "Root files:"
+test -f "$BASE/lore.md" && echo "  ✅ lore.md" || echo "  ❌ lore.md MISSING"
+test -f "$BASE/canon.json" && echo "  ✅ canon.json" || echo "  ❌ canon.json MISSING"
+test -f "$BASE/narrative_state.json" && echo "  ✅ narrative_state.json" || echo "  ❌ narrative_state.json MISSING"
+
+echo ""
+echo "Folders:"
+test -d "$BASE/acts" && echo "  ✅ acts/" || echo "  ❌ acts/ MISSING"
+test -d "$BASE/areas" && echo "  ❌ areas/ STILL EXISTS (should be removed)" || echo "  ✅ areas/ removed"
+test -d "$BASE/npcs" && echo "  ✅ npcs/" || echo "  ❌ npcs/ MISSING"
+test -d "$BASE/bestiary" && echo "  ✅ bestiary/" || echo "  ❌ bestiary/ MISSING"
+
+echo ""
+echo "Key files:"
+test -f "$BASE/npcs/npcs_and_factions.md" && echo "  ✅ npcs/npcs_and_factions.md" || echo "  ❌ npcs/npcs_and_factions.md MISSING"
+test -f "$BASE/bestiary/bestiary.md" && echo "  ✅ bestiary/bestiary.md" || echo "  ❌ bestiary/bestiary.md MISSING"
+
+echo ""
+echo "=== Migration Complete ==="
+```
+
+**Uso:**
+```bash
+chmod +x migrate_campaign_structure.sh
+./migrate_campaign_structure.sh la-hoja-de-vlad
+```
+
+#### 5. Pre-Flight Check para Agents
+
+**Antes de generar contenido, los agents deben verificar:**
+
+```markdown
+## Pre-Flight File Check
+
+**BEFORE generating, verify these files exist:**
+
+```bash
+REQUIRED_ROOT_FILES=(
+  "/home/pau/campaigns/{campaign}/lore.md"
+  "/home/pau/campaigns/{campaign}/canon.json"
+  "/home/pau/campaigns/{campaign}/narrative_state.json"
+)
+
+REQUIRED_SUBFOLDERS=(
+  "/home/pau/campaigns/{campaign}/npcs/npcs_and_factions.md"
+  "/home/pau/campaigns/{campaign}/bestiary/bestiary.md"
+  "/home/pau/campaigns/{campaign}/encounters/encounters.md"
+  "/home/pau/campaigns/{campaign}/maps/maps.md"
+)
+
+# Check root files
+for file in "${REQUIRED_ROOT_FILES[@]}"; do
+  if [ ! -f "$file" ]; then
+    echo "❌ ERROR: Required file not found: $file"
+    echo "   Expected: lore.md, canon.json, narrative_state.json in ROOT"
+    echo "   NOT in subfolders like lore/, canon/"
+    exit 1
+  fi
+done
+
+# Check subfolder files
+for file in "${REQUIRED_SUBFOLDERS[@]}"; do
+  if [ ! -f "$file" ]; then
+    echo "❌ ERROR: Required file not found: $file"
+    exit 1
+  fi
+done
+
+echo "✅ All required files found"
+```
+
+**If check fails:**
+1. Stop generation immediately
+2. Report which file is missing
+3. Suggest migration script
+4. DO NOT proceed with incomplete context
+```
+
+### Checklist de Verificación
+
+**Antes de ejecutar cualquier agente grimorio:**
+
+| Check | Comando | Resultado Esperado |
+|-------|---------|-------------------|
+| Lore en raíz | `test -f /home/pau/campaigns/{camp}/lore.md` | ✅ true |
+| Canon en raíz | `test -f /home/pau/campaigns/{camp}/canon.json` | ✅ true |
+| Narrative state en raíz | `test -f /home/pau/campaigns/{camp}/narrative_state.json` | ✅ true |
+| NPCs nombre correcto | `test -f /home/pau/campaigns/{camp}/npcs/npcs_and_factions.md` | ✅ true |
+| acts/ existe | `test -d /home/pau/campaigns/{camp}/acts` | ✅ true |
+| areas/ NO existe | `test -d /home/pau/campaigns/{camp}/areas` | ❌ false (debe estar eliminada) |
+| canon/ NO existe | `test -d /home/pau/campaigns/{camp}/canon` | ❌ false (debe estar eliminada) |
+
+### Errores Comunes y Soluciones
+
+| Error | Causa | Solución |
+|-------|-------|----------|
+| `File not found: lore/lore.md` | Agente busca en subcarpeta | Mover a `/lore.md` (raíz) |
+| `File not found: canon/canon.json` | Agente busca en subcarpeta | Mover a `/canon.json` (raíz) |
+| `File not found: npcs/npcs.md` | Nombre incorrecto | Renombrar a `npcs_and_factions.md` |
+| `File not found: quests/quests.md` | Quests son JSONs | Usar `list_quests` MCP tool |
+| `File not found: characters/characters.md` | Characters son JSONs | Usar `list_characters` MCP tool |
+| `areas/` y `acts/` coexisten | Migración incompleta | Eliminar `areas/`, mantener `acts/` |
+
+### Migración de `areas/` a `acts/`
+
+**Si tenés contenido en `areas/` que necesitás mover:**
+
+```bash
+# 1. Verificar contenido de areas/
+ls -la /home/pau/campaigns/{campaign}/areas/
+
+# 2. Si hay contenido útil, moverlo a acts/
+mv /home/pau/campaigns/{campaign}/areas/chapter_*.md /home/pau/campaigns/{campaign}/acts/
+
+# 3. Verificar que acts/ tiene todo
+ls -la /home/pau/campaigns/{campaign}/acts/
+
+# 4. Eliminar areas/
+rm -rf /home/pau/campaigns/{campaign}/areas/
+
+# 5. Confirmar
+tree -L 2 /home/pau/campaigns/{campaign}/
+```
+
+### Resumen: Cambios Críticos
+
+| Elemento | Antes ❌ | Después ✅ |
+|----------|---------|-----------|
+| Lore | `/lore/lore.md` | `/lore.md` |
+| Canon | `/canon/canon.json` | `/canon.json` |
+| Narrative State | `/canon/narrative_state.json` | `/narrative_state.json` |
+| NPCs | `/npcs/npcs.md` | `/npcs/npcs_and_factions.md` |
+| Acts Folder | `/areas/` | `/acts/` |
+| Quests | `/quests/quests.md` | `/quests/*.json` (individual) |
+| Characters | `/characters/characters.md` | `/characters/*.json` (individual) |
+
+---
+
+**TL;DR:** 
+- **Raíz:** `lore.md`, `canon.json`, `narrative_state.json` (NO en subcarpetas)
+- **NPCs:** `npcs/npcs_and_factions.md` (NO `npcs.md`)
+- **Acts:** `/acts/` (NO `/areas/` - obsoleto)
+- **Quests/Characters:** JSONs individuales (NO `.md` unificado)
+- **Migración:** Mover canon a raíz, eliminar `areas/`, eliminar `canon/`
+
