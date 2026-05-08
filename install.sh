@@ -763,10 +763,19 @@ migrate_existing_campaigns() {
     fi
 }
 
+get_version() {
+    if [ -d "$INSTALL_DIR" ] && command_exists git; then
+        git -C "$INSTALL_DIR" tag --sort=-v:refname 2>/dev/null | head -1 || echo "dev"
+    else
+        echo "dev"
+    fi
+}
+
 print_instructions() {
+    local VERSION=$(get_version)
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║         Grimorio Installed Successfully!                   ║${NC}"
+    echo -e "${GREEN}║         Grimorio v${VERSION} - Installed Successfully!           ║${NC}"
     echo -e "${GREEN}║         D&D One-shot & Campaign Generator                  ║${NC}"
     echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
     echo ""
