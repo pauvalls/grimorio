@@ -1,83 +1,115 @@
 package validators
 
 import (
-	"strings"
 	"testing"
 )
 
-func TestValidateAreaMarkdown(t *testing.T) {
+func TestValidateIntegration(t *testing.T) {
 	tests := []struct {
 		name    string
-		input   string
+		act     string
+		bestiary string
+		npcs    string
 		wantErr bool
 		checks  []string
 	}{
 		{
-			name: "valid act with 10 areas",
-			input: generateValidAct(10, 180),
+			name: "all references valid",
+			act: `# Acto 1
+
+### Área 1: Test
+
+> **Read-Aloud:** *Texto largo y descriptivo para alcanzar el mínimo de palabras requerido en esta área de prueba.*
+
+**Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
+
+**Criaturas:**
+- 1 **Goblin**
+
+**Tesoro:**
+- **XP:** 50 XP
+
+**Conexiones:**
+- → Área 2
+
+**Secretos y Trampas:**
+- **Detectar:** Percepción DC 12
+
+**Desarrollo:**
+- Si entran en combate: atacan.
+
+### Área 2: Test 2
+
+> **Read-Aloud:** *Texto largo y descriptivo para alcanzar el mínimo de palabras requerido en esta área de prueba.*
+
+**Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
+
+**Criaturas:**
+- 1 **Goblin**
+
+**Tesoro:**
+- **XP:** 50 XP
+
+**Conexiones:**
+- ← Área 1
+
+**Secretos y Trampas:**
+- **Detectar:** Percepción DC 12
+
+**Desarrollo:**
+- Si entran en combate: atacan.
+`,
+			bestiary: `## Goblin
+
+*Pequeño humanoide, NE*
+
+**Clase de Armadura:** 15
+**Puntos de Golpe:** 7 (2d6)
+**Desafío:** 1/4 (50 PX)
+`,
+			npcs: `## Eldrin
+
+- **Raza/Clase:** Elfo Mago
+- **Alineamiento:** NG
+`,
 			wantErr: false,
 		},
 		{
-			name: "too few areas",
-			input: generateValidAct(5, 180),
-			wantErr: true,
-			checks:  []string{"area_count"},
-		},
-		{
-			name: "too many areas",
-			input: generateValidAct(20, 180),
-			wantErr: true,
-			checks:  []string{"area_count"},
-		},
-		{
-			name: "area too short",
-			input: generateValidAct(10, 80),
-			wantErr: true,
-			checks:  []string{"word_count"},
-		},
-		{
-			name: "area too long",
-			input: generateValidAct(10, 350),
-			wantErr: true,
-			checks:  []string{"word_count"},
-		},
-		{
-			name: "non-numeric DC",
-			input: `# Acto 1
+			name: "missing creature in bestiary",
+			act: `# Acto 1
 
 ### Área 1: Test
 
-> **Read-Aloud:** *Texto.*
+> **Read-Aloud:** *Texto largo y descriptivo para alcanzar el mínimo de palabras requerido en esta área de prueba.*
 
-**Descripción:**
-- **Percepción DC alto:** algo
+**Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
 
 **Criaturas:**
-- 1 **Goblin**
+- 1 **Shadow Wraith**
 
 **Tesoro:**
-- **XP:** 50 XP
+- **XP:** 100 XP
 
 **Conexiones:**
 - → Área 2
 
 **Secretos y Trampas:**
-- **Detectar:** Percepción DC alto
+- **Detectar:** Percepción DC 12
 
 **Desarrollo:**
 - Si entran en combate: atacan.
 
 ### Área 2: Test 2
 
-> **Read-Aloud:** *Texto.*
+> **Read-Aloud:** *Texto largo y descriptivo para alcanzar el mínimo de palabras requerido en esta área de prueba.*
 
-**Descripción:** Descripción con suficientes palabras para pasar el conteo de palabras sin problemas. Tiene que ser larga.
+**Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
 
 **Criaturas:**
-- 1 **Goblin**
+- 1 **Shadow Wraith**
 
 **Tesoro:**
-- **XP:** 50 XP
+- **XP:** 100 XP
 
 **Conexiones:**
 - ← Área 1
@@ -88,61 +120,17 @@ func TestValidateAreaMarkdown(t *testing.T) {
 **Desarrollo:**
 - Si entran en combate: atacan.
 `,
-			wantErr: true,
-			checks:  []string{"numeric_dc"},
-		},
-		{
-			name: "one-way connection",
-			input: `# Acto 1
+			bestiary: `## Goblin
 
-### Área 1: Test
-
-> **Read-Aloud:** *Texto largo y descriptivo para alcanzar el mínimo de palabras requerido en esta área de prueba.*
-
-**Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
-
-**Criaturas:**
-- 1 **Goblin**
-
-**Tesoro:**
-- **XP:** 50 XP
-
-**Conexiones:**
-- → Área 2
-
-**Secretos y Trampas:**
-- **Detectar:** Percepción DC 12
-
-**Desarrollo:**
-- Si entran en combate: atacan.
-
-### Área 2: Test 2
-
-> **Read-Aloud:** *Texto largo y descriptivo para alcanzar el mínimo de palabras requerido en esta área de prueba.*
-
-**Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
-
-**Criaturas:**
-- 1 **Goblin**
-
-**Tesoro:**
-- **XP:** 50 XP
-
-**Conexiones:**
-- → Área 3
-
-**Secretos y Trampas:**
-- **Detectar:** Percepción DC 12
-
-**Desarrollo:**
-- Si entran en combate: atacan.
+*Pequeño humanoide, NE*
 `,
-			wantErr: true,
-			checks:  []string{"bidirectional"},
+			npcs:     "",
+			wantErr:  true,
+			checks:   []string{"creature_reference"},
 		},
 		{
-			name: "missing treasure with creatures",
-			input: `# Acto 1
+			name: "xp budget imbalance",
+			act: `# Acto 1
 
 ### Área 1: Test
 
@@ -151,7 +139,10 @@ func TestValidateAreaMarkdown(t *testing.T) {
 **Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
 
 **Criaturas:**
-- 1 **Goblin**
+- 50 **Goblin**
+
+**Tesoro:**
+- **XP:** 5000 XP
 
 **Conexiones:**
 - → Área 2
@@ -169,7 +160,10 @@ func TestValidateAreaMarkdown(t *testing.T) {
 **Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
 
 **Criaturas:**
-- 1 **Goblin**
+- 50 **Goblin**
+
+**Tesoro:**
+- **XP:** 5000 XP
 
 **Conexiones:**
 - ← Área 1
@@ -180,24 +174,36 @@ func TestValidateAreaMarkdown(t *testing.T) {
 **Desarrollo:**
 - Si entran en combate: atacan.
 `,
-			wantErr: true,
-			checks:  []string{"treasure"},
+			bestiary: `## Goblin
+
+*Pequeño humanoide, NE*
+**Desafío:** 1/4 (50 PX)
+`,
+			npcs:     "",
+			wantErr:  true,
+			checks:   []string{"xp_budget"},
 		},
 		{
-			name: "empty area",
-			input: `# Acto 1
+			name: "npc reference missing",
+			act: `# Acto 1
 
-### Área 1: Empty
+### Área 1: Test
 
-> **Read-Aloud:** *Texto largo y descriptivo para alcanzar el mínimo de palabras requerido en esta área de prueba que está vacía.*
+> **Read-Aloud:** *Texto largo y descriptivo para alcanzar el mínimo de palabras requerido en esta área de prueba.*
 
 **Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
+
+**NPCs:**
+- **Noska Ur'gray** — Mercader
 
 **Conexiones:**
 - → Área 2
 
+**Secretos y Trampas:**
+- **Detectar:** Percepción DC 12
+
 **Desarrollo:**
-- Nada pasa.
+- Si hablan: vende información.
 
 ### Área 2: Test 2
 
@@ -220,14 +226,75 @@ func TestValidateAreaMarkdown(t *testing.T) {
 **Desarrollo:**
 - Si entran en combate: atacan.
 `,
+			bestiary: `## Goblin
+
+*Pequeño humanoide, NE*
+**Desafío:** 1/4 (50 PX)
+`,
+			npcs: `## Eldrin
+
+- **Raza/Clase:** Elfo Mago
+`,
 			wantErr: true,
-			checks:  []string{"interactive_element"},
+			checks:  []string{"npc_reference"},
+		},
+		{
+			name: "treasure consistency check",
+			act: `# Acto 1
+
+### Área 1: Test
+
+> **Read-Aloud:** *Texto largo y descriptivo para alcanzar el mínimo de palabras requerido en esta área de prueba.*
+
+**Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
+
+**Criaturas:**
+- 1 **Goblin**
+
+**Conexiones:**
+- → Área 2
+
+**Secretos y Trampas:**
+- **Detectar:** Percepción DC 12
+
+**Desarrollo:**
+- Si entran en combate: atacan.
+
+### Área 2: Test 2
+
+> **Read-Aloud:** *Texto largo y descriptivo para alcanzar el mínimo de palabras requerido en esta área de prueba.*
+
+**Descripción:** Descripción detallada con muchas palabras para cumplir el requisito de conteo de palabras mínimo y máximo en el validador de áreas.
+
+**Criaturas:**
+- 1 **Goblin**
+
+**Tesoro:**
+- **XP:** 50 XP
+
+**Conexiones:**
+- ← Área 1
+
+**Secretos y Trampas:**
+- **Detectar:** Percepción DC 12
+
+**Desarrollo:**
+- Si entran en combate: atacan.
+`,
+			bestiary: `## Goblin
+
+*Pequeño humanoide, NE*
+**Desafío:** 1/4 (50 PX)
+`,
+			npcs:     "",
+			wantErr:  true,
+			checks:   []string{"treasure"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ValidateAreaMarkdown(tt.input)
+			result := ValidateIntegration(tt.act, tt.bestiary, tt.npcs)
 			if tt.wantErr && result.Valid {
 				t.Errorf("expected validation to fail, but it passed. Errors: %v", result.Errors)
 			}
@@ -253,58 +320,39 @@ func TestValidateAreaMarkdown(t *testing.T) {
 	}
 }
 
-func generateValidAct(areaCount, wordsPerArea int) string {
-	var sb strings.Builder
-	sb.WriteString("# Acto 1: Test\n\n")
-	sb.WriteString("> **Nivel:** 1-2 | **Duración:** 3-4 horas | **Tono:** Oscuro\n")
-	sb.WriteString("> **Objetivo:** Encontrar la llave\n")
-	sb.WriteString("> **Fallo:** El villano escapa\n\n")
+func TestCalculateXPBudget(t *testing.T) {
+	act := `# Acto 1
 
-	// Calculate filler words needed per area.
-	// Fixed overhead per area: ~70 words (headings, sections, etc.)
-	// We split the remainder between Read-Aloud and Description.
-	overhead := 70
-	fillerCount := (wordsPerArea - overhead) / 2
-	if fillerCount < 10 {
-		fillerCount = 10
-	}
-	fillerWords := strings.Repeat("palabra ", fillerCount)
+### Área 1
 
-	for i := 1; i <= areaCount; i++ {
-		next := i + 1
-		prev := i - 1
-		if next > areaCount {
-			next = 1
-		}
-		if prev < 1 {
-			prev = areaCount
-		}
+**Criaturas:**
+- 2 **Goblin**
 
-		sb.WriteString("### Área ")
-		sb.WriteString(itoa(i))
-		sb.WriteString(": Test ")
-		sb.WriteString(itoa(i))
-		sb.WriteString("\n\n")
-		sb.WriteString("> **Read-Aloud:** *")
-		sb.WriteString(fillerWords)
-		sb.WriteString("*\n\n")
-		sb.WriteString("**Descripción:** ")
-		sb.WriteString(fillerWords)
-		sb.WriteString("\n\n")
-		sb.WriteString("**Criaturas:**\n- 1 **Goblin**\n\n")
-		sb.WriteString("**Tesoro:**\n- **XP:** 50 XP\n- **Moneda:** 10 gp\n\n")
-		sb.WriteString("**Conexiones:**\n")
-		sb.WriteString("- → Área ")
-		sb.WriteString(itoa(next))
-		sb.WriteString("\n")
-		sb.WriteString("- ← Área ")
-		sb.WriteString(itoa(prev))
-		sb.WriteString("\n\n")
-		sb.WriteString("**Secretos y Trampas:**\n- **Detectar:** Percepción DC 12\n\n")
-		sb.WriteString("**Desarrollo:**\n- Si entran en combate: atacan.\n\n")
+**Tesoro:**
+- **XP:** 100 XP
+
+### Área 2
+
+**Criaturas:**
+- 1 **Orc**
+
+**Tesoro:**
+- **XP:** 100 XP
+`
+	bestiary := `## Goblin
+**Desafío:** 1/4 (50 PX)
+## Orc
+**Desafío:** 1/2 (100 PX)
+`
+
+	xp := CalculateTotalXP(act, bestiary)
+	// 2 goblins × 50 + 1 orc × 100 = 200
+	if xp != 200 {
+		t.Errorf("expected XP 200, got %d", xp)
 	}
 
-	return sb.String()
+	xpPerPC := xp / 5 // default party size
+	if xpPerPC != 40 {
+		t.Errorf("expected XP per PC 40, got %d", xpPerPC)
+	}
 }
-
-

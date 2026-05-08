@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	// Area heading pattern: ### Área X: Name or ### Area X: Name
-	areaHeadingPattern = regexp.MustCompile(`(?m)^#{3,4}\s+[Áa]rea\s+(\d+):\s*(.+)$`)
+	// Area heading pattern: ### Área X: Name or ### Area X: Name (colon optional, name optional)
+	areaHeadingPattern = regexp.MustCompile(`(?m)^#{3,4}\s+[Áa]rea\s+(\d+)(?:\s*:\s*(.+))?$`)
 
 	// DC pattern: must be numeric like "DC 14" or "DC15"
 	dcPattern = regexp.MustCompile(`(?i)DC\s*\d+`)
@@ -172,9 +172,13 @@ func parseAreas(md string) []Area {
 			}
 
 			num, _ := strconv.Atoi(matches[1])
+			name := ""
+			if len(matches) > 2 && matches[2] != "" {
+				name = strings.TrimSpace(matches[2])
+			}
 			currentArea = &Area{
 				Number: num,
-				Name:   strings.TrimSpace(matches[2]),
+				Name:   name,
 			}
 			contentLines = nil
 		} else if currentArea != nil {

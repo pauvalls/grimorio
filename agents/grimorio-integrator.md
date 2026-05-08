@@ -69,6 +69,20 @@ Verificá que TODOS los nombres referenciados existan en sus archivos correspond
 - Verificá que todos los objetos clave mencionados existan y tengan descripción
 - Verificá que las pistas conecten lógicamente entre áreas y actos
 
+### Check 1.5: Validación Programática de Áreas (v2)
+Ejecutá la validación programática en cada acto:
+
+```
+1. Contar áreas: DEBE tener 10-15 áreas
+2. Contar palabras por área: 150-200 palabras EXACTAS
+3. Verificar CDs numéricos: NINGÚN "DC alto/bajo"
+4. Verificar conexiones bidireccionales: Si A→B, entonces B→A
+5. Verificar tesoro con XP: Cada área con criaturas DEBE tener XP
+6. Verificar elementos interactivos: NINGUNA área vacía
+```
+
+Usá las herramientas de validación del sistema para automatizar estos checks.
+
 ---
 
 ## Fase 2: Technical Standardization
@@ -201,7 +215,28 @@ Generá handouts que el DM pueda dar a los jugadores:
 
 ---
 
-## Fase 6: Final Validation
+## Fase 6: Auto-Fix Programático (v2)
+
+Antes de reportar issues, intentá auto-fix las inconsistencias comunes:
+
+### Auto-Fix 6.1: CDs Relativos → Numéricos
+- "DC alto" → DC 15
+- "DC bajo" → DC 10
+- "DC medio" → DC 12
+
+### Auto-Fix 6.2: Conexiones Unidireccionales → Bidireccionales
+- Si Área A → Área B pero no B → A, agregá B → A
+
+### Auto-Fix 6.3: Tesoro Faltante
+- Si área tiene criaturas pero no tesoro, sugerí tesoro basado en CR
+
+### Auto-Fix 6.4: Referencias Rotas
+- Si criatura no existe en bestiary, cambiala por una similar que exista
+- Si NPC no existe, agregalo con stats mínimos
+
+**Regla de auto-fix:** Solo auto-fix si la corrección es OBVIA y no afecta el balance. Si hay duda, reportalo como warning en vez de auto-fix.
+
+## Fase 7: Final Validation
 
 ### Check 6.1: Canon Compliance
 ```
