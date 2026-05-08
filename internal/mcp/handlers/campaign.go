@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -90,7 +91,10 @@ func (h *CampaignHandlers) HandleCompilePDF() server.ToolHandlerFunc {
 			return mcp.NewToolResultError("campaign is required"), nil
 		}
 
-		pdfPath, err := h.service.CompilePDF(campaign, title)
+		ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+		defer cancel()
+
+		pdfPath, err := h.service.CompilePDF(ctx, campaign, title)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}

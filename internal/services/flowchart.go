@@ -83,12 +83,25 @@ func (s *FlowchartService) GenerateSVG(ctx context.Context, campaignID string, d
 }
 
 func (s *FlowchartService) buildNodes(ctx context.Context, campaignID string, doc *domain.CanonDocument, detailLevel string) []domain.FlowchartNode {
+	// Pre-index entities by sanitized ID for O(1) lookups
+	entityByID := make(map[string]domain.CanonEntity, len(doc.Entities))
+	for _, e := range doc.Entities {
+		entityByID[sanitizeNodeID(e.ID)] = e
+	}
+
 	// Build dead NPC set
 	deadSet := make(map[string]bool)
 	for _, e := range doc.Entities {
 		if e.Type == domain.EntityTypeNPC && e.CanonState == domain.EntityStateDead {
-			deadSet[e.ID] = true
+			deadSet[sanitizeNodeID(e.ID)] = true
 		}
+	}
+
+	// Pre-index relationships by sanitized target ID for O(1) edge lookup
+	relsByTo := make(map[string][]domain.CanonRelationship, len(doc.Relationships))
+	for _, rel := range doc.Relationships {
+		toID := sanitizeNodeID(rel.To)
+		relsByTo[toID] = append(relsByTo[toID], rel)
 	}
 
 	var nodes []domain.FlowchartNode
@@ -141,9 +154,9 @@ func (s *FlowchartService) buildNodes(ctx context.Context, campaignID string, do
 	// If overview, only return act nodes with inter-act relationships
 	if detailLevel == "overview" {
 		for id, node := range nodeMap {
-			for _, rel := range doc.Relationships {
+			for _, rel := range relsByTo[id] {
 				fromID := sanitizeNodeID(rel.From)
-				if rel.To == id && nodeMap[fromID].ID != "" {
+				if nodeMap[fromID].ID != "" {
 					node.Dependencies = append(node.Dependencies, fromID)
 				}
 			}
@@ -158,7 +171,8 @@ func (s *FlowchartService) buildNodes(ctx context.Context, campaignID string, do
 
 	// For act and decision levels, include NPCs and other entities
 	for _, e := range doc.Entities {
-		if deadSet[e.ID] {
+		id := sanitizeNodeID(e.ID)
+		if deadSet[id] {
 			continue
 		}
 		if e.Role == "act" || strings.HasPrefix(e.ID, "act-") {
@@ -171,19 +185,18 @@ func (s *FlowchartService) buildNodes(ctx context.Context, campaignID string, do
 		}
 
 		node := domain.FlowchartNode{
-			ID:    sanitizeNodeID(e.ID),
+			ID:    id,
 			Label: e.Name,
 			Type:  nodeType,
 		}
 		nodeMap[node.ID] = node
 	}
 
-	// Build edges from relationships
+	// Build edges from pre-indexed relationships
 	for id, node := range nodeMap {
-		for _, rel := range doc.Relationships {
+		for _, rel := range relsByTo[id] {
 			fromID := sanitizeNodeID(rel.From)
-			toID := sanitizeNodeID(rel.To)
-			if toID == id && nodeMap[fromID].ID != "" {
+			if nodeMap[fromID].ID != "" {
 				node.Dependencies = append(node.Dependencies, fromID)
 			}
 		}

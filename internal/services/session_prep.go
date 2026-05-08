@@ -28,8 +28,15 @@ func (s *SessionPrepService) GetPrep(ctx context.Context, campaignID string, ses
 	var warnings []string
 
 	state, err := s.stateRepo.Load(campaignID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("no session history for campaign: %s", campaignID)
+	if err != nil || state == nil {
+		state = &domain.NarrativeState{
+			SchemaVersion:  domain.SchemaVersionV2,
+			CampaignID:     campaignID,
+			CurrentSession: 0,
+			SessionLog:     []domain.SessionRecord{},
+			ActiveQuests:   []domain.QuestState{},
+			DeadNPCs:       []domain.NPCDeathRecord{},
+		}
 	}
 
 	if sessionNum <= 0 {

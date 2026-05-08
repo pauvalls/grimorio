@@ -28,3 +28,13 @@ func getIntArg(args map[string]any, key string) int {
 	}
 	return 0
 }
+
+// getArrayArg extracts an array argument from the args map
+func getArrayArg(args map[string]any, key string) []any {
+	if val, ok := args[key]; ok {
+		if arr, ok := val.([]any); ok {
+			return arr
+		}
+	}
+	return nil
+}

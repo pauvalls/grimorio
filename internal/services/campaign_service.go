@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -184,7 +185,7 @@ func (s *CampaignService) SaveMaps(campaignID, content string) error {
 }
 
 // CompilePDF compiles campaign to PDF
-func (s *CampaignService) CompilePDF(campaignID, title string) (string, error) {
+func (s *CampaignService) CompilePDF(ctx context.Context, campaignID, title string) (string, error) {
 	if !s.campaignRepo.Exists(campaignID) {
 		return "", fmt.Errorf("campaign not found: %s", campaignID)
 	}
@@ -200,7 +201,7 @@ func (s *CampaignService) CompilePDF(campaignID, title string) (string, error) {
 
 	dir := filepath.Join(s.baseDir, campaignID)
 	comp := compiler.New(dir, s.pdfEngine)
-	return comp.Compile(title)
+	return comp.Compile(ctx, title)
 }
 
 // GetTemplate returns a template by type

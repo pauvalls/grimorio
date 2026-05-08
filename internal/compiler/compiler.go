@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"context"
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
@@ -93,7 +94,7 @@ func GetTemplate(tmplType string) (string, error) {
 	}
 }
 
-func (c *Compiler) Compile(title string) (string, error) {
+func (c *Compiler) Compile(ctx context.Context, title string) (string, error) {
 	htmlParts, err := c.generateHTML(title)
 	if err != nil {
 		return "", err
@@ -110,7 +111,7 @@ func (c *Compiler) Compile(title string) (string, error) {
 	maxRetries := 3
 	var lastExpected, lastFound int
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		if err := c.htmlToPDF(htmlPath, pdfPath); err != nil {
+		if err := c.htmlToPDF(ctx, htmlPath, pdfPath); err != nil {
 			return "", fmt.Errorf("failed to convert to PDF (attempt %d): %w", attempt+1, err)
 		}
 
@@ -646,8 +647,8 @@ func sanitizeID(s string) string {
 	return strings.ToLower(string(result))
 }
 
-func (c *Compiler) htmlToPDF(htmlPath, pdfPath string) error {
-	cmd := exec.Command(c.PDFEngine,
+func (c *Compiler) htmlToPDF(ctx context.Context, htmlPath, pdfPath string) error {
+	cmd := exec.CommandContext(ctx, c.PDFEngine,
 		"--enable-local-file-access",
 		"--page-size", "A4",
 		"--margin-top", "15mm",

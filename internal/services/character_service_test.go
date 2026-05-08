@@ -211,6 +211,127 @@ func TestCharacterService_UpdateCharacter(t *testing.T) {
 	}
 }
 
+func TestCharacterService_SaveCharacter(t *testing.T) {
+	repo := repository.NewMemoryCharacterRepository()
+	charService := NewCharacterService(repo)
+
+	tests := []struct {
+		name      string
+		character *domain.Character
+		wantErr   bool
+	}{
+		{
+			name: "save valid character",
+			character: &domain.Character{
+				CampaignID: "save-test",
+				Name:       "Gandalf",
+				Race:       "humano",
+				Class:      "mago",
+				Level:      5,
+				Background: "sabio",
+				Alignment:  "LG",
+			},
+			wantErr: false,
+		},
+		{
+			name:      "save nil character",
+			character: nil,
+			wantErr:   true,
+		},
+		{
+			name: "save character without campaign",
+			character: &domain.Character{
+				Name: "Gandalf",
+			},
+			wantErr: true,
+		},
+		{
+			name: "save character without name",
+			character: &domain.Character{
+				CampaignID: "save-test",
+			},
+			wantErr: true,
+		},
+		{
+			name: "save character with default status",
+			character: &domain.Character{
+				CampaignID: "save-test",
+				Name:       "Aragorn",
+				Race:       "humano",
+				Class:      "guerrero",
+				Level:      3,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := charService.SaveCharacter(tt.character)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("SaveCharacter() expected error but got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("SaveCharacter() unexpected error: %v", err)
+				return
+			}
+			// Verify character was saved
+			saved, err := charService.GetCharacter(tt.character.CampaignID, tt.character.Name)
+			if err != nil {
+				t.Errorf("GetCharacter() after save unexpected error: %v", err)
+				return
+			}
+			if saved.Name != tt.character.Name {
+				t.Errorf("SaveCharacter() name = %v, want %v", saved.Name, tt.character.Name)
+			}
+			if saved.Status != "alive" {
+				t.Errorf("SaveCharacter() status = %v, want alive", saved.Status)
+			}
+		})
+	}
+}
+
+func TestCharacterService_SaveCharacter_UpdateExisting(t *testing.T) {
+	repo := repository.NewMemoryCharacterRepository()
+	charService := NewCharacterService(repo)
+
+	// Create initial character
+	char := &domain.Character{
+		CampaignID: "update-test",
+		Name:       "Gandalf",
+		Race:       "humano",
+		Class:      "mago",
+		Level:      5,
+	}
+	if err := charService.SaveCharacter(char); err != nil {
+		t.Fatalf("Failed to save initial character: %v", err)
+	}
+
+	// Update the character
+	char.Level = 10
+	char.Class = "hechicero"
+	if err := charService.SaveCharacter(char); err != nil {
+		t.Errorf("SaveCharacter() update unexpected error: %v", err)
+		return
+	}
+
+	// Verify update
+	updated, err := charService.GetCharacter("update-test", "Gandalf")
+	if err != nil {
+		t.Errorf("GetCharacter() after update unexpected error: %v", err)
+		return
+	}
+	if updated.Level != 10 {
+		t.Errorf("SaveCharacter() update level = %v, want 10", updated.Level)
+	}
+	if updated.Class != "hechicero" {
+		t.Errorf("SaveCharacter() update class = %v, want hechicero", updated.Class)
+	}
+}
+
 func TestCharacterService_AddRelationship(t *testing.T) {
 	repo := repository.NewMemoryCharacterRepository()
 	charService := NewCharacterService(repo)

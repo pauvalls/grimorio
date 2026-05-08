@@ -84,7 +84,7 @@ func TestSessionPrepHandler(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid campaign returns error", func(t *testing.T) {
+	t.Run("invalid campaign creates initial state and returns prep", func(t *testing.T) {
 		args := map[string]any{
 			"campaign_id": "nonexistent",
 		}
@@ -97,8 +97,12 @@ func TestSessionPrepHandler(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !result.IsError {
-			t.Fatalf("expected error result for invalid campaign")
+		if result.IsError {
+			t.Fatalf("expected success for invalid campaign (initial state created), got error: %v", result.Content)
+		}
+		text := result.Content[0].(mcp.TextContent).Text
+		if !strings.Contains(text, "nonexistent") {
+			t.Fatalf("expected campaign_id in result, got: %s", text)
 		}
 	})
 }

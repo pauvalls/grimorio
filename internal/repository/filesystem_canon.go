@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/pauvalls/grimorio/internal/domain"
 )
@@ -12,6 +13,7 @@ import (
 // FilesystemCanonRepository implements CanonRepository using filesystem JSON persistence
 type FilesystemCanonRepository struct {
 	baseDir string
+	mu      sync.RWMutex
 }
 
 // NewFilesystemCanonRepository creates a new filesystem canon repository
@@ -24,6 +26,9 @@ func (r *FilesystemCanonRepository) canonDir(campaignID string) string {
 }
 
 func (r *FilesystemCanonRepository) Save(campaignID string, doc *domain.CanonDocument) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if err := doc.Validate(); err != nil {
 		return fmt.Errorf("invalid canon document: %w", err)
 	}
@@ -55,6 +60,9 @@ func (r *FilesystemCanonRepository) Save(campaignID string, doc *domain.CanonDoc
 }
 
 func (r *FilesystemCanonRepository) Load(campaignID string) (*domain.CanonDocument, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	path := filepath.Join(r.canonDir(campaignID), "canon.json")
 	bytes, err := os.ReadFile(path)
 	if err != nil {
@@ -80,6 +88,9 @@ func (r *FilesystemCanonRepository) Load(campaignID string) (*domain.CanonDocume
 }
 
 func (r *FilesystemCanonRepository) Exists(campaignID string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	_, err := os.Stat(filepath.Join(r.canonDir(campaignID), "canon.json"))
 	return err == nil
 }
@@ -90,6 +101,7 @@ var _ CanonRepository = (*FilesystemCanonRepository)(nil)
 // FilesystemNarrativeStateRepository implements NarrativeStateRepository using filesystem JSON persistence
 type FilesystemNarrativeStateRepository struct {
 	baseDir string
+	mu      sync.RWMutex
 }
 
 // NewFilesystemNarrativeStateRepository creates a new filesystem narrative state repository
@@ -102,6 +114,9 @@ func (r *FilesystemNarrativeStateRepository) stateDir(campaignID string) string 
 }
 
 func (r *FilesystemNarrativeStateRepository) Save(campaignID string, state *domain.NarrativeState) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if err := state.Validate(); err != nil {
 		return fmt.Errorf("invalid narrative state: %w", err)
 	}
@@ -133,6 +148,9 @@ func (r *FilesystemNarrativeStateRepository) Save(campaignID string, state *doma
 }
 
 func (r *FilesystemNarrativeStateRepository) Load(campaignID string) (*domain.NarrativeState, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	path := filepath.Join(r.stateDir(campaignID), "narrative_state.json")
 	bytes, err := os.ReadFile(path)
 	if err != nil {
@@ -158,6 +176,9 @@ func (r *FilesystemNarrativeStateRepository) Load(campaignID string) (*domain.Na
 }
 
 func (r *FilesystemNarrativeStateRepository) Exists(campaignID string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	_, err := os.Stat(filepath.Join(r.stateDir(campaignID), "narrative_state.json"))
 	return err == nil
 }

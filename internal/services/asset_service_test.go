@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -311,6 +312,51 @@ func TestGenerateImage_DoubleExtension(t *testing.T) {
 
 	if _, err := os.Stat(goodPath); os.IsNotExist(err) {
 		t.Errorf("GenerateImage() did not create file at %s", goodPath)
+	}
+}
+
+func TestGenerateImage_ConcurrentCampaigns(t *testing.T) {
+	_, tmpDir := setupTestAssetService(t)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	provider := &mockProvider{
+		name: "mock",
+		generateFunc: func(prompt string) ([]byte, error) {
+			return []byte("fake-image-data-" + prompt), nil
+		},
+	}
+	service := NewAssetServiceWithProvider(tmpDir, provider)
+
+	start := time.Now()
+
+	go func() {
+		defer wg.Done()
+		_, _ = service.GenerateImage("campaign-a", "img-a", "prompt", "cover")
+	}()
+
+	go func() {
+		defer wg.Done()
+		_, _ = service.GenerateImage("campaign-b", "img-b", "prompt", "cover")
+	}()
+
+	wg.Wait()
+	elapsed := time.Since(start)
+
+	// With per-campaign rate limiting, both should complete in roughly 3s + overhead.
+	// With a global mutex, this would take at least 6s.
+	// We allow up to 5.5s to account for CI variance.
+	if elapsed > 5500*time.Millisecond {
+		t.Errorf("Concurrent campaigns took %v, expected under 5.5s (per-campaign rate limiting not working)", elapsed)
+	}
+
+	// Verify both files exist
+	for _, file := range []string{"img-a.png", "img-b.png"} {
+		path := filepath.Join(tmpDir, "campaign-"+string(file[4]), "assets", file)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			t.Errorf("Expected file %s to exist", path)
+		}
 	}
 }
 

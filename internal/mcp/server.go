@@ -153,6 +153,12 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name")),
 	), characterHandlers.HandleListCharacters())
 
+	s.AddTool(mcp.NewTool("save_characters",
+		mcp.WithDescription("Save multiple characters to a campaign"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name")),
+		mcp.WithArray("characters", mcp.Required(), mcp.Description("Array of character objects with name, race, class, level, background, alignment")),
+	), characterHandlers.HandleSaveCharacters())
+
 	// Quest management
 	s.AddTool(mcp.NewTool("create_personal_quest",
 		mcp.WithDescription("Create a personal quest for a character"),

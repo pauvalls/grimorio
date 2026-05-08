@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,11 +11,37 @@ import (
 
 	"github.com/pauvalls/grimorio/internal/image"
 	"github.com/pauvalls/grimorio/internal/svg"
+	"golang.org/x/time/rate"
 )
 
-// rateLimiter ensures image generation is always sequential
-// This prevents rate limiting on free AI image APIs
-var imageRateLimiter sync.Mutex
+// campaignLimiters holds a per-campaign rate limiter for image generation.
+// This prevents one campaign from starving others while still respecting
+// API rate limits per campaign.
+var (
+	campaignLimiters   = make(map[string]*rate.Limiter)
+	campaignLimitersMu sync.RWMutex
+)
+
+// getCampaignLimiter returns (or creates) a rate limiter for the given campaign.
+// The limiter allows 1 request every 3 seconds with a burst of 1.
+func getCampaignLimiter(campaign string) *rate.Limiter {
+	campaignLimitersMu.RLock()
+	lim, ok := campaignLimiters[campaign]
+	campaignLimitersMu.RUnlock()
+	if ok {
+		return lim
+	}
+
+	campaignLimitersMu.Lock()
+	defer campaignLimitersMu.Unlock()
+	// Double-check after acquiring write lock.
+	if lim, ok := campaignLimiters[campaign]; ok {
+		return lim
+	}
+	lim = rate.NewLimiter(rate.Every(3*time.Second), 1)
+	campaignLimiters[campaign] = lim
+	return lim
+}
 
 // AssetService handles asset generation (maps, images, dividers)
 type AssetService struct {
@@ -91,16 +118,13 @@ func (s *AssetService) GenerateDivider(campaign, filename, style string, width i
 	return outputPath, nil
 }
 
-// GenerateImage generates an image using AI with fallback providers
-// ALWAYS sequential - waits for previous image generation to complete
+// GenerateImage generates an image using AI with fallback providers.
+// Rate limiting is per-campaign so different campaigns can generate in parallel.
 func (s *AssetService) GenerateImage(campaign, filename, prompt, imgType string) (string, error) {
-	// Acquire lock — blocks until previous generation completes
-	imageRateLimiter.Lock()
-	defer func() {
-		// Delay before releasing to avoid rate limiting on free APIs
-		time.Sleep(3 * time.Second)
-		imageRateLimiter.Unlock()
-	}()
+	lim := getCampaignLimiter(campaign)
+	if err := lim.Wait(context.Background()); err != nil {
+		return "", fmt.Errorf("rate limiter error: %w", err)
+	}
 
 	providers := s.getProviders()
 

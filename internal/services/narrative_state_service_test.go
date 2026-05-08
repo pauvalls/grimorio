@@ -175,6 +175,93 @@ func TestNarrativeStateService_Update_NoState(t *testing.T) {
 	}
 }
 
+func TestNarrativeStateService_Update_SessionNumZero(t *testing.T) {
+	svc, _, _ := setupNarrativeStateService()
+	ctx := context.Background()
+
+	// Initialize state with current session 2
+	state := &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "test-campaign",
+		CurrentSession: 2,
+	}
+	if err := svc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
+
+	update := domain.StateUpdate{
+		SessionNum:     0,
+		SessionSummary: "Third session summary.",
+	}
+
+	updated, err := svc.Update(ctx, "test-campaign", update)
+	if err != nil {
+		t.Fatalf("failed to update state: %v", err)
+	}
+
+	// SessionNum=0 should auto-increment to CurrentSession+1 = 3
+	if updated.CurrentSession != 3 {
+		t.Fatalf("expected current session 3 (auto-increment), got %d", updated.CurrentSession)
+	}
+	if len(updated.SessionLog) != 1 {
+		t.Fatalf("expected 1 session log entry, got %d", len(updated.SessionLog))
+	}
+	if updated.SessionLog[0].SessionNum != 3 {
+		t.Fatalf("expected log session_num 3, got %d", updated.SessionLog[0].SessionNum)
+	}
+}
+
+func TestNarrativeStateService_Update_SessionNumZeroWithExistingState(t *testing.T) {
+	svc, _, _ := setupNarrativeStateService()
+	ctx := context.Background()
+
+	// No pre-existing state — Update should create initial state and auto-increment from 0 to 1
+	update := domain.StateUpdate{
+		SessionNum:     0,
+		SessionSummary: "First session.",
+	}
+
+	updated, err := svc.Update(ctx, "new-campaign", update)
+	if err != nil {
+		t.Fatalf("failed to update state: %v", err)
+	}
+
+	if updated.CurrentSession != 1 {
+		t.Fatalf("expected current session 1 (0+1), got %d", updated.CurrentSession)
+	}
+	if len(updated.SessionLog) != 1 {
+		t.Fatalf("expected 1 session log entry, got %d", len(updated.SessionLog))
+	}
+	if updated.SessionLog[0].SessionNum != 1 {
+		t.Fatalf("expected log session_num 1, got %d", updated.SessionLog[0].SessionNum)
+	}
+}
+
+func TestNarrativeStateService_Update_NegativeSessionNum(t *testing.T) {
+	svc, _, _ := setupNarrativeStateService()
+	ctx := context.Background()
+
+	// Initialize state
+	state := &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "test-campaign",
+		CurrentSession: 2,
+	}
+	if err := svc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
+
+	update := domain.StateUpdate{
+		SessionNum:     -1,
+		SessionSummary: "Negative session should fail.",
+	}
+
+	_, err := svc.Update(ctx, "test-campaign", update)
+	if err == nil {
+		t.Fatal("expected error for negative session_num, got nil")
+	}
+}
+
 func TestNarrativeStateService_GetSessionPrepContext(t *testing.T) {
 	svc, _, canonRepo := setupNarrativeStateService()
 	ctx := context.Background()

@@ -106,9 +106,16 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 	}
 
 	// Append session log
-	if update.SessionNum > 0 || update.SessionSummary != "" {
+	sessionNum := update.SessionNum
+	if sessionNum < 0 {
+		return nil, domain.NewValidationError("session_num", "session_num cannot be negative")
+	}
+	if sessionNum == 0 {
+		sessionNum = state.CurrentSession + 1
+	}
+	if sessionNum > 0 || update.SessionSummary != "" {
 		record := domain.SessionRecord{
-			SessionNum:   update.SessionNum,
+			SessionNum:   sessionNum,
 			Date:         time.Now(),
 			Summary:      update.SessionSummary,
 			KeyDecisions: update.KeyDecisions,
@@ -117,7 +124,7 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 			DMNotes:      update.DMNotes,
 		}
 		state.SessionLog = append(state.SessionLog, record)
-		state.CurrentSession = update.SessionNum
+		state.CurrentSession = sessionNum
 	}
 
 	state.LastUpdated = time.Now()

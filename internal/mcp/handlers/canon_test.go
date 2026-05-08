@@ -230,21 +230,39 @@ func TestHandleUpdateNarrativeState_MissingCampaign(t *testing.T) {
 }
 
 func TestHandleUpdateNarrativeState_InvalidSession(t *testing.T) {
-	handlers, _, _, _ := setupTestCanonHandlers()
+	handlers, canonSvc, stateSvc, _ := setupTestCanonHandlers()
 	ctx := context.Background()
+
+	// Initialize campaign
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
+
+	// Set up initial state with current session 2
+	state, _ := stateSvc.Load(ctx, "test-campaign")
+	state.CurrentSession = 2
+	state.ActiveQuests = append(state.ActiveQuests, domain.QuestState{
+		ID: "q-001", Name: "Find the Sword", Status: "active", SourceAct: "act-1", GiverNPC: "npc-giver",
+	})
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	handler := handlers.HandleUpdateNarrativeState()
 	args := map[string]any{
-		"campaign_id": "test-campaign",
-		"session_num": float64(0),
+		"campaign_id":     "test-campaign",
+		"session_num":     float64(0),
+		"session_summary": "Auto-incremented session.",
+		"completed_quests": []interface{}{"q-001"},
 	}
 
 	result, err := handler(ctx, newToolRequest("update_narrative_state", args))
 	if err != nil {
 		t.Fatalf("HandleUpdateNarrativeState error: %v", err)
 	}
-	if !result.IsError {
-		t.Fatal("expected error for invalid session_num")
+	if result.IsError {
+		t.Fatalf("expected success for session_num=0 (auto-increment), got error: %v", result.Content)
 	}
 }
 

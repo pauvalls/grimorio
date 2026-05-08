@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -14,6 +15,7 @@ import (
 // FilesystemQuestRepository implements QuestRepository using filesystem
 type FilesystemQuestRepository struct {
 	baseDir string
+	mu      sync.RWMutex
 }
 
 // NewFilesystemQuestRepository creates a new filesystem quest repository
@@ -31,6 +33,9 @@ func (r *FilesystemQuestRepository) ensureSubdir(campaign, subdir string) error 
 }
 
 func (r *FilesystemQuestRepository) Save(quest *domain.Quest) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if err := quest.Validate(); err != nil {
 		return err
 	}
@@ -56,6 +61,9 @@ func (r *FilesystemQuestRepository) Save(quest *domain.Quest) error {
 }
 
 func (r *FilesystemQuestRepository) Read(campaignID, id string) (*domain.Quest, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	var quest domain.Quest
 	path := filepath.Join(r.campaignDir(campaignID), "quests", id+".json")
 	bytes, err := os.ReadFile(path)
@@ -69,6 +77,9 @@ func (r *FilesystemQuestRepository) Read(campaignID, id string) (*domain.Quest, 
 }
 
 func (r *FilesystemQuestRepository) List(campaignID string) ([]domain.Quest, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	dir := filepath.Join(r.campaignDir(campaignID), "quests")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -128,6 +139,9 @@ func (r *FilesystemQuestRepository) ListByStatus(campaignID string, status domai
 }
 
 func (r *FilesystemQuestRepository) Delete(campaignID, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	path := filepath.Join(r.campaignDir(campaignID), "quests", id+".json")
 	return os.Remove(path)
 }

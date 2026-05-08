@@ -437,6 +437,23 @@ func (s *CharacterService) DeleteCharacter(campaignID, name string) error {
 	return s.repo.Delete(campaignID, name)
 }
 
+// SaveCharacter saves a character (create or update)
+func (s *CharacterService) SaveCharacter(character *domain.Character) error {
+	if character == nil {
+		return fmt.Errorf("character is required")
+	}
+	if character.CampaignID == "" {
+		return fmt.Errorf("campaign ID is required")
+	}
+	if character.Name == "" {
+		return fmt.Errorf("character name is required")
+	}
+	if character.Status == "" {
+		character.Status = "alive"
+	}
+	return s.repo.Save(character)
+}
+
 // AddRelationship adds a relationship to a character
 func (s *CharacterService) AddRelationship(campaignID, characterName string, rel domain.Relationship) error {
 	character, err := s.repo.Read(campaignID, characterName)

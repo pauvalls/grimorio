@@ -143,9 +143,6 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 		}
 
 		sessionNum := getIntArg(args, "session_num")
-		if sessionNum <= 0 {
-			return mcp.NewToolResultError("session_num must be positive"), nil
-		}
 
 		update := domain.StateUpdate{
 			SessionNum: sessionNum,

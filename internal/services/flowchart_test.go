@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -132,6 +133,81 @@ func TestFlowchartService_GenerateMermaid(t *testing.T) {
 			t.Fatalf("expected error for campaign with no acts")
 		}
 	})
+
+	t.Run("decision level includes timeline events", func(t *testing.T) {
+		doc := &domain.CanonDocument{
+			SchemaVersion: domain.SchemaVersionV2,
+			CampaignID:    "timeline-campaign",
+			Entities: []domain.CanonEntity{
+				{ID: "act-1", Name: "Act 1", Type: domain.EntityTypeLocation, Role: "act"},
+				{ID: "npc-hero", Name: "Hero", Type: domain.EntityTypeNPC, CanonState: domain.EntityStateAlive},
+			},
+			Relationships: []domain.CanonRelationship{
+				{ID: "rel-1", From: "npc-hero", To: "act-1", Type: domain.RelationshipTypeAlly},
+			},
+			Timeline: []domain.CanonTimelineEvent{
+				{ID: "ev-1", Description: "Hero discovers truth", IsRevealed: true, Involved: []string{"npc-hero", "act-1"}},
+				{ID: "ev-2", Description: "Secret not revealed", IsRevealed: false, Involved: []string{"npc-hero"}},
+			},
+		}
+		_ = canonRepo.Save("timeline-campaign", doc)
+
+		mermaid, err := svc.GenerateMermaid(ctx, "timeline-campaign", "decision")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if !strings.Contains(mermaid, "Hero discovers truth") {
+			t.Fatalf("expected revealed timeline event in mermaid, got: %s", mermaid)
+		}
+		if strings.Contains(mermaid, "Secret not revealed") {
+			t.Fatalf("unrevealed timeline event should not appear")
+		}
+	})
+}
+
+// mockActRepo is a simple mock for ActRepository
+type mockActRepo struct {
+	acts []domain.Act
+}
+
+func (m *mockActRepo) Save(act *domain.Act) error           { return nil }
+func (m *mockActRepo) Read(campaignID string, number int) (*domain.Act, error) {
+	return nil, fmt.Errorf("not found")
+}
+func (m *mockActRepo) List(campaignID string) ([]domain.Act, error) { return m.acts, nil }
+func (m *mockActRepo) Delete(campaignID string, number int) error   { return nil }
+
+func TestFlowchartService_GenerateMermaid_FromActRepo(t *testing.T) {
+	ctx := context.Background()
+	canonRepo := repository.NewMemoryCanonRepository()
+	actRepo := &mockActRepo{
+		acts: []domain.Act{
+			{Number: 1, Content: "# The Beginning\nFirst act content."},
+			{Number: 2, Content: "# The Twist\nSecond act content."},
+		},
+	}
+
+	svc := NewFlowchartService(canonRepo, actRepo)
+
+	doc := &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "act-repo-campaign",
+		Entities:      []domain.CanonEntity{},
+	}
+	_ = canonRepo.Save("act-repo-campaign", doc)
+
+	mermaid, err := svc.GenerateMermaid(ctx, "act-repo-campaign", "overview")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(mermaid, "The Beginning") {
+		t.Fatalf("expected act title from act repo, got: %s", mermaid)
+	}
+	if !strings.Contains(mermaid, "The Twist") {
+		t.Fatalf("expected second act title from act repo, got: %s", mermaid)
+	}
 }
 
 func TestFlowchartService_GenerateSVG(t *testing.T) {
@@ -164,6 +240,22 @@ func TestFlowchartService_GenerateSVG(t *testing.T) {
 		}
 		if !strings.Contains(svg, "</svg>") {
 			t.Fatalf("expected SVG to contain closing tag")
+		}
+	})
+
+	t.Run("no acts returns error in SVG", func(t *testing.T) {
+		doc := &domain.CanonDocument{
+			SchemaVersion: domain.SchemaVersionV2,
+			CampaignID:    "svg-no-acts",
+			Entities: []domain.CanonEntity{
+				{ID: "npc-1", Name: "Random NPC", Type: domain.EntityTypeNPC},
+			},
+		}
+		_ = canonRepo.Save("svg-no-acts", doc)
+
+		_, err := svc.GenerateSVG(ctx, "svg-no-acts", "overview")
+		if err == nil {
+			t.Fatalf("expected error for campaign with no acts in SVG")
 		}
 	})
 }

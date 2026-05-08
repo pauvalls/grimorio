@@ -250,7 +250,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 		}
 	})
 
-	t.Run("missing narrative state returns error", func(t *testing.T) {
+	t.Run("missing narrative state creates initial state", func(t *testing.T) {
 		missingStateCanonRepo := repository.NewMemoryCanonRepository()
 		missingStateRepo := repository.NewMemoryNarrativeStateRepository()
 		missingSvc := NewSessionPrepService(missingStateCanonRepo, missingStateRepo)
@@ -258,17 +258,66 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 		doc := &domain.CanonDocument{
 			SchemaVersion: domain.SchemaVersionV2,
 			CampaignID:    "missing-state-campaign",
+			Entities: []domain.CanonEntity{
+				{ID: "npc-1", Name: "Test NPC", Type: domain.EntityTypeNPC, CanonState: domain.EntityStateAlive},
+			},
 		}
 		_ = missingStateCanonRepo.Save("missing-state-campaign", doc)
 
-		// NOTE: deliberately do NOT save narrative state
+		// NOTE: deliberately do NOT save narrative state — service should create initial state
 
-		_, _, err := missingSvc.GetPrep(ctx, "missing-state-campaign", 0)
-		if err == nil {
-			t.Fatalf("expected error for missing narrative state, got nil")
+		prep, warnings, err := missingSvc.GetPrep(ctx, "missing-state-campaign", 0)
+		if err != nil {
+			t.Fatalf("expected no error for missing narrative state (should create initial), got: %v", err)
 		}
-		if !strings.Contains(err.Error(), "state") {
-			t.Fatalf("expected error to mention 'state', got: %v", err)
+		if prep == nil {
+			t.Fatalf("expected prep, got nil")
+		}
+		if prep.SessionNum != 1 {
+			t.Fatalf("expected session_num 1 (0+1 from initial state), got %d", prep.SessionNum)
+		}
+		if !strings.Contains(prep.PreviouslyOn, "No previous sessions") {
+			t.Fatalf("expected placeholder previously_on, got %q", prep.PreviouslyOn)
+		}
+		// Should have warnings for empty state
+		if len(warnings) == 0 {
+			t.Fatalf("expected warnings for empty initial state")
 		}
 	})
+
+	t.Run("nil state from repo creates initial state", func(t *testing.T) {
+		// Use a repo that returns nil state without error
+		nilStateRepo := &nilReturningStateRepo{}
+		nilCanonRepo := repository.NewMemoryCanonRepository()
+		nilSvc := NewSessionPrepService(nilCanonRepo, nilStateRepo)
+
+		prep, warnings, err := nilSvc.GetPrep(ctx, "nil-state-campaign", 0)
+		if err != nil {
+			t.Fatalf("expected no error for nil state (should create initial), got: %v", err)
+		}
+		if prep == nil {
+			t.Fatalf("expected prep, got nil")
+		}
+		if prep.SessionNum != 1 {
+			t.Fatalf("expected session_num 1, got %d", prep.SessionNum)
+		}
+		if len(warnings) == 0 {
+			t.Fatalf("expected warnings for empty initial state")
+		}
+	})
+}
+
+// nilReturningStateRepo is a mock repo that returns nil state without error
+type nilReturningStateRepo struct{}
+
+func (r *nilReturningStateRepo) Load(campaignID string) (*domain.NarrativeState, error) {
+	return nil, nil
+}
+
+func (r *nilReturningStateRepo) Save(campaignID string, state *domain.NarrativeState) error {
+	return nil
+}
+
+func (r *nilReturningStateRepo) Exists(campaignID string) bool {
+	return false
 }

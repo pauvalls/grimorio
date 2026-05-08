@@ -50,6 +50,7 @@ var _ FactionReputationRepository = (*MemoryFactionRepository)(nil)
 // FilesystemFactionRepository implements FactionReputationRepository using filesystem JSON persistence
 type FilesystemFactionRepository struct {
 	baseDir string
+	mu      sync.RWMutex
 }
 
 // NewFilesystemFactionRepository creates a new filesystem faction repository
@@ -62,6 +63,9 @@ func (r *FilesystemFactionRepository) factionDir(campaignID string) string {
 }
 
 func (r *FilesystemFactionRepository) Save(campaignID string, matrix *domain.FactionReputationMatrix) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	dir := r.factionDir(campaignID)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create faction directory: %w", err)
@@ -88,6 +92,9 @@ func (r *FilesystemFactionRepository) Save(campaignID string, matrix *domain.Fac
 }
 
 func (r *FilesystemFactionRepository) Load(campaignID string) (*domain.FactionReputationMatrix, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	path := filepath.Join(r.factionDir(campaignID), "reputation_matrix.json")
 	bytes, err := os.ReadFile(path)
 	if err != nil {

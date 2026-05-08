@@ -1,6 +1,9 @@
 package services
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pauvalls/grimorio/internal/repository"
@@ -193,6 +196,52 @@ func TestCampaignService_SaveAct(t *testing.T) {
 				t.Errorf("SaveAct() act number = %v, want %v", act.Number, tt.actNumber)
 			}
 		})
+	}
+}
+
+func TestCampaignService_CompilePDF(t *testing.T) {
+	campaignRepo := repository.NewMemoryCampaignRepository()
+	actRepo := repository.NewMemoryActRepository()
+	charRepo := repository.NewMemoryCharacterRepository()
+	npcRepo := repository.NewMemoryNPCRepository()
+	questRepo := repository.NewMemoryQuestRepository()
+	tmpDir := t.TempDir()
+	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, tmpDir, "echo")
+
+	// Create a campaign first
+	_, err := service.CreateCampaign("pdf-test", "PDF Test", "Setting")
+	if err != nil {
+		t.Fatalf("Failed to create test campaign: %v", err)
+	}
+
+	// Create minimal campaign content
+	campaignDir := filepath.Join(tmpDir, "pdf-test")
+	if err := os.WriteFile(filepath.Join(campaignDir, "lore.md"), []byte("# Lore\n\nTest."), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	pdfPath, err := service.CompilePDF(ctx, "pdf-test", "")
+	if err != nil {
+		t.Fatalf("CompilePDF() unexpected error: %v", err)
+	}
+	if pdfPath == "" {
+		t.Error("CompilePDF() returned empty path")
+	}
+}
+
+func TestCampaignService_CompilePDF_MissingCampaign(t *testing.T) {
+	campaignRepo := repository.NewMemoryCampaignRepository()
+	actRepo := repository.NewMemoryActRepository()
+	charRepo := repository.NewMemoryCharacterRepository()
+	npcRepo := repository.NewMemoryNPCRepository()
+	questRepo := repository.NewMemoryQuestRepository()
+	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, "/tmp/campaigns", "wkhtmltopdf")
+
+	ctx := context.Background()
+	_, err := service.CompilePDF(ctx, "missing-campaign", "")
+	if err == nil {
+		t.Error("CompilePDF() expected error for missing campaign, got nil")
 	}
 }
 
