@@ -13,8 +13,9 @@ type ValidationError struct {
 
 // ValidationResult contains the outcome of a validation run
 type ValidationResult struct {
-	Valid  bool              `json:"valid"`
-	Errors []ValidationError `json:"errors,omitempty"`
+	Valid     bool              `json:"valid"`
+	Errors    []ValidationError `json:"errors,omitempty"`
+	Warnings  []string          `json:"warnings,omitempty"`
 }
 
 var (

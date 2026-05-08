@@ -9,6 +9,7 @@ import (
 
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
+	"github.com/pauvalls/grimorio/internal/validators"
 )
 
 // ValidationEngine performs rule-based validation of content proposals and campaign consistency
@@ -499,8 +500,64 @@ func (e *ValidationEngine) validate(ctx context.Context, campaignID string, prop
 		}
 	}
 
+	// WotC Format Validations (NEW)
+	if proposal.Type == "act" {
+		e.validateWotCFormat(report, proposal.Content)
+	}
+
 	report.ComputeOverallStatus()
 	return report, nil
+}
+
+// validateWotCFormat applies WotC professional format validations
+func (e *ValidationEngine) validateWotCFormat(report *domain.ValidationReport, content string) {
+	// Validation 1: Developments structure (3-5 branches with IF-THEN)
+	devResult := validators.ValidateDevelopments(content)
+	if !devResult.Valid {
+		for _, err := range devResult.Errors {
+			report.AddCheck("wotc_developments", false, "error", err.Message, "")
+		}
+		report.AddSuggestion(
+			"Developments section incomplete",
+			"Add 3-5 decision branches with **Si [condición]**: structure, **Consecuencia:**, and **Recuperación:** paths",
+			"WotC standards require multiple decision branches per area")
+	}
+
+	// Validation 2: Multiple solution paths (stealth/social/combat)
+	solutionsResult := validators.ValidateMultipleSolutions(content)
+	if !solutionsResult.Valid {
+		for _, err := range solutionsResult.Errors {
+			report.AddCheck("wotc_multiple_solutions", false, "error", err.Message, "")
+		}
+		report.AddSuggestion(
+			"Insufficient solution variety",
+			"Add at least 2 different solution types per obstacle: Stealth (CD X), Social (CD Y Persuasión), or Combat",
+			"WotC adventures offer multiple paths through encounters")
+	}
+
+	// Validation 3: Character hooks (2-3 per area)
+	hooksResult := validators.ValidateCharacterHooks(content)
+	if !hooksResult.Valid {
+		for _, err := range hooksResult.Errors {
+			report.AddCheck("wotc_character_hooks", false, "warning", err.Message, "")
+		}
+		report.AddSuggestion(
+			"Character hooks missing or insufficient",
+			"Add 2-3 character hooks per area tied to background, class, race, or faction",
+			"Character hooks increase player engagement")
+	}
+
+	// Validation 4: Boxed text quality (100-600 words, second person, present tense)
+	boxarResult := validators.ValidateBoxedText(content)
+	if !boxarResult.Valid {
+		for _, err := range boxarResult.Errors {
+			report.AddCheck("wotc_boxed_text", false, "warning", err.Message, "")
+		}
+		report.AddSuggestion(
+			"Boxed text needs improvement",
+			"Write 100-600 words in second person present tense (ves, escuchas, sientes) with sensory details only",
+			"Boxed text sets the scene for players")
+	}
 }
 
 func (e *ValidationEngine) checkRuleViolation(content string, rule domain.CanonRule) bool {

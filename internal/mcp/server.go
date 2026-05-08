@@ -57,6 +57,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	adaptationPatchService := services.NewAdaptationPatchService(actRepo, canonRepo)
 	sessionPrepService := services.NewSessionPrepService(canonRepo, narrativeStateRepo)
 	flowchartService := services.NewFlowchartService(canonRepo, actRepo)
+	hookService := services.NewPlayerHookService(charRepo, canonRepo)
 	_ = adaptationPatchService
 
 	// Initialize handlers
@@ -71,6 +72,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	consequenceHandlers := handlers.NewConsequenceHandlers(consequenceEngine, narrativeStateService)
 	sessionPrepHandlers := handlers.NewSessionPrepHandlers(sessionPrepService)
 	flowchartHandlers := handlers.NewFlowchartHandlers(flowchartService)
+	hookHandlers := handlers.NewHookHandlers(hookService)
 
 	// Register tools
 	// Campaign management
@@ -176,6 +178,11 @@ s.AddTool(mcp.NewTool("save_maps",
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name")),
 		mcp.WithArray("characters", mcp.Required(), mcp.Description("Array of character objects with name, race, class, level, background, alignment")),
 	), characterHandlers.HandleSaveCharacters())
+
+	s.AddTool(mcp.NewTool("generate_character_hooks",
+		mcp.WithDescription("Generate personalized plot hooks for all player characters in a campaign. Returns hooks organized by character and by area for easy integration."),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+	), hookHandlers.HandleGenerateCharacterHooks())
 
 	// Quest management
 	s.AddTool(mcp.NewTool("create_personal_quest",
