@@ -132,7 +132,61 @@ For each piece of content to validate, check:
   - If < 2: ERROR "Chapter must have at least 2 objectives"
   - If > 3: ERROR "Chapter must have at most 3 objectives"
 - **Asset Type Validation**: Asset must be concrete type (objeto, información, aliado, base)
-  - If vague ("experiencia", "amistad", "confianza"): ERROR "Asset must be concrete (objeto/información/aliado/base)"
+   - If vague ("experiencia", "amistad", "confianza"): ERROR "Asset must be concrete (objeto/información/aliado/base)"
+
+#### Check 13: WotC Format Quality (NEW v2.3)
+
+**Check 13A: Boxed Text Word Count**
+- Contar párrafos en sección "Texto para Leer" (debe ser 2-4)
+- Contar palabras totales (debe ser 100-600 palabras)
+- **Errores**:
+  - Si < 2 párrafos: `ERROR: Boxed text necesita mínimo 2 párrafos; got {count}`
+  - Si > 4 párrafos: `WARNING: Boxed text excede 4 párrafos (recomendado: 2-4)`
+  - Si < 100 palabras: `ERROR: Boxed text muy corto (< 100 palabras); got {count}`
+  - Si > 600 palabras: `ERROR: Boxed text muy largo (> 600 palabras); got {count}`
+- **Fix**: Ajustar número de párrafos o expandir/condensar descripciones sensoriales
+
+**Check 13B: Character Hooks Count**
+- Buscar sección "Ganchos de Personaje"
+- Contar hooks (debe ser ≥ 2)
+- Verificar que cada hook targetee un background/clase específico
+- **Errores**:
+  - Si < 2 hooks: `ERROR: Sección necesita mínimo 2 ganchos de personaje; got {count}`
+  - Si hooks son genéricos: `WARNING: Ganchos deberían targetear backgrounds/clases específicas`
+- **Fix**: Agregar hooks con formato "**Para [background/clase]:** [descripción accionable]"
+
+**Check 13C: Developments Branch Count**
+- Buscar sección "Desarrollos"
+- Contar ramas numeradas (debe ser ≥ 3)
+- Verificar que cada rama tenga recovery path (palabra clave: "*Recuperación:*" o similar)
+- **Errores**:
+  - Si < 3 ramas: `ERROR: Sección necesita mínimo 3 ramas de desarrollo; got {count}`
+  - Si rama sin recovery: `ERROR: Rama [{n}] no tiene path de recuperación documentado`
+- **Fix**: Agregar ramas con estructura: "1. **Trigger:** [desarrollo] - *Recuperación:* [alternativa]"
+
+**Check 13D: Running the Scene Subsections**
+- Buscar sección "Cómo Dirigir esta Escena"
+- Verificar 5 subsecciones presentes:
+  1. Preparación
+  2. Ritmo Sugerido
+  3. Señales de los Jugadores
+  4. Cuándo Improvisar
+  5. Cuándo ceñirse al Guión
+- **Errores**:
+  - Si falta subsección: `ERROR: Falta subsección [{nombre}] en 'Cómo Dirigir esta Escena'`
+  - Si subsección vacía: `WARNING: Subsección [{nombre}] está muy breve (< 2 bullets)`
+- **Fix**: Usar template con las 5 subsecciones obligatorias
+
+**Check 13E: NPC Description Depth**
+- Para cada NPC principal:
+  - Contar párrafos de descripción (debe ser ≥ 5)
+  - Contar secretos listados (debe ser ≥ 3)
+  - Contar líneas de diálogo (debe ser ≥ 3 para NPCs clave)
+- **Errores**:
+  - Si < 5 párrafos: `ERROR: NPC [{nombre}] tiene < 5 párrafos de descripción; got {count}`
+  - Si < 3 secretos: `ERROR: NPC [{nombre}] tiene < 3 secretos; got {count}`
+  - Si < 3 diálogos (NPC clave): `ERROR: NPC clave [{nombre}] tiene < 3 líneas de diálogo; got {count}`
+- **Fix**: Expandir descripción con apariencia (3-5 párrafos), personalidad (2-3 párrafos), secretos y diálogo
 
 ### Phase 3: Generate Validation Report
 
@@ -209,6 +263,12 @@ update_narrative_state(
 - Cross-area propagation missing for major decision (ERROR: must list affected areas/acts)
 - World state inconsistency (dead NPC appearing alive, reputation contradiction without cause)
 - Faction benefit granted without meeting reputation threshold (ERROR: check tier requirements)
+- **WotC Format violations** (Check 13A-E):
+  - Boxed text < 100 or > 600 words
+  - Character hooks < 2 per area
+  - Development branches < 3 or missing recovery paths
+  - "Cómo Dirigir esta Escena" missing any of 5 subsections
+  - NPC descriptions < 5 paragraphs, < 3 secrets, or < 3 dialogue lines
 
 ### Warnings (Approve with notes)
 - NPC motivation seems inconsistent

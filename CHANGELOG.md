@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-05-08
+
+### Added
+- **WotC Format Improvements** — Enhanced area and NPC generation to match WotC published module quality
+  - **Templates**: 5 new sections in `areas.md.tmpl`:
+    - Boxed Text (`>>` format, 2-4 párrafos, 100-600 palabras)
+    - Character Hooks (2+ por área, targetean backgrounds/clases específicas)
+    - Developments (3+ ramas con recovery paths obligatorios)
+    - Cómo Dirigir esta Escena (5 subsecciones: Preparación, Ritmo, Señales, Improvisar, Guión)
+    - Evolución del Hub (opcional, para áreas hub)
+  - **Agents**: Rules 15-19 in `grimorio-areas.md` for boxed text, hooks, developments, scene guidance, NPC descriptions
+  - **NPC Agent**: Enhanced requirements in `grimorio-npc.md`:
+    - 5+ párrafos de descripción (3-5 apariencia, 2-3 personalidad/voz)
+    - 3-5 secretos por NPC (1 trivial, 2 importantes, 1-2 críticos)
+    - 3-5 líneas de diálogo sample para NPCs clave
+  - **Validation**: Check 13A-E in `grimorio-narrative-custodian.md`:
+    - 13A: Boxed Text word count (100-600)
+    - 13B: Character Hooks count (2+)
+    - 13C: Developments branches (3+ with recovery)
+    - 13D: Running the Scene subsections (5)
+    - 13E: NPC depth (5+ paragraphs, 3+ secrets, 3+ dialogue)
+  - Test area generated and validated with all new features
+
+### Changed
+- **Template structure** — New sections added after area description, before DM details
+- **Agent instructions** — Stricter quality requirements for immersive narration and NPC depth
+- **Validator** — 5 new validation checks for WotC format quality gates
+- **Checklist** — Updated pre-save checklist in `grimorio-areas.md` to v2.3
+
+### Documentation
+- Test area created: `test-campaign/wotc-format-test/test-area.md`
+- All 25 tasks completed across 6 phases
+
 ## [2.2.0] - 2026-05-08
 
 ### Added

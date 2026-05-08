@@ -56,9 +56,9 @@ Si la validación falla (ej: un NPC referenciado está marcado como muerto en el
 
 ## Estructura de cada NPC
 
-Cada NPC debe tener:
+### NPCs Principales (5+ párrafos, 300-500 palabras)
 
-### NPCs Principales (5+)
+Cada NPC principal DEBE tener:
 
 1. **Nombre y Rol** — Que el nombre sea memorable y consistente con el tono.
 2. **Raza/Clase** — Humano, elfo, etc. + clase si aplica (para D&D 5e).
@@ -66,6 +66,63 @@ Cada NPC debe tener:
 4. **Ubicación** — **Área X** donde se encuentra este NPC (ej: "Área 3", "Área 7 o móvil").
 5. **Estadísticas de Combate** — Si el NPC puede entrar en combate: CA, PG, velocidad, ataque principal (bonus + daño). Formato: `CA 12, PG 18 (3d8+3), Espada corta +4 (1d6+2)`.
 6. **Rol en la historia** — Qué función cumple en la trama. No son relleno.
+
+### Apariencia Física (3-5 párrafos, showing vs telling)
+
+**Párrafo 1:** Rasgos faciales distintivos (ojos, nariz, boca, cicatrices, expresiones)
+**Párrafo 2:** Complexión y postura (altura, complexión, cómo se para/mueve, gestos)
+**Párrafo 3:** Vestimenta y accesorios (ropa típica, objetos personales, símbolos)
+**Párrafo 4:** Detalles únicos (tatuajes, marcas, objetos mágicos, características memorables)
+**Párrafo 5:** Impresión general (qué transmite a primera vista, presencia)
+
+**Ejemplo showing vs telling:**
+- ❌ MAL: "Es un guerrero experimentado"
+- ✅ BIEN: "Sus manos callosas delatan años de empuñar espada, y una cicatriz blanca cruza su ceja izquierda, recuerdo de una batalla que casi le cuesta la vida."
+
+### Personalidad y Voz (2-3 párrafos)
+
+**Párrafo 1:** Patrones de habla (formal, coloquial, técnico, acento, muletillas)
+**Párrafo 2:** Mannerisms y quirks (gestos, tics, frases repetidas, rituales)
+**Párrafo 3:** Actitud emocional base (optimista, cínico, paranoico, carismático)
+
+**Arquetipos de ejemplo:**
+- **El Mentor sabio pero cansado:** Habla en pausas, cita proverbios antiguos, suspira antes de dar consejos
+- **El Mercenario pragmático:** Frases cortas, va al grano, siempre menciona precios/recompensas
+- **El Fanático religioso:** Usa lenguaje de "destino" y "voluntad divina", gestos rituales
+- **El Noble corrupto pero carismático:** Sonrisa calculada, contacto visual intenso, halagos con doble filo
+
+### Secretos (3-5 por NPC principal)
+
+Categorías de secretos:
+- **Secreto personal:** Algo que el NPC oculta por vergüenza/miedo (ej: deuda de juego, hijo ilegítimo)
+- **Secreto relacionado a la trama:** Información crítica para la campaña (ej: sabe quién es el traidor)
+- **Secreto de habilidad:** Talento oculto, entrenamiento secreto (ej: mago disfrazado de guerrero)
+- **Secreto de relación:** Conexión con otro NPC/facción (ej: hermano del villano)
+- **Secreto de pasado:** Evento que moldeó al NPC (ej: sobrevivió a masacre que todos olvidaron)
+
+**Formato obligatorio:**
+```markdown
+- **Secreto:** [descripción]
+  - *Nivel de ocultamiento:* [Fácil/Medio/Difícil de descubrir]
+  - *Consecuencia si se revela:* [qué pasa]
+```
+
+### Diálogo Sample (3-5 líneas para NPCs clave)
+
+El diálogo DEBE demostrar:
+- Speech patterns (formal, coloquial, técnico)
+- Personality quirks (frases repetidas, muletillas)
+- Attitude toward PCs (amistoso, hostil, neutral)
+
+**Formato:**
+```markdown
+**Diálogo Sample:**
+- "[Línea 1 que muestra personalidad en contexto casual]"
+- "[Línea 2 en contexto de conflicto o tensión]"
+- "[Línea 3 revelando información o secreto]"
+- "[Línea 4 mostrando vulnerabilidad o motivación]"
+```
+
 7. **Personalidad** — 2-3 oraciones que definan cómo habla, actúa, se mueve. Incluí tics, manierismos, forma de hablar.
 8. **Motivación** — Qué quiere este NPC. Todos quieren algo.
 9. **Secreto** — Algo que el NPC oculta. No todo se descubre, pero debería ser relevante si se descubre.

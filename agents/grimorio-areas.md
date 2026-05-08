@@ -221,7 +221,7 @@ validate_canon(
 
 Si la validación falla (ej: NPC muerto aparece vivo, ubicación no existe en canon), corregí antes de guardar.
 
-## Checklist Pre-Guardado (v2)
+## Checklist Pre-Guardado (v2.3)
 
 Antes de llamar `save_areas`, verificá CADA ítem:
 
@@ -231,7 +231,13 @@ Antes de llamar `save_areas`, verificá CADA ítem:
 - [ ] ¿Los cambios de estado del mundo están registrados (NPCs, facciones, pistas, quests)?
 - [ ] ¿Tiene 10-15 áreas numeradas? (One-shot: 8-12)
 - [ ] ¿Cada área tiene 150-200 palabras? (contalas)
-- [ ] ¿Cada área tiene Read-Aloud?
+- [ ] ¿Cada área tiene **Boxed Text** con 2-4 párrafos (100-600 palabras)?
+- [ ] ¿Boxed Text usa formato `>>` y segunda persona presente?
+- [ ] ¿Cada área tiene **2+ Ganchos de Personaje** targeteando backgrounds/clases?
+- [ ] ¿Cada área tiene **3+ Desarrollos** con recovery paths?
+- [ ] ¿Cada área tiene **5 subsecciones** en "Cómo Dirigir esta Escena"?
+- [ ] ¿NPCs principales tienen 5+ párrafos de descripción?
+- [ ] ¿NPCs clave tienen 3-5 secretos y 3-5 líneas de diálogo?
 - [ ] ¿Cada área con criaturas tiene tesoro con XP numérico?
 - [ ] ¿Todos los DCs son NUMÉRICOS? (nunca "alto/bajo")
 - [ ] ¿Todos los nombres de criaturas existen en bestiary.md?
@@ -309,6 +315,78 @@ La biblioteca contiene principalmente textos sobre historia local y botánica. S
     - **Estado del mundo**: Trackear NPCs muertos, reputación de facciones, pistas reveladas, estado de quests
 11. **Sidebars obligatorios**: Al menos 1 sidebar por acto (> ##### Nombre). Tips para DM, reglas opcionales, o notas de atmósfera.
 12. **Inline NPC stats**: Cuando un NPC aparece en un área, incluir stat summary inline (*alineación raza clase*). Full stats en Appendix B.
+
+13. **Boxed Text (TEXTO PARA LEER)**: Cada área DEBE tener boxed text con formato `>>`:
+    - **2-4 párrafos** por área (100-600 palabras total)
+    - **Segunda persona presente**: "Ves", "Escuchas", "Sientes"
+    - **Solo detalles sensoriales**: vista, sonido, olfato, tacto, atmósfera
+    - **NO incluir**: mecánicas de juego, DCs, stats de monstruos, spoilers
+    - **Formato**:
+      ```markdown
+      >> La cámara se extiende ante vosotros, iluminada por antorchas parpadeantes
+      >> montadas en las paredes de piedra. El aire es húmedo y huele a moho
+      >> antiguo. Al fondo, un trono de huesos domina el espacio...
+      ```
+
+14. **Ganchos de Personaje (2+ por área)**: Cada área DEBE tener mínimo 2 hooks:
+    - **Target específico**: background, clase, raza, o facción
+    - **Accionables**: algo que el personaje puede hacer/investigar
+    - **Beneficio mecánico opcional**: ventaja, contacto, descuento
+    - **Ejemplos**:
+      ```markdown
+      - **Para personaje religioso:** Reconocés los símbolos como de un culto antiguo
+      - **Para personaje con venganza:** Una figura lleva el amuleto de tu enemigo
+      - **Para personaje académico:** Los libros contienen textos prohibidos (Investigación DC 15)
+      ```
+
+15. **Desarrollos y Ramas Narrativas (3+ por área)**: Cada área DEBE tener mínimo 3 ramas:
+    - **Estructura**: Trigger → Outcome → Recovery Path
+    - **Recovery obligatorio**: Cada rama fallida debe tener alternativa concreta
+    - **Patrones**:
+      ```markdown
+      1. **Los PJs investigan:** [desarrollo]
+         - *Recuperación:* Si no investigan, [alternativa concreta]
+      2. **Los PJs confrontan:** [desarrollo]
+         - *Recuperación:* Si evitan confrontación, [alternativa]
+      3. **Los PJs ignoran:** [desarrollo]
+         - *Recuperación:* Consecuencia diferida al Acto N+1
+      ```
+    - **Propagación cross-área**: Documentar cómo afecta otras áreas/actos
+
+16. **Cómo Dirigir esta Escena (5 subsecciones obligatorias)**: Cada área DEBE incluir:
+    ```markdown
+    1. **Preparación:** Qué necesita el DM antes (NPCs, mapas, stat blocks, handouts)
+    2. **Ritmo Sugerido:** Timing estimado (ej: 15 min exploración, 30 min combate)
+    3. **Señales de los Jugadores:** Cuándo están enganchados vs aburridos
+    4. **Cuándo Improvisar:** Dónde está OK desviarse (diálogos secundarios, descripciones menores)
+    5. **Cuándo ceñirse al Guión:** Elementos críticos NO negociables (muertes clave, pistas principales)
+    ```
+    - Cada subsección: 2-3 bullets de guía práctica
+    - **Audiencia**: DM-only, NO player-facing
+
+17. **Descripciones de NPC Mejoradas**: NPCs en áreas DEBEN tener:
+    - **5+ párrafos** de descripción total
+    - **Apariencia física**: 3-5 párrafos (rasgos distintivos, vestimenta, expresiones, complexión, postura)
+    - **Personalidad/voz**: 2-3 párrafos (mannerisms, speech patterns, quirks, actitud)
+    - **3-5 secretos** por NPC clave (1 trivial, 2 importantes, 1-2 críticos)
+    - **3-5 líneas de diálogo** sample para NPCs importantes
+    - **Ejemplo**:
+      ```markdown
+      **Apariencia:** Lord Blackthorn es un hombre de mediana edad con cabello plateado
+      cuidadosamente peinado. Sus ojos grises evalúan cada movimiento con precisión
+      quirúrgica. Viste ropas de terciopelo oscuro con bordados de hilos de oro...
+      
+      **Personalidad:** Habla con voz suave pero autoritaria, nunca eleva el tono.
+      Sus manos siempre están ocupadas: ajustando anillos, acariciando su bastón...
+      
+      **Secretos:**
+      - Hizo un pacto con una entidad oscura para salvar a su hija
+      - Sabe quién es el traidor en el consejo pero lo protege por chantaje
+      
+      **Diálogo:**
+      - "La cortesía es el escudo de los necios, pero vosotros parecéis más listos."
+      - "Algunos secretos son demasiado pesados para cargarlos solo."
+      ```
 
 ## Regla 13: Chapter Opener (Apertura del Capítulo)
 

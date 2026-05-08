@@ -4,7 +4,7 @@
 
 **D&D One-shot & Campaign Generator**
 
-[![Version v2.2.0](https://img.shields.io/badge/version-v2.2.0-purple?style=for-the-badge)](#)
+[![Version v2.3.0](https://img.shields.io/badge/version-v2.3.0-purple?style=for-the-badge)](#)
 
 [English](#english) · [Español](#español)
 
@@ -21,6 +21,12 @@ AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into 
 ### Features
 
 - **Full campaign generation** — Lore, acts, NPCs, monsters, encounters, and maps
+- **WotC Format Quality** (v2.3.0) — Enhanced immersion matching official module standards:
+  - **Boxed Text**: Immersive read-aloud narration (2-4 párrafos, 100-600 palabras, formato `>>`)
+  - **Character Hooks**: 2+ engagement opportunities per area tied to backgrounds/classes
+  - **Developments**: 3+ narrative branches per area with mandatory recovery paths
+  - **Running the Scene**: 5 subsections of DM guidance (Prep, Pacing, Player Signals, Improvisation, Script)
+  - **Enhanced NPCs**: 5+ paragraphs description, 3-5 secrets, 3-5 dialogue lines
 - **Interactive Q&A flow** — `/grimorio` asks questions first, then generates via parallel subagents
 - **Image generation** — Procedural SVG maps (free) + AI cover art/portraits via Pollinations.ai (FREE, no API key) or DALL-E 3 (optional)
 - **Multi-provider LLM** — Works with OpenAI, Anthropic, Groq, Ollama (via OpenCode / Claude Code)
