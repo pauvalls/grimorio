@@ -453,7 +453,9 @@ func TestValidationEngine_QuestRewardExistence_Missing(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	report, err := validator.ValidateQuest(ctx, "test-campaign", "quest-1", "Find the lost cat. Reward: Sword of Doom", nil)
 	if err != nil {
@@ -477,7 +479,9 @@ func TestValidationEngine_LevelEncounterBalance_Valid(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", LevelRange: "1-3", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	report, err := validator.validate(ctx, "test-campaign", domain.ContentProposal{
 		ID:      "enc-001",
@@ -503,7 +507,9 @@ func TestValidationEngine_LevelEncounterBalance_TooHard(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", LevelRange: "1-3", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	report, err := validator.validate(ctx, "test-campaign", domain.ContentProposal{
 		ID:      "enc-001",
@@ -539,7 +545,9 @@ func TestValidationEngine_LocationExistence_Valid(t *testing.T) {
 		Name: "The Rusty Nail",
 		Type: domain.EntityTypeLocation,
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	report, err := validator.validate(ctx, "test-campaign", domain.ContentProposal{
 		ID:      "act-1",
@@ -593,7 +601,9 @@ func TestValidationEngine_TimelineConsistency_Valid(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
 	doc.Timeline = append(doc.Timeline, domain.CanonTimelineEvent{
@@ -606,7 +616,9 @@ func TestValidationEngine_TimelineConsistency_Valid(t *testing.T) {
 		Timestamp:   "Year 5",
 		Description: "The rebellion starts",
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	report, err := validator.validate(ctx, "test-campaign", domain.ContentProposal{
 		ID:      "act-2",
@@ -660,7 +672,9 @@ func TestValidationEngine_PrerequisiteClueCheck_ClueRevealed(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Reveal the clue in state
 	state, _ := stateSvc.Load(ctx, "test-campaign")
@@ -671,7 +685,9 @@ func TestValidationEngine_PrerequisiteClueCheck_ClueRevealed(t *testing.T) {
 		SessionRevealed: 1,
 		IsCritical:      true,
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	report, err := validator.validate(ctx, "test-campaign", domain.ContentProposal{
 		ID:      "act-3",
@@ -722,7 +738,9 @@ func TestValidationEngine_CheckConsistency_FullScope(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", LevelRange: "1-3", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Setup canon with various entities
 	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
@@ -741,7 +759,9 @@ func TestValidationEngine_CheckConsistency_FullScope(t *testing.T) {
 		Domain:    "magic",
 		Statement: "Necromancy is banned",
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Setup state with matching mcguffin
 	state, _ := stateSvc.Load(ctx, "test-campaign")
@@ -752,7 +772,9 @@ func TestValidationEngine_CheckConsistency_FullScope(t *testing.T) {
 		SessionFound: 1,
 		IsMcGuffin:   true,
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	report, err := validator.CheckConsistency(ctx, "test-campaign", domain.ConsistencyScopeFull)
 	if err != nil {
@@ -825,7 +847,9 @@ func BenchmarkValidationEngine_ValidateAct(b *testing.B) {
 		Domain:    "magic",
 		Statement: "Arcane magic is banned in the city",
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		b.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Mark one NPC as dead
 	state, _ := stateSvc.Load(ctx, "bench-campaign")
@@ -835,7 +859,9 @@ func BenchmarkValidationEngine_ValidateAct(b *testing.B) {
 		Session: 1,
 		Cause:   "combat",
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		b.Fatalf("failed to save state: %v", err)
+	}
 
 	refs := []domain.EntityReference{
 		{EntityID: "npc-001", Location: "act_1"},

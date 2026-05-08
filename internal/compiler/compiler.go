@@ -681,8 +681,6 @@ var (
 	// v2 patterns
 	areaHeadingPattern     = regexp.MustCompile(`^[Áa]rea\s+(\d+):\s*(.+)$`)
 	areaRefPattern         = regexp.MustCompile(`(?i)\b[Áa]rea\s+(\d+)\b`)
-	npcRefPattern          = regexp.MustCompile(`\*\*([^*]{3,50})\*\*`)
-	bestiaryCreaturePattern = regexp.MustCompile(`(?i)##\s+(.+)$`)
 )
 
 // formatInline processes bold and italic markers, ensuring no word merging after </strong>

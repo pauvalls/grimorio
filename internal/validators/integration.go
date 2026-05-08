@@ -7,9 +7,6 @@ import (
 )
 
 var (
-	// Bold creature reference: **Creature Name**
-	boldCreatureRefPattern = regexp.MustCompile(`\*\*([^*]+?)\*\*`)
-
 	// Bestiary entry header: ## Creature Name
 	bestiaryHeaderPattern = regexp.MustCompile(`(?m)^#{2,3}\s+(.+)$`)
 
@@ -183,17 +180,6 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
-}
-
-func isLikelyCreature(name string, creatures []string) bool {
-	commonTerms := []string{"tesoro", "tesoros", "xp", "moneda", "gp", "sp", "área", "area", "conexiones", "secretos", "trampas", "desarrollo", "criaturas", "read-aloud", "descripción", "descripcion"}
-	nameLower := strings.ToLower(name)
-	for _, term := range commonTerms {
-		if nameLower == term {
-			return true
-		}
-	}
-	return contains(creatures, name)
 }
 
 // parseAreasIntegration extracts areas with more permissive matching (for integration tests)

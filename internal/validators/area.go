@@ -10,9 +10,6 @@ var (
 	// Area heading pattern: ### Área X: Name or ### Area X: Name (colon optional, name optional)
 	areaHeadingPattern = regexp.MustCompile(`(?m)^#{3,4}\s+[Áa]rea\s+(\d+)(?:\s*:\s*(.+))?$`)
 
-	// DC pattern: must be numeric like "DC 14" or "DC15"
-	dcPattern = regexp.MustCompile(`(?i)DC\s*\d+`)
-
 	// Relative DC pattern (invalid): "DC alto", "DC bajo", "DC high", "DC low"
 	relativeDCPattern = regexp.MustCompile(`(?i)DC\s+(alto|bajo|high|low|medio|moderado|dif[íi]cil)`)
 
@@ -25,8 +22,6 @@ var (
 
 	// Creature/NPC pattern
 	creaturePattern = regexp.MustCompile(`(?i)\*\*Criaturas:\*\*`)
-	npcPattern      = regexp.MustCompile(`(?i)\*\*NPCs?:\*\*`)
-	trapPattern     = regexp.MustCompile(`(?i)\*\*Secretos y Trampas:\*\*`)
 	interactivePattern = regexp.MustCompile(`(?i)(criaturas?|npcs?|tesoro|trampa|secreto|pista|puzzle)`)
 )
 

@@ -2,9 +2,7 @@ package services
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
-	"time"
 
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
@@ -136,32 +134,6 @@ var classArmor = map[string]struct {
 	"mago":       {BaseAC: 10, UseDEX: true, DEXMax: 99, Unarmored: false}, // no armor
 	"artifice":   {BaseAC: 14, UseDEX: true, DEXMax: 2, Unarmored: false},  // scale mail
 	"sangre":     {BaseAC: 12, UseDEX: true, DEXMax: 99, Unarmored: false}, // leather
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-// rollStat rolls 4d6 drop lowest for a stat
-func rollStat() int {
-	dice := make([]int, 4)
-	for i := 0; i < 4; i++ {
-		dice[i] = rand.Intn(6) + 1
-	}
-	// Find and drop lowest
-	minIdx := 0
-	for i := 1; i < 4; i++ {
-		if dice[i] < dice[minIdx] {
-			minIdx = i
-		}
-	}
-	sum := 0
-	for i := 0; i < 4; i++ {
-		if i != minIdx {
-			sum += dice[i]
-		}
-	}
-	return sum
 }
 
 // assignStats assigns the standard array (15,14,13,12,10,8) based on class priorities

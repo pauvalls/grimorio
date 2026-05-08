@@ -559,10 +559,14 @@ func BenchmarkCanonService_LoadCanon(b *testing.B) {
 			CanonState: domain.EntityStateAlive,
 		})
 	}
-	svc.SaveCanon(ctx, doc)
+	if err := svc.SaveCanon(ctx, doc); err != nil {
+		b.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Warm cache
-	svc.LoadCanon(ctx, brief.Name)
+	if _, err := svc.LoadCanon(ctx, brief.Name); err != nil {
+		b.Fatalf("failed to load canon: %v", err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
