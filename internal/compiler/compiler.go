@@ -193,14 +193,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 	}
 
 	// TOC
-	htmlParts = append(htmlParts, `<div class="toc" id="toc"><h2>Table of Contents</h2><ul>`)
-	for _, sec := range sections {
-		if _, err := os.Stat(sec.path); err == nil {
-			id := "sec-" + sanitizeID(sec.name)
-			htmlParts = append(htmlParts, fmt.Sprintf(`<li><a href="#%s">%s</a><span class="page-ref"></span></li>`, id, html.EscapeString(sec.name)))
-		}
-	}
-	htmlParts = append(htmlParts, `</ul></div>`)
+	htmlParts = append(htmlParts, c.generateTOC(sections))
 	htmlParts = append(htmlParts, `<div class="section-break"></div>`)
 
 	for _, sec := range sections {
@@ -221,7 +214,8 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 						continue
 					}
 					sectionID := "sec-" + sanitizeID(sec.name+"-"+f.Name())
-					htmlResult := markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages)
+					htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages)
+					htmlResult = postProcessHTML(htmlResult, c.CompilerVersion)
 					if strings.TrimSpace(htmlResult) != "" {
 						htmlParts = append(htmlParts, htmlResult)
 						hasContent = true
@@ -237,7 +231,8 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 				continue
 			}
 			sectionID := "sec-" + sanitizeID(sec.name)
-			htmlResult := markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages)
+			htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages)
+			htmlResult = postProcessHTML(htmlResult, c.CompilerVersion)
 			if strings.TrimSpace(htmlResult) != "" {
 				htmlParts = append(htmlParts, htmlResult)
 			}
@@ -270,6 +265,80 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 
 	htmlParts = append(htmlParts, "</body></html>")
 	return htmlParts, nil
+}
+
+// generateTOC creates a hierarchical table of contents
+func (c *Compiler) generateTOC(sections []struct {
+	name  string
+	path  string
+	isDir bool
+}) string {
+	var b strings.Builder
+	b.WriteString(`<div class="toc" id="toc"><h2>Table of Contents</h2><ul>`)
+
+	for _, sec := range sections {
+		if _, err := os.Stat(sec.path); err != nil {
+			continue
+		}
+
+		id := "sec-" + sanitizeID(sec.name)
+		b.WriteString(fmt.Sprintf(`<li><a href="#%s">%s</a><span class="page-ref"></span></li>`, id, html.EscapeString(sec.name)))
+
+		// In v2, extract areas from act files for hierarchical TOC
+		if c.CompilerVersion == 2 && sec.isDir && strings.Contains(strings.ToLower(sec.name), "act") {
+			areas := c.extractAreasFromDir(sec.path)
+			if len(areas) > 0 {
+				b.WriteString(`<ul class="toc-areas">`)
+				for _, area := range areas {
+					b.WriteString(fmt.Sprintf(`<li><a href="#%s">%s</a><span class="page-ref"></span></li>`, area.ID, html.EscapeString(area.Name)))
+				}
+				b.WriteString(`</ul>`)
+			}
+		}
+	}
+
+	b.WriteString(`</ul></div>`)
+	return b.String()
+}
+
+type tocArea struct {
+	ID   string
+	Name string
+}
+
+func (c *Compiler) extractAreasFromDir(dirPath string) []tocArea {
+	var areas []tocArea
+	files, err := os.ReadDir(dirPath)
+	if err != nil {
+		return areas
+	}
+
+	areaPattern := regexp.MustCompile(`(?m)^#{3,4}\s+[Áa]rea\s+(\d+)(?:\s*:\s*(.+))?$`)
+
+	for _, f := range files {
+		if !strings.HasSuffix(f.Name(), ".md") {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(dirPath, f.Name()))
+		if err != nil {
+			continue
+		}
+
+		matches := areaPattern.FindAllStringSubmatch(string(content), -1)
+		for _, m := range matches {
+			num := m[1]
+			name := "Área " + num
+			if len(m) > 2 && m[2] != "" {
+				name = name + ": " + strings.TrimSpace(m[2])
+			}
+			areas = append(areas, tocArea{
+				ID:   "area-" + num,
+				Name: name,
+			})
+		}
+	}
+
+	return areas
 }
 
 // generateFactionTracker reads the reputation matrix and generates an HTML appendix.
@@ -316,7 +385,7 @@ func (c *Compiler) generateSessionZero() string {
 		return "" // no session zero, skip
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-session-zero", new(int), c.seenImages)
+	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-session-zero", new(int), c.seenImages, c.CompilerVersion)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -608,6 +677,12 @@ var (
 	blockquoteRe   = regexp.MustCompile(`^>\s*(.*)`)
 	codeAssetRegex = regexp.MustCompile("`assets/([\\w\\-]+\\.(svg|png|jpg|jpeg|gif|webp))`")
 	sceneRegex     = regexp.MustCompile(`\[SCENE:\s*(.*?)\]`)
+
+	// v2 patterns
+	areaHeadingPattern     = regexp.MustCompile(`^[Áa]rea\s+(\d+):\s*(.+)$`)
+	areaRefPattern         = regexp.MustCompile(`(?i)\b[Áa]rea\s+(\d+)\b`)
+	npcRefPattern          = regexp.MustCompile(`\*\*([^*]{3,50})\*\*`)
+	bestiaryCreaturePattern = regexp.MustCompile(`(?i)##\s+(.+)$`)
 )
 
 // formatInline processes bold and italic markers, ensuring no word merging after </strong>
@@ -644,7 +719,11 @@ func processInlineText(text string, baseDir string, seenImages map[string]bool) 
 	return text
 }
 
-func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool) string {
+func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool) string {
+	return markdownToHTMLWithID(md, baseDir, sectionID, headingCounter, seenImages, c.CompilerVersion)
+}
+
+func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int) string {
 	lines := strings.Split(md, "\n")
 	var out []string
 	inList := false
@@ -887,6 +966,19 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			text := strings.TrimPrefix(trimmed, "### ")
 			*headingCounter++
 			id := sectionID + "-h" + strconv.Itoa(*headingCounter)
+
+			// v2: Area number highlighting and cross-reference IDs
+			if compilerVersion == 2 {
+				if areaMatch := areaHeadingPattern.FindStringSubmatch(text); areaMatch != nil {
+					areaNum := areaMatch[1]
+					areaName := strings.TrimSpace(areaMatch[2])
+					areaID := "area-" + areaNum
+					rendered := fmt.Sprintf(`<span class="area-number">Área %s</span> %s`, areaNum, html.EscapeString(areaName))
+					out = append(out, fmt.Sprintf(`<h3 id="%s">%s</h3>`, areaID, rendered))
+					continue
+				}
+			}
+
 			out = append(out, fmt.Sprintf(`<h3 id="%s">%s</h3>`, id, html.EscapeString(text)))
 		} else if strings.HasPrefix(trimmed, "## ") {
 			flushParagraph()
@@ -1008,7 +1100,26 @@ func parseTableAlign(row string) []string {
 func markdownToHTML(md string, baseDir string) string {
 	counter := 0
 	seen := make(map[string]bool)
-	return markdownToHTMLWithID(md, baseDir, "content", &counter, seen)
+	return markdownToHTMLWithID(md, baseDir, "content", &counter, seen, 0)
+}
+
+// postProcessHTML applies v2 cross-reference links and other transformations
+func postProcessHTML(html string, compilerVersion int) string {
+	if compilerVersion != 2 {
+		return html
+	}
+
+	// Convert area references to links: "Área 5" → "<a href="#area-5">Área 5</a>"
+	html = areaRefPattern.ReplaceAllStringFunc(html, func(match string) string {
+		m := areaRefPattern.FindStringSubmatch(match)
+		if m == nil {
+			return match
+		}
+		areaNum := m[1]
+		return fmt.Sprintf(`<a href="#area-%s">%s</a>`, areaNum, match)
+	})
+
+	return html
 }
 
 func processImages(text string, baseDir string, seenImages map[string]bool) string {

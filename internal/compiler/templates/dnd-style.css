@@ -257,17 +257,103 @@ tbody tr:nth-child(odd) {
 .read-aloud {
   background: #e8e4dc;
   border-left: 4px solid #5a3d2b;
+  border-top: 1px solid #c9ad6a;
+  border-bottom: 1px solid #c9ad6a;
+  border-right: 1px solid #c9ad6a;
   padding: 10px 12px;
   margin: 10px 0;
   font-style: italic;
   column-break-inside: avoid;
+  box-shadow: 2px 2px 4px rgba(0,0,0,0.1);
 }
 
 .read-aloud::before {
-  content: "";
+  content: "Read-Aloud";
   display: block;
   font-weight: bold;
+  font-family: 'Cinzel', serif;
+  font-size: 9pt;
+  color: #5a3d2b;
   margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Area number highlighting */
+.area-number {
+  font-family: 'Cinzel', serif;
+  font-size: 14pt;
+  font-weight: 700;
+  color: #8b0000;
+  background: #fdf1dc;
+  border: 2px solid #c9ad6a;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-right: 8px;
+}
+
+h3 .area-number {
+  display: inline-block;
+}
+
+/* Stat block borders - WotC style */
+.stat-block {
+  background: #fdf1dc;
+  border: 2px solid #c9ad6a;
+  border-top: 4px solid #c9ad6a;
+  border-bottom: 4px solid #c9ad6a;
+  padding: 12px;
+  margin: 12px 0;
+  column-break-inside: avoid;
+  box-shadow: 3px 3px 6px rgba(0,0,0,0.15);
+}
+
+.stat-block h3 {
+  color: #5a3d2b;
+  border-bottom: 1px solid #c9ad6a;
+  margin-top: 0;
+  font-size: 12pt;
+}
+
+/* Handout page styles */
+.handout-page {
+  column-span: all;
+  page-break-before: always;
+  background: #fff;
+  border: 2px dashed #c9ad6a;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.handout-page h1 {
+  text-align: center;
+  color: #8b0000;
+  border-bottom: 3px double #c9ad6a;
+  padding-bottom: 10px;
+}
+
+.handout-note {
+  text-align: center;
+  font-style: italic;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.handout-section {
+  page-break-inside: avoid;
+  margin: 15px 0;
+  padding: 10px;
+  border: 1px solid #c9ad6a;
+  background: #faf8f3;
+}
+
+.handout-section h2 {
+  font-size: 11pt;
+  margin-top: 0;
+}
+
+.handout-map {
+  text-align: center;
 }
 
 .map-description {

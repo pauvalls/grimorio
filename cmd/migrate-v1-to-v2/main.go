@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -136,6 +138,11 @@ func migrateCampaign(campaignDir, campaignName string) error {
 
 	now := time.Now()
 
+	// Convert scenes to numbered areas (best-effort)
+	if err := convertScenesToAreas(campaignDir); err != nil {
+		fmt.Printf("    [WARN] %s: scene→area conversion had issues: %v\n", campaignName, err)
+	}
+
 	// Create canon document
 	canon := &domain.CanonDocument{
 		SchemaVersion: domain.SchemaVersionV2,
@@ -152,9 +159,9 @@ func migrateCampaign(campaignDir, campaignName string) error {
 				CreatedAt: now,
 			},
 		},
-		Entities:   []domain.CanonEntity{},
-		Timeline:   []domain.CanonTimelineEvent{},
-		Rules:      []domain.CanonRule{},
+		Entities:      []domain.CanonEntity{},
+		Timeline:      []domain.CanonTimelineEvent{},
+		Rules:         []domain.CanonRule{},
 		Relationships: []domain.CanonRelationship{},
 	}
 
@@ -233,6 +240,60 @@ func migrateCampaign(campaignDir, campaignName string) error {
 	}
 	if err := os.WriteFile(statePath, stateData, 0644); err != nil {
 		return fmt.Errorf("failed to write narrative_state.json: %w", err)
+	}
+
+	return nil
+}
+
+// convertScenesToAreas best-effort converts v1 scene-based acts to v2 area-based format.
+// It renames scene headers to area headers and adds required v2 sections.
+func convertScenesToAreas(campaignDir string) error {
+	actsDir := filepath.Join(campaignDir, "acts")
+	entries, err := os.ReadDir(actsDir)
+	if err != nil {
+		return nil // no acts dir, nothing to convert
+	}
+
+	scenePattern := regexp.MustCompile(`(?mi)^#{3,4}\s+(?:Scene|Escena|Sección)\s*(\d*)[:\s]*(.+)$`)
+
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+
+		path := filepath.Join(actsDir, entry.Name())
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+
+		content := string(data)
+		areaNum := 1
+		converted := scenePattern.ReplaceAllStringFunc(content, func(match string) string {
+			m := scenePattern.FindStringSubmatch(match)
+			if m == nil {
+				return match
+			}
+			name := strings.TrimSpace(m[2])
+			result := fmt.Sprintf("### Área %d: %s", areaNum, name)
+			areaNum++
+			return result
+		})
+
+		// If no scenes were found, don't modify
+		if converted == content {
+			continue
+		}
+
+		// Add v2 required sections if missing
+		if !strings.Contains(converted, "**Tesoro:**") {
+			// Best-effort: we can't auto-generate treasure, but we mark it
+			converted += "\n\n**Nota de Migración:** Revisar tesoros y añadir XP.\n"
+		}
+
+		if err := os.WriteFile(path, []byte(converted), 0644); err != nil {
+			return fmt.Errorf("failed to write converted act %s: %w", entry.Name(), err)
+		}
 	}
 
 	return nil
