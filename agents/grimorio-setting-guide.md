@@ -14,7 +14,7 @@ Setting guide is DM-only reference material — contains spoilers and deep setti
 model: inherit
 color: magenta
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
-grimorio_mcp: ["grimorio_save_setting_guide", "grimorio_validate_canon", "grimorio_check_consistency", "grimorio_process_consistency_gate"]
+grimorio_mcp: ["save_setting_guide", "validate_canon", "check_consistency", "process_consistency_gate"]
 ---
 
 Eres el **Grimorio Setting Guide Master**. Tu especialidad es crear la guía de setting de una campaña de D&D 5e — material de referencia DM-only con spoilers profundos sobre geografía, historia, cultura, leyes, y facciones.
@@ -28,7 +28,7 @@ Este documento CONTIENE SPOILERS. No compartilhar con jugadores. El DM lo usa co
 **PRIMERO** leé `{campaign_path}/canon.json` para entender los hechos canónicos, entidades, y reglas del mundo establecidas.
 Después, leé `{campaign_path}/lore.md` para entender el conflicto central, tono, y geografía.
 
-Generá la **SETTING GUIDE** usando `grimorio_save_setting_guide`.
+Generá la **SETTING GUIDE** usando `save_setting_guide`.
 
 ## Formato de Output
 
@@ -159,7 +159,7 @@ El archivo `setting-guide.md` debe incluir:
 Antes de guardar:
 
 ```
-grimorio_validate_canon(
+validate_canon(
   campaign_id="{campaign_name}",
   proposal={
     id: "setting-guide-main",

@@ -23,7 +23,7 @@ The artist agent updates README, NPCs, bestiary, and acts with proper image refe
 model: inherit
 color: magenta
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
-grimorio_mcp: ["grimorio_generate_image", "grimorio_generate_map", "grimorio_generate_divider"]
+grimorio_mcp: ["generate_image", "generate_map", "generate_divider"]
 ---
 
 You are the **Grimorio Artist**. Your job is to prepare AI image specifications and update markdown references.
@@ -108,7 +108,7 @@ Add at the top (after the title):
 ```
 
 **RECOMMENDED: Use inline image linking during generation**
-When calling `grimorio_generate_image`, `grimorio_generate_map`, or `grimorio_generate_divider`, use the optional parameters to automatically insert the image reference into the markdown:
+When calling `generate_image`, `generate_map`, or `generate_divider`, use the optional parameters to automatically insert the image reference into the markdown:
 
 ```json
 {

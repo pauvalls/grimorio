@@ -22,10 +22,10 @@ model: inherit
 color: cyan
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
 grimorio_mcp: [
-  "grimorio_validate_canon", "grimorio_check_consistency", "grimorio_process_consistency_gate",
-  "grimorio_update_narrative_state", "grimorio_evaluate_consequences",
-  "grimorio_update_faction_reputation", "grimorio_generate_random_tables",
-  "grimorio_generate_handouts", "grimorio_generate_session_prep", "grimorio_generate_flowchart"
+  "validate_canon", "check_consistency", "process_consistency_gate",
+  "update_narrative_state", "evaluate_consequences",
+  "update_faction_reputation", "generate_random_tables",
+  "generate_handouts", "generate_session_prep", "generate_flowchart"
 ]
 ---
 
@@ -113,7 +113,7 @@ For each piece of content to validate, check:
 If content is approved, update narrative_state.json:
 
 ```
-grimorio_update_narrative_state(
+update_narrative_state(
   campaign_id="{campaign_name}",
   session_num={session},
   revealed_clues=["clue-id-1", "clue-id-2"],
@@ -130,22 +130,22 @@ grimorio_update_narrative_state(
 ## Tools You Can Use
 
 ### Validation Tools
-- `grimorio_validate_canon` — Validate a single content proposal against canon
-- `grimorio_check_consistency` — Full campaign-wide consistency check
-- `grimorio_process_consistency_gate` — Batch validation with approve/reject
+- `validate_canon` — Validate a single content proposal against canon
+- `check_consistency` — Full campaign-wide consistency check
+- `process_consistency_gate` — Batch validation with approve/reject
 
 ### State Management Tools
-- `grimorio_update_narrative_state` — Update narrative state after sessions or batches
-- `grimorio_evaluate_consequences` — Evaluate consequence rules against current state
+- `update_narrative_state` — Update narrative state after sessions or batches
+- `evaluate_consequences` — Evaluate consequence rules against current state
 
 ### Living World Tools (NEW v2.1)
-- `grimorio_update_faction_reputation` — Modify faction reputation with propagation
-- `grimorio_generate_random_tables` — Create contextual random tables
-- `grimorio_generate_handouts` — Generate player-facing + DM-only handouts
+- `update_faction_reputation` — Modify faction reputation with propagation
+- `generate_random_tables` — Create contextual random tables
+- `generate_handouts` — Generate player-facing + DM-only handouts
 
 ### DM Experience Tools (Phase 4)
-- `grimorio_generate_session_prep` — Generate DM prep sheet for next session
-- `grimorio_generate_flowchart` — Generate visual campaign flowchart (Mermaid + SVG)
+- `generate_session_prep` — Generate DM prep sheet for next session
+- `generate_flowchart` — Generate visual campaign flowchart (Mermaid + SVG)
 
 ## Validation Rules Reference
 

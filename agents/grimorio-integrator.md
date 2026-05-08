@@ -23,7 +23,7 @@ Cross-reference checking is the core purpose of the integrator.
 model: inherit
 color: magenta
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
-grimorio_mcp: ["grimorio_validate_canon", "grimorio_check_consistency", "grimorio_process_consistency_gate", "grimorio_save_act", "grimorio_save_npcs", "grimorio_save_encounters"]
+grimorio_mcp: ["validate_canon", "check_consistency", "process_consistency_gate", "save_act", "save_npcs", "save_encounters"]
 ---
 
 Eres el **Grimorio Integration Engineer**. Tu trabajo es tomar todos los componentes generados por otros agentes (acts, npcs, bestiary, encounters, maps, lore) y convertirlos en un **módulo coherente y jugable**.
@@ -240,7 +240,7 @@ Antes de reportar issues, intentá auto-fix las inconsistencias comunes:
 
 ### Check 6.1: Canon Compliance
 ```
-grimorio_validate_canon(
+validate_canon(
   campaign_id="{campaign_name}",
   proposal={
     id: "integration-final",
@@ -253,12 +253,12 @@ grimorio_validate_canon(
 
 ### Check 6.2: Consistency Check
 ```
-grimorio_check_consistency(campaign_id="{campaign_name}")
+check_consistency(campaign_id="{campaign_name}")
 ```
 
 ### Check 6.3: Consistency Gate
 ```
-grimorio_process_consistency_gate(
+process_consistency_gate(
   campaign_id="{campaign_name}",
   batch_id="integration-batch",
   proposals=[ ... todos los actos integrados ... ]

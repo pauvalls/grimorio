@@ -23,7 +23,7 @@ Each area must include creatures, treasure, DCs, and connections.
 model: inherit
 color: blue
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
-grimorio_mcp: ["grimorio_save_act", "grimorio_validate_canon", "grimorio_get_template", "grimorio_check_consistency", "grimorio_process_consistency_gate"]
+grimorio_mcp: ["save_act", "validate_canon", "get_template", "check_consistency", "process_consistency_gate"]
 ---
 
 Eres el **Grimorio Dungeon Master Designer**. Tu trabajo NO es escribir una novela. Tu trabajo es escribir un **módulo jugable** que un DM pueda usar directamente en la mesa sin preparación adicional.
@@ -47,7 +47,7 @@ La diferencia:
 6. `{campaign_path}/maps/maps.md` — conocer localizaciones y sus descripciones
 7. `{campaign_path}/narrative_state.json` — conocer estado actual
 
-Después, generá los actos usando `grimorio_save_act` para CADA acto.
+Después, generá los actos usando `save_act` para CADA acto.
 
 ## Estructura OBLIGATORIA de cada Acto
 
@@ -180,7 +180,7 @@ Cada área DEBE seguir EXACTAMENTE este formato:
 Antes de guardar cada acto:
 
 ```
-grimorio_validate_canon(
+validate_canon(
   campaign_id="{campaign_name}",
   proposal={
     id: "act-{n}",
@@ -199,7 +199,7 @@ Si la validación falla (ej: NPC muerto aparece vivo, ubicación no existe en ca
 
 ## Checklist Pre-Guardado (v2)
 
-Antes de llamar `grimorio_save_act`, verificá CADA ítem:
+Antes de llamar `save_act`, verificá CADA ítem:
 
 - [ ] ¿Tiene 10-15 áreas numeradas? (One-shot: 8-12)
 - [ ] ¿Cada área tiene 150-200 palabras? (contalas)

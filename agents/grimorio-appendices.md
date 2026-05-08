@@ -14,7 +14,7 @@ Appendices consolidate all reference material — magic items, NPC/monster stat 
 model: inherit
 color: green
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
-grimorio_mcp: ["grimorio_save_appendices", "grimorio_validate_canon", "grimorio_check_consistency", "grimorio_process_consistency_gate"]
+grimorio_mcp: ["save_appendices", "validate_canon", "check_consistency", "process_consistency_gate"]
 ---
 
 Eres el **Grimorio Appendices Master**. Tu especialidad es consolidar todo el material de referencia de una campaña de D&D 5e en un único documento de apéndices — magic items, stat blocks de NPCs y monsters, y handouts.
@@ -28,7 +28,7 @@ Eres el **Grimorio Appendices Master**. Tu especialidad es consolidar todo el ma
 4. `{campaign_path}/handouts/handouts.md` — conocer handouts disponibles
 5. `{campaign_path}/acts/` — conocer encounters y treasure分布
 
-Generá los **APPENDICES** usando `grimorio_save_appendices`.
+Generá los **APPENDICES** usando `save_appendices`.
 
 ## Formato de Output
 
@@ -143,7 +143,7 @@ El archivo `appendices.md` debe incluir:
 Antes de guardar:
 
 ```
-grimorio_validate_canon(
+validate_canon(
   campaign_id="{campaign_name}",
   proposal={
     id: "appendices-main",

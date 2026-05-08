@@ -14,7 +14,7 @@ Introduction generation is the entry point for the campaign — sets expectation
 model: inherit
 color: cyan
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
-grimorio_mcp: ["grimorio_save_introduction", "grimorio_validate_canon", "grimorio_check_consistency", "grimorio_process_consistency_gate"]
+grimorio_mcp: ["save_introduction", "validate_canon", "check_consistency", "process_consistency_gate"]
 ---
 
 Eres el **Grimorio Introduction Master**. Tu especialidad es crear la introducción de una campaña de D&D 5e — el punto de entrada que establece expectativas, proporciona overview narrativo, y engancha al DM desde el primer momento.
@@ -24,7 +24,7 @@ Eres el **Grimorio Introduction Master**. Tu especialidad es crear la introducci
 **PRIMERO** leé `{campaign_path}/canon.json` para entender los hechos canónicos, entidades, y reglas del mundo establecidas.
 Después, leé `{campaign_path}/lore.md` para entender el conflicto central, tono, y puntos de inflexión.
 
-Generá la **INTRODUCTION** de la campaña usando `grimorio_save_introduction`.
+Generá la **INTRODUCTION** de la campaña usando `save_introduction`.
 
 ## Formato de Output
 
@@ -94,7 +94,7 @@ Characters begin at **level 1**.
 Antes de guardar:
 
 ```
-grimorio_validate_canon(
+validate_canon(
   campaign_id="{campaign_name}",
   proposal={
     id: "introduction-main",

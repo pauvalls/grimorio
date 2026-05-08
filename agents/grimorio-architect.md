@@ -33,13 +33,13 @@ model: inherit
 color: magenta
 tools: ["Read", "Write", "Bash", "Grep", "delegate", "delegation_list", "delegation_read"]
 grimorio_mcp: [
-  "grimorio_generate_image", "grimorio_generate_map", "grimorio_generate_divider", "grimorio_compile_pdf",
-  "grimorio_generate_adventure_bible", "grimorio_validate_canon", "grimorio_update_narrative_state",
-  "grimorio_check_consistency", "grimorio_process_consistency_gate",
-  "grimorio_update_faction_reputation", "grimorio_generate_random_tables", "grimorio_generate_handouts",
-  "grimorio_evaluate_consequences",
-  "grimorio_generate_session_prep", "grimorio_generate_flowchart",
-  "grimorio_save_introduction", "grimorio_save_setting_guide", "grimorio_save_appendices"
+  "generate_image", "generate_map", "generate_divider", "compile_pdf",
+  "generate_adventure_bible", "validate_canon", "update_narrative_state",
+  "check_consistency", "process_consistency_gate",
+  "update_faction_reputation", "generate_random_tables", "generate_handouts",
+  "evaluate_consequences",
+  "generate_session_prep", "generate_flowchart",
+  "save_introduction", "save_setting_guide", "save_appendices"
 ]
 ---
 
@@ -68,14 +68,14 @@ Ask the user these questions ONE AT A TIME (interactively):
 5. Duration? (one-shot, 3-5 sessions, long campaign)
 
 ### Phase 2: Create Campaign Structure
-Use `grimorio_create_campaign` with the gathered parameters.
+Use `create_campaign` with the gathered parameters.
 Take note of the `campaign_path` returned.
 
 ### Phase 2b: Generate Adventure Bible (Canon)
 **CRITICAL:** Before any content is created, establish the canonical facts:
 
 ```
-grimorio_generate_adventure_bible(
+generate_adventure_bible(
   campaign_id="{campaign_name}",
   name="{campaign_title}",
   level_range="{level_range}",
@@ -219,7 +219,7 @@ Batch 2 approved. Update state to reflect:
 - Clues revealed in lore
 - Initial world state established
 
-Use grimorio_update_narrative_state with session_num=0.")
+Use update_narrative_state with session_num=0.")
 ```
 
 ### Phase 4e: Report Batch 2
@@ -327,10 +327,10 @@ Tiempo estimado: unos minutos...
 Read file: {campaign_path}/assets/batch-spec.json
 ```
 
-3. **Generate images ONE BY ONE using grimorio_generate_image:**
+3. **Generate images ONE BY ONE using generate_image:**
 ```
 FOR each image in batch-spec.json:
-  grimorio_generate_image(campaign="{campaign_name}", filename="image-filename", prompt="...", type="...")
+  generate_image(campaign="{campaign_name}", filename="image-filename", prompt="...", type="...")
   // Wait for completion (automatic 3s delay between each)
 ```
 
@@ -427,9 +427,9 @@ If only warnings:
 Uniendo todo el contenido en un solo documento...
 ```
 
-2. **Compile using grimorio_compile_pdf:**
+2. **Compile using compile_pdf:**
 ```
-grimorio_compile_pdf(campaign="{campaign_name}", title="{campaign_title}")
+compile_pdf(campaign="{campaign_name}", title="{campaign_title}")
 ```
 
 3. **Verify PDF exists:**
