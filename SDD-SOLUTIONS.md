@@ -783,3 +783,182 @@ AMBAS capas deben pasar para considerar la campaña "APPROVED".
 
 **TL;DR**: El narrative custodian actual SOLO valida canon (entidades, timeline). Necesita validación MANUAL o CODE FIX para validar formato WotC (Developments, Character Hooks, Boxed Text, etc.). Agregar commands de verificación grep al workflow del architect.
 
+
+---
+
+## 📁 Paths Incorrectos: /home/pau/Grimorio/campaigns/ vs /home/pau/campaigns/
+
+### Problema
+Los agentes grimorio están guardando contenido en `/home/pau/Grimorio/campaigns/` cuando deberían usar `/home/pau/campaigns/`.
+
+### Síntomas
+- `save_areas` guarda en `/home/pau/Grimorio/campaigns/{campaign}/areas/`
+- `save_npcs` guarda en `/home/pau/Grimorio/campaigns/{campaign}/npcs/`
+- `save_bestiary` guarda en `/home/pau/Grimorio/campaigns/{campaign}/bestiary/`
+- **Debería guardar en:** `/home/pau/campaigns/{campaign}/`
+
+### Causa Raíz
+
+**Working Directory Incorrecto:**
+- El working directory del proyecto es `/home/pau/Grimorio/`
+- Los agents usan paths relativos como `campaigns/{campaign}/areas/`
+- MCP tools resuelven paths relativos desde el working directory
+- Resultado: `/home/pau/Grimorio/campaigns/` en vez de `/home/pau/campaigns/`
+
+**Ejemplo:**
+```bash
+# Working directory actual
+pwd
+# /home/pau/Grimorio/
+
+# Agente ejecuta:
+save_areas(campaign="la-hoja-de-vlad", content="...", chapter_number="1")
+
+# MCP tool resuelve path relativo:
+# /home/pau/Grimorio/campaigns/la-hoja-de-vlad/areas/chapter_01.md ❌
+
+# Path correcto debería ser:
+# /home/pau/campaigns/la-hoja-de-vlad/areas/chapter_01.md ✅
+```
+
+### Solución SDD
+
+#### 1. Usar Paths Absolutos en Agentes (RECOMENDADO)
+
+Actualizar TODOS los agents para que usen paths absolutos:
+
+**Antes:**
+```markdown
+**PRIMERO** leé `{campaign_path}/canon.json`
+```
+
+**Después:**
+```markdown
+**PRIMERO** leé `/home/pau/campaigns/{campaign_name}/canon.json`
+```
+
+**Ejemplo completo para grimorio-areas.md:**
+```markdown
+## CRITICAL: Use Correct Campaign Path
+
+**ALWAYS use absolute paths:**
+- ✅ `/home/pau/campaigns/{campaign_name}/areas/`
+- ❌ `campaigns/{campaign_name}/areas/` (resuelve a /home/pau/Grimorio/campaigns/)
+
+**When calling MCP tools:**
+```python
+save_areas(
+  campaign="la-hoja-de-vlad",
+  content=content,
+  chapter_number=1
+)
+# MCP tool internally resolves to:
+# /home/pau/campaigns/la-hoja-de-vlad/areas/chapter_01.md ✅
+```
+```
+
+#### 2. Configurar Variable de Entorno (ALTERNATIVA)
+
+Agregar `.env` o `.opencode` en el root del proyecto:
+
+```bash
+# /home/pau/Grimorio/.env
+GRIMORIO_CAMPAIGNS_ROOT=/home/pau/campaigns
+```
+
+Y actualizar los MCP tools para leer esta variable:
+
+```go
+// internal/mcp/grimorio.go
+func get_campaigns_root() string {
+    if env := os.Getenv("GRIMORIO_CAMPAIGNS_ROOT"); env != "" {
+        return env
+    }
+    return "/home/pau/campaigns" // default
+}
+```
+
+#### 3. Validación Pre-Save (DEFENSIVO)
+
+Agregar validación en cada MCP tool antes de guardar:
+
+```go
+func (s *GrimorioService) SaveAreas(ctx context.Context, campaign string, content string, chapter int) error {
+    // Validate campaign path exists
+    expectedPath := fmt.Sprintf("/home/pau/campaigns/%s", campaign)
+    if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+        return fmt.Errorf("campaign directory not found at %s - did you mean /home/pau/campaigns/ instead of /home/pau/Grimorio/campaigns/?", expectedPath)
+    }
+    
+    // Proceed with save...
+}
+```
+
+### Comandos de Verificación
+
+```bash
+# Verificar dónde están las campañas
+ls -la /home/pau/campaigns/
+ls -la /home/pau/Grimorio/campaigns/
+
+# Si están en el lugar equivocado, mover:
+mv /home/pau/Grimorio/campaigns/la-hoja-de-vlad /home/pau/campaigns/
+
+# Verificar estructura correcta
+tree /home/pau/campaigns/la-hoja-de-vlad/
+# Debería mostrar:
+# ├── areas/
+# ├── npcs/
+# ├── bestiary/
+# ├── encounters/
+# ├── characters/
+# ├── quests/
+# ├── lore.md
+# └── canon.json
+```
+
+### Checklist de Paths Correctos
+
+**Antes de ejecutar cualquier agente grimorio:**
+
+| Check | Comando | Resultado Esperado |
+|-------|---------|-------------------|
+| Campaign existe | `ls /home/pau/campaigns/{campaign}/` | ✅ Directory exists |
+| NO en Grimorio | `ls /home/pau/Grimorio/campaigns/{campaign}/` | ❌ No such file |
+| Areas path | `ls /home/pau/campaigns/{campaign}/areas/` | ✅ Chapter files |
+| NPCs path | `ls /home/pau/campaigns/{campaign}/npcs/` | ✅ npc_and_factions.md |
+| Bestiary path | `ls /home/pau/campaigns/{campaign}/bestiary/` | ✅ bestiary.md |
+
+### Migración de Datos (Si ya se generó en lugar equivocado)
+
+```bash
+# 1. Verificar qué hay en el lugar incorrecto
+ls -la /home/pau/Grimorio/campaigns/
+
+# 2. Mover al lugar correcto
+mv /home/pau/Grimorio/campaigns/la-hoja-de-vlad /home/pau/campaigns/
+
+# 3. Verificar estructura
+tree /home/pau/campaigns/la-hoja-de-vlad/
+
+# 4. Eliminar directorio vacío
+rmdir /home/pau/Grimorio/campaigns/
+```
+
+### Prevención Futura
+
+**En el prompt de cada sub-agente, agregar:**
+
+```markdown
+## CRITICAL: Campaign Path
+
+**ALWAYS use:** `/home/pau/campaigns/{campaign_name}/`
+**NEVER use:** `campaigns/{campaign_name}/` (relative path)
+
+This is because the working directory is `/home/pau/Grimorio/` and relative paths will resolve incorrectly.
+```
+
+---
+
+**TL;DR:** Working directory es `/home/pau/Grimorio/` pero las campañas viven en `/home/pau/campaigns/`. Usar SIEMPRE paths absolutos en agents y MCP tools. Si se generó en el lugar equivocado, mover manualmente y validar estructura.
+
