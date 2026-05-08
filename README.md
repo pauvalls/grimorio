@@ -1028,7 +1028,7 @@ Fase 3-13: Orquestación completa por grimorio-architect
 │  ├─ grimorio-bestiary        │  │  + tracking estado)      │           │
 │  ├─ grimorio-encounters      │  └──────────────────────────┘           │
 │  ├─ grimorio-maps            │          Skill: dnd-5e-srd              │
-│  ├─ grimorio-acts            │          (Contexto reglas D&D 5e)       │
+│  ├─ grimorio-areas           │          (Contexto reglas D&D 5e)       │
 │  ├─ grimorio-quests          │                                          │
 │  └─ grimorio-characters      │                                          │
 │                              ▼                                          │
@@ -1106,7 +1106,7 @@ grimorio-architect (Orquestador Principal)
     │
     ├─ Batch 3 (PARALELO delegate)
     │   ├─ grimorio-cartographer → Mapas SVG + divisores
-    │   └─ grimorio-acts         → Actos narrativos
+    │   └─ grimorio-areas         → Áreas jugables numeradas (WotC)
     │   → grimorio-narrative-custodian → Validación coherencia
     │
     ├─ Fase 6: grimorio-artist   → Especificación batch imágenes
@@ -1145,7 +1145,7 @@ grimorio-architect (Orquestador Principal)
     │   ├─ grimorio-bestiary.md            # Bestiario y stat blocks
     │   ├─ grimorio-encounters.md          # Encuentros y desafíos
     │   ├─ grimorio-maps.md                # Descripciones de mapas
-    │   ├─ grimorio-acts.md                # Actos narrativos
+    │   ├─ grimorio-areas.md               # Áreas jugables numeradas
     │   ├─ grimorio-quests.md              # Misiones personales
     │   └─ grimorio-characters.md          # Personajes pre-generados
     └─ skills/

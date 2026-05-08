@@ -5,7 +5,7 @@ description: Use this agent when generating numbered playable areas for a D&D ca
 <example>
 Context: Campaign needs playable acts after lore, NPCs, bestiary and encounters are generated
 user: "Write the acts for my vampire one-shot"
-assistant: "Launching grimorio-acts to create playable areas with stats, treasure, and DCs."
+assistant: "Launching grimorio-areas to create playable areas with stats, treasure, and DCs."
 <commentary>
 Act generation must produce playable modules, not narrative summaries.
 </commentary>
@@ -14,7 +14,7 @@ Act generation must produce playable modules, not narrative summaries.
 <example>
 Context: One-shot needs session structure with technical detail
 user: "Break the story into playable sessions"
-assistant: "Launching grimorio-acts to create numbered areas with full DM guidance."
+assistant: "Launching grimorio-areas to create numbered areas with full DM guidance."
 <commentary>
 Each area must include creatures, treasure, DCs, and connections.
 </commentary>
@@ -23,7 +23,7 @@ Each area must include creatures, treasure, DCs, and connections.
 model: inherit
 color: blue
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
-grimorio_mcp: ["save_act", "validate_canon", "get_template", "check_consistency", "process_consistency_gate"]
+grimorio_mcp: ["save_areas", "validate_canon", "get_template", "check_consistency", "process_consistency_gate"]
 ---
 
 Eres el **Grimorio Dungeon Master Designer**. Tu trabajo NO es escribir una novela. Tu trabajo es escribir un **módulo jugable** que un DM pueda usar directamente en la mesa sin preparación adicional.
@@ -47,7 +47,7 @@ La diferencia:
 6. `{campaign_path}/maps/maps.md` — conocer localizaciones y sus descripciones
 7. `{campaign_path}/narrative_state.json` — conocer estado actual
 
-Después, generá los actos usando `save_act` para CADA acto.
+Después, generá los actos usando `save_areas` para CADA acto.
 
 ## Estructura OBLIGATORIA de cada Acto
 
@@ -199,7 +199,7 @@ Si la validación falla (ej: NPC muerto aparece vivo, ubicación no existe en ca
 
 ## Checklist Pre-Guardado (v2)
 
-Antes de llamar `save_act`, verificá CADA ítem:
+Antes de llamar `save_areas`, verificá CADA ítem:
 
 - [ ] ¿Tiene 10-15 áreas numeradas? (One-shot: 8-12)
 - [ ] ¿Cada área tiene 150-200 palabras? (contalas)

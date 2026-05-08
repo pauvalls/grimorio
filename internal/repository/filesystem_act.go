@@ -38,33 +38,33 @@ func (r *FilesystemActRepository) Save(act *domain.Act) error {
 		act.CreatedAt = time.Now()
 	}
 
-	if err := r.ensureSubdir(act.CampaignID, "acts"); err != nil {
+	if err := r.ensureSubdir(act.CampaignID, "areas"); err != nil {
 		return err
 	}
 
-	filename := fmt.Sprintf("act_%02d_%s.md", act.Number, domain.SanitizeFilename(act.Title))
+	filename := fmt.Sprintf("chapter_%02d_%s.md", act.Number, domain.SanitizeFilename(act.Title))
 
 	// Add header if content doesn't already start with a heading
 	content := act.Content
 	if !strings.HasPrefix(strings.TrimSpace(content), "# ") {
-		header := fmt.Sprintf("# Acto %d: %s\n\n", act.Number, act.Title)
+		header := fmt.Sprintf("# Capítulo %d: %s\n\n", act.Number, act.Title)
 		content = header + content
 	}
 
-	path := filepath.Join(r.campaignDir(act.CampaignID), "acts", filename)
+	path := filepath.Join(r.campaignDir(act.CampaignID), "areas", filename)
 	return os.WriteFile(path, []byte(content), 0644)
 }
 
 func (r *FilesystemActRepository) Read(campaignID string, number int) (*domain.Act, error) {
-	files, err := r.listFiles(campaignID, "acts")
+	files, err := r.listFiles(campaignID, "areas")
 	if err != nil {
 		return nil, err
 	}
 
-	prefix := fmt.Sprintf("act_%02d_", number)
+	prefix := fmt.Sprintf("chapter_%02d_", number)
 	for _, file := range files {
 		if strings.HasPrefix(file, prefix) {
-			path := filepath.Join(r.campaignDir(campaignID), "acts", file)
+			path := filepath.Join(r.campaignDir(campaignID), "areas", file)
 			content, err := os.ReadFile(path)
 			if err != nil {
 				return nil, err
@@ -76,11 +76,11 @@ func (r *FilesystemActRepository) Read(campaignID string, number int) (*domain.A
 			}, nil
 		}
 	}
-	return nil, fmt.Errorf("act %d not found in campaign %s", number, campaignID)
+	return nil, fmt.Errorf("chapter %d not found in campaign %s", number, campaignID)
 }
 
 func (r *FilesystemActRepository) List(campaignID string) ([]domain.Act, error) {
-	files, err := r.listFiles(campaignID, "acts")
+	files, err := r.listFiles(campaignID, "areas")
 	if err != nil {
 		return nil, err
 	}
@@ -90,15 +90,14 @@ func (r *FilesystemActRepository) List(campaignID string) ([]domain.Act, error) 
 		if !strings.HasSuffix(file, ".md") {
 			continue
 		}
-		path := filepath.Join(r.campaignDir(campaignID), "acts", file)
+		path := filepath.Join(r.campaignDir(campaignID), "areas", file)
 		content, err := os.ReadFile(path)
 		if err != nil {
 			continue
 		}
 
-		// Extract number from filename: act_XX_title.md
 		var number int
-		_, _ = fmt.Sscanf(file, "act_%02d_", &number)
+		_, _ = fmt.Sscanf(file, "chapter_%02d_", &number)
 
 		acts = append(acts, domain.Act{
 			CampaignID: campaignID,
@@ -110,15 +109,15 @@ func (r *FilesystemActRepository) List(campaignID string) ([]domain.Act, error) 
 }
 
 func (r *FilesystemActRepository) Delete(campaignID string, number int) error {
-	files, err := r.listFiles(campaignID, "acts")
+	files, err := r.listFiles(campaignID, "areas")
 	if err != nil {
 		return err
 	}
 
-	prefix := fmt.Sprintf("act_%02d_", number)
+	prefix := fmt.Sprintf("chapter_%02d_", number)
 	for _, file := range files {
 		if strings.HasPrefix(file, prefix) {
-			path := filepath.Join(r.campaignDir(campaignID), "acts", file)
+			path := filepath.Join(r.campaignDir(campaignID), "areas", file)
 			return os.Remove(path)
 		}
 	}

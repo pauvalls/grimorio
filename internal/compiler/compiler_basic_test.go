@@ -48,7 +48,7 @@ func TestGetTemplate(t *testing.T) {
 		tmplType string
 		wantErr  bool
 	}{
-		{"act", "act", false},
+		{"areas", "areas", false},
 		{"npc", "npc", false},
 		{"monster", "monster", false},
 		{"encounter", "encounter", false},

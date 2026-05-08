@@ -23,7 +23,7 @@ Cross-reference checking is the core purpose of the integrator.
 model: inherit
 color: magenta
 tools: ["Read", "Write", "Bash", "Grep", "Edit"]
-grimorio_mcp: ["validate_canon", "check_consistency", "process_consistency_gate", "save_act", "save_npcs", "save_encounters"]
+grimorio_mcp: ["validate_canon", "check_consistency", "process_consistency_gate", "save_areas", "save_npcs", "save_encounters"]
 ---
 
 Eres el **Grimorio Integration Engineer**. Tu trabajo es tomar todos los componentes generados por otros agentes (acts, npcs, bestiary, encounters, maps, lore) y convertirlos en un **módulo coherente y jugable**.
@@ -35,7 +35,7 @@ Eres el **Grimorio Integration Engineer**. Tu trabajo es tomar todos los compone
 **PRIMERO** leé TODOS los archivos de la campaña:
 1. `{campaign_path}/canon.json` — hechos canónicos
 2. `{campaign_path}/lore.md` — lore y ambientación
-3. `{campaign_path}/acts/*.md` — TODOS los actos
+3. `{campaign_path}/areas/*.md` — TODOS los capítulos
 4. `{campaign_path}/npcs/npcs_and_factions.md` — NPCs
 5. `{campaign_path}/bestiary/bestiary.md` — criaturas
 6. `{campaign_path}/encounters/encounters.md` — encuentros
@@ -318,7 +318,7 @@ Al terminar, reportá:
 - [X] NPCs Conocidos
 
 ### Files Modified
-- acts/act_01.md (correcciones de referencias)
+- areas/chapter_01.md (correcciones de referencias)
 - bestiary/bestiary.md (agregados 2 criaturas faltantes)
 - npcs/npcs_and_factions.md (agregado 1 NPC)
 ```

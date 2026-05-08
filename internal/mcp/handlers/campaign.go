@@ -45,8 +45,8 @@ func (h *CampaignHandlers) HandleCreateCampaign() server.ToolHandlerFunc {
 	}
 }
 
-// HandleSaveAct handles the save_act tool
-func (h *CampaignHandlers) HandleSaveAct() server.ToolHandlerFunc {
+// HandleSaveAreas handles the save_areas tool
+func (h *CampaignHandlers) HandleSaveAreas() server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]any)
 		if !ok {
@@ -54,25 +54,25 @@ func (h *CampaignHandlers) HandleSaveAct() server.ToolHandlerFunc {
 		}
 
 		campaign := getStringArg(args, "campaign")
-		actNum := getIntArg(args, "act_number")
+		chapterNum := getIntArg(args, "chapter_number")
 		title := getStringArg(args, "title")
 		content := getStringArg(args, "content")
 
 		if campaign == "" {
 			return mcp.NewToolResultError("campaign is required"), nil
 		}
-		if actNum <= 0 {
-			return mcp.NewToolResultError("act_number must be a positive integer"), nil
+		if chapterNum <= 0 {
+			return mcp.NewToolResultError("chapter_number must be a positive integer"), nil
 		}
 		if title == "" {
 			return mcp.NewToolResultError("title is required"), nil
 		}
 
-		if err := h.service.SaveAct(campaign, actNum, title, content); err != nil {
+		if err := h.service.SaveAct(campaign, chapterNum, title, content); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return mcp.NewToolResultText(fmt.Sprintf("Act %d '%s' saved to campaign '%s'", actNum, title, campaign)), nil
+		return mcp.NewToolResultText(fmt.Sprintf("Chapter %d '%s' (areas) saved to campaign '%s'", chapterNum, title, campaign)), nil
 	}
 }
 

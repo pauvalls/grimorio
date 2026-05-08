@@ -40,7 +40,7 @@ func TestHandleGetTemplate(t *testing.T) {
 
 	handler := handlers.HandleGetTemplate()
 	args := map[string]any{
-		"type": "act",
+		"type": "areas",
 	}
 
 	result, err := handler(context.Background(), newToolRequest("get_template", args))

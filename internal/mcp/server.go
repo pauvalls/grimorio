@@ -81,13 +81,13 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("setting", mcp.Description("Brief setting description")),
 	), campaignHandlers.HandleCreateCampaign())
 
-	s.AddTool(mcp.NewTool("save_act",
-		mcp.WithDescription("Save an act/chapter of the campaign"),
+	s.AddTool(mcp.NewTool("save_areas",
+		mcp.WithDescription("Save a chapter of numbered playable areas for the campaign (WotC format: 10-15 areas per chapter)"),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
-		mcp.WithString("act_number", mcp.Required(), mcp.Description("Act number (1, 2, 3...)"), mcp.Title("Act Number")),
-		mcp.WithString("title", mcp.Required(), mcp.Description("Act title")),
-		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content of the act")),
-	), campaignHandlers.HandleSaveAct())
+		mcp.WithString("chapter_number", mcp.Required(), mcp.Description("Chapter number (1, 2, 3...)"), mcp.Title("Chapter Number")),
+		mcp.WithString("title", mcp.Required(), mcp.Description("Chapter title")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with numbered areas (WotC format)")),
+	), campaignHandlers.HandleSaveAreas())
 
 	s.AddTool(mcp.NewTool("save_lore",
 		mcp.WithDescription("Save world lore and history for the campaign"),
@@ -145,7 +145,7 @@ s.AddTool(mcp.NewTool("save_maps",
 
 	s.AddTool(mcp.NewTool("get_template",
 		mcp.WithDescription("Get the Markdown/CSS template for a specific section type"),
-		mcp.WithString("type", mcp.Required(), mcp.Description("Template type: act, npc, monster, encounter, map, lore")),
+		mcp.WithString("type", mcp.Required(), mcp.Description("Template type: areas, npc, monster, encounter, map, lore")),
 	), campaignHandlers.HandleGetTemplate())
 
 	// Character management

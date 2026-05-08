@@ -14,7 +14,7 @@ func TestFilesystemActRepository(t *testing.T) {
 
 	// Create campaign directory first
 	campaignDir := filepath.Join(tmpDir, "campaign-1")
-	if err := os.MkdirAll(filepath.Join(campaignDir, "acts"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(campaignDir, "areas"), 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -90,7 +90,7 @@ func TestFilesystemActRepository_ListEmpty(t *testing.T) {
 	repo := NewFilesystemActRepository(tmpDir)
 
 	// Create campaign directory
-	if err := os.MkdirAll(filepath.Join(tmpDir, "campaign-1", "acts"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(tmpDir, "campaign-1", "areas"), 0755); err != nil {
 		t.Fatal(err)
 	}
 

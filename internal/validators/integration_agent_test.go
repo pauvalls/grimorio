@@ -7,7 +7,7 @@ import (
 )
 
 func TestIntegratorAgentReferencesConsistencyTools(t *testing.T) {
-	data, err := os.ReadFile("../../agents/grimorio-integrator.md")
+	data, err := os.ReadFile(os.Getenv("HOME") + "/.config/opencode/plugins/grimorio/agents/grimorio-integrator.md")
 	if err != nil {
 		t.Fatalf("failed to read integrator agent: %v", err)
 	}

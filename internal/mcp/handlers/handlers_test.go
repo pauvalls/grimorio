@@ -72,33 +72,31 @@ func TestHandleCreateCampaign_InvalidArgs(t *testing.T) {
 	}
 }
 
-func TestHandleSaveAct(t *testing.T) {
+func TestHandleSaveAreas(t *testing.T) {
 	handlers, _, _ := setupTestHandlers()
 
-	// Create campaign first
 	createHandler := handlers.HandleCreateCampaign()
 	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
-		"name": "act-test",
+		"name": "areas-test",
 	})); err != nil {
 		t.Fatal(err)
 	}
 
-	// Now save act
-	actHandler := handlers.HandleSaveAct()
+	areasHandler := handlers.HandleSaveAreas()
 	args := map[string]any{
-		"campaign":   "act-test",
-		"act_number": float64(1),
-		"title":      "The Beginning",
-		"content":    "Once upon a time...",
+		"campaign":       "areas-test",
+		"chapter_number": float64(1),
+		"title":          "The Beginning",
+		"content":        "Once upon a time...",
 	}
 
-	result, err := actHandler(context.Background(), newToolRequest("save_act", args))
+	result, err := areasHandler(context.Background(), newToolRequest("save_areas", args))
 	if err != nil {
-		t.Fatalf("HandleSaveAct() error: %v", err)
+		t.Fatalf("HandleSaveAreas() error: %v", err)
 	}
 
 	if result.IsError {
-		t.Errorf("HandleSaveAct() returned error result: %v", result.Content)
+		t.Errorf("HandleSaveAreas() returned error result: %v", result.Content)
 	}
 }
 

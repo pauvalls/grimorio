@@ -336,7 +336,7 @@ clean_installation() {
 
     local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
     if [ -f "$OPENCODE_CONFIG" ] && command_exists jq; then
-        jq 'del(.mcp.grimorio, .agent["grimorio-architect"], .agent["grimorio-artist"], .agent["grimorio-cartographer"], .agent["grimorio-lore"], .agent["grimorio-npc"], .agent["grimorio-bestiary"], .agent["grimorio-encounters"], .agent["grimorio-quests"], .agent["grimorio-maps"], .agent["grimorio-characters"], .agent["grimorio-narrative-custodian"], .agent["grimorio-appendices"], .agent["grimorio-areas"], .agent["grimorio-integrator"], .agent["grimorio-introduction"], .agent["grimorio-setting-guide"], .agent["grimorio-orchestrator"], .command.grimorio)' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        jq 'del(.mcp.grimorio, .agent["grimorio-architect"], .agent["grimorio-artist"], .agent["grimorio-cartographer"], .agent["grimorio-lore"], .agent["grimorio-npc"], .agent["grimorio-bestiary"], .agent["grimorio-encounters"], .agent["grimorio-areas"], .agent["grimorio-quests"], .agent["grimorio-maps"], .agent["grimorio-characters"], .agent["grimorio-narrative-custodian"], .agent["grimorio-introduction"], .agent["grimorio-setting-guide"], .agent["grimorio-appendices"], .agent["grimorio-integrator"], .agent["grimorio-orchestrator"], .command.grimorio)' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
         log "Cleaned grimorio entries from opencode.json"
         cleaned=true
     fi
@@ -397,7 +397,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-artist"] = {
             "description": "Campaign artist — prepares image specs and updates markdown references",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Artist. Prepare image batch specifications and update markdown references.\n\nPhase A: Read NPCs, bestiary, and acts. Create batch-spec.json with all image prompts.\nPhase B: After images are generated, update all markdown files with ![alt](assets/filename.png) references.",
+            "prompt": "You are the Grimorio Artist. Prepare image batch specifications and update markdown references.\\n\\nPhase A: Read NPCs, bestiary, and area chapters. Create batch-spec.json with all image prompts.\\nPhase B: After images are generated, update all markdown files with ![alt](assets/filename.png) references.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_generate_image to generate images. If MCP tools are unavailable, use the write tool to create files directly at ~/campaigns/{campaign_name}/assets/.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -416,7 +416,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-cartographer"] = {
             "description": "Campaign cartographer — generates SVG battle maps and decorative dividers",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Cartographer. Generate ALL SVG assets for a campaign: battle maps, decorative dividers, and stat block borders. Use generate_map and generate_divider tools. Reference all SVGs in markdown files.",
+            "prompt": "You are the Grimorio Cartographer. Generate ALL SVG assets for a campaign: battle maps, decorative dividers, and stat block borders. Use grimorio_generate_map and grimorio_generate_divider tools. Reference all SVGs in markdown files.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_generate_map and grimorio_generate_divider. If MCP tools are unavailable, use the write tool to create SVG files directly at ~/campaigns/{campaign_name}/assets/.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -435,7 +435,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-lore"] = {
             "description": "Campaign lore writer — world backstory, setting, history, and atmosphere",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Lore Master. Generate world lore, backstory, setting, and atmosphere for a D&D 5e campaign. Use grimorio_save_lore tool.",
+            "prompt": "You are the Grimorio Lore Master. Generate world lore, backstory, setting, and atmosphere for a D&D 5e campaign. Use grimorio_save_lore tool to persist content.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_save_lore to save content. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/lore.md.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -454,7 +454,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-npc"] = {
             "description": "Campaign NPC designer — characters, factions, and social relationships",
             "mode": "subagent",
-            "prompt": "You are the Grimorio NPC Designer. Generate NPCs, factions, and social entities for a D&D 5e campaign. Use grimorio_save_npcs tool.",
+            "prompt": "You are the Grimorio NPC Designer. Generate NPCs, factions, and social entities for a D&D 5e campaign. Use grimorio_save_npcs tool to persist content.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_save_npcs to save content. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/npcs/npcs_and_factions.md.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -473,7 +473,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-bestiary"] = {
             "description": "Campaign bestiary designer — monster stat blocks, abilities, and tactics",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Bestiary Designer. Generate monsters, creatures, and stat blocks for a D&D 5e campaign. Use grimorio_save_bestiary tool.",
+            "prompt": "You are the Grimorio Bestiary Designer. Generate monsters, creatures, and stat blocks for a D&D 5e campaign. Use grimorio_save_bestiary tool to persist content.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_save_bestiary to save content. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/bestiary/bestiary.md.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -492,7 +492,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-encounters"] = {
             "description": "Campaign encounter designer — combat, social, exploration challenges",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Encounter Designer. Generate balanced encounters and challenges for a D&D 5e campaign. Use grimorio_save_encounters tool.",
+            "prompt": "You are the Grimorio Encounter Designer. Generate balanced encounters and challenges for a D&D 5e campaign. Use grimorio_save_encounters tool to persist content.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_save_encounters to save content. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/encounters/encounters.md.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -505,13 +505,13 @@ configure_opencode_command() {
         success "grimorio-encounters agent configured"
     fi
 
-    # Configure grimorio-areas subagent (replaces grimorio-acts)
+    # Configure grimorio-areas subagent
     log "Configuring grimorio-areas agent..."
     if command_exists jq; then
         jq '.agent["grimorio-areas"] = {
             "description": "Campaign areas designer — numbered playable areas (10-15 per act, WotC format) with DCs, treasure, and mechanics",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Areas Designer. Generate numbered playable areas for a D&D 5e campaign in WotC format. Each area has 150-200 words with specific DCs, treasure, and mechanics. Read ALL source files first (lore, NPCs, bestiary, maps, quests, encounters, characters).",
+            "prompt": "You are the Grimorio Areas Designer. Generate numbered playable areas for a D&D 5e campaign in WotC format. Each area has 150-200 words with specific DCs, treasure, and mechanics. Read ALL source files first (lore, NPCs, bestiary, maps, quests, encounters, characters). Use grimorio_save_areas tool to persist content.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_save_areas to save each chapter. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/areas/chapter_XX_title.md.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -530,7 +530,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-quests"] = {
             "description": "Campaign quest designer — personal quests, side missions, narrative hooks",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Quest Designer. Generate personal quests, side missions, and narrative hooks for a D&D 5e campaign. Use grimorio_create_personal_quest tool.",
+            "prompt": "You are the Grimorio Quest Designer. Generate personal quests, side missions, and narrative hooks for a D&D 5e campaign. Use grimorio_create_personal_quest tool.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_create_personal_quest to create quests. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/quests/.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -549,7 +549,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-maps"] = {
             "description": "Campaign map describer — location details, zone breakdowns, scene layouts",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Map Describer. Generate location descriptions and zone breakdowns for a D&D 5e campaign. Use grimorio_save_maps tool.",
+            "prompt": "You are the Grimorio Map Describer. Generate location descriptions and zone breakdowns for a D&D 5e campaign. Use grimorio_save_maps tool to persist content.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_save_maps to save content. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/maps/maps.md.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -568,7 +568,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-characters"] = {
             "description": "Campaign character builder — pre-generated player character sheets and backstories",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Character Builder. Generate pre-generated player characters with backstories for a D&D 5e campaign. Write to characters/ directory.",
+            "prompt": "You are the Grimorio Character Builder. Generate pre-generated player characters with backstories for a D&D 5e campaign. Use grimorio_save_characters or grimorio_generate_character tools to persist content.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_save_characters to save characters. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/characters/.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -587,7 +587,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-narrative-custodian"] = {
             "description": "Campaign narrative custodian — validates canon consistency, checks cross-references, and manages narrative state",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Narrative Custodian. You validate campaign content for narrative coherence, check canon consistency, and manage narrative state. You NEVER generate creative content — only validate, check, and fix inconsistencies. Use validate_canon, check_consistency, process_consistency_gate, update_narrative_state, evaluate_consequences, and other coherence tools.",
+            "prompt": "You are the Grimorio Narrative Custodian. You validate campaign content for narrative coherence, check canon consistency, and manage narrative state. You NEVER generate creative content — only validate, check, and fix inconsistencies. Use grimorio_validate_canon, grimorio_check_consistency, grimorio_process_consistency_gate, grimorio_update_narrative_state, grimorio_evaluate_consequences, and other coherence tools.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Always use them for validation and state updates.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -606,7 +606,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-introduction"] = {
             "description": "Campaign introduction — overview, hooks, and campaign summary for players",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Introduction Designer. Generate the campaign introduction and overview for players. Create compelling hooks and summarize the campaign arc.",
+            "prompt": "You are the Grimorio Introduction Designer. Generate the campaign introduction and overview for players. Create compelling hooks and summarize the campaign arc. Use grimorio_save_introduction tool to persist content.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_save_introduction to save content. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/introduction.md.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -619,13 +619,13 @@ configure_opencode_command() {
         success "grimorio-introduction agent configured"
     fi
 
-    # Configure grimorio-setting-guide subagent (DM-only)
+    # Configure grimorio-setting-guide subagent
     log "Configuring grimorio-setting-guide agent..."
     if command_exists jq; then
         jq '.agent["grimorio-setting-guide"] = {
             "description": "DM-only setting reference — geography, history, culture, factions, and secrets",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Setting Guide Designer. Generate DM-only reference material with spoilers. Include geography, history, culture, factions, and secrets. Read canon.json and lore.md first.",
+            "prompt": "You are the Grimorio Setting Guide Designer. Generate DM-only reference material with spoilers. Include geography, history, culture, factions, and secrets. Read canon.json and lore.md first. Use grimorio_save_setting_guide tool to persist content.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_save_setting_guide to save content. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/setting-guide.md.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -644,7 +644,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-appendices"] = {
             "description": "Campaign appendices — consolidated reference material (magic items, stat blocks, handouts, maps)",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Appendices Designer. Generate consolidated reference material: Appendix A (Magic Items), Appendix B (NPCs and Monsters), Appendix C (Handouts), Appendix D (Maps), Appendix E (Reference Tables). Read ALL source files.",
+            "prompt": "You are the Grimorio Appendices Designer. Generate consolidated reference material: Appendix A (Magic Items), Appendix B (NPCs and Monsters), Appendix C (Handouts), Appendix D (Maps), Appendix E (Reference Tables). Read ALL source files. Use grimorio_save_appendices tool to persist content.\\n\\nIMPORTANT: You have access to grimorio MCP tools. Use grimorio_save_appendices to save content. If MCP tools are unavailable, use the write tool to save content directly to ~/campaigns/{campaign_name}/appendices.md.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -663,7 +663,7 @@ configure_opencode_command() {
         jq '.agent["grimorio-integrator"] = {
             "description": "Campaign integrator — cross-references, finds inconsistencies, and finalizes content",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Integrator. Cross-reference all campaign content, find inconsistencies, and finalize. Check that all references between files are valid.",
+            "prompt": "You are the Grimorio Integrator. Cross-reference all campaign content, find inconsistencies, and finalize. Check that all references between files are valid.\\n\\nIMPORTANT: You have access to grimorio MCP tools including grimorio_validate_canon, grimorio_check_consistency, grimorio_process_consistency_gate, grimorio_save_areas, grimorio_save_npcs, grimorio_save_encounters. Use them for validation and persistence. If MCP tools are unavailable, use the write tool to save content directly.",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -704,7 +704,7 @@ The architect follows strict batch ordering — each batch waits for the previou
 
 - **Batch 1** (parallel): NPCs, bestiary, maps → Consistency Gate
 - **Batch 2** (parallel): lore, quests, encounters, characters → Consistency Gate → Update Narrative State
-- **Batch 3** (parallel): SVG maps, acts → Consistency Gate
+- **Batch 3** (parallel): SVG maps, areas → Consistency Gate
 - **Phase 6**: Artist batch-spec (cover + NPCs + scenes + monsters)
 - **Phase 7**: Generate AI images (1x1 sequential, retry missing)
 - **Phase 8**: Update ALL markdown references
@@ -812,9 +812,10 @@ print_instructions() {
     echo -e "     - grimorio-introduction  (campaign overview & hooks)"
     echo -e "     - grimorio-setting-guide (DM-only setting reference)"
     echo -e "     - grimorio-appendices    (consolidated reference material)"
-    echo -e "     - grimorio-integrator    (cross-references & finalizes)"
-    echo -e "     - grimorio-artist        (image specs + reference updates)"
-    echo -e "     - grimorio-cartographer  (SVG maps + dividers)"
+    echo -e "     - grimorio-integrator    (cross-references & finalization)"
+    echo -e "   • Artist      → grimorio-artist (image specs + reference updates)"
+    echo -e "   • Cartographer→ grimorio-cartographer (SVG maps + dividers)"
+    echo -e "   • Command     → /grimorio (single delegate, zero polling)"
     echo ""
     echo -e "4. ${YELLOW}Generate your first campaign:${NC}"
     echo -e "   Type in OpenCode or Claude Code:"

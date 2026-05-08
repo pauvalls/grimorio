@@ -18,8 +18,8 @@ import (
 //go:embed templates/dnd-style.css
 var dndCSS string
 
-//go:embed templates/act.md.tmpl
-var actTemplate string
+//go:embed templates/areas.md.tmpl
+var areasTemplate string
 
 //go:embed templates/npc.md.tmpl
 var npcTemplate string
@@ -84,8 +84,8 @@ func (c *Compiler) SetHandoutRenderer(renderer HandoutRenderer) {
 
 func GetTemplate(tmplType string) (string, error) {
 	switch tmplType {
-	case "act":
-		return actTemplate, nil
+	case "areas":
+		return areasTemplate, nil
 	case "npc":
 		return npcTemplate, nil
 	case "monster":
@@ -168,7 +168,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 	}{
 		{"Introduction", filepath.Join(c.CampaignDir, "introduction.md"), false},
 		{"Lore y Ambientación", filepath.Join(c.CampaignDir, "lore.md"), false},
-		{"Acts", filepath.Join(c.CampaignDir, "acts"), true},
+		{"Chapters (Areas)", filepath.Join(c.CampaignDir, "areas"), true},
 		{"Setting Guide", filepath.Join(c.CampaignDir, "setting-guide.md"), false},
 		{"Apéndice A: NPCs y Facciones", filepath.Join(c.CampaignDir, "npcs"), true},
 		{"Apéndice B: Bestiario", filepath.Join(c.CampaignDir, "bestiary"), true},
@@ -304,7 +304,7 @@ func (c *Compiler) generateTOC(sections []struct {
 		b.WriteString(fmt.Sprintf(`<li><a href="#%s">%s</a><span class="page-ref"></span></li>`, id, html.EscapeString(sec.name)))
 
 		// In v2, extract areas from act files for hierarchical TOC
-		if c.CompilerVersion == 2 && sec.isDir && strings.Contains(strings.ToLower(sec.name), "act") {
+		if c.CompilerVersion == 2 && sec.isDir && (strings.Contains(strings.ToLower(sec.name), "chapter") || strings.Contains(strings.ToLower(sec.name), "area")) {
 			areas := c.extractAreasFromDir(sec.path)
 			if len(areas) > 0 {
 				b.WriteString(`<ul class="toc-areas">`)
@@ -428,7 +428,7 @@ func (c *Compiler) generateAdventureRoster() string {
 	var npcs, monsters, encounters []string
 
 	// Scan acts for entities
-	actsDir := filepath.Join(c.CampaignDir, "acts")
+	actsDir := filepath.Join(c.CampaignDir, "areas")
 	if info, err := os.Stat(actsDir); err == nil && info.IsDir() {
 		files, _ := os.ReadDir(actsDir)
 		for _, f := range files {
@@ -595,7 +595,7 @@ func (c *Compiler) countImagesInMarkdownSources() (int, error) {
 
 	sections := []string{
 		filepath.Join(c.CampaignDir, "lore.md"),
-		filepath.Join(c.CampaignDir, "acts"),
+		filepath.Join(c.CampaignDir, "areas"),
 		filepath.Join(c.CampaignDir, "npcs"),
 		filepath.Join(c.CampaignDir, "bestiary"),
 		filepath.Join(c.CampaignDir, "encounters"),
