@@ -1,6 +1,9 @@
 package domain
 
 import (
+	"fmt"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -44,15 +47,25 @@ type CampaignSummary struct {
 
 // Act represents a chapter/act of a campaign
 type Act struct {
-	ID         string    `json:"id"`
-	CampaignID string    `json:"campaign_id"`
-	Number     int       `json:"number"`
-	Title      string    `json:"title"`
-	Content    string    `json:"content"` // Markdown content
-	Summary    string    `json:"summary"` // Auto-generated or provided
-	KeyEvents  []string  `json:"key_events"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID                  string    `json:"id"`
+	CampaignID          string    `json:"campaign_id"`
+	Number              int       `json:"number"`
+	Title               string    `json:"title"`
+	Content             string    `json:"content"` // Markdown content
+	Summary             string    `json:"summary"` // Auto-generated or provided
+	KeyEvents           []string  `json:"key_events"`
+	
+	// Chapter Narrative Structure fields
+	GameMode            string    `json:"game_mode"`                        // Primary mode (canonical list)
+	GameModeSecondary   string    `json:"game_mode_secondary,omitempty"`    // Optional hybrid mode
+	ChapterObjectives   []string  `json:"chapter_objectives"`               // 2-3 objectives
+	EstimatedDuration   string    `json:"estimated_duration"`               // "2-3 sesiones"
+	Tone                string    `json:"tone"`                             // Canonical tone
+	RunningGuidance     string    `json:"running_guidance"`                 // 150-400 words
+	AssetHandoff        string    `json:"asset_handoff"`                    // Concrete asset
+	
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 // Validate checks if the act is valid
@@ -66,6 +79,43 @@ func (a *Act) Validate() error {
 	if a.Title == "" {
 		return NewValidationError("title", "act title is required")
 	}
+	
+	// Chapter Narrative Structure validation
+	if a.GameMode == "" {
+		return NewValidationError("game_mode", "game mode is required")
+	}
+	if !isValidGameMode(a.GameMode) {
+		return NewValidationError("game_mode", fmt.Sprintf("invalid mode '%s'; must be one of: investigacion, sandbox_urbano, dungeon_lineal, escape, viaje, intriga, confrontacion, downtime", a.GameMode))
+	}
+	if a.GameModeSecondary != "" && a.GameModeSecondary == a.GameMode {
+		return NewValidationError("game_mode_secondary", "secondary mode must differ from primary mode")
+	}
+	if len(a.ChapterObjectives) < 2 || len(a.ChapterObjectives) > 3 {
+		return NewValidationError("chapter_objectives", "must have 2-3 objectives")
+	}
+	if a.EstimatedDuration == "" {
+		return NewValidationError("estimated_duration", "estimated duration is required")
+	}
+	if !isValidDurationFormat(a.EstimatedDuration) {
+		return NewValidationError("estimated_duration", "must match pattern: '1 sesión' or 'X-Y sesiones'")
+	}
+	if a.Tone == "" {
+		return NewValidationError("tone", "tone is required")
+	}
+	if !isValidTone(a.Tone) {
+		return NewValidationError("tone", fmt.Sprintf("invalid tone '%s'; must be one of: grim, whimsical, heroic, horror, political, mystery", a.Tone))
+	}
+	if a.RunningGuidance == "" {
+		return NewValidationError("running_guidance", "running guidance is required")
+	}
+	wordCount := countWords(a.RunningGuidance)
+	if wordCount < 150 || wordCount > 400 {
+		return NewValidationError("running_guidance", fmt.Sprintf("must be 150-400 words; got %d", wordCount))
+	}
+	if a.AssetHandoff == "" {
+		return NewValidationError("asset_handoff", "asset handoff is required")
+	}
+	
 	return nil
 }
 
@@ -146,4 +196,44 @@ type Map struct {
 	ImagePath   string    `json:"image_path,omitempty"`
 	Labels      []string  `json:"labels"`
 	CreatedAt   time.Time `json:"created_at"`
+}
+
+// Helper functions for Chapter Narrative Structure validation
+
+var validGameModes = map[string]bool{
+	"investigacion":    true,
+	"sandbox_urbano":   true,
+	"dungeon_lineal":   true,
+	"escape":           true,
+	"viaje":            true,
+	"intriga":          true,
+	"confrontacion":    true,
+	"downtime":         true,
+}
+
+func isValidGameMode(mode string) bool {
+	return validGameModes[mode]
+}
+
+var validTones = map[string]bool{
+	"grim":       true,
+	"whimsical":  true,
+	"heroic":     true,
+	"horror":     true,
+	"political":  true,
+	"mystery":    true,
+}
+
+func isValidTone(tone string) bool {
+	return validTones[tone]
+}
+
+func isValidDurationFormat(duration string) bool {
+	// Pattern: "1 sesión" or "X-Y sesiones" where X and Y are 1+ digits
+	matched, _ := regexp.MatchString(`^(\d+ sesión|\d+-\d+ sesiones)$`, duration)
+	return matched
+}
+
+func countWords(text string) int {
+	return len(strings.Fields(text))
 }

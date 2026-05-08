@@ -6,6 +6,25 @@
 > 
 > **Activo Narrativo Transferido:** {{Qué obtienen los PJs en este acto que necesitan para el siguiente (pista, aliado, objeto, información)}}
 
+### Apertura del Capítulo
+
+**Modo de Juego:** {{.GameMode}}{{if .GameModeSecondary}} + {{.GameModeSecondary}}{{end}}
+
+**Objetivos del Capítulo:**
+{{range .ChapterObjectives}}
+- {{.}}
+{{end}}
+
+**Duración Estimada:** {{.EstimatedDuration}}
+
+**Tono:** {{.Tone}}
+
+**Running this Chapter:**
+{{.RunningGuidance}}
+
+**Asset para el Siguiente Capítulo:**
+{{.AssetHandoff}}
+
 ---
 
 ## Adventure Background (para el DM)

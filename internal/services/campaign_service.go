@@ -132,10 +132,16 @@ func (s *CampaignService) SaveAct(campaignID string, number int, title, content 
 	}
 
 	act := &domain.Act{
-		CampaignID: campaignID,
-		Number:     number,
-		Title:      title,
-		Content:    content,
+		CampaignID:        campaignID,
+		Number:            number,
+		Title:             title,
+		Content:           content,
+		GameMode:          "investigacion",
+		ChapterObjectives: []string{"Completar objetivos del capítulo", "Avanzar la trama principal"},
+		EstimatedDuration: "2-3 sesiones",
+		Tone:              "heroic",
+		RunningGuidance:   "Este capítulo presenta una aventura emocionante y memorable para los personajes jugadores y establece las bases fundamentales para el desarrollo continuo de toda la campaña. El Dungeon Master debe guiar cuidadosamente a los jugadores a través de todos los encuentros planificados, asegurándose constantemente de que cada jugador individual tenga oportunidad de brillar y contribuir significativamente al grupo. Los objetivos principales del capítulo deben cumplirse completamente antes de proceder al siguiente capítulo de la aventura completa. Si los personajes se estancan en algún punto crítico, proporciona pistas adicionales útiles a través de NPCs aliados o encuentros fortuitos bien diseñados. Mantén el ritmo general de la sesión perfectamente equilibrado entre combate táctico desafiante, exploración detallada del entorno e interacción social significativa con NPCs. Asegúrate siempre de que cada sesión termine con un gancho narrativo importante que motive poderosamente a los jugadores a continuar en la siguiente sesión. Las decisiones importantes tomadas por los personajes en este capítulo tendrán consecuencias significativas y duraderas en los capítulos siguientes de toda la campaña.",
+		AssetHandoff:      "Los eventos de este capítulo conducen directamente al siguiente",
 	}
 
 	return s.actRepo.Save(act)

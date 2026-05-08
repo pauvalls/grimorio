@@ -19,10 +19,16 @@ func TestFilesystemActRepository(t *testing.T) {
 	}
 
 	act := &domain.Act{
-		CampaignID: "campaign-1",
-		Number:     1,
-		Title:      "The Beginning",
-		Content:    "Once upon a time...",
+		CampaignID:        "campaign-1",
+		Number:            1,
+		Title:             "The Beginning",
+		Content:           "Once upon a time...",
+		GameMode:          "investigacion",
+		ChapterObjectives: []string{"Descubrir la identidad del traidor", "Recuperar el artefacto robado"},
+		EstimatedDuration: "2-3 sesiones",
+		Tone:              "mystery",
+		RunningGuidance:   "Este capítulo introduce a los personajes jugadores en el misterio central de la campaña. Comienza con una escena social en la que un NPC aliado presenta el hook principal de la aventura. La investigación debe llevar a los personajes a través de tres ubicaciones clave: primero el distrito comercial donde pueden hablar con mercaderes y recolectar rumores, luego los archivos del gremio donde pueden encontrar documentos importantes, y finalmente la taberna del puerto donde un contacto les proporciona información crucial. Cada ubicación debe revelar una pista diferente que avance la trama principal. Si los personajes se estancan en algún punto, usa un encuentro aleatorio o haz que un NPC contacte con información adicional. El ritmo debe ser moderado, permitiendo tiempo para exploración y roleo, pero con tensión creciente a medida que se acerca el final del capítulo. Asegúrate de que cada sesión termine con un cliffhanger o revelación importante que motive a los jugadores a continuar.",
+		AssetHandoff:      "La carta encontrada revela la ubicación del almacén en el Acto 2",
 	}
 
 	// Test Save
@@ -56,10 +62,17 @@ func TestFilesystemActRepository(t *testing.T) {
 
 	// Test Save with header prefix
 	act2 := &domain.Act{
-		CampaignID: "campaign-1",
-		Number:     2,
-		Title:      "The Middle",
-		Content:    "# The Middle\n\nContent here",
+		CampaignID:        "campaign-1",
+		Number:            2,
+		Title:             "The Middle",
+		Content:           "# The Middle\n\nContent here",
+		GameMode:          "sandbox_urbano",
+		GameModeSecondary: "intriga",
+		ChapterObjectives: []string{"Establecer contacto con la facción rebelde", "Evitar la guerra entre gremios"},
+		EstimatedDuration: "2-3 sesiones",
+		Tone:              "political",
+		RunningGuidance:   "Este capítulo es de sandbox urbano donde los personajes jugadores tienen libertad completa para explorar la ciudad e interactuar con sus habitantes. Hay cuatro facciones principales con las que pueden interactuar: el Gremio de Mercaderes controla el comercio y tiene recursos económicos, la Guardia de la Ciudad mantiene el orden pero está corrupta, los Contrabandistas del Puerto operan en las sombras y tienen información valiosa, y los Magos del Círculo poseen conocimiento arcano. Cada facción tiene sus propios objetivos, recursos y contactos. Los personajes pueden completar los objetivos en cualquier orden, pero deben asegurarse de que al menos dos facciones queden en posición favorable al final del capítulo para mantener el equilibrio de poder. Si los personajes ignoran por completo una facción, esa facción tomará medidas drásticas que se manifestarán como consecuencias en el siguiente capítulo. El tono es de intriga política con oportunidades variadas para combate táctico, operaciones de sigilo, y negociación compleja. Las decisiones que tomen los personajes aquí tendrán repercusiones duraderas.",
+		AssetHandoff:      "El sello del gremio obtenido permite acceso al distrito noble en el Acto 3",
 	}
 	if err := repo.Save(act2); err != nil {
 		t.Fatalf("Save() error: %v", err)

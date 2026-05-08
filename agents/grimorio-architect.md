@@ -271,6 +271,13 @@ Read canon.json and narrative_state.json, then validate:
 
 Check for: NPC consistency across acts, timeline coherence, location consistency, act transitions.
 
+**CRITICAL: Check 12 — Chapter Narrative Structure**
+- Mode variety (max 2 consecutive acts with same mode)
+- Mode-content alignment (e.g., 'investigacion' requires investigation areas)
+- Asset chain continuity (Act N handoff → Act N+1 hook)
+- Running guidance word count (150-400 words)
+- Chapter objectives (2-3 per act)
+
 Return validation report with status and fixes.")
 ```
 

@@ -183,8 +183,28 @@ func TestFlowchartService_GenerateMermaid_FromActRepo(t *testing.T) {
 	canonRepo := repository.NewMemoryCanonRepository()
 	actRepo := &mockActRepo{
 		acts: []domain.Act{
-			{Number: 1, Content: "# The Beginning\nFirst act content."},
-			{Number: 2, Content: "# The Twist\nSecond act content."},
+			{
+				Number:            1,
+				Title:             "The Beginning",
+				Content:           "# The Beginning\nFirst act content.",
+				GameMode:          "investigacion",
+				ChapterObjectives: []string{"Descubrir el misterio inicial"},
+				EstimatedDuration: "2 sesiones",
+				Tone:              "mystery",
+				RunningGuidance:   "Este capítulo introduce el misterio. Los PJs deben encontrar tres pistas clave que los lleven al siguiente capítulo. El ritmo debe ser moderado, permitiendo exploración y roleo. Si los PJs se estancan, un NPC proporciona información crucial. Asegúrate de que cada sesión termine con una revelación que motive a continuar.",
+				AssetHandoff:      "La pista final revela la ubicación del Acto 2",
+			},
+			{
+				Number:            2,
+				Title:             "The Twist",
+				Content:           "# The Twist\nSecond act content.",
+				GameMode:          "intriga",
+				ChapterObjectives: []string{"Confrontar la verdad", "Decidir el próximo paso"},
+				EstimatedDuration: "2-3 sesiones",
+				Tone:              "political",
+				RunningGuidance:   "Este capítulo presenta un giro inesperado. Los PJs deben procesar la revelación y decidir cómo actuar. Hay múltiples caminos posibles y cada decisión tiene consecuencias. El tono es de tensión política. Asegúrate de que los PJs sientan el peso de su elección.",
+				AssetHandoff:      "La decisión determina qué facciones ayudan en el Acto 3",
+			},
 		},
 	}
 

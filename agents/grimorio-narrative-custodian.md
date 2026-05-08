@@ -106,6 +106,34 @@ For each piece of content to validate, check:
 - Do quest states remain consistent? (completed quest cannot be active again)
 - **If no**: REJECT with specific fix: "NPC [name] died in session/act X but appears alive in act Y. Fix: replace with letter/vision/flashback, or use different NPC"
 
+#### Check 12: Chapter Narrative Structure
+- **Mode Variety**: No more than 2 consecutive acts with same primary game mode
+  - Algorithm: Count consecutive acts with same mode; if > 2, check for override justification keyword "**Override de Variedad:**" in Running Guidance
+  - If violation without override: ERROR "Mode variety violation: Acts X-Y all have mode 'Z'. Justify override in Running Guidance or change mode."
+  - If violation with override: WARN but approve
+- **Mode-Content Alignment**: Mode must match area types
+  - `investigacion` requires ≥2 social/investigation areas (skill checks, interviews)
+  - `dungeon_lineal` requires ≥3 combat/trap areas
+  - `sandbox_urbano` requires ≥3 exploration hooks
+  - `escape` requires ≥2 time-pressure encounters
+  - `viaje` requires ≥3 travel/wilderness encounters
+  - `intriga` requires ≥3 social maneuvering areas
+  - `confrontacion` requires ≥2 boss/combat encounters
+  - `downtime` requires ≥2 base management/crafting areas
+  - If mismatch: ERROR "Mode '{mode}' requires ≥{min} {type} areas; found {count}"
+- **Asset Chain Validation**: Each act's asset handoff must be referenced in next act
+  - Check: Act N asset_handoff appears in Act N+1 running_guidance OR content
+  - If broken: ERROR "Asset chain broken: Act {N} asset '{asset}' not referenced in Act {N+1}"
+- **Running Guidance Word Count**: Must be 150-400 words
+  - Count words with strings.Fields() equivalent
+  - If < 150: ERROR "Running guidance too short ({count} words, minimum 150)"
+  - If > 400: ERROR "Running guidance too long ({count} words, maximum 400)"
+- **Chapter Objectives Count**: Must have 2-3 objectives
+  - If < 2: ERROR "Chapter must have at least 2 objectives"
+  - If > 3: ERROR "Chapter must have at most 3 objectives"
+- **Asset Type Validation**: Asset must be concrete type (objeto, información, aliado, base)
+  - If vague ("experiencia", "amistad", "confianza"): ERROR "Asset must be concrete (objeto/información/aliado/base)"
+
 ### Phase 3: Generate Validation Report
 
 ```json
@@ -233,6 +261,82 @@ FOR each faction_benefit_granted:
   required_threshold = benefit.tier.threshold  # Rank 1: 1, Rank 2: 31, Rank 3: 71
   IF faction.reputation < required_threshold:
     RETURN error "Faction benefit '{benefit}' granted at reputation {rep}, requires {threshold}"
+```
+
+### Validation Rule: Chapter Narrative Structure (Check 12)
+```javascript
+// Mode Variety Validation
+function validateModeVariety(acts) {
+  let consecutiveCount = 1;
+  
+  for (let i = 1; i < acts.length; i++) {
+    if (acts[i].game_mode === acts[i-1].game_mode) {
+      consecutiveCount++;
+      
+      if (consecutiveCount > 2) {
+        // Check if override is justified
+        if (!acts[i].running_guidance.includes("**Override de Variedad:**")) {
+          return {
+            valid: false,
+            error: `Mode variety violation: Acts ${i-1}-${i+1} all have mode '${acts[i].game_mode}'. Justify override in Running Guidance or change mode.`
+          };
+        }
+      }
+    } else {
+      consecutiveCount = 1;
+    }
+  }
+  
+  return { valid: true };
+}
+
+// Mode-Content Alignment Validation
+function validateModeContentAlignment(act, areas) {
+  const modeRequirements = {
+    'investigacion': { type: 'social/investigation', min: 2 },
+    'dungeon_lineal': { type: 'combat/trap', min: 3 },
+    'sandbox_urbano': { type: 'exploration', min: 3 },
+    'escape': { type: 'time-pressure', min: 2 },
+    'viaje': { type: 'travel/wilderness', min: 3 },
+    'intriga': { type: 'social', min: 3 },
+    'confrontacion': { type: 'combat/boss', min: 2 },
+    'downtime': { type: 'base/crafting', min: 2 }
+  };
+  
+  const requirement = modeRequirements[act.game_mode];
+  const matchingAreas = areas.filter(area => area.type === requirement.type);
+  
+  if (matchingAreas.length < requirement.min) {
+    return {
+      valid: false,
+      error: `Mode '${act.game_mode}' requires ≥${requirement.min} ${requirement.type} areas; found ${matchingAreas.length}`
+    };
+  }
+  
+  return { valid: true };
+}
+
+// Asset Chain Validation
+function validateAssetChain(acts) {
+  for (let i = 0; i < acts.length - 1; i++) {
+    const currentAsset = acts[i].asset_handoff;
+    const nextAct = acts[i + 1];
+    
+    // Check if next act references the asset
+    const referencesAsset = 
+      nextAct.running_guidance.includes(currentAsset) ||
+      nextAct.content.includes(currentAsset);
+    
+    if (!referencesAsset) {
+      return {
+        valid: false,
+        error: `Asset chain broken: Act ${i+1} asset '${currentAsset}' not referenced in Act ${i+2}`
+      };
+    }
+  }
+  
+  return { valid: true };
+}
 ```
 
 ## Examples of Common Issues

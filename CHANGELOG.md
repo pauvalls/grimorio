@@ -5,7 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-05-08
+
+### Added
+- **Chapter Narrative Structure** — WotC-style chapter openers for cohesive narrative framing
+  - Domain model: 7 new fields in `Act` struct (`GameMode`, `GameModeSecondary`, `ChapterObjectives`, `EstimatedDuration`, `Tone`, `RunningGuidance`, `AssetHandoff`)
+  - Template: "Apertura del Capítulo" section in `areas.md.tmpl` with mode badge, objectives, duration, running guidance, asset handoff
+  - Agent: Rules 13-14 in `grimorio-areas.md` for chapter mode selection, asset handoff, mode variety algorithm
+  - Validation: Check 12 in `grimorio-narrative-custodian.md` for mode variety, mode-content alignment, asset chain validation
+  - 8 canonical game modes: `investigacion`, `sandbox_urbano`, `dungeon_lineal`, `escape`, `viaje`, `intriga`, `confrontacion`, `downtime`
+  - 4 asset types: `objeto`, `información`, `aliado`, `base`
+  - Unit tests: 17 test cases for domain validation (96.4% coverage)
+  - Test fixtures updated across repository, services, and handlers packages
+
+### Changed
+- **Template structure** — Chapter opener inserted after blockquote header, before "Adventure Background"
+- **Agent instructions** — Mode selection based on act position, variety enforcement (max 2 consecutive same mode)
+- **Validator** — Cross-act validation for mode variety and asset chain continuity
+- **CampaignService.SaveAct** — Now includes default values for new required fields
+
+### Fixed
+- Duration format regex to properly validate "1 sesión" and "X-Y sesiones" patterns
+- Test fixtures in `internal/repository`, `internal/services`, and `internal/mcp/handlers`
+
 ## [Unreleased]
+
+### Added
+- **Chapter Narrative Structure** — WotC-style chapter openers for cohesive narrative framing
+  - Domain model: 7 new fields in `Act` struct (`GameMode`, `GameModeSecondary`, `ChapterObjectives`, `EstimatedDuration`, `Tone`, `RunningGuidance`, `AssetHandoff`)
+  - Template: "Apertura del Capítulo" section in `areas.md.tmpl` with mode badge, objectives, duration, running guidance, asset handoff
+  - Agent: Rules 13-14 in `grimorio-areas.md` for chapter mode selection, asset handoff, mode variety algorithm
+  - Validation: Check 12 in `grimorio-narrative-custodian.md` for mode variety, mode-content alignment, asset chain validation
+  - 8 canonical game modes: `investigacion`, `sandbox_urbano`, `dungeon_lineal`, `escape`, `viaje`, `intriga`, `confrontacion`, `downtime`
+  - 4 asset types: `objeto`, `información`, `aliado`, `base`
+  - Unit tests: 17 test cases for domain validation (96.4% coverage)
+
+### Changed
+- **Template structure** — Chapter opener inserted after blockquote header, before "Adventure Background"
+- **Agent instructions** — Mode selection based on act position, variety enforcement (max 2 consecutive same mode)
+- **Validator** — Cross-act validation for mode variety and asset chain continuity
+
+### Fixed
+- Duration format regex to properly validate "1 sesión" and "X-Y sesiones" patterns
 
 ## [2.1.0] - 2026-05-08
 

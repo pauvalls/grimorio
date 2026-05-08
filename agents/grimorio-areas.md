@@ -309,3 +309,170 @@ La biblioteca contiene principalmente textos sobre historia local y botánica. S
     - **Estado del mundo**: Trackear NPCs muertos, reputación de facciones, pistas reveladas, estado de quests
 11. **Sidebars obligatorios**: Al menos 1 sidebar por acto (> ##### Nombre). Tips para DM, reglas opcionales, o notas de atmósfera.
 12. **Inline NPC stats**: Cuando un NPC aparece en un área, incluir stat summary inline (*alineación raza clase*). Full stats en Appendix B.
+
+## Regla 13: Chapter Opener (Apertura del Capítulo)
+
+Cada acto DEBE comenzar con una sección "Apertura del Capítulo" antes de "Adventure Background". Esta sección incluye:
+
+### 13.1 Modo de Juego (Regla 13A)
+
+Selecciona el modo según la posición del acto en la campaña:
+
+| Posición | Modo Recomendado | Justificación |
+|----------|------------------|---------------|
+| Acto 1 | dungeon_lineal o investigacion | Enganche rápido, primer éxito |
+| Acto 2 | sandbox_urbano o downtime | Expansión, base building |
+| Acto 3-N | variado | No repetir modo más de 2 veces consecutivas |
+| Acto Final | confrontacion | Clímax combativo o dramático |
+
+**Modos válidos** (usar exactamente así, lowercase con underscores):
+- investigacion
+- sandbox_urbano
+- dungeon_lineal
+- escape
+- viaje
+- intriga
+- confrontacion
+- downtime
+
+**Modo híbrido**: Si el capítulo combina dos modos (ej: investigación + dungeon), declarar como "investigacion + dungeon_lineal". El primer modo es el dominante.
+
+**Override**: Si la narrativa requiere 3+ actos consecutivos con el mismo modo (ej: mega-dungeon), justificar explícitamente en Running Guidance.
+
+### 13.2 Objetivos del Capítulo (Regla 13B)
+
+Generar 2-3 objetivos que:
+- Comienzan con verbo de acción (Rescatar, Obtener, Descubrir, Derrotar, Explorar)
+- Son específicos (se sabe cuándo se completaron)
+- Al menos uno conecta con el arco de campaña (no solo local)
+
+**Ejemplo**:
+```markdown
+**Objetivos del Capítulo:**
+- Rescatar a Floon Blagmar de los capos del crimen
+- Obtener la recompensa de Renaer Neverember
+- Descubrir la primera pista sobre la Piedra de Golorr
+```
+
+### 13.3 Duración Estimada (Regla 13C)
+
+Formato obligatorio:
+- `1 sesión` (exactamente así, singular)
+- `2-3 sesiones` (rango numérico)
+- `4-6 sesiones`
+
+**NO usar**: "varias sesiones", "largo", "2 horas"
+
+### 13.4 Running Guidance (Regla 13D)
+
+Escribir 2-4 párrafos (150-400 palabras) que incluyan:
+
+**Párrafo 1**: Estructura del capítulo (cómo se conectan las áreas, flujo)
+**Párrafo 2**: Énfasis de tono (qué resaltar, beats emocionales)
+**Párrafo 3**: Puntos de decisión clave (momentos de ramificación con consecuencias)
+**Párrafo 4** (opcional): Transición al siguiente capítulo
+
+**Ejemplo**:
+```markdown
+**Running this Chapter:**
+Este capítulo combina investigación urbana (Calles de Waterdeep) con un dungeon lineal (Villa Gralhund). Comienza con el gancho en el Portal Bramante, luego permite a los PJs seguir pistas por la ciudad antes del asalto final.
+
+Énfasis en el contraste: la elegancia de la villa noble vs. la brutalidad del sótano donde retienen a Floon. Los PJs deben sentir que están escalando de "aventureros buscando trabajo" a "jugadores en un conflicto de facciones".
+
+Si los PJs matan a los Gralhund, registra que la familia está "eliminada" para consecuencias en actos posteriores.
+```
+
+### 13.5 Asset Handoff (Regla 13E)
+
+Cada acto DEBE producir un asset concreto que sea prerequisito del siguiente acto.
+
+**Tipos de Asset** (usar exactamente así):
+
+| Tipo | Ejemplo | Validación |
+|------|---------|------------|
+| **Objeto** | mapa, llave, carta de presentación, diario, arma mágica | Debe ser físico, concreto |
+| **Información** | ubicación del villano, debilidad del boss, identidad del traidor | Debe ser conocimiento específico |
+| **Aliado** | NPC que guía al siguiente capítulo, facción que ofrece apoyo | Debe nombrar al NPC/facción |
+| **Base** | taverna, barco, refugio, guarida | Debe ser ubicación que los PJs controlan |
+
+**Formato**:
+```markdown
+**Asset para el Siguiente Capítulo:**
+- **Tipo:** Nombre del asset (propósito para el siguiente acto)
+```
+
+**Ejemplo**:
+```markdown
+**Asset para el Siguiente Capítulo:**
+- **Objeto:** Escritura de la Taberna Trollskull (prerrequisito para Acto 2 sandbox)
+- **Información:** Mención de "Xanathar" en documentos (gancho para Acto 3)
+```
+
+**NO usar**: "experiencia", "amistad", "confianza" (son vagos, no concretos)
+
+### 13.6 Variedad de Modos (Regla 13F)
+
+**Regla**: NO generar más de 2 actos consecutivos con el mismo modo primario.
+
+**Algoritmo de selección**:
+```
+SI Acto N-1.mode == Acto N-2.mode:
+  ENTONCES Acto N.mode DEBE SER diferente
+SINO:
+  Acto N.mode PUEDE SER igual a Acto N-1.mode
+```
+
+**Excepción**: Campañas de mega-dungeon o viaje épico pueden tener 3+ consecutivos si se justifica en Running Guidance.
+
+**Ejemplo de justificación**:
+```markdown
+**Running this Chapter:**
+**Override de Variedad:** Este es el tercer acto consecutivo de tipo dungeon_lineal. Justificación: campaña de mega-dungeon (Undermountain-style) donde cada nivel del dungeon es un acto. La variedad viene de los tipos de encuentros (combate, puzzle, social con facciones del dungeon) no del modo de exploración.
+```
+
+## Regla 14: Edge Cases en Chapter Opener
+
+### 14.1 Capítulo sin NPCs nuevos
+
+Si el capítulo es dungeon crawl o exploración sin NPCs nuevos:
+- Running Guidance enfatiza **storytelling ambiental** en lugar de interacciones
+- Asset handoff debe ser objeto o información (no aliado)
+- Modo debe reflejar contenido (dungeon_lineal o exploracion)
+
+### 14.2 TPK (Total Party Kill)
+
+Si hay riesgo de TPK en el capítulo:
+- Running Guidance incluye **contingencia TPK** (cómo continuar)
+- Opciones: resurrection quest, nueva party hereda misión, campaña termina
+- Asset handoff puede transferirse a nueva party o devenir MacGuffin
+
+### 14.3 Capítulo Salteado (Sequence Breaking)
+
+Si los PJs encuentran atajo:
+- Running Guidance incluye **contingencia skip** (contenido mínimo que debe ocurrir)
+- Asset handoff debe reubicarse (DM lo mueve al área final)
+- Consecuencias de saltar el dungeon se reflejan en el mundo
+
+### 14.4 Campaña One-Shot (1 solo acto)
+
+- Asset handoff se convierte en **epílogo** en lugar de puente
+- Regla de variedad no aplica (solo 1 acto)
+- Running Guidance incluye notas de cierre de campaña
+
+### 14.5 Campaña Reanuda después de Hiatus
+
+- Running Guidance incluye **recap hook** (1 párrafo resumiendo acto anterior)
+- Asset handoff reafirma explícitamente qué tienen los PJs
+
+## Checklist de Validación de Chapter Opener
+
+Antes de guardar cada acto, verificá:
+
+- [ ] **Modo de Juego**: ¿Es uno de los 8 modos canónicos?
+- [ ] **Variedad de Modos**: ¿Este acto + los 2 anteriores tienen modos diferentes (o hay override justificado)?
+- [ ] **Objetivos**: ¿Son 2-3 objetivos con verbos de acción?
+- [ ] **Duración**: ¿Formato correcto ("1 sesión" o "X-Y sesiones")?
+- [ ] **Running Guidance**: ¿150-400 palabras? ¿2-4 párrafos?
+- [ ] **Asset Handoff**: ¿Es concreto (objeto/información/aliado/base)?
+- [ ] **Cadena de Assets**: ¿El asset de este acto se menciona en el acto siguiente?
+- [ ] **Alineación Modo-Contenido**: ¿El modo coincide con los tipos de áreas?
