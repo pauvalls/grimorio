@@ -73,7 +73,10 @@ func TestCanonService_LoadSaveCanon(t *testing.T) {
 
 	// Initialize first
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	doc, _ := svc.InitializeCanon(ctx, brief)
+	doc, err := svc.InitializeCanon(ctx, brief)
+	if err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Modify and save
 	doc.Facts = append(doc.Facts, domain.CanonFact{
@@ -132,7 +135,10 @@ func TestCanonService_QueryEntity(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	doc, _ := svc.InitializeCanon(ctx, brief)
+	doc, err := svc.InitializeCanon(ctx, brief)
+	if err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add more entities
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
@@ -373,7 +379,10 @@ func TestCanonService_CacheInvalidateOnSave(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "invalidate-test", McGuffinType: "artifact"}
-	doc, _ := svc.InitializeCanon(ctx, brief)
+	doc, err := svc.InitializeCanon(ctx, brief)
+	if err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Load to warm cache
 	if _, err := svc.LoadCanon(ctx, brief.Name); err != nil {
@@ -390,7 +399,7 @@ func TestCanonService_CacheInvalidateOnSave(t *testing.T) {
 	canonRepo.Delete(brief.Name)
 
 	// Should fail because cache was invalidated and repo is corrupted
-	_, err := svc.LoadCanon(ctx, brief.Name)
+	_, err = svc.LoadCanon(ctx, brief.Name)
 	if err == nil {
 		t.Fatal("expected error after cache invalidation, got nil")
 	}
