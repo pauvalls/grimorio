@@ -279,6 +279,30 @@ tbody tr:nth-child(odd) {
   letter-spacing: 1px;
 }
 
+/* Sidebar - DM tips, optional rules, setting details */
+blockquote.sidebar,
+.read-aloud:has(strong) {
+  background: #f0e6d3;
+  border-left: 4px solid #8b0000;
+  border-top: 1px dashed #c9ad6a;
+  border-bottom: 1px dashed #c9ad6a;
+  border-right: 1px dashed #c9ad6a;
+  padding: 8px 12px;
+  margin: 10px 0;
+  font-style: normal;
+  column-break-inside: avoid;
+}
+
+blockquote.sidebar h5,
+.read-aloud h5 {
+  font-family: 'Cinzel', serif;
+  font-size: 10pt;
+  color: #8b0000;
+  margin: 0 0 4px 0;
+  border: none;
+  padding: 0;
+}
+
 /* Area number highlighting */
 .area-number {
   font-family: 'Cinzel', serif;
