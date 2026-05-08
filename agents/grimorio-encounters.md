@@ -76,24 +76,59 @@ Qué deben lograr los PJs en este encuentro. No siempre es "matar todo".
 
 Referenciá criaturas del bestiary.md por nombre exacto.
 
-### Terreno (para combate)
-Describí el mapa con suficiente detalle para que el DM lo visualice:
-- Dimensiones, cobertura, terreno difícil, iluminación
-- Elementos interactivos (barricas, columnas, trampas, altares)
-- Cómo afecta el terreno a las tácticas
+### Mapa Táctico
+Describí el mapa de batalla con formato técnico:
+- **Dimensiones:** X × Y pies (cuadrícula de X×Y cuadros)
+- **Iluminación:** Luz brillante / Luz tenue / Oscuridad
+- **Terreno:** Terreno difícil, cobertura, altura
+- **Elementos interactivos:** Lista con posición (A1, B3, etc.) y efecto mecánico
+- **Puntos de inicio:** Dónde empiezan enemigos y PJs
 
-### Desarrollo (paso a paso)
-Numerá 3-6 rondas/fases del encuentro. Incluí:
-- Cómo empieza
-- Qué hacen los enemigos en cada ronda
-- Condiciones de cambio (enemigos que huyen, refuerzos, eventos)
-- Consecuencias de las acciones de los PJs
+### Condiciones y Efectos Ambientales
+- **Condiciones iniciales:** Niebla, oscuridad mágica, fuego, etc.
+- **Cambios de fase:** Qué trigger cambia el entorno (ej: "a ronda 3, el techo empieza a derrumbarse")
+- **Efectos por área:** Daño o condiciones en zonas específicas
 
-### Formas de Ganar (para encuentros de combate)
+### Desarrollo Round-by-Round
+
+Numerá EXACTAMENTE las rondas del encuentro. El DM debe poder leer esto en la mesa sin improvisar.
+
+#### Plantilla de Encuentro
+Cada encuentro DEBE usar uno de estos templates:
+- **Ambush (Emboscada):** Enemigos ocultos → ataque sorpresa → PJs reaccionan.
+- **Defense (Defensa):** PJs protegen objetivo/área → oleadas de enemigos.
+- **Assault (Asalto):** PJs atacan posición enemiga → objetivos específicos.
+- **Social (Social):** Negociación, intimidación, engaño → consecuencias de reputación.
+- **Puzzle/Trap (Puzzle/Trampa):** Resolución por habilidades → penalización por fallo.
+- **Chase (Persecución):** Carrera contra el tiempo → obstáculos progresivos.
+
+#### Rondas
+| Ronda | Enemigos | Eventos Ambientales | Condición de Victoria |
+|-------|----------|---------------------|----------------------|
+| 1 | ... | ... | ... |
+| 2 | ... | ... | ... |
+| 3+ | ... | ... | ... |
+
+Incluí:
+- **Inicio:** Posición exacta de enemigos y PJs
+- **Ronda 1-2:** Qué hacen los enemigos, prioridades tácticas
+- **Ronda 3+:** Escalación, refuerzos, cambios de fase
+- **Condiciones de cambio:** HP %, rondas transcurridas, eventos específicos
+- **Consecuencias de acciones PJs:** Qué pasa si hacen X, Y o Z
+
+### Resolución Alternativa
+Además del combate directo, DEBE haber al menos 2 formas alternativas:
+- **Diplomacia/Engaño:** CD sugerida, qué necesitan lograr, consecuencias
+- **Sigilo/Evasión:** Rutas posibles, CDs de Sigilo, qué pasa si detectan
+- **Solución creativa:** Usar el entorno, objetos especiales, habilidades no-combate
+- **Consecuencias de resolución alternativa:** Qué ganan/pierden vs. combate directo
+
+### Formas de Ganar
 Al menos 2 formas diferentes de resolver el encuentro:
-- Muerte directa
-- Resolución alternativa (diplomacia, sigilo, ingenio)
-- Solución creativa (usar el entorno, objetos especiales)
+- **Combate directo:** Eliminación de todos los hostiles.
+- **Resolución alternativa:** Diplomacia (Persuasión/Engaño DC XX), sigilo (Sigilo DC XX), o ingenio.
+- **Solución creativa:** Usar el entorno, objetos especiales, habilidades no-combate.
+- **Referencia por nombre:** Si este encuentro usa un template estándar, referencialo (ej: "Template: Ambush").
 
 ### Recompensa
 - PX por PJ

@@ -9,17 +9,19 @@ import (
 )
 
 type Config struct {
-	OutputDir string `json:"output_dir"`
-	PDFEngine string `json:"pdf_engine"`
+	OutputDir       string `json:"output_dir"`
+	PDFEngine       string `json:"pdf_engine"`
+	CompilerVersion int    `json:"compiler_version"`
 	image.Config
 }
 
 func DefaultConfig() *Config {
 	home, _ := os.UserHomeDir()
 	return &Config{
-		OutputDir: filepath.Join(home, "campaigns"),
-		PDFEngine: "wkhtmltopdf",
-		Config:    image.DefaultConfig(),
+		OutputDir:       filepath.Join(home, "campaigns"),
+		PDFEngine:       "wkhtmltopdf",
+		CompilerVersion: 2,
+		Config:          image.DefaultConfig(),
 	}
 }
 
@@ -41,6 +43,9 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	if cfg.PDFEngine == "" {
 		cfg.PDFEngine = "wkhtmltopdf"
+	}
+	if cfg.CompilerVersion == 0 {
+		cfg.CompilerVersion = 2
 	}
 	if cfg.Provider == "" {
 		cfg.Provider = "pollinations"

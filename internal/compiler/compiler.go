@@ -39,9 +39,10 @@ var loreTemplate string
 var sessionZeroTemplate string
 
 type Compiler struct {
-	CampaignDir string
-	PDFEngine   string
-	seenImages  map[string]bool
+	CampaignDir     string
+	PDFEngine       string
+	CompilerVersion int
+	seenImages      map[string]bool
 }
 
 func New(campaignDir, pdfEngine string) *Compiler {
@@ -49,10 +50,20 @@ func New(campaignDir, pdfEngine string) *Compiler {
 		pdfEngine = "wkhtmltopdf"
 	}
 	return &Compiler{
-		CampaignDir: campaignDir,
-		PDFEngine:   pdfEngine,
-		seenImages:  make(map[string]bool),
+		CampaignDir:     campaignDir,
+		PDFEngine:       pdfEngine,
+		CompilerVersion: 2,
+		seenImages:      make(map[string]bool),
 	}
+}
+
+// NewWithVersion creates a compiler with a specific version (1 or 2)
+func NewWithVersion(campaignDir, pdfEngine string, version int) *Compiler {
+	c := New(campaignDir, pdfEngine)
+	if version == 1 || version == 2 {
+		c.CompilerVersion = version
+	}
+	return c
 }
 
 func GetTemplate(tmplType string) (string, error) {

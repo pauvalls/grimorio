@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pauvalls/grimorio/internal/config"
@@ -23,6 +24,17 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Parse flags
+	compilerVersion := 0
+	for i := 1; i < len(os.Args); i++ {
+		if os.Args[i] == "--compiler-version" && i+1 < len(os.Args) {
+			if v, err := strconv.Atoi(os.Args[i+1]); err == nil && (v == 1 || v == 2) {
+				compilerVersion = v
+			}
+			i++
+		}
+	}
+
 	home, _ := os.UserHomeDir()
 	configPath := filepath.Join(home, ".config", "grimorio", "config.json")
 
@@ -36,6 +48,11 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Override compiler version from flag
+	if compilerVersion != 0 {
+		cfg.CompilerVersion = compilerVersion
 	}
 
 	// If no config exists, create default

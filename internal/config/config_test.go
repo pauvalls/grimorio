@@ -25,6 +25,9 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.OutputDir == "" {
 		t.Error("expected OutputDir to be set")
 	}
+	if cfg.CompilerVersion != 2 {
+		t.Errorf("expected default CompilerVersion 2, got %d", cfg.CompilerVersion)
+	}
 }
 
 func TestLoadConfig_FileNotExists(t *testing.T) {
@@ -47,7 +50,7 @@ func TestLoadConfig_ValidFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
 
-	data := `{"output_dir":"/tmp/test","pdf_engine":"weasyprint","image_provider":"raphael"}`
+	data := `{"output_dir":"/tmp/test","pdf_engine":"weasyprint","image_provider":"raphael","compiler_version":1}`
 	if err := os.WriteFile(configPath, []byte(data), 0644); err != nil {
 		t.Fatalf("failed to write test config: %v", err)
 	}
@@ -64,6 +67,9 @@ func TestLoadConfig_ValidFile(t *testing.T) {
 	}
 	if cfg.Provider != "raphael" {
 		t.Errorf("expected Provider 'raphael', got '%s'", cfg.Provider)
+	}
+	if cfg.CompilerVersion != 1 {
+		t.Errorf("expected CompilerVersion 1, got %d", cfg.CompilerVersion)
 	}
 }
 

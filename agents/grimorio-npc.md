@@ -63,12 +63,15 @@ Cada NPC debe tener:
 1. **Nombre y Rol** — Que el nombre sea memorable y consistente con el tono.
 2. **Raza/Clase** — Humano, elfo, etc. + clase si aplica (para D&D 5e).
 3. **Alineamiento** — LG, NG, CG, LN, N, CN, LE, NE, CE.
-4. **Rol en la historia** — Qué función cumple en la trama. No son relleno.
-5. **Personalidad** — 2-3 oraciones que definan cómo habla, actúa, se mueve. Incluí tics, manierismos, forma de hablar.
-6. **Motivación** — Qué quiere este NPC. Todos quieren algo.
-7. **Secreto** — Algo que el NPC oculta. No todo se descubre, pero debería ser relevante si se descubre.
-8. **Conexiones** — Con quién se relaciona (otros NPCs, facciones, lugares).
-9. **Cita típica** — Una línea de diálogo que capture su esencia.
+4. **Ubicación** — **Área X** donde se encuentra este NPC (ej: "Área 3", "Área 7 o móvil").
+5. **Estadísticas de Combate** — Si el NPC puede entrar en combate: CA, PG, velocidad, ataque principal (bonus + daño). Formato: `CA 12, PG 18 (3d8+3), Espada corta +4 (1d6+2)`.
+6. **Rol en la historia** — Qué función cumple en la trama. No son relleno.
+7. **Personalidad** — 2-3 oraciones que definan cómo habla, actúa, se mueve. Incluí tics, manierismos, forma de hablar.
+8. **Motivación** — Qué quiere este NPC. Todos quieren algo.
+9. **Secreto** — Algo que el NPC oculta. No todo se descubre, pero debería ser relevante si se descubre.
+10. **Involucramiento en Quests** — Qué quest(s) está relacionado este NPC (si aplica). Formato: `Quest: "Nombre de la Quest" — rol`.
+11. **Conexiones** — Con quién se relaciona (otros NPCs, facciones, lugares).
+12. **Cita típica** — Una línea de diálogo que capture su esencia.
 
 ### Balanceá los NPCs
 

@@ -22,6 +22,24 @@ func TestNew_DefaultEngine(t *testing.T) {
 	if c.PDFEngine != "wkhtmltopdf" {
 		t.Errorf("Default PDFEngine = %s, want wkhtmltopdf", c.PDFEngine)
 	}
+	if c.CompilerVersion != 2 {
+		t.Errorf("Default CompilerVersion = %d, want 2", c.CompilerVersion)
+	}
+}
+
+func TestNewWithVersion(t *testing.T) {
+	c := NewWithVersion("/tmp/campaign", "", 1)
+	if c.CompilerVersion != 1 {
+		t.Errorf("CompilerVersion = %d, want 1", c.CompilerVersion)
+	}
+	c2 := NewWithVersion("/tmp/campaign", "", 2)
+	if c2.CompilerVersion != 2 {
+		t.Errorf("CompilerVersion = %d, want 2", c2.CompilerVersion)
+	}
+	c3 := NewWithVersion("/tmp/campaign", "", 99)
+	if c3.CompilerVersion != 2 {
+		t.Errorf("Invalid version should default to 2, got %d", c3.CompilerVersion)
+	}
 }
 
 func TestGetTemplate(t *testing.T) {

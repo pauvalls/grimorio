@@ -61,6 +61,9 @@ Usá el formato oficial de D&D 5e para cada bloque de estadísticas:
 ### Encabezado
 - **Nombre y tipo** (Mediano no-muerto, Grande bestia, etc.)
 - **Alineamiento**
+- **Rol de combate** (skirmisher, tank, controller, artillery, lurker, leader, brute, minion) — cómo se posiciona en el campo de batalla
+- **Grupos de encuentro** (encounter groups) — con qué otras criaturas aparece típicamente (ej: "2-3 con 1 líder")
+- **Fuente/Referencia** — "Custom" o "MM p.XXX" o "Volo p.XXX"
 - **Descripción atmosférica** (1-3 oraciones con > para citas)
 
 ### Estadísticas Base
@@ -87,8 +90,15 @@ Habilidades únicas que hacen interesante a la criatura. No solo stats planos.
 - Ataques con nombre, bonus, daño, y efectos secundarios
 - Usá formato: **Nombre.** *Ataque cuerpo a cuerpo:* +X al impacto...
 
-### Tácticas
-Cómo pelea esta criatura. Prioridades, estrategias, cuándo huye. Esto es para el DM.
+### Tácticas Estructuradas
+
+Usá el formato WotC para tácticas:
+
+- **Apertura (Opening):** Qué hace en los primeros 1-2 turnos. Posicionamiento, habilidades iniciales.
+- **Prioridades:** Orden de preferencia de acciones (ej: 1. Separar al healer, 2. Atacar al más débil, 3. Usar habilidad de área).
+- **Sinergia:** Cómo interactúa con aliados (ej: "El líder otorga ventaja a los minions dentro de 30 pies").
+- **Retirada:** Bajo qué condiciones huye o se rinde (HP %, aliados caídos, objetivo conseguido).
+- **Variantes tácticas:** Cómo cambia si tiene ventaja, desventaja, o terreno favorable/desfavorable.
 
 ## Reglas de Oro
 1. **CR balanceado para el nivel**: Para nivel 1, el boss debe ser CR 1-2 con debilidades explotables. Los minions CR 1/8 a 1/4.
