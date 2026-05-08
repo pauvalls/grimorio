@@ -355,14 +355,15 @@ The installer automatically adds the following to `~/.config/opencode/opencode.j
   "agent": {
     "grimorio-architect": {
       "mode": "primary",
-      "tools": { "delegate": true /* ... */ }
+      "tools": { "delegate": true },
+      "description": "ORCHESTRATOR ONLY - delegates all content generation to specialized sub-agents (grimorio-npc, grimorio-areas, grimorio-quests, etc.). NEVER generates content directly."
     }
   },
   "command": {
     "grimorio": {
       "agent": "grimorio-architect",
       "subtask": false,
-      "template": "Generate a D&D 5e campaign..."
+      "template": "Generate a D&D 5e campaign or one-shot from the user's idea.\n## CRITICAL: DELEGATE ALL CONTENT GENERATION\n- Use delegate(agent=\"grimorio-npc\", ...) for NPCs\n- Use delegate(agent=\"grimorio-areas\", ...) for areas\n- Use delegate(agent=\"grimorio-quests\", ...) for quests\n- Use delegate(agent=\"grimorio-bestiary\", ...) for bestiary\n- Use delegate(agent=\"grimorio-encounters\", ...) for encounters\n- Use delegate(agent=\"grimorio-lore\", ...) for lore\n- Use delegate(agent=\"grimorio-narrative-custodian\", ...) for validation\n- NEVER use MCP tools directly (save_npcs, save_bestiary, etc.)\n- NEVER write creative content yourself\n- Report progress after each phase"
     }
   }
 }
