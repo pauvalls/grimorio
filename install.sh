@@ -209,6 +209,13 @@ setup_plugin() {
             done
         fi
 
+        # Copy templates for Go binary embedding (required for compiled binary to use latest templates)
+        if [ -d "$INSTALL_DIR/internal/compiler/templates" ]; then
+            mkdir -p "$plugin_dir/internal/compiler/templates"
+            cp -r "$INSTALL_DIR/internal/compiler/templates"/* "$plugin_dir/internal/compiler/templates/"
+            log "Templates copied to plugin directory"
+        fi
+
         if [ "$plugin_dir" = "$CLAUDE_PLUGIN_DIR" ]; then
             cat > "$plugin_dir/.mcp.json" << 'EOF'
 {
