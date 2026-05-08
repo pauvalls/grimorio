@@ -243,9 +243,9 @@ SVG Maps necesita maps descriptions. Acts necesita TODO el contenido (lore, NPCs
 delegate(agent="grimorio-cartographer", prompt="Generate ALL SVG assets for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nRead maps/maps.md and generate battle maps for EACH location. Generate {act_count} ornate dividers.")
 ```
 
-**2. Acts — Agent: grimorio-acts**
+**2. Areas — Agent: grimorio-areas**
 ```
-delegate(agent="grimorio-acts", prompt="Generate ACTS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nGenerate {act_count} acts. CRITICAL: Read ALL source files first:\n- lore.md\n- npcs/npcs_and_factions.md\n- bestiary/bestiary.md\n- maps/maps.md\n- quests/*.md\n- encounters/encounters.md\n- characters/*.md\n\nReference NPCs, creatures, quests, and characters by name. Use [SCENE: ...] placeholders for pivotal moments.")
+delegate(agent="grimorio-areas", prompt="Generate AREAS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nGenerate {act_count} acts with 10-15 numbered areas each. CRITICAL: Read ALL source files first:\n- lore.md\n- npcs/npcs_and_factions.md\n- bestiary/bestiary.md\n- maps/maps.md\n- quests/*.md\n- encounters/encounters.md\n- characters/*.md\n\nReference NPCs, creatures, quests, and characters by name. Use [SCENE: ...] placeholders for pivotal moments.")
 ```
 
 `act_count` = 1 if `is_oneshot` else 3
@@ -490,7 +490,7 @@ PDF Final: {campaign_path}/campaign.pdf
    - `grimorio-quests` for personal quests and side missions
    - `grimorio-encounters` for combat and exploration challenges
    - `grimorio-characters` for pre-generated character sheets
-   - `grimorio-acts` or `grimorio-areas` for narrative acts and numbered areas
+   - `grimorio-areas` for numbered playable areas (10-15 per act, WotC format)
    - `grimorio-introduction` for campaign introduction and overview
    - `grimorio-setting-guide` for DM-only setting reference (geography, history, factions)
    - `grimorio-appendices` for consolidated reference material (items, stat blocks, handouts)
