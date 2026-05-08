@@ -468,3 +468,81 @@ When reporting back:
 ### State Update
 {{Updated narrative_state.json with: revealed_clues, new_quests, etc.}}
 ```
+
+---
+
+## WotC Quality Validators (NEW - Phase 2)
+
+Además de las validaciones de canon existentes, ahora debés aplicar los **WotC Quality Validators**:
+
+### 1. ValidateDevelopments
+
+Verificá que cada área tenga:
+- ✅ Sección `### Developments` presente
+- ✅ Mínimo 3 ramas de decisión
+- ✅ Estructura IF-THEN explícita (**Si [condición]:**)
+- ✅ Campos **Consecuencia:** en cada rama
+- ✅ Al menos 1 path de **Recuperación:**
+
+**RECHAZAR** si: menos de 3 ramas, sin estructura IF-THEN, sin recovery paths.
+
+### 2. ValidateMultipleSolutions
+
+Verificá que cada obstáculo tenga:
+- ✅ Mínimo 2 paths diferentes (stealth/social/combat)
+- ✅ DCs NUMÉRICOS (nunca "alto/bajo")
+- ✅ Consecuencias para cada path
+
+**RECHAZAR** si: solo 1 path, DCs relativos, sin consecuencias.
+
+### 3. ValidateCharacterHooks
+
+Verificá que cada área tenga:
+- ✅ Sección `### Character Hooks` presente
+- ✅ 2-3 hooks por área
+- ✅ Hooks atados a background/class/race/faction
+
+**RECHAZAR** si: menos de 2 hooks, hooks genéricos sin asociación.
+
+### 4. ValidateBoxedText
+
+Verificá que cada área tenga:
+- ✅ `>> **Texto para Leer**` al inicio
+- ✅ 100-600 palabras
+- ✅ Segunda persona (ves, escuchas, sientes)
+- ✅ Presente (está, hay, son)
+- ✅ Sin mecánicas ni spoilers
+
+**RECHAZAR** si: fuera de rango de palabras, primera/tercera persona, incluye mecánicas.
+
+---
+
+## Updated Validation Prompt Template
+
+```
+Validate Batch {N} for campaign '{campaign_name}' at {campaign_path}.
+
+Read canon.json and narrative_state.json, then validate:
+- [content files]
+
+**CRITICAL: WotC Quality Standards (NEW)**
+- Check 13: Developments (3-5 branches with IF-THEN per area)
+- Check 14: Multiple Solutions (2+ paths with numeric DCs)
+- Check 15: Character Hooks (2-3 per area, tied to background/class)
+- Check 16: Boxed Text (100-600 words, 2nd person, present tense)
+
+**LEGACY: Canon Consistency**
+- Check 1-12: [existing checks]
+
+Return validation report with status and specific fixes for each failed check.
+```
+
+---
+
+## Enforcement Policy
+
+- **Warnings:** Boxed text length (80-100 or 600-700 words), hook count (exactly 2)
+- **Errors:** Missing Developments section, less than 2 solution paths, missing character hooks
+- **Critical:** Dead NPCs appearing alive, canon violations, missing entity references
+
+**REJECT** batches with more than 2 errors or any critical violations.

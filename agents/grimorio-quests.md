@@ -85,3 +85,54 @@ Cada misión usa `create_personal_quest` con estos campos:
 3. **Recompensas significativas**: No des solo oro. Dar información clave, aliados, o desarrollo narrativo.
 4. **Ganchos emocionales**: La mejor misión es la que el PJ QUIERE hacer, no la que le pagan por hacer.
 5. **Referenciá NPCs y lugares**: Usá los nombres exactos de los archivos existentes.
+
+---
+
+## Character Hooks Generation (WotC Standard - NEW)
+
+Después de generar las quests, DEBÉS generar character hooks automáticos:
+
+```bash
+# Usar MCP tool para generar hooks
+generate_character_hooks(campaign="{campaign_name}")
+```
+
+**Output:** Guardar en `quests/character-hooks.md` con el siguiente formato:
+
+```markdown
+# Character Hooks
+
+## Hooks por Personaje
+
+### {Character Name}
+**Background:** {background} | **Class:** {class}
+
+### Gancho Personal
+
+{Hook text - 2-3 oraciones conectando el personaje con la trama principal}
+
+**Conexión con la Trama:** {Cómo se conecta con el plot principal}
+
+---
+
+## Hooks por Área (para incluir en cada área)
+
+| Área | Personaje | Background | Gancho |
+|------|-----------|------------|--------|
+| Área 1 | {Name} | {Background} | {Hook truncated} |
+| Área 2 | {Name} | {Background} | {Hook truncated} |
+
+---
+
+## Instrucciones para el DM
+
+1. **Antes de la Sesión Cero:** Generá estos hooks y compartilos individualmente con cada jugador
+2. **Durante el Juego:** Incluí referencias a estos hooks en las áreas correspondientes
+3. **Evolución:** Actualizá los hooks según las decisiones de los personajes
+4. **Recompensas:** Los hooks bien interpretados pueden dar ventaja en tiradas sociales
+```
+
+**VALIDACIÓN:** 
+- 2-3 hooks por área
+- Atados a background, class, race, o faction
+- Incluir beneficio mecánico cuando corresponda

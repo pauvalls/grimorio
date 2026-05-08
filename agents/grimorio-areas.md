@@ -554,3 +554,85 @@ Antes de guardar cada acto, verificá:
 - [ ] **Asset Handoff**: ¿Es concreto (objeto/información/aliado/base)?
 - [ ] **Cadena de Assets**: ¿El asset de este acto se menciona en el acto siguiente?
 - [ ] **Alineación Modo-Contenido**: ¿El modo coincide con los tipos de áreas?
+
+---
+
+## WotC Quality Standards (MANDATORY - Phase 2)
+
+### 1. Developments Section (3-5 Branches)
+
+Cada área DEBE incluir una sección `### Developments` con mínimo 3 ramas de decisión:
+
+```markdown
+### Developments
+
+**Si los PJs [acción concreta]:**
+- **Consecuencia inmediata:** [qué pasa ahora]
+- **Consecuencia futura:** [qué pasa en área X o acto N]
+- **Recuperación:** [cómo continuar si falla]
+
+**Si los PJs [otra acción]:**
+- **Consecuencia inmediata:** [...]
+- **Consecuencia futura:** [...]
+- **Recuperación:** [...]
+
+**Si los PJs [tercera acción]:**
+- **Consecuencia inmediata:** [...]
+- **Consecuencia futura:** [...]
+- **Recuperación:** [...]
+```
+
+**VALIDACIÓN:** El validator `ValidateDevelopments()` rechazará áreas con menos de 3 ramas.
+
+### 2. Character Hooks (2-3 per Area)
+
+Cada área DEBE incluir 2-3 ganchos personalizados:
+
+```markdown
+### Character Hooks
+
+- **[PJ Name] ([Background] background):** [Gancho específico conectado a su pasado]
+- **[PJ Name] ([Class] class):** [Gancho conectado a su rol/clase]
+```
+
+**VALIDACIÓN:** El validator `ValidateCharacterHooks()` rechazará áreas con menos de 2 hooks.
+
+### 3. Multiple Solution Paths (2+ per Obstacle)
+
+Cada obstáculo DEBE ofrecer múltiples paths:
+
+```markdown
+### Soluciones Alternativas
+
+- **Sigilo:** CD 14 Sigilo para evitar encuentro
+- **Social:** CD 13 Persuasión para negociar
+- **Combate:** 2 Guardias si atacan
+```
+
+**VALIDACIÓN:** El validator `ValidateMultipleSolutions()` rechazará áreas con menos de 2 paths.
+
+### 4. Boxed Text Standards (100-600 words)
+
+```markdown
+>> **Texto para Leer:** *El aire húmedo golpea tu rostro. Escuchas gotas cayendo en la distancia. 
+Ves formaciones rocosas que parecen figuras retorcidas. La luz de tus antorchas revela pasajes 
+que se adentran en la oscuridad.*
+```
+
+**REGLAS:**
+- 100-600 palabras
+- Segunda persona (ves, escuchas, sientes)
+- Presente (está, hay, son)
+- Sin mecánicas ni spoilers
+
+**VALIDACIÓN:** El validator `ValidateBoxedText()` rechazará texto fuera de este estándar.
+
+---
+
+## Updated Checklist (v2.4 WotC)
+
+- [ ] **Developments:** 3+ ramas con IF-THEN por área
+- [ ] **Character Hooks:** 2-3 hooks por área atados a background/class
+- [ ] **Multiple Solutions:** 2+ paths (stealth/social/combat) con DCs numéricos
+- [ ] **Boxed Text:** 100-600 palabras, 2da persona, presente, sin spoilers
+- [ ] **All validators pass:** ValidateDevelopments, ValidateMultipleSolutions, ValidateCharacterHooks, ValidateBoxedText

@@ -39,7 +39,8 @@ grimorio_mcp: [
   "update_faction_reputation", "generate_random_tables", "generate_handouts",
   "evaluate_consequences",
   "generate_session_prep", "generate_flowchart",
-  "save_introduction", "save_setting_guide", "save_appendices"
+  "save_introduction", "save_setting_guide", "save_appendices",
+  "generate_character_hooks"
 ]
 ---
 
@@ -181,6 +182,11 @@ delegate(agent="grimorio-encounters", prompt="Generate ENCOUNTERS for campaign '
 delegate(agent="grimorio-characters", prompt="Generate PRE-GENERATED CHARACTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
 ```
 
+**4. Character Hooks — NEW (WotC Standard)**
+```
+delegate(agent="grimorio-quests", prompt="Generate CHARACTER HOOKS for campaign '{campaign_name}' at {campaign_path}.\n\nUse MCP tool: generate_character_hooks(campaign='{campaign_name}')\n\nThis generates personalized plot hooks for all player characters tied to the main plot. Save output to quests/character-hooks.md.")
+```
+
 ### Phase 4b: Monitor Batch 2
 
 ```
@@ -231,6 +237,7 @@ Use update_narrative_state with session_num=0.")
 ✅ Quests
 ✅ Encounters
 ✅ Characters
+✅ Character Hooks (NEW - WotC Standard)
 ✅ Consistency Gate: PASSED
 ✅ Narrative State: Updated
 ```
