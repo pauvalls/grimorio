@@ -39,10 +39,11 @@ var loreTemplate string
 var sessionZeroTemplate string
 
 type Compiler struct {
-	CampaignDir     string
-	PDFEngine       string
-	CompilerVersion int
-	seenImages      map[string]bool
+	CampaignDir         string
+	PDFEngine           string
+	CompilerVersion     int
+	seenImages          map[string]bool
+	handoutRendererImpl HandoutRenderer
 }
 
 func New(campaignDir, pdfEngine string) *Compiler {
@@ -64,6 +65,11 @@ func NewWithVersion(campaignDir, pdfEngine string, version int) *Compiler {
 		c.CompilerVersion = version
 	}
 	return c
+}
+
+// SetHandoutRenderer sets the handout renderer for v2 compilation
+func (c *Compiler) SetHandoutRenderer(renderer HandoutRenderer) {
+	c.handoutRendererImpl = renderer
 }
 
 func GetTemplate(tmplType string) (string, error) {
@@ -251,6 +257,15 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 	if rosterHTML != "" {
 		htmlParts = append(htmlParts, `<div class="section-break"></div>`)
 		htmlParts = append(htmlParts, rosterHTML)
+	}
+
+	// Handout pages (v2 only)
+	if c.CompilerVersion == 2 {
+		handoutHTML, err := c.generateHandouts()
+		if err == nil && handoutHTML != "" {
+			htmlParts = append(htmlParts, `<div class="section-break"></div>`)
+			htmlParts = append(htmlParts, handoutHTML)
+		}
 	}
 
 	htmlParts = append(htmlParts, "</body></html>")
