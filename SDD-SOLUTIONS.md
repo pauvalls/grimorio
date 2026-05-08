@@ -1303,3 +1303,261 @@ C) Genero contenido genérico (no recomendado)
 
 **TL;DR:** Los agentes NO deben generar contenido sin antes pedir/leer `story_brief.md`. Sin contexto narrativo, el contenido es genérico y desconectado de la visión del DM. Agregar paso obligatorio: "Pedir historia → Crear story_brief.md → Leer story_brief.md → Generar contenido alineado".
 
+
+---
+
+## ⏱️ Timeout de Sub-Agentes: Grimorio-Areas Necesita 30 Minutos
+
+### Problema
+Los sub-agentes `grimorio-areas` están fallando por timeout con 15 minutos. Generar 10-15 áreas con formato WotC completo (Developments, Character Hooks, Boxed Text, Multiple Solutions) requiere más tiempo.
+
+### Síntomas
+- Error: `Sub-agent timed out after 15 minutes`
+- Generación de áreas se corta a la mitad
+- Áreas incompletas o sin validación de canon
+- **Pérdida de trabajo:** Hay que regenerar desde cero
+
+### Causa Raíz
+
+**Complejidad de generación de áreas:**
+1. Leer `story_brief.md` (si existe)
+2. Leer `lore.md` + `canon.json`
+3. Leer template WotC (`get_template(type="areas")`)
+4. Generar 10-15 áreas × 150-200 palabras c/u = 1500-3000 palabras
+5. Cada área incluye:
+   - Boxed Text (100-600 palabras)
+   - Developments (3-5 ramas IF-THEN)
+   - Character Hooks (2-3 hooks)
+   - Multiple Solutions (2+ paths)
+   - Stats, DCs, treasure, creatures
+6. Validar con `validate_canon` por batch
+7. Guardar con `save_areas`
+
+**Tiempo estimado:**
+- Lectura de contexto: 1-2 min
+- Generación por área: 2-3 min × 12 áreas = 24-36 min
+- Validación + guardado: 2-3 min
+- **Total: 27-41 minutos**
+
+**Timeout actual: 15 min ❌ (insuficiente)**
+**Timeout recomendado: 30 min ✅ (margen seguro)**
+
+### Solución SDD
+
+#### 1. Configurar Timeout en Orchestrator
+
+**En el prompt del orchestrator, al delegar a grimorio-areas:**
+
+```markdown
+## Sub-Agent Timeout Configuration
+
+**For grimorio-areas:**
+- **Timeout:** 30 minutes (1800000 ms)
+- **Reason:** Complex WotC format generation (10-15 areas × 150-200 words each)
+
+**Example delegation:**
+```
+delegate(
+  agent: "grimorio-areas",
+  prompt: "...",
+  timeout: 1800000  // 30 minutes
+)
+```
+
+**For other agents:**
+- grimorio-npc: 20 minutes (1200000 ms)
+- grimorio-bestiary: 20 minutes (1200000 ms)
+- grimorio-encounters: 15 minutes (900000 ms)
+- grimorio-lore: 15 minutes (900000 ms)
+- grimorio-maps: 15 minutes (900000 ms)
+- grimorio-quests: 15 minutes (900000 ms)
+```
+
+#### 2. Actualizar opencode.json o Config de Agentes
+
+**Agregar configuración de timeout:**
+
+```json
+{
+  "agents": {
+    "grimorio-areas": {
+      "timeout": 1800000,
+      "model": "qwen3.5-plus",
+      "description": "Generate WotC-style playable areas"
+    },
+    "grimorio-npc": {
+      "timeout": 1200000,
+      "model": "qwen3.5-plus",
+      "description": "Generate NPCs and factions"
+    },
+    "grimorio-bestiary": {
+      "timeout": 1200000,
+      "model": "qwen3.5-plus",
+      "description": "Generate monsters and stat blocks"
+    }
+  }
+}
+```
+
+#### 3. Dividir en Batches Más Pequeños (ALTERNATIVA)
+
+Si el timeout es un problema persistente, dividir la generación:
+
+**En vez de:**
+```
+grimorio-areas: "Generá 12 áreas para la-hoja-de-vlad"
+```
+
+**Hacer:**
+```
+grimorio-areas: "Generá áreas 1-4 (Act 1) para la-hoja-de-vlad"
+grimorio-areas: "Generá áreas 5-8 (Act 2) para la-hoja-de-vlad"
+grimorio-areas: "Generá áreas 9-12 (Act 3) para la-hoja-de-vlad"
+```
+
+**Ventajas:**
+- Cada batch: 4 áreas × 2-3 min = 8-12 min (dentro del timeout de 15 min)
+- Más fácil validar y corregir errores por batch
+- Progreso incremental visible
+
+**Desventajas:**
+- Más delegaciones manuales
+- Riesgo de inconsistencia entre batches
+- Requiere coordinación de chapter numbers
+
+#### 4. Streaming Progress (PREVENTIVO)
+
+Agregar indicación de progreso para detectar problemas temprano:
+
+```markdown
+## Progress Reporting
+
+**While generating areas, report progress every 3 areas:**
+
+```
+Progress: 3/12 áreas completadas (25%)
+- Área 1: ✅ Completa
+- Área 2: ✅ Completa
+- Área 3: ✅ Completa
+- Tiempo estimado restante: 18 minutos
+```
+
+**If progress stalls:**
+- Stop and restart with smaller batch
+- Check if validation is blocking
+- Adjust timeout if needed
+```
+
+### Comandos de Verificación
+
+```bash
+# Verificar timeout actual en config
+cat opencode.json | jq '.agents["grimorio-areas"].timeout'
+
+# Si no existe, agregar:
+cat > /tmp/timeout_config.json << 'JSON'
+{
+  "agents": {
+    "grimorio-areas": { "timeout": 1800000 },
+    "grimorio-npc": { "timeout": 1200000 },
+    "grimorio-bestiary": { "timeout": 1200000 }
+  }
+}
+JSON
+
+# Merge con opencode.json existente
+jq -s '.[0] * .[1]' opencode.json /tmp/timeout_config.json > opencode.json.tmp
+mv opencode.json.tmp opencode.json
+```
+
+### Timeout Recommendations por Agente
+
+| Agente | Timeout | Razón |
+|--------|---------|-------|
+| **grimorio-areas** | 30 min | 10-15 áreas × WotC format complejo |
+| **grimorio-npc** | 20 min | 8-12 NPCs × 6 secciones c/u |
+| **grimorio-bestiary** | 20 min | 6-10 monstruos × stat blocks completos |
+| **grimorio-encounters** | 15 min | 5-8 encuentros × setup/combate/aftermath |
+| **grimorio-lore** | 15 min | 1 documento narrativo continuo |
+| **grimorio-maps** | 15 min | 6-10 ubicaciones × descripciones |
+| **grimorio-quests** | 15 min | 4-6 quests × objectives/rewards |
+
+### Señales de Timeout Inminente
+
+**Monitorear durante ejecución:**
+- ❌ Sin progreso por 5+ minutos
+- ❌ Mensajes de "still working" repetidos
+- ❌ Generación se detiene a mitad de batch
+- ❌ Error: `context deadline exceeded`
+
+**Acciones preventivas:**
+1. Dividir batch actual en 2 partes
+2. Aumentar timeout a 45 min si es crítico
+3. Reducir scope (menos áreas por batch)
+4. Usar modelo más rápido (tradeoff: calidad)
+
+### Ejemplo de Delegación con Timeout
+
+**En el orchestrator:**
+
+```markdown
+## Delegating to grimorio-areas
+
+```bash
+delegate(
+  agent: "grimorio-areas",
+  prompt: "
+    CRITICAL: Generate Act 1 areas (areas 1-4) for la-hoja-de-vlad.
+    
+    Context:
+    - story_brief.md: Act 1 = Investigación en la corte
+    - lore.md: Vampire political intrigue
+    - canon.json: Key entities and rules
+    
+    Requirements:
+    - 4 areas, 150-200 words each
+    - WotC format: Developments, Character Hooks, Boxed Text, Multiple Solutions
+    - Validate with validate_canon before saving
+    
+    Timeout: 30 minutes (1800000 ms)
+  ",
+  timeout: 1800000
+)
+```
+```
+
+### Manejo de Timeout Errors
+
+**Si un sub-agente timeoutea:**
+
+```markdown
+## Timeout Recovery Protocol
+
+1. **Check progress:**
+   - ¿Cuántas áreas se completaron antes del timeout?
+   - ¿Hay archivos guardados parcialmente?
+
+2. **Decide strategy:**
+   - **Option A:** Restart with same timeout (if <50% complete)
+   - **Option B:** Increase timeout to 45 min (if >50% complete)
+   - **Option C:** Split remaining work (if clear stopping point)
+
+3. **Restart with adjusted parameters:**
+   ```
+   delegate(
+     agent: "grimorio-areas",
+     prompt: "Generate areas 5-8 (remaining from previous batch)",
+     timeout: 1800000
+   )
+   ```
+
+4. **Merge results:**
+   - Verify chapter numbers are sequential
+   - Check for duplicate areas
+   - Validate consistency across batches
+```
+
+---
+
+**TL;DR:** Timeout de 15 min es insuficiente para grimorio-areas (genera 10-15 áreas × WotC format = 27-41 min reales). Configurar timeout a 30 min (1800000 ms) para grimorio-areas. Alternativa: dividir en batches de 4 áreas (8-12 min c/u). Timeout recommendations: areas=30min, npc=20min, bestiary=20min, encounters/lore/maps/quests=15min.
+
