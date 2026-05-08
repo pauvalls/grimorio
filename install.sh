@@ -336,7 +336,7 @@ clean_installation() {
 
     local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
     if [ -f "$OPENCODE_CONFIG" ] && command_exists jq; then
-        jq 'del(.mcp.grimorio, .agent["grimorio-architect"], .agent["grimorio-artist"], .agent["grimorio-cartographer"], .agent["grimorio-lore"], .agent["grimorio-npc"], .agent["grimorio-bestiary"], .agent["grimorio-encounters"], .agent["grimorio-acts"], .agent["grimorio-quests"], .agent["grimorio-maps"], .agent["grimorio-characters"], .agent["grimorio-narrative-custodian"], .agent["grimorio-orchestrator"], .command.grimorio)' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        jq 'del(.mcp.grimorio, .agent["grimorio-architect"], .agent["grimorio-artist"], .agent["grimorio-cartographer"], .agent["grimorio-lore"], .agent["grimorio-npc"], .agent["grimorio-bestiary"], .agent["grimorio-encounters"], .agent["grimorio-quests"], .agent["grimorio-maps"], .agent["grimorio-characters"], .agent["grimorio-narrative-custodian"], .agent["grimorio-appendices"], .agent["grimorio-areas"], .agent["grimorio-integrator"], .agent["grimorio-introduction"], .agent["grimorio-setting-guide"], .agent["grimorio-orchestrator"], .command.grimorio)' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
         log "Cleaned grimorio entries from opencode.json"
         cleaned=true
     fi
@@ -505,13 +505,13 @@ configure_opencode_command() {
         success "grimorio-encounters agent configured"
     fi
 
-    # Configure grimorio-acts subagent
-    log "Configuring grimorio-acts agent..."
+    # Configure grimorio-areas subagent (replaces grimorio-acts)
+    log "Configuring grimorio-areas agent..."
     if command_exists jq; then
-        jq '.agent["grimorio-acts"] = {
-            "description": "Campaign story architect — narrative acts, scenes, and session structure",
+        jq '.agent["grimorio-areas"] = {
+            "description": "Campaign areas designer — numbered playable areas (10-15 per act, WotC format) with DCs, treasure, and mechanics",
             "mode": "subagent",
-            "prompt": "You are the Grimorio Story Architect. Generate narrative acts and scenes for a D&D 5e campaign. Use grimorio_save_act tool.",
+            "prompt": "You are the Grimorio Areas Designer. Generate numbered playable areas for a D&D 5e campaign in WotC format. Each area has 150-200 words with specific DCs, treasure, and mechanics. Read ALL source files first (lore, NPCs, bestiary, maps, quests, encounters, characters).",
             "tools": {
                 "bash": true,
                 "edit": true,
@@ -521,7 +521,7 @@ configure_opencode_command() {
             },
             "options": {}
         }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-        success "grimorio-acts agent configured"
+        success "grimorio-areas agent configured"
     fi
 
     # Configure grimorio-quests subagent
@@ -598,6 +598,82 @@ configure_opencode_command() {
             "options": {}
         }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
         success "grimorio-narrative-custodian agent configured"
+    fi
+
+    # Configure grimorio-introduction subagent
+    log "Configuring grimorio-introduction agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-introduction"] = {
+            "description": "Campaign introduction — overview, hooks, and campaign summary for players",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Introduction Designer. Generate the campaign introduction and overview for players. Create compelling hooks and summarize the campaign arc.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-introduction agent configured"
+    fi
+
+    # Configure grimorio-setting-guide subagent (DM-only)
+    log "Configuring grimorio-setting-guide agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-setting-guide"] = {
+            "description": "DM-only setting reference — geography, history, culture, factions, and secrets",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Setting Guide Designer. Generate DM-only reference material with spoilers. Include geography, history, culture, factions, and secrets. Read canon.json and lore.md first.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-setting-guide agent configured"
+    fi
+
+    # Configure grimorio-appendices subagent
+    log "Configuring grimorio-appendices agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-appendices"] = {
+            "description": "Campaign appendices — consolidated reference material (magic items, stat blocks, handouts, maps)",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Appendices Designer. Generate consolidated reference material: Appendix A (Magic Items), Appendix B (NPCs and Monsters), Appendix C (Handouts), Appendix D (Maps), Appendix E (Reference Tables). Read ALL source files.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-appendices agent configured"
+    fi
+
+    # Configure grimorio-integrator subagent
+    log "Configuring grimorio-integrator agent..."
+    if command_exists jq; then
+        jq '.agent["grimorio-integrator"] = {
+            "description": "Campaign integrator — cross-references, finds inconsistencies, and finalizes content",
+            "mode": "subagent",
+            "prompt": "You are the Grimorio Integrator. Cross-reference all campaign content, find inconsistencies, and finalize. Check that all references between files are valid.",
+            "tools": {
+                "bash": true,
+                "edit": true,
+                "read": true,
+                "write": true,
+                "grep": true
+            },
+            "options": {}
+        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "grimorio-integrator agent configured"
     fi
 
     # Always update command (not just add) to ensure latest template with image generation
@@ -729,10 +805,14 @@ print_instructions() {
     echo -e "     - grimorio-bestiary      (monster stat blocks)"
     echo -e "     - grimorio-encounters    (combat & exploration challenges)"
     echo -e "     - grimorio-maps          (location & zone descriptions)"
-    echo -e "     - grimorio-acts          (narrative acts & scenes)"
+    echo -e "     - grimorio-areas         (numbered playable areas, WotC format)"
     echo -e "     - grimorio-quests        (personal quests & side missions)"
     echo -e "     - grimorio-characters    (pre-generated character sheets)"
     echo -e "     - grimorio-narrative-custodian (canon validation + state tracking)"
+    echo -e "     - grimorio-introduction  (campaign overview & hooks)"
+    echo -e "     - grimorio-setting-guide (DM-only setting reference)"
+    echo -e "     - grimorio-appendices    (consolidated reference material)"
+    echo -e "     - grimorio-integrator    (cross-references & finalizes)"
     echo -e "     - grimorio-artist        (image specs + reference updates)"
     echo -e "     - grimorio-cartographer  (SVG maps + dividers)"
     echo ""
