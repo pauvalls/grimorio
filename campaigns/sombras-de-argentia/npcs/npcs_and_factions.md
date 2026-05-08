@@ -71,6 +71,8 @@ Valerius está empezando a sufrir de "El Desgaste", una degeneración mental que
 
 ### Kaelen Vance
 
+![Kaelen Vance](../assets/npc_kaelen_vance.png)
+
 - **Raza/Clase:** Humano (Pícaro / Estratega).
 - **Alineamiento:** Caótico Bueno.
 - **Ubicación:** El Refugio de la Esperanza (Barrios Bajos).
@@ -100,6 +102,8 @@ Está experimentando con alquimia prohibida para crear una "Bomba Solar", pero l
 ## Figuras Políticas Ambiguas
 
 ### Julian Vane "El Facilitador"
+
+![Julian Vane](../assets/npc_julian_valerius.png)
 
 - **Rol:** Comerciante de lujo e informante.
 - **Motivación:** Riqueza y supervivencia.

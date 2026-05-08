@@ -52,7 +52,7 @@ Chain strategy: pending
 - [x] 3.3 RED: Write failing integration test for XP budget calculation per act
 - [x] 3.4 GREEN: Implement XP budget check in integrator logic; tests pass
 - [x] 3.5 Add treasure consistency check — every area with creatures has treasure with XP
-- [x] 3.6 Verify `grimorio_check_consistency` and `grimorio_process_consistency_gate` are called by integrator
+- [x] 3.6 Verify `check_consistency` and `process_consistency_gate` are called by integrator
 
 ## Phase 4: Visuals
 

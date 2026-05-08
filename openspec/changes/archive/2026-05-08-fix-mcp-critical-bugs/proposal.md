@@ -11,7 +11,7 @@ Arreglar 7 bugs críticos del servidor MCP descubiertos durante la generación d
 - `AssetService`: reemplazar mutex global con rate limiter por campaña
 - Repositories filesystem: agregar `sync.RWMutex` a lecturas/escrituras
 - `Compiler.htmlToPDF`: agregar `context.WithTimeout` de 60s
-- Nuevo handler `grimorio_save_characters` + servicio Save()
+- Nuevo handler `save_characters` + servicio Save()
 - `SessionPrepService`: crear estado inicial si no existe (como hace Update)
 - `FlowchartService.buildNodes`: reducir complejidad algorítmica
 
@@ -23,7 +23,7 @@ Arreglar 7 bugs críticos del servidor MCP descubiertos durante la generación d
 ## Capabilities
 
 ### New Capabilities
-- `character-save`: Guardar personajes manuales via MCP (`grimorio_save_characters`)
+- `character-save`: Guardar personajes manuales via MCP (`save_characters`)
 
 ### Modified Capabilities
 - `narrative-state-update`: Cambiar validación de `session_num` para soportar 0
@@ -82,6 +82,6 @@ Cada fix es independiente. Si algo falla:
 - [ ] 5 llamadas concurrentes a `generate_image` terminan en <10s (vs 15s+ actuales)
 - [ ] Tests con `-race` pasan sin errores en repository layer
 - [ ] `compile_pdf` termina con error controlado si `wkhtmltopdf` tarda >60s
-- [ ] `grimorio_save_characters` persiste personajes manuales correctamente
+- [ ] `save_characters` persiste personajes manuales correctamente
 - [ ] `generate_session_prep` funciona en campaña sin estado previo
 - [ ] Coverage mantiene o mejora: mcp/handlers >61.7%, services >82.4%, repository >59.8%

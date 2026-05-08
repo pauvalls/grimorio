@@ -56,8 +56,8 @@ Reemplazar el pipeline de generación de "escenas narrativas" (v1) por "áreas n
 
 | Component | Inputs | Outputs | Integration |
 |-----------|--------|---------|-------------|
-| `grimorio-areas` | lore.md, npcs.md, bestiary.md, encounters.md, maps.md | `acts/act_NN.md` (formato áreas) | Llama `grimorio_save_act` y `grimorio_validate_canon` |
-| `grimorio-integrator` | Todos los `.md` de la campaña | Reporte de validación + correcciones | Usa `grimorio_check_consistency` y `grimorio_process_consistency_gate`; puede llamar `grimorio_save_act` para auto-fix |
+| `grimorio-areas` | lore.md, npcs.md, bestiary.md, encounters.md, maps.md | `acts/act_NN.md` (formato áreas) | Llama `save_act` y `validate_canon` |
+| `grimorio-integrator` | Todos los `.md` de la campaña | Reporte de validación + correcciones | Usa `check_consistency` y `process_consistency_gate`; puede llamar `save_act` para auto-fix |
 | `Compiler v2` | Todo el directorio de campaña | `campaign.html` → `campaign.pdf` | Nuevas secciones: `handouts/`, parseo de cross-references vía regex, TOC jerárquico con `<a href="#id">` |
 | `HandoutGenerator` | `narrative_state.json`, `maps/`, `npcs/` | `handouts/player_map_*.svg`, `handouts/clues.md`, `handouts/npc_reference.md` | Inyectado en compiler como paso previo a la generación de HTML |
 

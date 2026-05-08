@@ -30,6 +30,8 @@
 ### Necrófago Hambriento de Sangre
 *No muerto Mediano, caótico malvado*
 
+![Necrófago](../assets/monster_blood_starved_ghoul.png)
+
 - **Clase de Armadura:** 12
 - **Puntos de Golpe:** 36 (8d8)
 - **Velocidad:** 30 pies
