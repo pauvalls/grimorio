@@ -518,3 +518,268 @@ grep -c ">>" campaigns/{campaign}/areas/*.md
 ```
 
 ---
+
+---
+
+## 🛡️ Narrative Custodian No Revisa Formato WotC
+
+### Problema
+El `grimorio-narrative-custodian` solo valida **consistencia de canon** (entidades, timeline, mcguffins) pero **NO valida el formato WotC del contenido** (áreas, NPCs, quests).
+
+### Síntomas
+- `grimorio_check_consistency` reporta "fair" o "approved" pero las áreas no tienen Developments
+- NPCs sin formato WotC (menos de 500 palabras, sin 6 secciones)
+- Quests sin objectives/rewards completos
+- El check automático pasa pero el contenido NO cumple estándares WotC
+
+### Ejemplo Real
+
+```bash
+# Check de consistencia (solo valida canon)
+grimorio_check_consistency(
+  campaign_id="la-hoja-de-vlad",
+  scope="full"
+)
+
+# Resultado:
+# ✅ mcguffin_continuity: PASSED
+# ✅ entity_not_found: PASSED
+# ✅ npc_alive_check: PASSED
+# ❌ Pero las áreas NO tienen Developments, Character Hooks, Boxed Text
+```
+
+### Causa Raíz
+
+El `ValidationEngine` en `internal/services/validation_engine.go` tiene DOS tipos de validación:
+
+1. **Canon Consistency** (automática) ✅
+   - `entity_not_found`
+   - `npc_alive_check`
+   - `mcguffin_continuity`
+   - `location_existence`
+   - `timeline_consistency`
+
+2. **WotC Format** (automática SOLO si proposal.Type es correcto) ⚠️
+   - `wotc_developments`
+   - `wotc_character_hooks`
+   - `wotc_multiple_solutions`
+   - `wotc_boxed_text`
+   - `wotc_npc_word_count`
+
+**Problema**: La validación WotC solo se ejecuta si el `proposal.Type` es `"act"`, `"npc"`, o `"quest"`. Si el custodian no recibe proposals con esos tipos, NO valida el formato.
+
+### Solución SDD
+
+#### 1. Validación Manual Post-Generación
+
+Después de cada batch, el architect debe hacer **DOS checks**:
+
+```bash
+# Check 1: Canon Consistency (automático)
+grimorio_check_consistency(
+  campaign_id="{campaign}",
+  scope="full"
+)
+
+# Check 2: WotC Format (manual con grep)
+# Áreas
+grep -c "### Developments" campaigns/{campaign}/areas/*.md
+# Debería ser >= 3 por área (3-5 ramas)
+
+grep -c "### Character Hooks" campaigns/{campaign}/areas/*.md
+# Debería ser >= 2 por área (2-3 hooks)
+
+grep -c ">> \*\*Texto para Leer\*\*" campaigns/{campaign}/areas/*.md
+# Debería ser >= 1 por área (boxed text)
+
+# NPCs
+wc -w campaigns/{campaign}/npcs/*.md
+# Debería ser 500-800 palabras por NPC principal
+
+grep -c "### Secretos" campaigns/{campaign}/npcs/*.md
+# Debería ser >= 3 por NPC (3-5 secretos)
+
+# Quests
+jq '.objectives | length' campaigns/{campaign}/quests/*.json
+# Debería ser 2-4 objectives por quest
+
+jq '.reward.type' campaigns/{campaign}/quests/*.json
+# Debería tener reward.type definido
+```
+
+#### 2. Agregar Validación WotC al Custodian
+
+Actualizar `grimorio-narrative-custodian.md` para incluir check de formato:
+
+```markdown
+## CRITICAL: Validate WotC Format (NOT Just Canon)
+
+When validating batches, you MUST check BOTH:
+
+### 1. Canon Consistency (existing checks)
+- entity_not_found
+- npc_alive_check
+- mcguffin_continuity
+- location_existence
+- timeline_consistency
+
+### 2. WotC Format (NEW - REQUIRED)
+
+**For Areas (acts/*.md):**
+- ✅ Developments: 3-5 ramas con IF-THEN
+- ✅ Character Hooks: 2-3 hooks por área
+- ✅ Multiple Solutions: 2+ paths (stealth/social/combat)
+- ✅ Boxed Text: 100-600 palabras, 2da persona, presente
+- ✅ Numeric DCs: Never "alto/bajo"
+
+**For NPCs (npcs/*.md):**
+- ✅ Word Count: 500-800 palabras (major), 200-400 (minor)
+- ✅ 6 Sections: Appearance, Personality, Voice, Secrets, Hooks, Dialogue
+- ✅ Stat Block Link: "Ver bestiary.md: [Name]"
+
+**For Quests (quests/*.json):**
+- ✅ Objectives: 2-4 objectives
+- ✅ Rewards: type + description + value
+- ✅ XP: Included in reward
+
+### Validation Command
+
+```bash
+# Run BOTH checks
+grimorio_check_consistency(campaign_id="{campaign}", scope="full")
+
+# Then manually verify WotC format
+grep -c "### Developments" campaigns/{campaign}/areas/*.md
+grep -c "### Character Hooks" campaigns/{campaign}/areas/*.md
+grep -c ">>" campaigns/{campaign}/areas/*.md
+wc -w campaigns/{campaign}/npcs/*.md
+```
+
+### Reject Criteria
+
+**REJECT batch if:**
+- Canon consistency has errors/criticals
+- OR WotC format validation fails (less than 80% compliance)
+
+**Example:**
+```
+Batch 3 (Areas) Validation:
+- Canon Consistency: ✅ PASSED
+- WotC Format: ❌ FAILED
+  - Developments: 0/12 areas (0%)
+  - Character Hooks: 0/12 areas (0%)
+  - Boxed Text: 0/12 areas (0%)
+  
+Decision: REJECT - Regenerate areas with WotC template
+```
+```
+
+#### 3. Actualizar Validation Engine (Opcional - Code Fix)
+
+Agregar validación WotC explícita en `validation_engine.go`:
+
+```go
+// After canon consistency checks, ALWAYS validate WotC format
+func (e *ValidationEngine) CheckConsistency(ctx context.Context, campaignID string, scope domain.ConsistencyScope) (*domain.ConsistencyReport, error) {
+    // ... existing canon checks ...
+    
+    // NEW: Load and validate all content files
+    e.validateAllAreas(report, campaignID)
+    e.validateAllNPCs(report, campaignID)
+    e.validateAllQuests(report, campaignID)
+    
+    return report, nil
+}
+
+func (e *ValidationEngine) validateAllAreas(report *domain.ConsistencyReport, campaignID string) {
+    // Load all area files
+    // For each area, call validateWotCFormat()
+    // Add failures to report.Issues
+}
+```
+
+### Comandos de Verificación Completa
+
+```bash
+# Full validation script
+cat > /tmp/validate_campaign.sh << 'SCRIPT'
+#!/bin/bash
+CAMPAIGN=$1
+
+echo "=== Validating Campaign: $CAMPAIGN ==="
+echo ""
+
+echo "1. Canon Consistency..."
+grimorio_check_consistency(campaign_id="$CAMPAIGN", scope="full")
+echo ""
+
+echo "2. WotC Format - Areas..."
+echo "   Developments: $(grep -c '### Developments' campaigns/$CAMPAIGN/areas/*.md 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')"
+echo "   Character Hooks: $(grep -c '### Character Hooks' campaigns/$CAMPAIGN/areas/*.md 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')"
+echo "   Boxed Text: $(grep -c '>>' campaigns/$CAMPAIGN/areas/*.md 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')"
+echo ""
+
+echo "3. WotC Format - NPCs..."
+echo "   Total NPCs: $(ls -1 campaigns/$CAMPAIGN/npcs/*.md 2>/dev/null | wc -l)"
+echo "   Avg Word Count: $(wc -w campaigns/$CAMPAIGN/npcs/*.md 2>/dev/null | tail -1 | awk '{print $1/NR}')"
+echo ""
+
+echo "4. WotC Format - Quests..."
+echo "   Total Quests: $(ls -1 campaigns/$CAMPAIGN/quests/*.json 2>/dev/null | wc -l)"
+echo "   Quests with Objectives: $(grep -l '"objectives"' campaigns/$CAMPAIGN/quests/*.json 2>/dev/null | wc -l)"
+echo ""
+
+echo "=== Validation Complete ==="
+SCRIPT
+
+chmod +x /tmp/validate_campaign.sh
+/tmp/validate_campaign.sh la-hoja-de-vlad
+```
+
+### Checklist de Validación Completa
+
+**El Narrative Custodian DEBE validar:**
+
+| Tipo | Check | Herramienta | Threshold |
+|------|-------|-------------|-----------|
+| **Canon** | entity_not_found | `grimorio_check_consistency` | 0 errors |
+| **Canon** | npc_alive_check | `grimorio_check_consistency` | 0 errors |
+| **Canon** | mcguffin_continuity | `grimorio_check_consistency` | 0 errors |
+| **WotC** | Developments | `grep -c "### Developments"` | ≥3 por área |
+| **WotC** | Character Hooks | `grep -c "### Character Hooks"` | ≥2 por área |
+| **WotC** | Boxed Text | `grep -c ">>"` | ≥1 por área |
+| **WotC** | NPC Word Count | `wc -w` | 500-800 (major) |
+| **WotC** | NPC Stat Links | `grep -c "Ver bestiary"` | 1 por NPC |
+| **WotC** | Quest Objectives | `jq '.objectives \| length'` | 2-4 por quest |
+| **WotC** | Quest Rewards | `jq '.reward.type'` | Defined |
+
+---
+
+## 📝 Resumen: Validación en Dos Capas
+
+```
+Capa 1: Canon Consistency (automática)
+  ↓
+grimorio_check_consistency(campaign_id, scope="full")
+  - entity_not_found
+  - npc_alive_check
+  - mcguffin_continuity
+  - location_existence
+  - timeline_consistency
+
+Capa 2: WotC Format (manual o automática con fix)
+  ↓
+grep commands + validation_engine.go fix
+  - Developments (3-5 ramas)
+  - Character Hooks (2-3 hooks)
+  - Boxed Text (100-600 words)
+  - NPC Word Count (500-800)
+  - Quest Completeness (objectives, rewards)
+
+AMBAS capas deben pasar para considerar la campaña "APPROVED".
+```
+
+---
+
+**TL;DR**: El narrative custodian actual SOLO valida canon (entidades, timeline). Necesita validación MANUAL o CODE FIX para validar formato WotC (Developments, Character Hooks, Boxed Text, etc.). Agregar commands de verificación grep al workflow del architect.
+
