@@ -39,6 +39,15 @@ var loreTemplate string
 //go:embed templates/session-zero.md.tmpl
 var sessionZeroTemplate string
 
+//go:embed templates/introduction.md.tmpl
+var introductionTemplate string
+
+//go:embed templates/setting-guide.md.tmpl
+var settingGuideTemplate string
+
+//go:embed templates/appendices.md.tmpl
+var appendicesTemplate string
+
 type Compiler struct {
 	CampaignDir         string
 	PDFEngine           string
@@ -89,6 +98,12 @@ func GetTemplate(tmplType string) (string, error) {
 		return loreTemplate, nil
 	case "session-zero":
 		return sessionZeroTemplate, nil
+	case "introduction":
+		return introductionTemplate, nil
+	case "setting-guide":
+		return settingGuideTemplate, nil
+	case "appendices":
+		return appendicesTemplate, nil
 	default:
 		return "", fmt.Errorf("unknown template type: %s", tmplType)
 	}
@@ -151,12 +166,15 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 		path  string
 		isDir bool
 	}{
+		{"Introduction", filepath.Join(c.CampaignDir, "introduction.md"), false},
 		{"Lore y Ambientación", filepath.Join(c.CampaignDir, "lore.md"), false},
 		{"Acts", filepath.Join(c.CampaignDir, "acts"), true},
+		{"Setting Guide", filepath.Join(c.CampaignDir, "setting-guide.md"), false},
 		{"Apéndice A: NPCs y Facciones", filepath.Join(c.CampaignDir, "npcs"), true},
 		{"Apéndice B: Bestiario", filepath.Join(c.CampaignDir, "bestiary"), true},
 		{"Apéndice C: Encuentros", filepath.Join(c.CampaignDir, "encounters"), true},
 		{"Apéndice D: Mapas de Referencia", filepath.Join(c.CampaignDir, "maps"), true},
+		{"Appendices", filepath.Join(c.CampaignDir, "appendices.md"), false},
 	}
 
 	var htmlParts []string

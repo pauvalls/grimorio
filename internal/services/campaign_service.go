@@ -184,6 +184,21 @@ func (s *CampaignService) SaveMaps(campaignID, content string) error {
 	return s.saveMarkdownFile(campaignID, "maps", "maps.md", content)
 }
 
+// SaveIntroduction saves the campaign introduction/overview document
+func (s *CampaignService) SaveIntroduction(campaignID, content string) error {
+	return s.saveMarkdownFile(campaignID, "", "introduction.md", content)
+}
+
+// SaveSettingGuide saves the campaign setting guide (DM-only)
+func (s *CampaignService) SaveSettingGuide(campaignID, content string) error {
+	return s.saveMarkdownFile(campaignID, "", "setting-guide.md", content)
+}
+
+// SaveAppendices saves the campaign appendices (items, monsters, handouts)
+func (s *CampaignService) SaveAppendices(campaignID, content string) error {
+	return s.saveMarkdownFile(campaignID, "", "appendices.md", content)
+}
+
 // CompilePDF compiles campaign to PDF
 func (s *CampaignService) CompilePDF(ctx context.Context, campaignID, title string) (string, error) {
 	if !s.campaignRepo.Exists(campaignID) {

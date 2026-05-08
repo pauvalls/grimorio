@@ -113,11 +113,29 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with monster stat blocks")),
 	), campaignHandlers.HandleSaveBestiary())
 
-	s.AddTool(mcp.NewTool("save_maps",
+s.AddTool(mcp.NewTool("save_maps",
 		mcp.WithDescription("Save map descriptions and scene layouts for the campaign"),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with maps and scenes")),
 	), campaignHandlers.HandleSaveMaps())
+
+	s.AddTool(mcp.NewTool("save_introduction",
+		mcp.WithDescription("Save campaign introduction/overview document"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content of the introduction")),
+	), campaignHandlers.HandleSaveIntroduction())
+
+	s.AddTool(mcp.NewTool("save_setting_guide",
+		mcp.WithDescription("Save campaign setting guide (DM-only, with spoilers)"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content of the setting guide")),
+	), campaignHandlers.HandleSaveSettingGuide())
+
+	s.AddTool(mcp.NewTool("save_appendices",
+		mcp.WithDescription("Save campaign appendices (items, monsters, handouts)"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content of the appendices")),
+	), campaignHandlers.HandleSaveAppendices())
 
 	s.AddTool(mcp.NewTool("compile_pdf",
 		mcp.WithDescription("Compile all campaign markdown files into a styled PDF"),

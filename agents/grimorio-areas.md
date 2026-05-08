@@ -87,6 +87,7 @@ Cada área DEBE seguir EXACTAMENTE este formato:
 - Cantidad + Nombre EXACTO del bestiary.md (ej: "2 **Murmuring Specter**")
 - Si es del MM: "3 **Specter** (MM p. 279)"
 - Si tiene variantes: "1 **Lady Celestine** (usa Ghost MM p.147, HP: 45, modifica: ...)"
+- NPCs en el área: "*alignment race class*" inline (ej: "*NG male Chondathan human fighter*")
 
 **Tesoro:**
 - **XP total:** XXX XP
@@ -114,6 +115,10 @@ Cada área DEBE seguir EXACTAMENTE este formato:
 - **Si entran en combate:** Cómo reaccionan las criaturas
 - **Si examinan/interactúan:** Resultados específicos
 - **Si se van:** Consecuencias (alarmas, persecuciones, cambios en otras áreas)
+
+**Sidebars:** (opcional, al menos 1 por acto)
+> ##### {{Nombre del Sidebar}}
+> *Contenido del sidebar — tips para el DM, reglas opcionales, notas de atmósfera.*
 ```
 
 ### REGLAS DE ORO PARA ÁREAS (v2 FORMAT)
@@ -271,3 +276,5 @@ La biblioteca contiene principalmente textos sobre historia local y botánica. S
 8. **Densidad técnica**: Cada área debe tener suficiente información para que el DM la dirija sin improvisar.
 9. **NO resumas**: Si un encuentro es complejo, describí las tácticas de los enemigos por ronda.
 10. **Consecuencias persistentes**: El resultado de cada área debe afectar otras áreas o actos futuros.
+11. **Sidebars obligatorios**: Al menos 1 sidebar por acto (> ##### Nombre). Tips para DM, reglas opcionales, o notas de atmósfera.
+12. **Inline NPC stats**: Cuando un NPC aparece en un área, incluir stat summary inline (*alineación raza clase*). Full stats en Appendix B.

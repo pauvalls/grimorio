@@ -313,3 +313,138 @@ func TestHandleSaveMaps(t *testing.T) {
 		t.Errorf("HandleSaveMaps() returned error result: %v", result.Content)
 	}
 }
+
+func TestHandleSaveIntroduction(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "intro-test",
+	})); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := handlers.HandleSaveIntroduction()
+	args := map[string]any{
+		"campaign": "intro-test",
+		"content":  "# Introduction\n\n## Story Overview\n...",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_introduction", args))
+	if err != nil {
+		t.Fatalf("HandleSaveIntroduction() error: %v", err)
+	}
+
+	if result.IsError {
+		t.Errorf("HandleSaveIntroduction() returned error result: %v", result.Content)
+	}
+}
+
+func TestHandleSaveIntroduction_MissingCampaign(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	handler := handlers.HandleSaveIntroduction()
+	args := map[string]any{
+		"content": "Some content",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_introduction", args))
+	if err != nil {
+		t.Fatalf("HandleSaveIntroduction() error: %v", err)
+	}
+
+	if !result.IsError {
+		t.Errorf("HandleSaveIntroduction() should return error for missing campaign")
+	}
+}
+
+func TestHandleSaveSettingGuide(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "setting-test",
+	})); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := handlers.HandleSaveSettingGuide()
+	args := map[string]any{
+		"campaign": "setting-test",
+		"content":  "# Setting Guide\n\n## Geography\n...",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_setting_guide", args))
+	if err != nil {
+		t.Fatalf("HandleSaveSettingGuide() error: %v", err)
+	}
+
+	if result.IsError {
+		t.Errorf("HandleSaveSettingGuide() returned error result: %v", result.Content)
+	}
+}
+
+func TestHandleSaveSettingGuide_MissingCampaign(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	handler := handlers.HandleSaveSettingGuide()
+	args := map[string]any{
+		"content": "Some content",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_setting_guide", args))
+	if err != nil {
+		t.Fatalf("HandleSaveSettingGuide() error: %v", err)
+	}
+
+	if !result.IsError {
+		t.Errorf("HandleSaveSettingGuide() should return error for missing campaign")
+	}
+}
+
+func TestHandleSaveAppendices(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "appendix-test",
+	})); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := handlers.HandleSaveAppendices()
+	args := map[string]any{
+		"campaign": "appendix-test",
+		"content":  "# Appendices\n\n## Appendix A: Magic Items\n...",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_appendices", args))
+	if err != nil {
+		t.Fatalf("HandleSaveAppendices() error: %v", err)
+	}
+
+	if result.IsError {
+		t.Errorf("HandleSaveAppendices() returned error result: %v", result.Content)
+	}
+}
+
+func TestHandleSaveAppendices_MissingCampaign(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	handler := handlers.HandleSaveAppendices()
+	args := map[string]any{
+		"content": "Some content",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_appendices", args))
+	if err != nil {
+		t.Fatalf("HandleSaveAppendices() error: %v", err)
+	}
+
+	if !result.IsError {
+		t.Errorf("HandleSaveAppendices() should return error for missing campaign")
+	}
+}

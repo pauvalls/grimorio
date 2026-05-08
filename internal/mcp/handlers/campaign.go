@@ -218,6 +218,75 @@ func (h *CampaignHandlers) HandleSaveMaps() server.ToolHandlerFunc {
 	}
 }
 
+// HandleSaveIntroduction handles the save_introduction tool
+func (h *CampaignHandlers) HandleSaveIntroduction() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+
+		campaign := getStringArg(args, "campaign")
+		content := getStringArg(args, "content")
+
+		if campaign == "" {
+			return mcp.NewToolResultError("campaign is required"), nil
+		}
+
+		if err := h.service.SaveIntroduction(campaign, content); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Introduction saved to campaign '%s'", campaign)), nil
+	}
+}
+
+// HandleSaveSettingGuide handles the save_setting_guide tool
+func (h *CampaignHandlers) HandleSaveSettingGuide() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+
+		campaign := getStringArg(args, "campaign")
+		content := getStringArg(args, "content")
+
+		if campaign == "" {
+			return mcp.NewToolResultError("campaign is required"), nil
+		}
+
+		if err := h.service.SaveSettingGuide(campaign, content); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Setting guide saved to campaign '%s'", campaign)), nil
+	}
+}
+
+// HandleSaveAppendices handles the save_appendices tool
+func (h *CampaignHandlers) HandleSaveAppendices() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+
+		campaign := getStringArg(args, "campaign")
+		content := getStringArg(args, "content")
+
+		if campaign == "" {
+			return mcp.NewToolResultError("campaign is required"), nil
+		}
+
+		if err := h.service.SaveAppendices(campaign, content); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Appendices saved to campaign '%s'", campaign)), nil
+	}
+}
+
 // HandleGetTemplate handles the get_template tool
 func (h *CampaignHandlers) HandleGetTemplate() server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

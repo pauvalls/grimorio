@@ -38,7 +38,8 @@ grimorio_mcp: [
   "grimorio_check_consistency", "grimorio_process_consistency_gate",
   "grimorio_update_faction_reputation", "grimorio_generate_random_tables", "grimorio_generate_handouts",
   "grimorio_evaluate_consequences",
-  "grimorio_generate_session_prep", "grimorio_generate_flowchart"
+  "grimorio_generate_session_prep", "grimorio_generate_flowchart",
+  "grimorio_save_introduction", "grimorio_save_setting_guide", "grimorio_save_appendices"
 ]
 ---
 
@@ -88,7 +89,14 @@ grimorio_generate_adventure_bible(
 
 This creates `canon.json` — the single source of truth for the campaign.
 
-### Phase 3: Batch 1 — Contenido Base (PARALLEL)
+### Phase 3a: Introduction
+Generate the campaign introduction — the entry point that hooks the DM and sets expectations:
+
+```
+delegate(agent="grimorio-introduction", prompt="Generate INTRODUCTION for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} for levels {level_range}. Tone: {tone}.\n\nRead canon.json and lore.md first to understand the campaign. Generate the introduction.md file.")
+```
+
+### Phase 3b: Batch 1 — Contenido Base (PARALLEL)
 NPCs, Bestiary y Maps se generan con la premisa base de la campaña (tone, level, setting):
 
 **1. NPCs — Agent: grimorio-npc**
@@ -153,6 +161,11 @@ Lore se genera junto con quests (necesita NPCs), encounters (necesita bestiary +
 delegate(agent="grimorio-lore", prompt="Generate LORE for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
 ```
 
+**1b. Setting Guide — Agent: grimorio-setting-guide** (DM-only, runs after Lore reads canon.json)
+```
+delegate(agent="grimorio-setting-guide", prompt="Generate SETTING GUIDE for campaign '{campaign_name}' at {campaign_path}.\n\nRead canon.json and lore.md to understand the campaign world in depth.\n\nThis is DM-only reference material with spoilers. Include: Geography, History, Culture, Factions, Secrets.")
+```
+
 **2. Quests — Agent: grimorio-quests**
 ```
 delegate(agent="grimorio-quests", prompt="Generate PERSONAL QUESTS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}")
@@ -185,11 +198,12 @@ delegate(agent="grimorio-narrative-custodian", prompt="Validate Batch 2 for camp
 
 Read canon.json and narrative_state.json, then validate:
 - Lore from lore.md
+- Setting Guide from setting-guide.md
 - Quests from quests/
 - Encounters from encounters/encounters.md
 - Characters from characters/
 
-Check for: lore contradictions, missing prerequisites, dead NPCs in quests, encounter balance.
+Check for: lore contradictions, setting guide inconsistencies, missing prerequisites, dead NPCs in quests, encounter balance.
 
 Return validation report with status and fixes.")
 ```
@@ -269,6 +283,13 @@ Return validation report with status and fixes.")
 ✅ Dividers: {cuántos separadores}
 ✅ Acts generados: {act_count}
 ✅ Consistency Gate: PASSED
+```
+
+### Phase 5e: Appendices
+Consolidate all reference material into appendices.md (magic items, NPC/monster stat blocks, handouts, maps, tables):
+
+```
+delegate(agent="grimorio-appendices", prompt="Generate APPENDICES for campaign '{campaign_name}' at {campaign_path}.\n\nRead ALL source files to compile reference material:\n- bestiary/bestiary.md (monster stat blocks)\n- npcs/npcs_and_factions.md (NPC stat blocks)\n- handouts/handouts.md (player-facing materials)\n- acts/*.md (treasure, encounters)\n- maps/maps.md (map references)\n\nCreate appendices.md with:\n- Appendix A: Magic Items\n- Appendix B: NPCs and Monsters\n- Appendix C: Handouts\n- Appendix D: Maps\n- Appendix E: Reference Tables")
 ```
 
 ### Phase 6: Artist — Batch Specification (ALL image types)
@@ -469,16 +490,20 @@ PDF Final: {campaign_path}/campaign.pdf
    - `grimorio-quests` for personal quests and side missions
    - `grimorio-encounters` for combat and exploration challenges
    - `grimorio-characters` for pre-generated character sheets
-   - `grimorio-acts` for narrative acts and scenes
-9. **Execution order is CRITICAL**: 
+   - `grimorio-acts` or `grimorio-areas` for narrative acts and numbered areas
+   - `grimorio-introduction` for campaign introduction and overview
+   - `grimorio-setting-guide` for DM-only setting reference (geography, history, factions)
+   - `grimorio-appendices` for consolidated reference material (items, stat blocks, handouts)
+9. **Execution order is CRITICAL**:
     - Phase 2: Create campaign + Adventure Bible (canon)
-    - Batch 1 (NPCs, bestiary, maps) → Validate Gate
-    - Batch 2 (lore, quests, encounters, characters) → Validate Gate → Update State
-    - Batch 3 (SVG maps, acts) → Validate Gate
-    - Artist → Images → Update References
-     - Living World: Factions, random tables, handouts → Validate Gate
-     - DM Experience: Session prep, flowchart → Validate Gate
-     - Final Consistency Check → Evaluate Consequences → PDF
+    - Phase 3a: Introduction (hooks the DM, establishes expectations)
+    - Phase 3b: Batch 1 (NPCs, bestiary, maps) → Validate Gate
+    - Phase 4: Batch 2 (lore, setting-guide, quests, encounters, characters) → Validate Gate → Update State
+    - Phase 5: Batch 3 (SVG maps, areas) → Validate Gate
+    - Phase 5e: Appendices (consolidates reference material)
+    - Phase 6-8: Artist → Images → Update References
+    - Phase 9: Final Consistency Check → Evaluate Consequences
+    - Phase 10: PDF Compilation
 10. **Use `grimorio-cartographer` agent type** for SVG generation.
 11. **Use `grimorio-artist` agent type** for image batch specs and reference updates.
 12. **ALWAYS validate content through consistency gate before proceeding** — this prevents NPC resurrections, lore contradictions, and timeline issues.
