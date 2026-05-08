@@ -156,6 +156,14 @@ setup_repo() {
     success "Repository ready at $INSTALL_DIR"
 }
 
+reexec_from_clone() {
+    if [ -z "$GRIMORIO_REEXEC" ] && [ -f "$INSTALL_DIR/install.sh" ]; then
+        log "Re-executing from latest cloned repository..."
+        export GRIMORIO_REEXEC=1
+        exec "$INSTALL_DIR/install.sh" "$@"
+    fi
+}
+
 build_binary() {
     log "Building Grimorio binary..."
 
@@ -866,6 +874,7 @@ main() {
     install_go
     install_wkhtmltopdf
     setup_repo
+    reexec_from_clone "$@"
     build_binary
     migrate_existing_campaigns
     setup_plugin
