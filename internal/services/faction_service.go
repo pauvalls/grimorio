@@ -56,10 +56,9 @@ func (s *FactionService) UpdateReputation(ctx context.Context, campaignID, facti
 	entry := matrix.GetEntry(factionID, partyID)
 	// Get current session from narrative state if available, default to 1
 	sessionNum := 1
-	if state, stateErr := s.canonRepo.Load(campaignID); stateErr == nil && state != nil {
-		// Session number is tracked in narrative state, not canon
-		// Default to 1 for now; could be enhanced with state service injection
-	}
+	// Session number is tracked in narrative state, not canon
+	// Default to 1 for now; could be enhanced with state service injection
+	_ = s.canonRepo
 	entry.ApplyDelta(delta, sessionNum, reason, actionType)
 
 	result := &domain.ReputationUpdateResult{

@@ -149,8 +149,6 @@ var (
 	headingRegex = regexp.MustCompile(`^(#{2,3})\s+(.+)$`)
 	// Matches bold list item like - **Name** — description or - **Name** (CR 1/4)
 	listItemRegex = regexp.MustCompile(`^\s*[-*]\s*\*\*([^*]+)\*\*\s*(?:[-—]|\()(.*)$`)
-	// Matches **Name** on its own line (NPC/monster name)
-	boldNameRegex = regexp.MustCompile(`\*\*([^*]+)\*\*`)
 	// Matches CR in text
 	crRegex = regexp.MustCompile(`(?i)CR[:\s]*([\d/]+)`)
 )
@@ -272,10 +270,9 @@ func (s *AdventureRosterService) parseMarkdown(md string, actNum string) ([]doma
 						PageRef:   "TBD",
 					})
 				}
-			} else if strings.Contains(lowerSection, "encuentro") {
-				// ## headings in encounter files are encounter names
-				// but we already captured them via currentSection tracking
 			}
+			// Note: ## headings in encounter files are encounter names
+			// but we already captured them via currentSection tracking
 		}
 	}
 

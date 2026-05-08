@@ -278,12 +278,14 @@ func TestNarrativeStateService_Update_KeyItemReplacement(t *testing.T) {
 			{ID: "item-001", Name: "Magic Key", Holder: "party", SessionFound: 1},
 		},
 	}
-	svc.Save(ctx, state)
+	if err := svc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	update := domain.StateUpdate{
 		SessionNum: 2,
 		KeyItems: []domain.KeyItem{
-			{ID: "item-001", Name: "Magic Key", Holder: "npc-merchant", SessionFound: 1},
+			{ID: "item-001", Name: "Magic Key", Holder: "npc-001", SessionFound: 2},
 		},
 	}
 
@@ -295,8 +297,8 @@ func TestNarrativeStateService_Update_KeyItemReplacement(t *testing.T) {
 	if len(updated.KeyItems) != 1 {
 		t.Fatalf("expected 1 key item, got %d", len(updated.KeyItems))
 	}
-	if updated.KeyItems[0].Holder != "npc-merchant" {
-		t.Fatalf("expected holder npc-merchant, got %s", updated.KeyItems[0].Holder)
+	if updated.KeyItems[0].Holder != "npc-001" {
+		t.Fatalf("expected holder npc-001, got %s", updated.KeyItems[0].Holder)
 	}
 }
 
@@ -312,7 +314,9 @@ func TestNarrativeStateService_Update_NonMatchingCompletedQuest(t *testing.T) {
 			{ID: "q-001", Name: "Find the Sword", Status: "active"},
 		},
 	}
-	svc.Save(ctx, state)
+	if err := svc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	update := domain.StateUpdate{
 		SessionNum:      2,
@@ -347,7 +351,9 @@ func TestNarrativeStateService_GetSessionPrepContext_MissingCanon(t *testing.T) 
 			{SessionNum: 1, Summary: "The party started."},
 		},
 	}
-	svc.Save(ctx, state)
+	if err := svc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	prep, err := svc.GetSessionPrepContext(ctx, "no-canon", 2)
 	if err != nil {

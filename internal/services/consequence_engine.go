@@ -194,7 +194,9 @@ func (e *ConsequenceEngine) conditionMatches(cond domain.Condition, state *domai
 func parseDelaySessions(delay string) int {
 	// Simple parser: "2 sessions" → 2
 	var sessions int
-	fmt.Sscanf(delay, "%d", &sessions)
+	if _, err := fmt.Sscanf(delay, "%d", &sessions); err != nil {
+		return 1
+	}
 	if sessions <= 0 {
 		return 1
 	}

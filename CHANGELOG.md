@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [Unreleased]
-
-## [2.0.0] - 2026-05-07
+## [2.0.0] - 2026-05-08
 
 ### Added
+- **Area-Based Generation (v2.0 Migration)** — Complete rewrite from scene-based to WotC-style area-based modules
+  - `grimorio-areas` — New agent replacing `grimorio-acts`, generates 10-15 numbered areas per act (150-200 words each)
+  - `grimorio-integrator` — New mandatory validation agent: cross-reference checks, XP balance audit, consistency validation, auto-fixes
+  - Area format: Features → Mechanics (bold) → Treasure → Secrets → Connections, with specific DCs and XP values
+  - 90%+ areas have mechanics (vs 50% in v1.x), 70% of combat areas have treasure (vs 30%)
+  - Cross-references between areas ("see Area C4"), NPC locations, and bestiary entries
+  - `internal/validators/` — New validation package: area format, integration checks, cross-references
+  - `internal/services/handout.go` — HandoutGenerator for player maps, clue lists, NPC rosters, session recaps
+  - Compiler v2: hierarchical TOC with links, clickable cross-references, inline stat blocks for unique creatures, area number highlighting
+  - `--compiler-version={1|2}` flag for backwards compatibility
+  - `grimorio-acts-legacy.md` preserved for old campaigns
+  - `cmd/migrate-v1-to-v2` — Converts scene-based acts to area-based format (best-effort)
 - **Narrative Coherence Subsystem (Fases 1-2)** — Complete canon and validation system
   - `generate_adventure_bible` — Creates canon.json with immutable facts, entities, timeline, rules
   - `validate_canon` — Validates content proposals against canon (10 rules)
@@ -57,9 +67,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test coverage** — 82.6% coverage on services, strict TDD mode activated
 
 ### Changed
-- **PDF compilation order** — Now follows professional D&D structure: Lore → Acts → Appendices
+- **grimorio-npc** — Added alignment, combat stats, location, quest involvement, secrets; WotC format
+- **grimorio-bestiary** — Added tactics, role (skirmisher/tank/controller), encounter groups, MM page references
+- **grimorio-encounters** — Added round-by-round development, tactical maps, conditions, alternative resolutions
+- **PDF compilation order** — Now follows professional D&D structure: Lore → Areas → Appendices
 - **Act template** — Redesigned with Out of the Abyss style sections, read-aloud text, numbered areas
 - **Architecture** — Refactored to clean architecture with domain/services/repository layers
+- **Pipeline** — New 5-phase flow: Foundation → Areas → Integration → Visuals → Compilation
+
+### Fixed
+- Fixed 26 golangci-lint errors: unchecked error returns in tests, unused variables, empty branches
+- Fixed `domain.KeyItemUpdate` undefined type in narrative state tests
+- Fixed race conditions in cache tests
+- All tests pass with `-race` flag (100% pass rate, 75.4% coverage)
 
 ## [1.0.0] - 2024-XX-XX
 

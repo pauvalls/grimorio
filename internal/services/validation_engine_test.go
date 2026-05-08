@@ -283,7 +283,9 @@ func TestValidationEngine_CheckConsistency_DeadNPCInCanon(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add NPC to canon as alive
 	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
@@ -293,7 +295,9 @@ func TestValidationEngine_CheckConsistency_DeadNPCInCanon(t *testing.T) {
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	// But state says he's dead
 	state, _ := stateSvc.Load(ctx, "test-campaign")
@@ -302,7 +306,9 @@ func TestValidationEngine_CheckConsistency_DeadNPCInCanon(t *testing.T) {
 		Name:    "Dead Guy",
 		Session: 1,
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	report, err := validator.CheckConsistency(ctx, "test-campaign", domain.ConsistencyScopeFull)
 	if err != nil {
@@ -327,7 +333,9 @@ func TestValidationEngine_CheckConsistency_LoreOnlyScope(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add NPC to canon as alive but state says dead
 	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
@@ -337,7 +345,9 @@ func TestValidationEngine_CheckConsistency_LoreOnlyScope(t *testing.T) {
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	state, _ := stateSvc.Load(ctx, "test-campaign")
 	state.DeadNPCs = append(state.DeadNPCs, domain.NPCDeathRecord{
@@ -345,7 +355,9 @@ func TestValidationEngine_CheckConsistency_LoreOnlyScope(t *testing.T) {
 		Name:    "Dead Guy",
 		Session: 1,
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	// With lore_only scope, the npc_alive_check might still run (our impl runs it regardless)
 	// but we test that lore_only scope doesn't crash
@@ -364,7 +376,9 @@ func TestValidationEngine_ValidateAct_McguffinViolation(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// State says party has the mcguffin
 	state, _ := stateSvc.Load(ctx, "test-campaign")
@@ -375,7 +389,9 @@ func TestValidationEngine_ValidateAct_McguffinViolation(t *testing.T) {
 		SessionFound: 1,
 		IsMcGuffin:   true,
 	})
-	stateSvc.Save(ctx, state)
+	if err := stateSvc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
 
 	report, err := validator.ValidateAct(ctx, "test-campaign", "act-3", "The Artifact McGuffin is found in the villain's lair.", nil)
 	if err != nil {
@@ -401,7 +417,9 @@ func TestValidationEngine_QuestRewardExistence_Valid(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
 	doc.Entities = append(doc.Entities, domain.CanonEntity{
@@ -409,7 +427,9 @@ func TestValidationEngine_QuestRewardExistence_Valid(t *testing.T) {
 		Name: "Ring of Invisibility",
 		Type: domain.EntityTypeItem,
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	report, err := validator.ValidateQuest(ctx, "test-campaign", "quest-1", "Find the lost cat. Reward: Ring of Invisibility", nil)
 	if err != nil {

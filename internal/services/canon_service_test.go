@@ -323,7 +323,9 @@ func TestCanonService_GetRelationshipGraph(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	svc.InitializeCanon(ctx, brief)
+	if _, err := svc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	graph, err := svc.GetRelationshipGraph(ctx, brief.Name)
 	if err != nil {
@@ -374,7 +376,9 @@ func TestCanonService_CacheInvalidateOnSave(t *testing.T) {
 	doc, _ := svc.InitializeCanon(ctx, brief)
 
 	// Load to warm cache
-	svc.LoadCanon(ctx, brief.Name)
+	if _, err := svc.LoadCanon(ctx, brief.Name); err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 
 	// Save modified doc
 	doc.Facts = append(doc.Facts, domain.CanonFact{ID: "fact-002", Category: "test", Statement: "test"})
@@ -397,10 +401,14 @@ func TestCanonService_CacheInvalidateOnRegisterFact(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "fact-invalidate", McGuffinType: "artifact"}
-	svc.InitializeCanon(ctx, brief)
+	if _, err := svc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Warm cache
-	svc.LoadCanon(ctx, brief.Name)
+	if _, err := svc.LoadCanon(ctx, brief.Name); err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 
 	// Register fact
 	fact := domain.CanonFact{ID: "fact-002", Category: "test", Statement: "test"}
@@ -423,12 +431,19 @@ func TestCanonService_CacheInvalidateOnUpdateEntityState(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "entity-invalidate", McGuffinType: "artifact"}
-	doc, _ := svc.InitializeCanon(ctx, brief)
+	doc, err := svc.InitializeCanon(ctx, brief)
+	if err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 	doc.Entities = append(doc.Entities, domain.CanonEntity{ID: "npc-001", Name: "Test", Type: domain.EntityTypeNPC, CanonState: domain.EntityStateAlive})
-	svc.SaveCanon(ctx, doc)
+	if err := svc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	// Warm cache
-	svc.LoadCanon(ctx, brief.Name)
+	if _, err := svc.LoadCanon(ctx, brief.Name); err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
 
 	// Update entity state
 	if err := svc.UpdateEntityState(ctx, brief.Name, "npc-001", domain.EntityStateDead); err != nil {
@@ -439,7 +454,7 @@ func TestCanonService_CacheInvalidateOnUpdateEntityState(t *testing.T) {
 	canonRepo.Delete(brief.Name)
 
 	// Should fail — cache invalidated
-	_, err := svc.LoadCanon(ctx, brief.Name)
+	_, err = svc.LoadCanon(ctx, brief.Name)
 	if err == nil {
 		t.Fatal("expected error after UpdateEntityState invalidation")
 	}
@@ -529,7 +544,10 @@ func BenchmarkCanonService_LoadCanon(b *testing.B) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "bench-campaign", McGuffinType: "artifact"}
-	doc, _ := svc.InitializeCanon(ctx, brief)
+	doc, err := svc.InitializeCanon(ctx, brief)
+	if err != nil {
+		b.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add 50 entities
 	for i := 0; i < 50; i++ {

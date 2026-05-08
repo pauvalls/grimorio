@@ -215,7 +215,9 @@ func TestConsistencyGateService_GetGateStatus(t *testing.T) {
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonRepo.Save("test-campaign", doc)
+	if err := canonRepo.Save("test-campaign", doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	proposal := domain.BatchProposal{
 		BatchID:    "batch-001",
@@ -339,7 +341,9 @@ func TestConsistencyGateService_AutoSave(t *testing.T) {
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonRepo.Save("test-campaign", doc)
+	if err := canonRepo.Save("test-campaign", doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	proposal := domain.BatchProposal{
 		BatchID:    "batch-001",
@@ -392,7 +396,9 @@ func BenchmarkConsistencyGate_ProcessBatch(b *testing.B) {
 		VillainType:  "lich",
 		McGuffinType: "amulet",
 	}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		b.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	doc, _ := canonRepo.Load("bench-campaign")
 	for i := 0; i < 10; i++ {
@@ -404,7 +410,9 @@ func BenchmarkConsistencyGate_ProcessBatch(b *testing.B) {
 			CanonState: domain.EntityStateAlive,
 		})
 	}
-	canonRepo.Save("bench-campaign", doc)
+	if err := canonRepo.Save("bench-campaign", doc); err != nil {
+		b.Fatalf("failed to save canon: %v", err)
+	}
 
 	batch := domain.BatchProposal{
 		BatchID:    "bench-batch",
