@@ -189,7 +189,9 @@ func TestCanonHandlers_HandleProcessConsistencyGate_WithoutProposals_Fails(t *te
 
 	// Setup campaign
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Use the REAL handler
 	handlers, _, _, _ := setupCanonHandlersWithGate()

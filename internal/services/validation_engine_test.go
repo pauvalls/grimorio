@@ -716,7 +716,9 @@ func TestValidationEngine_FactionReputationGate_Placeholder(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 	_ = stateSvc
 
 	report, err := validator.validate(ctx, "test-campaign", domain.ContentProposal{
@@ -801,7 +803,9 @@ func TestValidationEngine_FactionContext(t *testing.T) {
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	report, err := validator.validate(ctx, "test-campaign", domain.ContentProposal{
 		ID:             "act-1",

@@ -68,7 +68,9 @@ func TestHandleValidateCanon(t *testing.T) {
 
 	// Initialize canon first
 	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
-	canonSvc.InitializeCanon(ctx, brief)
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
 
 	// Add an entity
 	doc, _ := canonSvc.LoadCanon(ctx, "test-campaign")
@@ -78,7 +80,9 @@ func TestHandleValidateCanon(t *testing.T) {
 		Type:       domain.EntityTypeNPC,
 		CanonState: domain.EntityStateAlive,
 	})
-	canonSvc.SaveCanon(ctx, doc)
+	if err := canonSvc.SaveCanon(ctx, doc); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
 
 	handler := handlers.HandleValidateCanon()
 	args := map[string]any{
