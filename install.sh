@@ -294,6 +294,58 @@ EOF
     fi
 }
 
+clean_installation() {
+    log "Cleaning previous Grimorio installation..."
+    local cleaned=false
+
+    for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
+        if [ -d "$plugin_dir" ]; then
+            rm -f "$plugin_dir/grimorio"
+            rm -f "$plugin_dir/migrate-v1-to-v2"
+            rm -f "$plugin_dir/.mcp.json"
+            rm -rf "$plugin_dir/.claude-plugin"
+            [ -d "$plugin_dir/commands" ] && rm -f "$plugin_dir/commands/grimorio.md"
+            [ -d "$plugin_dir/agents" ] && rm -f "$plugin_dir/agents/grimorio-*.md"
+            [ -d "$plugin_dir/skills" ] && rm -f "$plugin_dir/skills/grimorio-*.md"
+            log "Cleaned Grimorio files from: $plugin_dir"
+            cleaned=true
+        fi
+    done
+
+    [ -f "$BINARY_DIR/grimorio" ] && rm -f "$BINARY_DIR/grimorio" && log "Removed: $BINARY_DIR/grimorio" && cleaned=true
+    [ -f "$BINARY_DIR/migrate-v1-to-v2" ] && rm -f "$BINARY_DIR/migrate-v1-to-v2" && log "Removed: $BINARY_DIR/migrate-v1-to-v2" && cleaned=true
+
+    if [ -d "$INSTALL_DIR" ]; then
+        rm -rf "$INSTALL_DIR"
+        log "Removed: $INSTALL_DIR"
+        cleaned=true
+    fi
+
+    local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
+    if [ -f "$OPENCODE_CONFIG" ] && command_exists jq; then
+        jq 'del(.mcp.grimorio, .agent["grimorio-architect"], .agent["grimorio-artist"], .agent["grimorio-cartographer"], .agent["grimorio-lore"], .agent["grimorio-npc"], .agent["grimorio-bestiary"], .agent["grimorio-encounters"], .agent["grimorio-areas"], .agent["grimorio-quests"], .agent["grimorio-maps"], .agent["grimorio-characters"], .agent["grimorio-narrative-custodian"], .agent["grimorio-introduction"], .agent["grimorio-setting-guide"], .agent["grimorio-appendices"], .agent["grimorio-integrator"], .agent["grimorio-orchestrator"], .command.grimorio)' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        log "Cleaned grimorio entries from opencode.json"
+        cleaned=true
+    fi
+
+    local shell_rcs=("${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.config/fish/config.fish" "${HOME}/.profile")
+    for rc in "${shell_rcs[@]}"; do
+        if [ -f "$rc" ]; then
+            awk '
+                /^# === GRIMORIO CONFIG BEGIN ===$/ { in_block=1; next }
+                /^# === GRIMORIO CONFIG END ===$/   { in_block=0; next }
+                !in_block { print }
+            ' "$rc" > "${rc}.tmp" && mv "${rc}.tmp" "$rc"
+            sed -i '/^# Grimorio$/d' "$rc"
+            sed -i '/^export PATH="\$HOME\/\.local\/go\/bin:\$PATH"$/d' "$rc"
+            sed -i '/^export PATH="\$HOME\/\.local\/bin:\$PATH"$/d' "$rc"
+        fi
+    done
+    log "Cleaned shell configuration files"
+
+    [ "$cleaned" = true ] && success "Previous Grimorio installation cleaned" || log "No previous installation found"
+}
+
 configure_opencode_command() {
     local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
 
