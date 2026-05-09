@@ -8,14 +8,165 @@ Este archivo documenta problemas frecuentes y sus soluciones usando el workflow 
 
 ## Índice
 
-1. [Agentes no delegan correctamente](#agentes-no-delegan-correctamente)
-2. [Listar clases, razas, backgrounds disponibles](#listar-clases-razas-backgrounds-disponibles)
-3. [Validar contenido WotC](#validar-contenido-wotc)
-4. [Generar NPCs con estándares WotC](#generar-npcs-con-estándares-wotc)
-5. [Crear áreas con Developments](#crear-áreas-con-developments)
-6. [Verificar stat blocks de NPCs](#verificar-stat-blocks-de-npcs)
-7. [Generar character hooks automáticamente](#generar-character-hooks-automáticamente)
-8. [Compilar PDF con imágenes](#compilar-pdf-con-imágenes)
+1. [Campaign Brief Description Support](#campaign-brief-description-support)
+2. [Agentes no delegan correctamente](#agentes-no-delegan-correctamente)
+3. [Listar clases, razas, backgrounds disponibles](#listar-clases-razas-backgrounds-disponibles)
+4. [Validar contenido WotC](#validar-contenido-wotc)
+5. [Generar NPCs con estándares WotC](#generar-npcs-con-estándares-wotc)
+6. [Crear áreas con Developments](#crear-áreas-con-developments)
+7. [Verificar stat blocks de NPCs](#verificar-stat-blocks-de-npcs)
+8. [Generar character hooks automáticamente](#generar-character-hooks-automáticamente)
+9. [Compilar PDF con imágenes](#compilar-pdf-con-imágenes)
+
+---
+
+## Campaign Brief Description Support
+
+### Feature: Brief Description para Campañas (v2.5.0)
+
+**Problema**: Los agentes generaban contenido genérico sin entender la historia específica que el DM quería contar.
+
+**Solución**: Agregar `brief_description` como parámetro obligatorio en el workflow de creación de campañas.
+
+### Implementación
+
+#### 1. Domain Layer (`internal/domain/canon.go`)
+
+```go
+type CampaignBrief struct {
+    Name             string   `json:"name"`
+    BriefDescription string   `json:"brief_description"`  // NEW
+    LevelRange       string   `json:"level_range"`
+    Tone             string   `json:"tone"`
+    SettingType      string   `json:"setting_type"`
+    Themes           []string `json:"themes"`
+    VillainType      string   `json:"villain_type"`
+    McGuffinType     string   `json:"mcguffin_type"`
+}
+```
+
+#### 2. MCP Tool (`internal/mcp/server.go`)
+
+```go
+s.AddTool(mcp.NewTool("generate_adventure_bible",
+    mcp.WithString("name", mcp.Required()),
+    mcp.WithString("brief_description", mcp.Description("Brief campaign description or story concept")),  // NEW
+    mcp.WithString("level_range", ...),
+    // ... rest of params
+), canonHandlers.HandleGenerateAdventureBible())
+```
+
+#### 3. Handler (`internal/mcp/handlers/canon.go`)
+
+```go
+brief := domain.CampaignBrief{
+    Name:             getStringArg(args, "name"),
+    BriefDescription: getStringArg(args, "brief_description"),  // NEW
+    LevelRange:       getStringArg(args, "level_range"),
+    // ...
+}
+```
+
+#### 4. Service (`internal/services/canon_service.go`)
+
+```go
+Facts: []domain.CanonFact{
+    {
+        ID:        "fact-001",
+        Category:  "lore",
+        Statement: fmt.Sprintf("The campaign '%s' is set in a %s world with %s tone.", ...),
+    },
+    {
+        ID:        "fact-002",  // NEW fact from brief
+        Category:  "story",
+        Statement: brief.BriefDescription,
+        Source:    "campaign_brief",
+        Immutable: false,
+    },
+},
+```
+
+### Agent Workflow Updates
+
+#### Phase 1: Gather Requirements
+
+Agregar pregunta explícita:
+```
+3. **Campaign idea / brief description?** (What story do you want to tell? 2-3 sentences describing the main plot)
+```
+
+#### Phase 2b: Generate Adventure Bible
+
+Pasar `brief_description` al tool:
+```
+generate_adventure_bible(
+  campaign_id="{campaign_name}",
+  name="{campaign_title}",
+  brief_description="{brief_description}",  // NEW
+  level_range="{level_range}",
+  ...
+)
+```
+
+#### All Delegation Prompts
+
+Incluir `Brief: {brief_description}` en TODAS las delegaciones:
+- grimorio-introduction
+- grimorio-npc
+- grimorio-bestiary
+- grimorio-maps
+- grimorio-lore
+- grimorio-setting-guide
+- grimorio-quests
+- grimorio-encounters
+- grimorio-characters
+- grimorio-areas
+- grimorio-artist
+
+### Beneficios
+
+1. **Contexto narrativo claro**: Los agentes entienden la historia específica
+2. **Contenido alineado**: NPCs, encuentros y áreas avanzan la trama
+3. **Menos regeneraciones**: El contenido es relevante desde el primer intento
+4. **Canon enriquecido**: El brief se guarda como fact en `canon.json`
+
+### Ejemplo de Uso
+
+```markdown
+User: "Quiero crear una campaña"
+
+Architect:
+1. Campaign name? → "la-hoja-de-vlad"
+2. One-shot or full campaign? → "full campaign"
+3. **Campaign idea / brief description?** → "Los PCs descubren una conspiración en la corte vampírica donde un noble está traicionando a su señor para revivir a un antiguo tirano. Deben navegar la política, descubrir la traición, y decidir si salvar al señor o tomar partido."
+4. Player level range? → "5-8"
+5. Tone? → "political intrigue, dark"
+...
+
+generate_adventure_bible(
+  name="la-hoja-de-vlad",
+  brief_description="Los PCs descubren una conspiración en la corte vampírica...",
+  level_range="5-8",
+  tone="political intrigue, dark",
+  ...
+)
+```
+
+### Validación
+
+```bash
+# Verificar que canon.json incluye el brief
+jq '.facts[] | select(.category=="story")' /home/pau/campaigns/la-hoja-de-vlad/canon.json
+
+# Debería mostrar:
+# {
+#   "id": "fact-002",
+#   "category": "story",
+#   "statement": "Los PCs descubren una conspiración en la corte vampírica...",
+#   "source": "campaign_brief",
+#   "immutable": false
+# }
+```
 
 ---
 

@@ -43,12 +43,13 @@ func (h *CanonHandlers) HandleGenerateAdventureBible() server.ToolHandlerFunc {
 		}
 
 		brief := domain.CampaignBrief{
-			Name:         getStringArg(args, "name"),
-			LevelRange:   getStringArg(args, "level_range"),
-			Tone:         getStringArg(args, "tone"),
-			SettingType:  getStringArg(args, "setting_type"),
-			VillainType:  getStringArg(args, "villain_type"),
-			McGuffinType: getStringArg(args, "mcguffin_type"),
+			Name:             getStringArg(args, "name"),
+			BriefDescription: getStringArg(args, "brief_description"),
+			LevelRange:       getStringArg(args, "level_range"),
+			Tone:             getStringArg(args, "tone"),
+			SettingType:      getStringArg(args, "setting_type"),
+			VillainType:      getStringArg(args, "villain_type"),
+			McGuffinType:     getStringArg(args, "mcguffin_type"),
 		}
 
 		// Parse themes array if provided

@@ -252,11 +252,12 @@ type RelationshipGraph struct {
 
 // CampaignBrief represents the initial brief for campaign generation
 type CampaignBrief struct {
-	Name        string   `json:"name"`
-	LevelRange  string   `json:"level_range"`
-	Tone        string   `json:"tone"`
-	SettingType string   `json:"setting_type"`
-	Themes      []string `json:"themes"`
-	VillainType string   `json:"villain_type"`
-	McGuffinType string  `json:"mcguffin_type"`
+	Name             string   `json:"name"`
+	BriefDescription string   `json:"brief_description"`
+	LevelRange       string   `json:"level_range"`
+	Tone             string   `json:"tone"`
+	SettingType      string   `json:"setting_type"`
+	Themes           []string `json:"themes"`
+	VillainType      string   `json:"villain_type"`
+	McGuffinType     string   `json:"mcguffin_type"`
 }

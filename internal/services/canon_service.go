@@ -82,6 +82,14 @@ func (s *CanonService) InitializeCanon(ctx context.Context, brief domain.Campaig
 				Immutable: true,
 				CreatedAt: now,
 			},
+			{
+				ID:        "fact-002",
+				Category:  "story",
+				Statement: brief.BriefDescription,
+				Source:    "campaign_brief",
+				Immutable: false,
+				CreatedAt: now,
+			},
 		},
 		Entities: []domain.CanonEntity{
 			{

@@ -115,9 +115,10 @@ save_npcs(campaign="la-hola-de-vlad", content="...")  # WRONG!
 Ask the user these questions ONE AT A TIME (interactively):
 1. Campaign name? (kebab-case, e.g., "sunken-city")
 2. One-shot or full campaign?
-3. Player level range? (1-3, 4-6, 7-10, 11-15, 16-20)
-4. Desired tone? (heroic, dark, humorous, political intrigue)
-5. Duration? (one-shot, 3-5 sessions, long campaign)
+3. **Campaign idea / brief description?** (What story do you want to tell? 2-3 sentences describing the main plot)
+4. Player level range? (1-3, 4-6, 7-10, 11-15, 16-20)
+5. Desired tone? (heroic, dark, humorous, political intrigue)
+6. Duration? (one-shot, 3-5 sessions, long campaign)
 
 ### Phase 2: Create Campaign Structure
 Use `create_campaign` with the gathered parameters.
@@ -130,6 +131,7 @@ Take note of the `campaign_path` returned.
 generate_adventure_bible(
   campaign_id="{campaign_name}",
   name="{campaign_title}",
+  brief_description="{brief_description}",
   level_range="{level_range}",
   tone="{tone}",
   setting_type="{setting_type}",
@@ -145,25 +147,25 @@ This creates `canon.json` — the single source of truth for the campaign.
 Generate the campaign introduction — the entry point that hooks the DM and sets expectations:
 
 ```
-delegate(agent="grimorio-introduction", prompt="Generate INTRODUCTION for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} for levels {level_range}. Tone: {tone}.\n\nRead canon.json and lore.md first to understand the campaign. Generate the introduction.md file.")
+delegate(agent="grimorio-introduction", prompt="Generate INTRODUCTION for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} for levels {level_range}. Tone: {tone}.\n\nBrief: {brief_description}\n\nRead canon.json and lore.md first to understand the campaign. Generate the introduction.md file.")
 ```
 
 ### Phase 3b: Batch 1 — Contenido Base (PARALLEL)
-NPCs, Bestiary y Maps se generan con la premisa base de la campaña (tone, level, setting):
+NPCs, Bestiary y Maps se generan con la premisa base de la campaña (tone, level, setting, brief):
 
 **1. NPCs — Agent: grimorio-npc**
 ```
-delegate(agent="grimorio-npc", prompt="Generate NPCS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
+delegate(agent="grimorio-npc", prompt="Generate NPCS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\nBrief: {brief_description}")
 ```
 
 **2. Bestiary — Agent: grimorio-bestiary**
 ```
-delegate(agent="grimorio-bestiary", prompt="Generate BESTIARY for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
+delegate(agent="grimorio-bestiary", prompt="Generate BESTIARY for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\nBrief: {brief_description}")
 ```
 
 **3. Maps — Agent: grimorio-maps**
 ```
-delegate(agent="grimorio-maps", prompt="Generate MAP DESCRIPTIONS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}")
+delegate(agent="grimorio-maps", prompt="Generate MAP DESCRIPTIONS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nBrief: {brief_description}")
 ```
 
 ### Phase 3b: Monitor Batch 1
@@ -210,27 +212,27 @@ Lore se genera junto con quests (necesita NPCs), encounters (necesita bestiary +
 
 **1. Lore — Agent: grimorio-lore**
 ```
-delegate(agent="grimorio-lore", prompt="Generate LORE for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
+delegate(agent="grimorio-lore", prompt="Generate LORE for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\nBrief: {brief_description}")
 ```
 
 **1b. Setting Guide — Agent: grimorio-setting-guide** (DM-only, runs after Lore reads canon.json)
 ```
-delegate(agent="grimorio-setting-guide", prompt="Generate SETTING GUIDE for campaign '{campaign_name}' at {campaign_path}.\n\nRead canon.json and lore.md to understand the campaign world in depth.\n\nThis is DM-only reference material with spoilers. Include: Geography, History, Culture, Factions, Secrets.")
+delegate(agent="grimorio-setting-guide", prompt="Generate SETTING GUIDE for campaign '{campaign_name}' at {campaign_path}.\n\nRead canon.json and lore.md to understand the campaign world in depth.\n\nBrief: {brief_description}\n\nThis is DM-only reference material with spoilers. Include: Geography, History, Culture, Factions, Secrets.")
 ```
 
 **2. Quests — Agent: grimorio-quests**
 ```
-delegate(agent="grimorio-quests", prompt="Generate PERSONAL QUESTS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}")
+delegate(agent="grimorio-quests", prompt="Generate PERSONAL QUESTS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nBrief: {brief_description}")
 ```
 
 **2. Encounters — Agent: grimorio-encounters**
 ```
-delegate(agent="grimorio-encounters", prompt="Generate ENCOUNTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
+delegate(agent="grimorio-encounters", prompt="Generate ENCOUNTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\nBrief: {brief_description}")
 ```
 
 **3. Characters — Agent: grimorio-characters**
 ```
-delegate(agent="grimorio-characters", prompt="Generate PRE-GENERATED CHARACTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}")
+delegate(agent="grimorio-characters", prompt="Generate PRE-GENERATED CHARACTERS for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nLevel: {level_range}\nBrief: {brief_description}")
 ```
 
 **4. Character Hooks — NEW (WotC Standard)**
@@ -303,7 +305,7 @@ delegate(agent="grimorio-cartographer", prompt="Generate ALL SVG assets for camp
 
 **2. Areas — Agent: grimorio-areas**
 ```
-delegate(agent="grimorio-areas", prompt="Generate AREAS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nGenerate {act_count} acts with 10-15 numbered areas each. CRITICAL: Read ALL source files first:\n- lore.md\n- npcs/npcs_and_factions.md\n- bestiary/bestiary.md\n- maps/maps.md\n- quests/*.md\n- encounters/encounters.md\n- characters/*.md\n\nReference NPCs, creatures, quests, and characters by name. Use [SCENE: ...] placeholders for pivotal moments.")
+delegate(agent="grimorio-areas", prompt="Generate AREAS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nBrief: {brief_description}\n\nGenerate {act_count} acts with 10-15 numbered areas each. CRITICAL: Read ALL source files first:\n- lore.md\n- npcs/npcs_and_factions.md\n- bestiary/bestiary.md\n- maps/maps.md\n- quests/*.md\n- encounters/encounters.md\n- characters/*.md\n\nReference NPCs, creatures, quests, and characters by name. Use [SCENE: ...] placeholders for pivotal moments.")
 ```
 
 `act_count` = 1 if `is_oneshot` else 3
@@ -360,7 +362,7 @@ delegate(agent="grimorio-appendices", prompt="Generate APPENDICES for campaign '
 ### Phase 6: Artist — Batch Specification (ALL image types)
 
 ```
-delegate(agent="grimorio-artist", prompt="Prepare image batch specification for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nRead these files:\n- npcs/npcs_and_factions.md (extract ALL NPCs)\n- bestiary/bestiary.md (extract ALL monsters)\n- acts/*.md (extract ALL [SCENE: ...] placeholders)\n- lore.md (extract setting for cover)\n\nThe batch spec MUST include:\n1. **cover-art.png** — cover image (type: cover) — FIRST entry\n2. **npc-[name].png** — ONE portrait per major NPC (type: portrait)\n3. **scene-[act]-[description].png** — ONE per [SCENE: ...] placeholder in acts (type: scene)\n4. **monster-[name].png** — ONE per key monster (type: illustration)\n\nDo NOT skip any NPC or scene. Create {campaign_path}/assets/batch-spec.json.")
+delegate(agent="grimorio-artist", prompt="Prepare image batch specification for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\nBrief: {brief_description}\n\nRead these files:\n- npcs/npcs_and_factions.md (extract ALL NPCs)\n- bestiary/bestiary.md (extract ALL monsters)\n- acts/*.md (extract ALL [SCENE: ...] placeholders)\n- lore.md (extract setting for cover)\n\nThe batch spec MUST include:\n1. **cover-art.png** — cover image (type: cover) — FIRST entry\n2. **npc-[name].png** — ONE portrait per major NPC (type: portrait)\n3. **scene-[act]-[description].png** — ONE per [SCENE: ...] placeholder in acts (type: scene)\n4. **monster-[name].png** — ONE per key monster (type: illustration)\n\nDo NOT skip any NPC or scene. Create {campaign_path}/assets/batch-spec.json.")
 ```
 
 ### Phase 6b: Report Artist Spec
@@ -423,7 +425,7 @@ Iniciando Fase 8: Actualización de Referencias...
 The artist must reference EVERY generated image in the appropriate markdown files.
 
 ```
-delegate(agent="grimorio-artist", prompt="Update ALL image references for campaign '{campaign_name}' at {campaign_path}.\n\nAll images have been generated in assets/. List them with: ls {campaign_path}/assets/*.png\n\nFor EACH image found, add the reference in the correct file:\n1. cover-*.png → README.md at the top: ![Cover](assets/filename.png)\n2. npc-*.png → npcs/npcs_and_factions.md in the matching NPC's section: ![NPC Name](assets/filename.png)\n3. scene-*.png → acts/*.md, replacing [SCENE: ...] placeholders: ![Scene](assets/filename.png)\n4. monster-*.png → bestiary/bestiary.md in the matching monster's section: ![Monster](assets/filename.png)\n\nCRITICAL: Every PNG in assets/ MUST be referenced in at least one markdown file. Do NOT skip any image.")
+delegate(agent="grimorio-artist", prompt="Update ALL image references for campaign '{campaign_name}' at {campaign_path}.\n\nAll images have been generated in assets/. List them with: ls {campaign_path}/assets/*.png\n\nFor EACH image found, add the reference in the correct file:\n1. cover-*.png → README.md at the top: ![Cover](assets/filename.png)\n2. npc-*.png → npcs/npcs_and_factions.md in the matching NPC's section: ![NPC Name](assets/filename.png)\n3. scene-*.png → acts/*.md, replacing [SCENE: ...] placeholders: ![Scene](assets/filename.png)\n4. monster-*.png → bestiary/bestiary.md in the matching monster's section: ![Monster](assets/filename.png)\n\nBrief: {brief_description}\n\nCRITICAL: Every PNG in assets/ MUST be referenced in at least one markdown file. Do NOT skip any image.")
 ```
 
 ### Phase 8b: Monitor Reference Updates
