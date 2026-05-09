@@ -1,0 +1,93 @@
+{
+  "id": "quest-gremio-contrabando",
+  "campaign_id": "la-hoja-de-vlad",
+  "title": "Contrabando para el Gremio",
+  "type": "faccion_gremio",
+  "status": "available",
+  "giver": "Baronesa Isolde Crane",
+  "giver_faction": "faction-gremio",
+  "hook": "La Baronesa Isolde Crane necesita que los PJs transporten 'mercancía especial' a través de las fronteras sin pagar impuestos reales. Oficialmente, es contrabando. Extraoficialmente, es necesario para mantener la economía del reino.",
+  "description": "La Baronesa Isolde Crane necesita que los PJs transporten 'mercancía especial' a través de las fronteras sin pagar impuestos reales. Oficialmente, es contrabando. Extraoficialmente, es necesario para mantener la economía del reino funcionando durante la crisis.",
+  "stakes": "Si son capturados por las guardias reales, serán acusados de contrabando y encarcelados. Si tienen éxito, el Gremio los considerará aliados confiables.",
+  "level_range": "1-2",
+  "objectives": [
+    {
+      "id": 1,
+      "description": "Recoger la mercancía — Encontrar el punto de encuentro discreto",
+      "completed": false,
+      "requirement": "Investigation (DC 12) para encontrar la ubicación",
+      "skill_check": {
+        "skill": "Investigation",
+        "dc": 12
+      }
+    },
+    {
+      "id": 2,
+      "description": "Evitar guardias — Transportar la mercancía sin ser detectado",
+      "completed": false,
+      "requirement": "Stealth group check (DC 15)",
+      "skill_check": {
+        "skill": "Stealth",
+        "dc": 15
+      }
+    },
+    {
+      "id": 3,
+      "description": "Entregar a tiempo — Llegar al destino antes del plazo",
+      "completed": false,
+      "requirement": "Time limit: 2 días de juego",
+      "skill_check": null
+    },
+    {
+      "id": 4,
+      "description": "Manejar complicaciones — Sobrevivir a cualquier encuentro en el camino",
+      "completed": false,
+      "requirement": "Combate o social encounter",
+      "skill_check": null
+    }
+  ],
+  "rewards": [
+    {
+      "type": "gold",
+      "value": "400 gp",
+      "amount": 400,
+      "description": "Pago del Gremio + 'bono de discreción'"
+    },
+    {
+      "type": "xp",
+      "value": "800 XP",
+      "amount": 800,
+      "description": "Dividido entre el party"
+    },
+    {
+      "type": "reputation",
+      "faction": "faction-gremio",
+      "delta": 20,
+      "description": "Isolde los considera confiables"
+    },
+    {
+      "type": "discount",
+      "value": "10% de descuento",
+      "amount": 0,
+      "description": "En todas las compras en tiendas del Gremio"
+    },
+    {
+      "type": "item",
+      "value": "Pase de comerciante",
+      "amount": 1,
+      "description": "Permite viajar sin ser registrado"
+    }
+  ],
+  "consequences_failure": [
+    "Si son capturados, serán acusados de contrabando y encarcelados.",
+    "El Gremio pierde confianza en los PJs (-20 reputación).",
+    "La mercancía podría ser interceptada por la Corona o la Hermandad."
+  ],
+  "character_id": "party",
+  "related_npcs": ["npc-isolde-crane", "npc-elena-vesper"],
+  "related_acts": ["act-chapter-1"],
+  "related_quests": [],
+  "progress_notes": [],
+  "created_at": "2026-05-09T07:30:00.000000000+02:00",
+  "updated_at": "2026-05-09T07:30:00.000000000+02:00"
+}

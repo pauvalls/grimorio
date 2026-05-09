@@ -1,0 +1,103 @@
+{
+  "id": "quest-templo-reliquia",
+  "campaign_id": "la-hoja-de-vlad",
+  "title": "La Reliquia del Templo",
+  "type": "faccion_templo",
+  "status": "available",
+  "giver": "Padre Mikhail Rosetti",
+  "giver_faction": "faction-templo",
+  "hook": "El Templo posee una reliquia antigua capaz de detectar la presencia de La Hoja. Pero la reliquia fue robada por el Culto del Susurrante hace décadas. Padre Mikhail necesita que los PJs la recuperen.",
+  "description": "El Templo posee una reliquia antigua capaz de detectar la presencia de La Hoja. Pero la reliquia fue robada por el Culto del Susurrante hace décadas. Padre Mikhail necesita que los PJs la recuperen de las ruinas donde el culto la escondió. Esta quest es esencial para localizar La Hoja en la quest principal.",
+  "stakes": "Sin la reliquia, los PJs no podrán localizar La Hoja eficientemente. Si el culto la destruye, perderán su única ventaja en la búsqueda.",
+  "level_range": "2-3",
+  "objectives": [
+    {
+      "id": 1,
+      "description": "Investigar las ruinas — Encontrar la ubicación exacta del escondite",
+      "completed": false,
+      "requirement": "Religion o History (DC 15)",
+      "skill_check": {
+        "skill": "Religion",
+        "dc": 15
+      }
+    },
+    {
+      "id": 2,
+      "description": "Infiltrarse en el culto — Ganar acceso a las ruinas sin ser detectado",
+      "completed": false,
+      "requirement": "Deception o Stealth (DC 16)",
+      "skill_check": {
+        "skill": "Stealth",
+        "dc": 16
+      }
+    },
+    {
+      "id": 3,
+      "description": "Recuperar la reliquia — Encontrar y tomar el objeto",
+      "completed": false,
+      "requirement": "Éxito en Investigation (DC 17)",
+      "skill_check": {
+        "skill": "Investigation",
+        "dc": 17
+      }
+    },
+    {
+      "id": 4,
+      "description": "Escapar con la reliquia — Salir de las ruinas vivas",
+      "completed": false,
+      "requirement": "Combate o persecución",
+      "skill_check": null
+    },
+    {
+      "id": 5,
+      "description": "Entregar al Templo — Devolver la reliquia a Padre Mikhail",
+      "completed": false,
+      "requirement": "Viaje de regreso a Corona del Alba",
+      "skill_check": null
+    }
+  ],
+  "rewards": [
+    {
+      "type": "gold",
+      "value": "500 gp",
+      "amount": 500,
+      "description": "Donación del Templo"
+    },
+    {
+      "type": "xp",
+      "value": "1,600 XP",
+      "amount": 1600,
+      "description": "Dividido entre el party"
+    },
+    {
+      "type": "reputation",
+      "faction": "faction-templo",
+      "delta": 30,
+      "description": "Acceso a archivos prohibidos del Templo"
+    },
+    {
+      "type": "item",
+      "value": "La reliquia misma (prestada para uso temporal)",
+      "amount": 1,
+      "description": "Item mágico que detecta La Hoja"
+    },
+    {
+      "type": "information",
+      "value": "Ubicación aproximada de La Hoja",
+      "amount": 0,
+      "description": "Información crítica para la quest principal"
+    }
+  ],
+  "consequences_failure": [
+    "Sin la reliquia, los PJs no podrán localizar La Hoja eficientemente.",
+    "El Templo pierde confianza en los PJs (-30 reputación).",
+    "El culto podría usar la reliquia para sus propios fines oscuros."
+  ],
+  "character_id": "party",
+  "related_npcs": ["npc-mikhail-rosetti", "npc-darius-thorn"],
+  "related_acts": ["act-chapter-1", "act-chapter-2"],
+  "related_quests": ["quest-legado-vlad"],
+  "progress_notes": [],
+  "created_at": "2026-05-09T07:30:00.000000000+02:00",
+  "updated_at": "2026-05-09T07:30:00.000000000+02:00"
+}

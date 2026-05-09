@@ -1,0 +1,128 @@
+{
+  "id": "quest-mina-cerrada",
+  "campaign_id": "la-hoja-de-vlad",
+  "title": "La Mina Cerrada",
+  "type": "infiltracion",
+  "status": "available",
+  "giver": "Condesa Elena Vesper",
+  "giver_faction": "faction-hermandad",
+  "hook": "Casa Ironwood ha cerrado abruptamente la Mina de Hierro Negro sin explicación. Los trabajadores han sido despedidos sin pago. Algo oscuro está pasando allí dentro.",
+  "description": "Una mujer encapuchada (la Condesa Elena Vesper) contacta a los PJs en una taberna del bajo mundo. Les ofrece oro para que se infiltren en la mina y descubran qué está pasando realmente. Los trabajadores desaparecidos están siendo usados en rituales experimentales del culto.",
+  "stakes": "Si el culto está experimentando con La Hoja o artefactos similares en la mina, podrían estar creando soldados sobrenaturales para la Hermandad. O peor: podrían estar abriendo un portal directo al reino del Susurrante.",
+  "level_range": "2",
+  "objectives": [
+    {
+      "id": 1,
+      "description": "Infiltrarse en la mina — Entrar sin ser detectado por los guardias",
+      "completed": false,
+      "requirement": "Stealth group check (DC 14) o eliminar guardias silenciosamente",
+      "skill_check": {
+        "skill": "Stealth",
+        "dc": 14
+      }
+    },
+    {
+      "id": 2,
+      "description": "Encontrar a los trabajadores — Localizar dónde están retenidos",
+      "completed": false,
+      "requirement": "Explorar al menos 3 áreas de la mina",
+      "skill_check": null
+    },
+    {
+      "id": 3,
+      "description": "Documentar los rituales — Encontrar evidencia de lo que está pasando",
+      "completed": false,
+      "requirement": "Éxito en Investigation (DC 15) para encontrar registros",
+      "skill_check": {
+        "skill": "Investigation",
+        "dc": 15
+      }
+    },
+    {
+      "id": 4,
+      "description": "Liberar a los prisioneros — Rescatar a los trabajadores sobrevivientes",
+      "completed": false,
+      "requirement": "Derrotar a los guardias/cultistas y abrir las celdas",
+      "skill_check": null
+    },
+    {
+      "id": 5,
+      "description": "Sabotear las operaciones — Destruir el equipo ritual",
+      "completed": false,
+      "requirement": "Éxito en Strength (DC 16) o usar explosivos",
+      "skill_check": {
+        "skill": "Strength",
+        "dc": 16
+      }
+    },
+    {
+      "id": 6,
+      "description": "Escapar con vida — Salir de la mina antes del colapso",
+      "completed": false,
+      "requirement": "Skill challenge de persecución (3 éxitos antes de 3 fallos)",
+      "skill_check": {
+        "skill": "Athletics",
+        "dc": 14
+      }
+    }
+  ],
+  "rewards": [
+    {
+      "type": "gold",
+      "value": "600 gp",
+      "amount": 600,
+      "description": "Pago de la Hermandad (alto riesgo = alta recompensa)"
+    },
+    {
+      "type": "xp",
+      "value": "2,000 XP",
+      "amount": 2000,
+      "description": "Dividido entre el party"
+    },
+    {
+      "type": "reputation",
+      "faction": "faction-hermandad",
+      "delta": 25,
+      "description": "Elena Vesper ahora los considera activos valiosos"
+    },
+    {
+      "type": "reputation",
+      "faction": "casa-ironwood",
+      "delta": -20,
+      "description": "Si destruyen propiedad de la casa",
+      "conditional": true
+    },
+    {
+      "type": "reputation",
+      "faction": "faction-gremio",
+      "delta": -15,
+      "description": "Si interfieren con operaciones mineras 'legítimas'",
+      "conditional": true
+    },
+    {
+      "type": "item",
+      "value": "Equipo de minería adaptado",
+      "amount": 1,
+      "description": "Ventajas en checks de excavación"
+    },
+    {
+      "type": "information",
+      "value": "Prueba de que Casa Ironwood está colaborando con el culto",
+      "amount": 0,
+      "description": "Evidencia para usar contra Casa Ironwood"
+    }
+  ],
+  "consequences_failure": [
+    "Los trabajadores mueren en los rituales.",
+    "El culto perfecciona sus experimentos.",
+    "La Hermandad pierde confianza en los PJs (-25 reputación).",
+    "Casa Ironwood descubre la infiltración y envía mercenarios."
+  ],
+  "character_id": "party",
+  "related_npcs": ["npc-elena-vesper", "npc-isolde-crane"],
+  "related_acts": ["act-chapter-1", "act-chapter-2"],
+  "related_quests": ["quest-templo-silenciado"],
+  "progress_notes": [],
+  "created_at": "2026-05-09T07:30:00.000000000+02:00",
+  "updated_at": "2026-05-09T07:30:00.000000000+02:00"
+}

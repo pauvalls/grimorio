@@ -4,7 +4,7 @@
 
 **D&D One-shot & Campaign Generator**
 
-[![Version v2.5.0](https://img.shields.io/badge/version-v2.5.0-purple?style=for-the-badge)](#)
+[![Version v2.6.0](https://img.shields.io/badge/version-v2.6.0-purple?style=for-the-badge)](#)
 
 [English](#english) · [Español](#español)
 

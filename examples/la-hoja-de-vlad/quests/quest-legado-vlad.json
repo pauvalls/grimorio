@@ -1,0 +1,118 @@
+{
+  "id": "quest-legado-vlad",
+  "campaign_id": "la-hoja-de-vlad",
+  "title": "El Legado de Vlad",
+  "type": "proteccion",
+  "status": "active",
+  "giver": "Padre Mikhail Rosetti",
+  "giver_faction": "faction-templo",
+  "hook": "La Hoja de Vlad no es solo un símbolo: contiene un fragmento del alma del Voivoda. Alguien busca liberar ese poder para conquistar Valachia.",
+  "description": "El Templo ha protegido el secreto de La Hoja durante siglos, pero las señales son claras: La Hoja ha sido movida de su escondite en las Criptas de los Antiguos. Padre Mikhail Rosetti necesita aventureros discretos que investiguen sin atraer la atención de las casas nobles.",
+  "stakes": "El alma de un tirano histórico vs. la libertad del reino. Si La Hoja completa el ritual de los siete vínculos, el Susurrante caminará en el mundo material.",
+  "level_range": "1-3",
+  "objectives": [
+    {
+      "id": 1,
+      "description": "Investigar el robo del Templo — Descubrir quién robó el 'artefacto' y por qué",
+      "completed": false,
+      "requirement": "Hablar con 3 testigos en el distrito del Templo",
+      "skill_check": {
+        "skill": "Investigation",
+        "dc": 14
+      }
+    },
+    {
+      "id": 2,
+      "description": "Rastrear a los ladrones — Seguir las pistas hasta el bajo mundo de Corona del Alba",
+      "completed": false,
+      "requirement": "Éxito en investigación (DC 14) o contacto con la Hermandad",
+      "skill_check": {
+        "skill": "Investigation",
+        "dc": 14
+      }
+    },
+    {
+      "id": 3,
+      "description": "Identificar al cliente — Descubrir quién contrató a los ladrones",
+      "completed": false,
+      "requirement": "Interrogar al ladrón capturado o encontrar documentos",
+      "skill_check": {
+        "skill": "Insight",
+        "dc": 15
+      }
+    },
+    {
+      "id": 4,
+      "description": "Recuperar La Hoja — Encontrar el paradero actual del arma",
+      "completed": false,
+      "requirement": "Completar objetivos 1-3 y sobrevivir al encuentro",
+      "skill_check": null
+    },
+    {
+      "id": 5,
+      "description": "Decidir el destino de La Hoja — Destruirla, sellarla, o usarla",
+      "completed": false,
+      "requirement": "Decisión del grupo (tiene consecuencias permanentes)",
+      "skill_check": null
+    }
+  ],
+  "rewards": [
+    {
+      "type": "gold",
+      "value": "500 gp",
+      "amount": 500,
+      "description": "Pago inicial del Templo (200 gp) + bono por éxito (300 gp)"
+    },
+    {
+      "type": "xp",
+      "value": "1,800 XP",
+      "amount": 1800,
+      "description": "Dividido entre el party (360 XP por PJ en grupo de 5)"
+    },
+    {
+      "type": "reputation",
+      "faction": "faction-templo",
+      "delta": 25,
+      "description": "El Templo confía en ustedes para misiones futuras"
+    },
+    {
+      "type": "reputation",
+      "faction": "faction-corona",
+      "delta": 10,
+      "description": "Si entregan La Hoja a la Corona",
+      "conditional": true
+    },
+    {
+      "type": "reputation",
+      "faction": "faction-hermandad",
+      "delta": -15,
+      "description": "Si se oponen a los planes de la Hermandad",
+      "conditional": true
+    },
+    {
+      "type": "item",
+      "value": "Item mágico menor bendecido por el Templo",
+      "amount": 1,
+      "description": "Poción de curación superior o pergamino de protección"
+    },
+    {
+      "type": "information",
+      "value": "Secreto revelado: La verdadera identidad del Libertador",
+      "amount": 0,
+      "description": "Información crítica para quests futuras"
+    }
+  ],
+  "consequences_failure": [
+    "Si los PJs fallan en recuperar La Hoja, el ritual continúa.",
+    "El Susurrante gana poder en el mundo material (manifestaciones sobrenaturales aumentan).",
+    "El Templo pierde confianza en los PJs (-25 reputación).",
+    "La Hermandad o la Corona obtienen La Hoja (dependiendo de las decisiones)."
+  ],
+  "character_id": "party",
+  "related_npcs": ["npc-mikhail-rosetti", "npc-viktor-dragomir", "npc-elena-vesper"],
+  "related_acts": ["act-chapter-1", "act-chapter-2", "act-chapter-3"],
+  "related_quests": ["quest-templo-reliquia"],
+  "progress_notes": [],
+  "created_at": "2026-05-09T00:45:00.000000000+02:00",
+  "updated_at": "2026-05-09T07:30:00.000000000+02:00"
+}

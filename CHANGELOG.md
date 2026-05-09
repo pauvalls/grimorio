@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-05-09
+
+### Fixed
+
+- **WotC Format Quality Improvements** — Enhanced content validation and generation across all major content types
+- **Introduction Word Count Validation** — Now enforces minimum 5,000 words with auto-expansion
+- **Quest Objectives and Rewards Validation** — All quests must have ≥3 objectives and ≥1 reward
+- **Character Stats Validation** — Ability scores must be in range 8-18, HP ≥ 1, AC ≥ 1
+- **Quest JSON Structure** — All quest_*.json files now include complete objectives array and rewards array
+
+### Changed
+
+- **Regenerated Introduction** — `introduction.md` now includes full WotC structure with Foreword, Story Overview, Adventure Background, Running the Adventure, Character Creation Guidelines, and Welcome Section
+- **Regenerated Quests** — `quests.md` and `quest_*.json` files now include complete objectives (min 3), rewards (min 1), stakes, consequences, and faction connections
+- **Regenerated Characters** — `characters.md` now includes full stats for all 8 pre-generated characters (no zero values), with ability scores, HP, AC, spells, equipment, and backstory
+- **PDF Compilation Pipeline** — Updated to include new introduction, quests, and characters in compilation order
+- **Version References** — Updated README.md and CHANGELOG.md to v2.6.0
+
+### Documentation
+
+- **README.md** — Updated version badge to v2.6.0
+- **CHANGELOG.md** — Added comprehensive entry for v2.6.0 with all fixes and changes
+
+### Technical Details
+
+- **Introduction**: Expanded from ~3,400 to 5,269 words (54% increase) with detailed sections on faction reputation, character creation, and DM guidance
+- **Quests**: 9 quests total (1 main + 4 secondary + 4 faction), each with 4-6 objectives and 5-8 rewards
+- **Characters**: 8 pre-generated level 3 characters with complete D&D 5e stat blocks
+- **Validation**: 100% pass rate on all validation checks (word count, quest structure, character stats)
+
+---
+
 ## [2.5.0] - 2026-05-09
 
 ### Added

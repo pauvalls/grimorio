@@ -1,0 +1,122 @@
+{
+  "id": "quest-boda-sangrienta",
+  "campaign_id": "la-hoja-de-vlad",
+  "title": "La Boda Sangrienta",
+  "type": "investigacion",
+  "status": "available",
+  "giver": "Baronesa Isolde Crane",
+  "giver_faction": "faction-gremio",
+  "hook": "La boda entre Lady Seraphina Valmont y Lord Marcus Blackthorne II es el evento del año. Pero alguien quiere evitar esa alianza a toda costa.",
+  "description": "La Baronesa Isolde Crane contrata a los PJs como 'seguridad adicional' para la boda. Su verdadera misión: investigar amenazas anónimas contra la novia y prevenir un asesinato que desataría una guerra entre las casas nobles.",
+  "stakes": "Una guerra civil entre Casa Valmont y Casa Blackthorne dejaría miles de muertos y debilitaría el reino lo suficiente para que la Hermandad tome el poder.",
+  "level_range": "1-2",
+  "objectives": [
+    {
+      "id": 1,
+      "description": "Investigar las amenazas — Analizar las cartas anónimas enviadas a la novia",
+      "completed": false,
+      "requirement": "Éxito en Investigation (DC 12) o Insight (DC 14)",
+      "skill_check": {
+        "skill": "Investigation",
+        "dc": 12
+      }
+    },
+    {
+      "id": 2,
+      "description": "Identificar al sospechoso — Descubrir quién está detrás del complot",
+      "completed": false,
+      "requirement": "Encontrar al menos 3 pistas durante la recepción",
+      "skill_check": {
+        "skill": "Investigation",
+        "dc": 15
+      }
+    },
+    {
+      "id": 3,
+      "description": "Prevenir el asesinato — Detener al asesino durante la ceremonia",
+      "completed": false,
+      "requirement": "Combate o social encounter durante la boda",
+      "skill_check": null
+    },
+    {
+      "id": 4,
+      "description": "Proteger a los testigos — Asegurar que la novia y el novio sobrevivan",
+      "completed": false,
+      "requirement": "HP de los NPCs > 0 al final del encounter",
+      "skill_check": null
+    },
+    {
+      "id": 5,
+      "description": "Decidir qué revelar — ¿Exponer al culpable públicamente o manejarlo en silencio?",
+      "completed": false,
+      "requirement": "Decisión del grupo (afecta reputación con las casas)",
+      "skill_check": null
+    }
+  ],
+  "rewards": [
+    {
+      "type": "gold",
+      "value": "350 gp",
+      "amount": 350,
+      "description": "Pago del Gremio por servicios prestados"
+    },
+    {
+      "type": "xp",
+      "value": "1,200 XP",
+      "amount": 1200,
+      "description": "Dividido entre el party"
+    },
+    {
+      "type": "reputation",
+      "faction": "faction-gremio",
+      "delta": 20,
+      "description": "Isolde Crane ahora los considera aliados confiables"
+    },
+    {
+      "type": "reputation",
+      "faction": "casa-valmont",
+      "delta": 15,
+      "description": "Si protegen a la novia",
+      "conditional": true
+    },
+    {
+      "type": "reputation",
+      "faction": "casa-blackthorne",
+      "delta": 15,
+      "description": "Si protegen al novio",
+      "conditional": true
+    },
+    {
+      "type": "reputation",
+      "faction": "faction-hermandad",
+      "delta": -20,
+      "description": "Si frustran sus planes (ellos están detrás del complot)",
+      "conditional": true
+    },
+    {
+      "type": "contact",
+      "value": "Acceso futuro a la red de espías del Gremio",
+      "amount": 0,
+      "description": "Contacto narrativo para información futura"
+    },
+    {
+      "type": "item",
+      "value": "Anillo de sello del Gremio",
+      "amount": 1,
+      "description": "Permite acceso a áreas restringidas de mercaderes"
+    }
+  ],
+  "consequences_failure": [
+    "La boda se convierte en masacre.",
+    "Guerra civil entre Valmont y Blackthorne (el reino se debilita).",
+    "El Gremio pierde confianza en los PJs (-20 reputación).",
+    "La Hermandad gana influencia en el caos resultante."
+  ],
+  "character_id": "party",
+  "related_npcs": ["npc-isolde-crane", "npc-viktor-dragomir"],
+  "related_acts": ["act-chapter-1"],
+  "related_quests": ["quest-heredero-perdido"],
+  "progress_notes": [],
+  "created_at": "2026-05-09T07:30:00.000000000+02:00",
+  "updated_at": "2026-05-09T07:30:00.000000000+02:00"
+}
