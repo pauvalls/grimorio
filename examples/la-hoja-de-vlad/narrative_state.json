@@ -1,0 +1,33 @@
+{
+  "schema_version": "2.0",
+  "campaign_id": "la-hoja-de-vlad",
+  "current_session": 0,
+  "last_updated": "2026-05-09T00:45:00.000000000+02:00",
+  "revealed_clues": [
+    "La Hoja existe y es buscada por múltiples facciones",
+    "El legado de Vlad amenaza al reino"
+  ],
+  "active_quests": ["quest-legado-vlad"],
+  "completed_quests": [],
+  "failed_quests": [],
+  "dead_npcs": [],
+  "key_items": [],
+  "session_log": [
+    {
+      "session": 0,
+      "date": "2026-05-09",
+      "summary": "Session 0 completed - party formed, initial quest accepted",
+      "key_decisions": [
+        "Session 0 completed - party formed",
+        "Initial quest accepted: El Legado de Vlad"
+      ]
+    }
+  ],
+  "faction_reputation": {
+    "faction-corona": 0,
+    "faction-hermandad": 0,
+    "faction-gremio": 0,
+    "faction-templo": 2
+  },
+  "dm_overrides": {}
+}

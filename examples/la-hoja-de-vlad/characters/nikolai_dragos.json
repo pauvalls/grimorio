@@ -1,0 +1,37 @@
+{
+  "id": "",
+  "campaign_id": "la-hoja-de-vlad",
+  "name": "Nikolai Dragos",
+  "race": "humano",
+  "class": "brujo",
+  "level": 3,
+  "background": "sabio",
+  "alignment": "LE",
+  "stats": {
+    "str": 0,
+    "dex": 0,
+    "con": 0,
+    "int": 0,
+    "wis": 0,
+    "cha": 0
+  },
+  "hp": {
+    "current": 0,
+    "maximum": 0
+  },
+  "ac": 0,
+  "proficiency_bonus": 0,
+  "skills": null,
+  "inventory": null,
+  "features": null,
+  "personality": {
+    "traits": null,
+    "ideals": null,
+    "bonds": null,
+    "flaws": null
+  },
+  "relationships": null,
+  "status": "alive",
+  "created_at": "2026-05-08T23:36:40.211459285+02:00",
+  "updated_at": "2026-05-08T23:36:40.211459245+02:00"
+}

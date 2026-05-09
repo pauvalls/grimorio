@@ -1,0 +1,24 @@
+{
+  "schema_version": "2.0",
+  "campaign_id": "la-hoja-de-vlad",
+  "current_session": 1,
+  "last_updated": "2026-05-09T00:40:08.172033925+02:00",
+  "revealed_clues": [],
+  "active_quests": [],
+  "completed_quests": [],
+  "failed_quests": [],
+  "dead_npcs": [],
+  "key_items": [],
+  "session_log": [
+    {
+      "session_num": 1,
+      "date": "2026-05-09T00:40:08.172032899+02:00",
+      "summary": "",
+      "key_decisions": null,
+      "xp_awarded": 0,
+      "loot_acquired": null,
+      "dm_notes": ""
+    }
+  ],
+  "dm_overrides": []
+}

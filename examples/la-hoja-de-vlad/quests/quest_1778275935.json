@@ -1,0 +1,22 @@
+{
+  "id": "quest_1778275935",
+  "campaign_id": "la-hoja-de-vlad",
+  "title": "El Legado de Vlad",
+  "type": "proteccion",
+  "status": "active",
+  "hook": "La Hoja de Vlad no es solo un símbolo: contiene un fragmento del alma del Voivoda. Alguien busca liberar ese poder para conquistar Valachia.",
+  "description": "",
+  "objectives": [],
+  "stakes": "El alma de un tirano histórico vs. la libertad del reino. ¿Quién merece empuñar tal poder?",
+  "reward": {
+    "type": "",
+    "description": "",
+    "value": ""
+  },
+  "character_id": "party",
+  "related_npcs": null,
+  "related_acts": null,
+  "progress_notes": [],
+  "created_at": "2026-05-08T23:32:15.296072883+02:00",
+  "updated_at": "2026-05-08T23:32:15.296072799+02:00"
+}

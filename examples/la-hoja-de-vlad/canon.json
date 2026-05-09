@@ -1,0 +1,308 @@
+{
+  "schema_version": "2.0",
+  "campaign_id": "la-hoja-de-vlad",
+  "created_at": "2026-05-08T23:46:06.966636594+02:00",
+  "updated_at": "2026-05-09T00:40:00.000000000+02:00",
+  "facts": [
+    {
+      "id": "fact-001",
+      "category": "lore",
+      "statement": "The campaign is set in the Kingdom of Aethelgard, an urban political intrigue setting with dark tone.",
+      "source": "adventure_bible_v1",
+      "immutable": true
+    },
+    {
+      "id": "fact-002",
+      "category": "lore",
+      "statement": "Vlad 'The Raven' Dragomir was a tyrant who wielded La Hoja, a blade that cuts bonds rather than flesh.",
+      "source": "lore.md",
+      "immutable": true
+    },
+    {
+      "id": "fact-003",
+      "category": "lore",
+      "statement": "Vlad disappeared after the Battle of Bloody River in year 859; his body was never found.",
+      "source": "lore.md",
+      "immutable": true
+    },
+    {
+      "id": "fact-004",
+      "category": "lore",
+      "statement": "The Hoja must cut seven bonds to complete the ritual: Oath, Blood, Love, Loyalty, Hope, Faith, Life, and secretly Memory.",
+      "source": "lore.md",
+      "immutable": false
+    },
+    {
+      "id": "fact-005",
+      "category": "lore",
+      "statement": "King Aldric IV rules from Corona del Alba but shows signs of madness; he has no legitimate heirs.",
+      "source": "lore.md",
+      "immutable": false
+    },
+    {
+      "id": "fact-006",
+      "category": "lore",
+      "statement": "Five noble houses dominate: Valmont (trade), Blackthorne (military), Ravenshade (religion), Ironwood (mines), Whisperwind (spies).",
+      "source": "lore.md",
+      "immutable": true
+    },
+    {
+      "id": "fact-007",
+      "category": "lore",
+      "statement": "The Cult of the Whisperer believes the Hoja is a key that will allow their entity to walk in the material world.",
+      "source": "lore.md",
+      "immutable": true
+    }
+  ],
+  "entities": [
+    {
+      "id": "mcguffin-la-hoja-de-vlad",
+      "name": "La Hoja del Cuervo",
+      "type": "item",
+      "role": "mcguffin",
+      "canon_state": "hidden",
+      "properties": {
+        "level_range": "1-3",
+        "type": "Cursed blade that cuts bonds",
+        "location": "Hidden in temple crypts"
+      }
+    },
+    {
+      "id": "npc-viktor-dragomir",
+      "name": "Lord Viktor Dragomir",
+      "type": "npc",
+      "role": "ruler",
+      "canon_state": "alive",
+      "properties": {
+        "alignment": "LN",
+        "age": 52,
+        "secret": "Made pact with ancient entity; Hoja can break it"
+      },
+      "connections": ["faction-corona", "npc-mikhail", "npc-kael"]
+    },
+    {
+      "id": "npc-elena-vesper",
+      "name": "Condesa Elena Vesper",
+      "type": "npc",
+      "role": "spymaster",
+      "canon_state": "alive",
+      "properties": {
+        "alignment": "NE",
+        "age": 38,
+        "secret": "True leader of Hermandad de la Sombra"
+      },
+      "connections": ["faction-hermandad", "faction-gremio"]
+    },
+    {
+      "id": "npc-mikhail-rosetti",
+      "name": "Padre Mikhail Rosetti",
+      "type": "npc",
+      "role": "guardian",
+      "canon_state": "alive",
+      "properties": {
+        "alignment": "LG",
+        "age": 67,
+        "secret": "Guardian of La Hoja hidden in temple crypts"
+      },
+      "connections": ["faction-templo", "npc-viktor"]
+    },
+    {
+      "id": "npc-kael-sombras",
+      "name": "Kael Sombras",
+      "type": "npc",
+      "role": "thief_lord",
+      "canon_state": "alive",
+      "properties": {
+        "alignment": "CN",
+        "age": 29,
+        "secret": "Viktor's bastard brother; seeks throne"
+      },
+      "connections": ["faction-hermandad", "npc-viktor"]
+    },
+    {
+      "id": "npc-isolde-crane",
+      "name": "Baronesa Isolde Crane",
+      "type": "npc",
+      "role": "merchant_lord",
+      "canon_state": "alive",
+      "properties": {
+        "alignment": "N",
+        "age": 45,
+        "secret": "Finances both sides of wars for profit"
+      },
+      "connections": ["faction-gremio", "npc-elena"]
+    },
+    {
+      "id": "npc-darius-thorn",
+      "name": "Capitán Darius Thorn",
+      "type": "npc",
+      "role": "guard_commander",
+      "canon_state": "alive",
+      "properties": {
+        "alignment": "LG",
+        "age": 41,
+        "secret": "Witnessed previous ruler's murder; seeks redemption"
+      },
+      "connections": ["faction-corona", "faction-templo"]
+    },
+    {
+      "id": "npc-mara",
+      "name": "La Vidente Mara",
+      "type": "npc",
+      "role": "oracle",
+      "canon_state": "alive",
+      "properties": {
+        "alignment": "N",
+        "age": "unknown",
+        "secret": "Visions are real but selective; manipulates based on payment"
+      },
+      "connections": ["all-factions"]
+    },
+    {
+      "id": "faction-corona",
+      "name": "La Corona de Valsk",
+      "type": "faction",
+      "role": "government",
+      "canon_state": "active",
+      "properties": {
+        "leader": "Lord Viktor Dragomir",
+        "goal": "Maintain absolute control",
+        "influence": "high"
+      }
+    },
+    {
+      "id": "faction-hermandad",
+      "name": "Hermandad de la Sombra",
+      "type": "faction",
+      "role": "underground",
+      "canon_state": "active",
+      "properties": {
+        "public_leader": "Kael Sombras",
+        "secret_leader": "Condesa Elena Vesper",
+        "goal": "Overthrow nobility",
+        "influence": "medium-high"
+      }
+    },
+    {
+      "id": "faction-gremio",
+      "name": "Gremio de Mercaderes",
+      "type": "faction",
+      "role": "economic",
+      "canon_state": "active",
+      "properties": {
+        "leader": "Baronesa Isolde Crane",
+        "goal": "Total economic control",
+        "influence": "high"
+      }
+    },
+    {
+      "id": "faction-templo",
+      "name": "Templo de la Luz Eterna",
+      "type": "faction",
+      "role": "religious",
+      "canon_state": "active",
+      "properties": {
+        "leader": "Padre Mikhail Rosetti",
+        "goal": "Protect sacred secrets",
+        "influence": "medium-high"
+      }
+    },
+    {
+      "id": "quest-legado-vlad",
+      "name": "El Legado de Vlad",
+      "type": "quest",
+      "role": "main_quest",
+      "canon_state": "active",
+      "properties": {
+        "type": "proteccion",
+        "status": "active",
+        "hook": "La Hoja contains fragment of Vlad's soul; someone seeks to liberate that power"
+      }
+    },
+    {
+      "id": "act-chapter-1",
+      "name": "Sombras en la Corte",
+      "type": "act",
+      "role": "chapter_1",
+      "canon_state": "available",
+      "properties": {
+        "level_range": "1-2",
+        "areas": "10-15 urban locations"
+      }
+    },
+    {
+      "id": "act-chapter-2",
+      "name": "Traiciones y Alianzas",
+      "type": "act",
+      "role": "chapter_2",
+      "canon_state": "available",
+      "properties": {
+        "level_range": "2-3",
+        "areas": "10-15 urban locations"
+      }
+    },
+    {
+      "id": "act-chapter-3",
+      "name": "La Revelación de Vlad",
+      "type": "act",
+      "role": "chapter_3",
+      "canon_state": "available",
+      "properties": {
+        "level_range": "3",
+        "areas": "10-15 urban locations"
+      }
+    }
+  ],
+  "timeline": [
+    {
+      "year": 859,
+      "event": "Vlad dies at Battle of Bloody River; La Hoja disappears",
+      "canon_impact": "Sets campaign backstory"
+    },
+    {
+      "year": 862,
+      "event": "Five Noble Houses founded by King Guillermo I",
+      "canon_impact": "Establishes political structure"
+    },
+    {
+      "year": 958,
+      "event": "Prince Edric dies (officially hunting accident)",
+      "canon_impact": "Creates succession crisis"
+    },
+    {
+      "year": 963,
+      "event": "Current year; rumors about La Hoja intensify",
+      "canon_impact": "Campaign start"
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule-bond-cutting",
+      "description": "La Hoja cuts seven bonds: Oath, Blood, Love, Loyalty, Hope, Faith, Life. Eighth secret bond: Memory.",
+      "trigger": "Hoja is used or moved",
+      "consequence": "The Whisperer gains power in material world"
+    },
+    {
+      "id": "rule-faction-reputation",
+      "description": "Player actions affect faction reputation; allies and enemies propagate changes",
+      "trigger": "Quest completion or key decision",
+      "consequence": "Faction attitudes shift; new opportunities or threats emerge"
+    },
+    {
+      "id": "rule-secret-revelation",
+      "description": "NPC secrets revealed through investigation, not exposition",
+      "trigger": "Players gather sufficient clues",
+      "consequence": "Story branches based on revealed knowledge"
+    }
+  ],
+  "relationships": [
+    {"from": "npc-viktor", "to": "npc-kael", "type": "estranged_brothers", "known": false},
+    {"from": "npc-viktor", "to": "npc-mikhail", "type": "mentor_student", "known": true},
+    {"from": "npc-elena", "to": "npc-kael", "type": "manipulator_puppet", "known": false},
+    {"from": "npc-elena", "to": "npc-isolde", "type": "allies", "known": false},
+    {"from": "npc-mikhail", "to": "npc-darius", "type": "mutual_respect", "known": true},
+    {"from": "faction-corona", "to": "faction-hermandad", "type": "enemies", "known": true},
+    {"from": "faction-gremio", "to": "faction-hermandad", "type": "secret_allies", "known": false},
+    {"from": "faction-templo", "to": "faction-corona", "type": "public_allies", "known": true}
+  ]
+}

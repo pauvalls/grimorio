@@ -1,0 +1,37 @@
+{
+  "id": "",
+  "campaign_id": "la-hoja-de-vlad",
+  "name": "Viktor Dragunov",
+  "race": "humano",
+  "class": "guerrero",
+  "level": 3,
+  "background": "soldado",
+  "alignment": "LG",
+  "stats": {
+    "str": 0,
+    "dex": 0,
+    "con": 0,
+    "int": 0,
+    "wis": 0,
+    "cha": 0
+  },
+  "hp": {
+    "current": 0,
+    "maximum": 0
+  },
+  "ac": 0,
+  "proficiency_bonus": 0,
+  "skills": null,
+  "inventory": null,
+  "features": null,
+  "personality": {
+    "traits": null,
+    "ideals": null,
+    "bonds": null,
+    "flaws": null
+  },
+  "relationships": null,
+  "status": "alive",
+  "created_at": "2026-05-08T23:36:40.211543737+02:00",
+  "updated_at": "2026-05-08T23:36:40.211543696+02:00"
+}
