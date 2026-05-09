@@ -4,7 +4,7 @@
 
 **D&D One-shot & Campaign Generator**
 
-[![Version v2.6.0](https://img.shields.io/badge/version-v2.6.0-purple?style=for-the-badge)](#)
+[![Version v3.0.0](https://img.shields.io/badge/version-v2.6.0-purple?style=for-the-badge)](#)
 
 [English](#english) · [Español](#español)
 
@@ -19,6 +19,31 @@
 AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into a fully-formatted, print-ready PDF adventure book — complete with lore, NPCs, bestiary, encounters, and styled layouts inspired by official Wizards of the Coast manuals.
 
 ### Features
+
+### What's New in v3.0.0
+
+**Major Features:**
+
+- **Milestone XP Tracking** — Per-chapter XP tables following PHB thresholds with party level progression
+- **WotC Unified Area Format** — Sequential numbering (1-15 per chapter) matching official adventure structure
+- **Enhanced Magic Items** — Full stat blocks with rarity, attunement, properties, and cursed item support
+- **Combat Tactics Engine** — Intelligence-based tactics (instinctive to strategic) with environmental awareness
+- **Player-Facing Maps** — Automatic secret feature redaction with SVG/PDF/PNG export
+- **Session Zero Generator** — Campaign-specific guides with content warnings and safety tools
+- **Structured Quests** — 3+ distinct approaches (combat, social, stealth) with failure states
+- **Consequence Tables** — Act transition tracking with faction reputation propagation
+- **E2E Test Suite** — Comprehensive end-to-end tests for full campaign generation workflows
+- **Changelog Automation** — Auto-generated changelogs from git commits and Engram memories
+- **Migration Tools** — Automated v2 to v3 migration with rollback support
+
+**Technical Improvements:**
+
+- Domain-driven design with 10 new domain models
+- 8 new services with repository pattern
+- MCP handlers for all new features
+- Validators for WotC quality checks
+- Full test coverage with unit and E2E tests
+
 
 - **Full campaign generation** — Lore, acts, NPCs, monsters, encounters, and maps
 - **WotC Format Quality** (v2.5.0) — Enhanced immersion matching official module standards:
