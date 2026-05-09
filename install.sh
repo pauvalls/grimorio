@@ -262,12 +262,23 @@ configure_opencode_mcp() {
     log "Configuring MCP in opencode.json..."
     command_exists jq || { warn "jq not found, manual config required"; return 1; }
 
+    # Validate JSON before modifying
+    if ! jq empty "$OPENCODE_CONFIG" 2>/dev/null; then
+        warn "opencode.json is not valid JSON, backing up and recreating"
+        cp "$OPENCODE_CONFIG" "${OPENCODE_CONFIG}.backup.$(date +%Y%m%d%H%M%S)"
+        echo '{}' > "$OPENCODE_CONFIG"
+    fi
+
+    # Backup before modifying
+    cp "$OPENCODE_CONFIG" "${OPENCODE_CONFIG}.backup.$(date +%Y%m%d%H%M%S)"
+
     jq '.mcp.grimorio = {
         "command": ["'"$OPENCODE_PLUGIN_DIR/grimorio"'"],
         "type": "local",
         "enabled": true
     }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && \
-        mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG" || \
+        { warn "Failed to update opencode.json, restoring backup"; mv "${OPENCODE_CONFIG}.backup."* "$OPENCODE_CONFIG" 2>/dev/null; return 1; }
 
     success "MCP configured"
 }
@@ -281,6 +292,12 @@ configure_opencode_command() {
 
     log "Configuring grimorio command..."
     command_exists jq || return 1
+
+    # Validate JSON first
+    if ! jq empty "$OPENCODE_CONFIG" 2>/dev/null; then
+        warn "opencode.json invalid, skipping command config"
+        return 1
+    fi
 
     # Create template
     local TEMPLATE_FILE=$(mktemp)
@@ -338,7 +355,8 @@ TEMPLATE_EOF
         "subtask": false,
         "template": $template
     }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && \
-        mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG" || \
+        { warn "Failed to update opencode.json"; return 1; }
 
     success "Command configured"
 }
