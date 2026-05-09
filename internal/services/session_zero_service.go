@@ -42,6 +42,7 @@ func (s *SessionZeroService) GenerateGuide(ctx context.Context, campaignID strin
 		CharacterCreation: generateCharacterCreationGuide(),
 		HouseRules:        generateHouseRules(),
 		Agenda:            generateSessionAgenda(),
+		ShockPoints:       generateShockPoints(themes),
 	}
 
 	if err := guide.Validate(); err != nil {
@@ -49,6 +50,11 @@ func (s *SessionZeroService) GenerateGuide(ctx context.Context, campaignID strin
 	}
 
 	return guide, nil
+}
+
+// GenerateShockPoints generates content warnings with severity levels based on campaign themes.
+func (s *SessionZeroService) GenerateShockPoints(ctx context.Context, campaignID string, themes []string) ([]domain.ShockPoint, error) {
+	return generateShockPoints(themes), nil
 }
 
 // GenerateCharacterWorksheet generates a character creation worksheet.
@@ -177,4 +183,78 @@ func generateSessionAgenda() []domain.SessionAgendaItem {
 		{Topic: "Party Cohesion", DurationMinutes: 20, Description: "Establish party bonds"},
 		{Topic: "Schedule & Wrap-up", DurationMinutes: 10, Description: "Set meeting times"},
 	}
+}
+
+// generateShockPoints generates shock points based on campaign themes.
+func generateShockPoints(themes []string) []domain.ShockPoint {
+	shockPoints := []domain.ShockPoint{}
+
+	shockPointMap := map[string]domain.ShockPoint{
+		"violence": {
+			Type:        "Violencia",
+			Severity:    "moderate",
+			Description: "Combate fantástico, descripciones de heridas y sangre. No incluye tortura gráfica.",
+			SafetyTools: []string{"X-Card", "Fade to black"},
+		},
+		"horror": {
+			Type:        "Horror",
+			Severity:    "moderate",
+			Description: "Imaginería perturbadora, horror psicológico, criaturas aterradoras.",
+			SafetyTools: []string{"X-Card", "Lines and Veils", "Script Change"},
+		},
+		"dark themes": {
+			Type:        "Temas Oscuros",
+			Severity:    "intense",
+			Description: "Ambigüedad moral, elecciones difíciles, consecuencias graves de las acciones.",
+			SafetyTools: []string{"Lines and Veils", "Check-in entre sesiones"},
+		},
+		"death": {
+			Type:        "Muerte de Personajes",
+			Severity:    "moderate",
+			Description: "Los personajes pueden morir permanentemente. Las decisiones tienen consecuencias.",
+			SafetyTools: []string{"X-Card", "Session Zero discussion"},
+		},
+		"psychological": {
+			Type:        "Horror Psicológico",
+			Severity:    "intense",
+			Description: "Manipulación mental, pérdida de identidad, gaslighting narrativo.",
+			SafetyTools: []string{"Script Change", "X-Card", "Safe word"},
+		},
+		"gore": {
+			Type:        "Gore",
+			Severity:    "intense",
+			Description: "Descripciones gráficas de heridas, mutilaciones o cuerpos.",
+			SafetyTools: []string{"Lines and Veils", "Fade to black"},
+		},
+		"phobias": {
+			Type:        "Fobias Comunes",
+			Severity:    "mild",
+			Description: "Arañas, alturas, espacios cerrados. Consultar fobias específicas del grupo.",
+			SafetyTools: []string{"X-Card", "Pre-session check"},
+		},
+		"substance abuse": {
+			Type:        "Abuso de Sustancias",
+			Severity:    "moderate",
+			Description: "Referencias a alcohol, drogas fantásticas o adicción en NPCs.",
+			SafetyTools: []string{"Lines and Veils"},
+		},
+	}
+
+	for _, theme := range themes {
+		if shockPoint, ok := shockPointMap[theme]; ok {
+			shockPoints = append(shockPoints, shockPoint)
+		}
+	}
+
+	// Ensure at least 3 shock points for comprehensive coverage
+	if len(shockPoints) < 3 {
+		shockPoints = append(shockPoints, domain.ShockPoint{
+			Type:        "Contenido Personalizado",
+			Severity:    "mild",
+			Description: "El DM puede introducir contenido adicional según la narrativa. Consultar en cualquier momento.",
+			SafetyTools: []string{"X-Card", "Open communication"},
+		})
+	}
+
+	return shockPoints
 }
