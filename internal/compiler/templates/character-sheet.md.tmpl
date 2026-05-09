@@ -1,0 +1,197 @@
+# Hoja de Personaje: {{.Name}}
+
+**{{.Race}} {{.Class}} Nivel {{.Level}}**  
+**Trasfondo:** {{.Background}} | **Alineamiento:** {{.Alignment}}  
+**Jugador:** {{.PlayerName}}
+
+---
+
+## Estadísticas
+
+| STR | DEX | CON | INT | WIS | CHA |
+|-----|-----|-----|-----|-----|-----|
+| {{.Stats.STR}} (+{{printf "%d" (index (slice (add .Stats.STR 10) 2)}}) | {{.Stats.DEX}} (+{{printf "%d" (index (slice (add .Stats.DEX 10) 2)}}) | {{.Stats.CON}} (+{{printf "%d" (index (slice (add .Stats.CON 10) 2)}}) | {{.Stats.INT}} (+{{printf "%d" (index (slice (add .Stats.INT 10) 2)}}) | {{.Stats.WIS}} (+{{printf "%d" (index (slice (add .Stats.WIS 10) 2)}}) | {{.Stats.CHA}} (+{{printf "%d" (index (slice (add .Stats.CHA 10) 2)}}) |
+
+**HP:** {{.HP.Current}}/{{.HP.Maximum}} | **AC:** {{.AC}} | **Bonus de Competencia:** +{{.Proficiency}}
+
+---
+
+## Habilidades y Competencias
+
+<div class="session-prep-card">
+<h3>Skills</h3>
+{{range $skill, $proficient := .Skills}}
+{{if $proficient}}
+<div class="prep-item">✓ {{ $skill }}</div>
+{{end}}
+{{end}}
+</div>
+
+---
+
+## Características de Clase y Raza
+
+{{if .Features}}
+{{range .Features}}
+<div class="session-prep-card">
+<div class="prep-item"><strong>{{.Name}}</strong> ({{.Source}})</div>
+</div>
+{{end}}
+{{end}}
+
+---
+
+## Equipo
+
+{{if .Inventory}}
+<div class="session-prep-card">
+<h3>Inventario</h3>
+{{range .Inventory}}
+<div class="prep-item">• {{.Name}} {{if .Quantity}}(x{{.Quantity}}){{end}} {{if .Type}}[{{.Type}}]{{end}}</div>
+{{end}}
+</div>
+{{end}}
+
+---
+
+## Hechizos
+
+{{if .Spells}}
+{{range $spell := .Spells}}
+<div class="encounter-recommendation">
+{{if eq $spell.Level 0}}
+<span class="cr-badge">Cantrip</span>
+{{else}}
+<span class="cr-badge">Nivel {{$spell.Level}}</span>
+{{end}}
+<strong>{{$spell.Name}}</strong> {{if $spell.Prepared}}(Preparado){{end}}
+{{if $spell.School}}<br><em>{{$spell.School}}</em>{{end}}
+</div>
+{{end}}
+{{end}}
+
+---
+
+## Backstory
+
+{{if .Personality.Backstory}}
+<div class="character-worksheet">
+<div class="worksheet-section">
+<h4>Historia Personal</h4>
+<p>{{.Personality.Backstory}}</p>
+</div>
+</div>
+{{end}}
+
+{{if .BackstoryHooks}}
+<div class="character-worksheet">
+<div class="worksheet-section">
+<h4>Ganchos de Historia</h4>
+{{range .BackstoryHooks}}
+<div class="prompt-box">• {{.}}</div>
+{{end}}
+</div>
+</div>
+{{end}}
+
+---
+
+## Personalidad
+
+<div class="character-worksheet">
+{{if .Personality.Traits}}
+<div class="worksheet-section">
+<h4>Rasgos</h4>
+{{range .Personality.Traits}}
+<div class="prompt-box">• {{.}}</div>
+{{end}}
+</div>
+{{end}}
+
+{{if .Personality.Ideals}}
+<div class="worksheet-section">
+<h4>Ideales</h4>
+{{range .Personality.Ideals}}
+<div class="prompt-box">• {{.}}</div>
+{{end}}
+</div>
+{{end}}
+
+{{if .Personality.Bonds}}
+<div class="worksheet-section">
+<h4>Vínculos</h4>
+{{range .Personality.Bonds}}
+<div class="prompt-box">• {{.}}</div>
+{{end}}
+</div>
+{{end}}
+
+{{if .Personality.Flaws}}
+<div class="worksheet-section">
+<h4>Defectos</h4>
+{{range .Personality.Flaws}}
+<div class="prompt-box">• {{.}}</div>
+{{end}}
+</div>
+{{end}}
+
+{{if .Personality.Appearance}}
+<div class="worksheet-section">
+<h4>Apariencia</h4>
+<p>{{.Personality.Appearance}}</p>
+</div>
+{{end}}
+</div>
+
+---
+
+## Secretos y Metas
+
+{{if .Secrets}}
+<div class="character-worksheet">
+<div class="worksheet-section">
+<h4>Secretos</h4>
+{{range .Secrets}}
+<div class="prompt-box">🤫 {{.}}</div>
+{{end}}
+</div>
+</div>
+{{end}}
+
+{{if .Goals}}
+<div class="character-worksheet">
+<div class="worksheet-section">
+<h4>Metas</h4>
+{{range .Goals}}
+<div class="prompt-box">🎯 {{.}}</div>
+{{end}}
+</div>
+</div>
+{{end}}
+
+---
+
+## Relaciones
+
+{{if .Relationships}}
+<div class="session-prep-card">
+<h3>Relaciones</h3>
+{{range .Relationships}}
+<div class="prep-item">
+<strong>{{.EntityName}}</strong> ({{.Type}}, {{.Strength}})<br>
+{{if .Notes}}<em>{{.Notes}}</em>{{end}}
+</div>
+{{end}}
+</div>
+{{end}}
+
+---
+
+## Notas de Sesión
+
+<div class="character-worksheet">
+<div class="worksheet-section">
+<h4>Progreso y Notas</h4>
+<div class="prompt-box">Espacio para anotar eventos importantes, cambios de nivel, nuevo equipo, y desarrollo del personaje durante las sesiones.</div>
+</div>
+</div>
