@@ -476,3 +476,303 @@ func (s *CharacterService) AddRelationship(campaignID, characterName string, rel
 
 	return s.repo.Save(character)
 }
+
+// GenerateWithBackstory creates a character with expanded narrative details.
+func (s *CharacterService) GenerateWithBackstory(campaignID, name, race, class string, level int, background, alignment string) (*domain.Character, error) {
+	character, err := s.CreateCharacter(campaignID, name, race, class, level, background, alignment)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add backstory hooks
+	character.BackstoryHooks = s.generateBackstoryHooks(class, background, alignment)
+
+	// Add secrets
+	character.Secrets = s.generateSecrets(background, alignment)
+
+	// Add goals
+	character.Goals = s.generateGoals(class, alignment)
+
+	// Expand personality
+	character.Personality = s.generatePersonalityDepth(class, background, alignment)
+
+	// Generate spells for spellcasting classes
+	if s.isSpellcastingClass(class) {
+		character.Spells = s.generateSpellsForClass(class, level)
+	}
+
+	if err := s.repo.Save(character); err != nil {
+		return nil, fmt.Errorf("failed to save character with backstory: %w", err)
+	}
+
+	return character, nil
+}
+
+// AddBackstoryHooks adds custom backstory hooks to a character.
+func (s *CharacterService) AddBackstoryHooks(campaignID, characterName string, hooks []string) error {
+	character, err := s.repo.Read(campaignID, characterName)
+	if err != nil {
+		return fmt.Errorf("character not found: %w", err)
+	}
+
+	character.BackstoryHooks = append(character.BackstoryHooks, hooks...)
+	return s.repo.Save(character)
+}
+
+// GenerateSpells generates appropriate spells for a spellcasting character.
+func (s *CharacterService) GenerateSpells(campaignID, characterName string) error {
+	character, err := s.repo.Read(campaignID, characterName)
+	if err != nil {
+		return fmt.Errorf("character not found: %w", err)
+	}
+
+	if !s.isSpellcastingClass(character.Class) {
+		return nil // Not a spellcasting class
+	}
+
+	character.Spells = s.generateSpellsForClass(character.Class, character.Level)
+	return s.repo.Save(character)
+}
+
+// GeneratePersonalityDepth generates detailed personality traits for a character.
+func (s *CharacterService) GeneratePersonalityDepth(campaignID, characterName string) error {
+	character, err := s.repo.Read(campaignID, characterName)
+	if err != nil {
+		return fmt.Errorf("character not found: %w", err)
+	}
+
+	character.Personality = s.generatePersonalityDepth(character.Class, character.Background, character.Alignment)
+	return s.repo.Save(character)
+}
+
+// Helper functions for character generation
+
+func (s *CharacterService) generateBackstoryHooks(class, background, alignment string) []string {
+	hooks := []string{}
+
+	// Class-based hooks
+	classHooks := map[string][]string{
+		"guerrero": {"Veterano de una guerra olvidada", "Busca redención por un fallo en el combate"},
+		"barbaro":  {"Exiliado de su tribu", "Busca un nuevo propósito tras perder su clan"},
+		"mago":     {"Estudiante de una academia arcana", "Investiga un misterio mágico ancestral"},
+		"clerigo":  {"Elegido por su deidad para una misión", "Busca restaurar la fe en su templo"},
+		"picaro":   {"Huyó de una vida criminal", "Busca limpiar su nombre"},
+	}
+
+	if hooks, ok := classHooks[class]; ok {
+		hooks = append(hooks, hooks...)
+	}
+
+	// Background-based hooks
+	bgHooks := map[string][]string{
+		"soldado": {"Deuda de honor con un compañero caído", "Conoce tácticas militares secretas"},
+		"acolito": {"Guarda un secreto de su orden religiosa", "Tiene conexiones con otros clérigos"},
+		"criminal": {"Perseguido por su antigua organización", "Conoce los bajos fondos de la ciudad"},
+		"sabio":   {"Investiga un conocimiento prohibido", "Mentor desaparecido misteriosamente"},
+	}
+
+	if hooks, ok := bgHooks[background]; ok {
+		hooks = append(hooks, hooks...)
+	}
+
+	// Ensure at least 2 hooks
+	if len(hooks) < 2 {
+		hooks = append(hooks, "Vinculado al destino de la región", "Busca algo que perdió hace mucho tiempo")
+	}
+
+	return hooks[:min(len(hooks), 4)]
+}
+
+func (s *CharacterService) generateSecrets(background, alignment string) []string {
+	secrets := []string{}
+
+	// Alignment-based secrets
+	if strings.Contains(alignment, "evil") || strings.Contains(alignment, "maligno") {
+		secrets = append(secrets, "Oculta actos oscuros del pasado")
+	}
+	if strings.Contains(alignment, "chaotic") || strings.Contains(alignment, "caotico") {
+		secrets = append(secrets, "Desconfía de la autoridad y tiene planes propios")
+	}
+
+	// Background-based secrets
+	secretMap := map[string][]string{
+		"criminal": {"Identidad falsa", "Recompensa por su captura"},
+		"noble":    {"Título usurpado", "Familia en peligro"},
+		"sabio":    {"Conocimiento demasiado peligroso", "Experimentos cuestionables"},
+	}
+
+	if secrets, ok := secretMap[background]; ok {
+		secrets = append(secrets, secrets...)
+	}
+
+	if len(secrets) == 0 {
+		secrets = append(secrets, "Guarda un secreto personal sin revelar")
+	}
+
+	return secrets[:min(len(secrets), 2)]
+}
+
+func (s *CharacterService) generateGoals(class, alignment string) []string {
+	goals := []string{}
+
+	// Class-based goals
+	goalMap := map[string][]string{
+		"guerrero": {"Convertirse en el mejor guerrero", "Encontrar un arma legendaria"},
+		"mago":     {"Dominar la magia ancestral", "Descubrir secretos arcanos perdidos"},
+		"clerigo":  {"Expandir la fe de su deidad", "Proteger a los inocentes"},
+		"picaro":   {"Acumular riqueza suficiente", "Vivir sin ataduras"},
+	}
+
+	if goals, ok := goalMap[class]; ok {
+		goals = append(goals, goals...)
+	}
+
+	// Alignment-based goals
+	if strings.Contains(alignment, "good") || strings.Contains(alignment, "bueno") {
+		goals = append(goals, "Hacer del mundo un lugar mejor")
+	}
+	if strings.Contains(alignment, "lawful") || strings.Contains(alignment, "legal") {
+		goals = append(goals, "Restaurar el orden donde haya caos")
+	}
+
+	if len(goals) == 0 {
+		goals = append(goals, "Encontrar su lugar en el mundo")
+	}
+
+	return goals[:min(len(goals), 3)]
+}
+
+func (s *CharacterService) generatePersonalityDepth(class, background, alignment string) domain.Personality {
+	personality := domain.Personality{}
+
+	// Class-based traits
+	traitMap := map[string][]string{
+		"guerrero": {"Valiente en batalla", "Leal a sus compañeros", "Disciplinado"},
+		"barbaro":  {"Feroz en combate", "Apasionado", "Directo y honesto"},
+		"mago":     {"Curioso intelectual", "Metódico", "Reservado"},
+		"clerigo":  {"Devoto", "Compasivo", "Principista"},
+		"picaro":   {"Astuto", "Carismático", "Oportunista"},
+	}
+
+	if traits, ok := traitMap[class]; ok {
+		personality.Traits = traits
+	} else {
+		personality.Traits = []string{"Determinado", "Adaptable"}
+	}
+
+	// Ideals based on alignment
+	idealMap := map[string][]string{
+		"lawful good":     {"Justicia", "El orden protege a los inocentes"},
+		"neutral good":    {"Bondad", "Ayudar a otros es lo más importante"},
+		"chaotic good":    {"Libertad", "Las cadenas deben romperse"},
+		"lawful neutral":  {"Orden", "La ley es lo único que importa"},
+		"true neutral":    {"Equilibrio", "Ni bien ni mal, solo equilibrio"},
+		"chaotic neutral": {"Libertad", "Nadie me dice qué hacer"},
+		"lawful evil":     {"Tiranía", "El poder justifica los medios"},
+		"neutral evil":    {"Egoísmo", "Mis deseos sobre todo"},
+		"chaotic evil":    {"Destrucción", "El caos es la única verdad"},
+	}
+
+	personality.Ideals = []string{"Propósito", "Busca cumplir su destino"}
+	if ideals, ok := idealMap[strings.ToLower(alignment)]; ok {
+		personality.Ideals = ideals
+	}
+
+	// Bonds
+	bondMap := map[string][]string{
+		"soldado": {"Mi unidad militar", "Mi tierra natal"},
+		"acolito": {"Mi templo", "Mi deidad"},
+		"criminal": {"Mi familia criminal", "Mi libertad"},
+		"sabio":   {"Mi investigación", "Mi mentor"},
+	}
+
+	personality.Bonds = []string{"Mis compañeros de aventura", "Mi propósito"}
+	if bonds, ok := bondMap[background]; ok {
+		personality.Bonds = append(personality.Bonds, bonds...)
+	}
+
+	// Flaws
+	flawMap := map[string][]string{
+		"guerrero": {"Confío demasiado en mi espada", "Terco en mis decisiones"},
+		"mago":     {"Arrogante intelectual", "Descuidado con lo mundane"},
+		"clerigo":  {"Dogmático", "Juzgo demasiado rápido"},
+		"picaro":   {"Codicioso", "No confío en nadie"},
+	}
+
+	personality.Flaws = []string{"Tengo un secreto que guardar", "Puedo ser imprudente"}
+	if flaws, ok := flawMap[class]; ok {
+		personality.Flaws = append(personality.Flaws, flaws...)
+	}
+
+	return personality
+}
+
+func (s *CharacterService) generateSpellsForClass(class string, level int) []domain.Spell {
+	spells := []domain.Spell{}
+
+	// Cantrips (level 0)
+	cantrips := map[string][]string{
+		"mago":       {"Fire Bolt", "Prestidigitation", "Mage Hand", "Detect Magic"},
+		"clerigo":    {"Sacred Flame", "Guidance", "Thaumaturgy", "Light"},
+		"druida":     {"Druidcraft", "Guidance", "Produce Flame", "Shillelagh"},
+		"brujo":      {"Eldritch Blast", "Mage Hand", "Prestidigitation", "Minor Illusion"},
+		"bardo":      {"Vicious Mockery", "Prestidigitation", "Mage Hand", "Minor Illusion"},
+		"hechicero":  {"Fire Bolt", "Prestidigitation", "Mage Hand", "Ray of Frost"},
+		"artifice":   {"Mage Hand", "Mending", "Guidance", "Spark"},
+		"sangre":     {"Blood Boil", "Prestidigitation", "Mage Hand", "Chill Touch"},
+	}
+
+	if cantripList, ok := cantrips[class]; ok {
+		for _, cantrip := range cantripList {
+			spells = append(spells, domain.Spell{
+				Name:  cantrip,
+				Level: 0,
+			})
+		}
+	}
+
+	// Level 1+ spells based on character level
+	if level >= 1 {
+		level1Spells := map[string][]string{
+			"mago":      {"Magic Missile", "Shield", "Detect Magic", "Sleep"},
+			"clerigo":   {"Bless", "Cure Wounds", "Guiding Bolt", "Sanctuary"},
+			"druida":    {"Entangle", "Faerie Fire", "Healing Word", "Thunderwave"},
+			"brujo":     {"Hex", "Armor of Agathys", "Witch Bolt", "Hellish Rebuke"},
+			"bardo":     {"Healing Word", "Dissonant Whispers", "Faerie Fire", "Cure Wounds"},
+			"hechicero": {"Magic Missile", "Shield", "Burning Hands", "Mage Armor"},
+		}
+
+		if spellList, ok := level1Spells[class]; ok {
+			numSpells := 2
+			if level >= 3 {
+				numSpells = 4
+			}
+			for i := 0; i < numSpells && i < len(spellList); i++ {
+				spells = append(spells, domain.Spell{
+					Name:     spellList[i],
+					Level:    1,
+					Prepared: true,
+				})
+			}
+		}
+	}
+
+	return spells
+}
+
+func (s *CharacterService) isSpellcastingClass(class string) bool {
+	spellcastingClasses := []string{"mago", "clerigo", "druida", "brujo", "bardo", "hechicero", "artifice", "sangre"}
+	for _, c := range spellcastingClasses {
+		if strings.EqualFold(class, c) {
+			return true
+		}
+	}
+	return false
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
