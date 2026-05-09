@@ -172,8 +172,14 @@ build_binary() {
     cd "$INSTALL_DIR"
     export PATH="${HOME}/.local/go/bin:$PATH"
 
-    go build -o grimorio ./cmd/grimorio
-    go build -o migrate-v1-to-v2 ./cmd/migrate-v1-to-v2
+    # Get version info from git
+    VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "v3.0.0-dev")
+    COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}"
+
+    go build -ldflags "$LDFLAGS" -o grimorio ./cmd/grimorio
+    go build -ldflags "$LDFLAGS" -o migrate-v1-to-v2 ./cmd/migrate-v1-to-v2
 
     mkdir -p "$BINARY_DIR"
     cp grimorio migrate-v1-to-v2 "$BINARY_DIR/"
