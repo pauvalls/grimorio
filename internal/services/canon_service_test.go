@@ -96,8 +96,8 @@ func TestCanonService_LoadSaveCanon(t *testing.T) {
 		t.Fatalf("failed to load canon: %v", err)
 	}
 
-	if len(loaded.Facts) != 2 {
-		t.Fatalf("expected 2 facts, got %d", len(loaded.Facts))
+	if len(loaded.Facts) != 3 {
+		t.Fatalf("expected 3 facts (v3.0 adds default fact), got %d", len(loaded.Facts))
 	}
 }
 
@@ -125,8 +125,8 @@ func TestCanonService_RegisterFact(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load canon: %v", err)
 	}
-	if len(doc.Facts) != 2 {
-		t.Fatalf("expected 2 facts, got %d", len(doc.Facts))
+	if len(doc.Facts) != 3 {
+		t.Fatalf("expected 3 facts (v3.0 adds default fact), got %d", len(doc.Facts))
 	}
 }
 

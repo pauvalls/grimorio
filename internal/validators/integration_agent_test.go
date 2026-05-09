@@ -13,13 +13,14 @@ func TestIntegratorAgentReferencesConsistencyTools(t *testing.T) {
 	}
 	content := string(data)
 
-	if !strings.Contains(content, "grimorio_check_consistency") {
-		t.Error("integrator agent missing reference to grimorio_check_consistency")
+	// Check for MCP tools in grimorio_mcp array (format: "tool_name" not "grimorio_tool_name")
+	if !strings.Contains(content, `"check_consistency"`) && !strings.Contains(content, `check_consistency(`) {
+		t.Error("integrator agent missing reference to check_consistency")
 	}
-	if !strings.Contains(content, "grimorio_process_consistency_gate") {
-		t.Error("integrator agent missing reference to grimorio_process_consistency_gate")
+	if !strings.Contains(content, `"process_consistency_gate"`) && !strings.Contains(content, `process_consistency_gate(`) {
+		t.Error("integrator agent missing reference to process_consistency_gate")
 	}
-	if !strings.Contains(content, "grimorio_validate_canon") {
-		t.Error("integrator agent missing reference to grimorio_validate_canon")
+	if !strings.Contains(content, `"validate_canon"`) && !strings.Contains(content, `validate_canon(`) {
+		t.Error("integrator agent missing reference to validate_canon")
 	}
 }
