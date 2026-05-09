@@ -362,3 +362,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [unreleased]: https://github.com/pauvalls/grimorio/compare/v2.0.0...HEAD
 [2.0.0]: https://github.com/pauvalls/grimorio/releases/tag/v2.0.0
 [1.0.0]: https://github.com/pauvalls/grimorio/releases/tag/v1.0.0
+
+## [3.0.0] - 2026-05-09
+
+### Added
+
+#### Domain Models (Phase 1)
+- **MilestoneXP** domain model with PHB threshold tracking (TASK-001)
+- **MagicItem** domain model with rarity, attunement, and curse support (TASK-002)
+- **Tactics** domain model with intelligence tiers and environmental tactics (TASK-003)
+- **PlayerMap** domain model for player-facing maps with secret redaction (TASK-004)
+- **SessionZeroGuide** domain model with content warnings and safety tools (TASK-005)
+- **ConsequenceTable** domain model for act transition tracking (TASK-007)
+- **Area** unified WotC format with sequential numbering 1-15 (TASK-009)
+- **PregenCharacter** with campaign-specific bonds/ideals/flaws (TASK-008)
+- Enhanced **Handout** with type/format/style fields (TASK-006)
+- Enhanced **Quest** with approaches, failure states, and clues (TASK-008)
+
+#### Services (Phase 1)
+- **MilestoneService** for XP table generation and party level tracking (TASK-009)
+- **ItemService** for magic item generation with rarity validation (TASK-010)
+- **TacticsService** for enemy AI and combat guidance (TASK-011)
+- **PlayerMapService** for player-facing map generation (TASK-012)
+- **SessionZeroService** for campaign-specific Session Zero guides (TASK-013)
+- **HandoutServiceV3** for enhanced handout generation (TASK-014)
+- **ConsequenceService** for act transition consequence tracking (TASK-015)
+- **AreaService** for unified WotC area generation (TASK-018)
+
+#### MCP Handlers (Phase 2)
+- `grimorio_generate_xp_table` - Generate milestone XP tables (TASK-021)
+- `grimorio_track_party_progress` - Track party level progression (TASK-021)
+- `grimorio_generate_magic_item` - Generate magic items by rarity (TASK-022)
+- `grimorio_generate_tactics` - Generate enemy combat tactics (TASK-023)
+- `grimorio_generate_area` - Generate WotC-format areas (TASK-028)
+- `grimorio_generate_areas_chapter` - Generate full chapter areas (TASK-028)
+
+#### Templates (Phase 2)
+- **milestone-xp.md.tmpl** - XP table markdown template (TASK-029)
+- **area.md.tmpl** - Unified WotC area template (TASK-035)
+
+#### Validators (Phase 2)
+- **AreaValidator** with WotC quality checks (TASK-037)
+- **QuestValidator** with 3-approach validation (TASK-038)
+
+### Changed
+
+- Extended `domain.Handout` with V3 types (letter, clue, document, journal, etc.)
+- Extended `domain.Quest` with QuestApproach, QuestFailure, QuestClue structures
+- Exported `domain.IsValidRarity` for service use
+
+### Technical Details
+
+**Architecture**: Hexagonal architecture with domain-driven design
+**Test Coverage**: Unit tests for all domain models and core services
+**Backward Compatibility**: Additive changes only, existing campaigns remain valid
+
+### Migration
+
+Existing v2.6.0 campaigns remain compatible. New fields are optional/omitted for legacy campaigns.
+
+---
+
+**Full Changelog**: v2.6.0...v3.0.0
+**Total Changes**: ~3800 lines across 70 tasks
+**Phases Completed**: 3 of 4 (Domain Models, Services, MCP/Templates/Validators, Assets/Handouts)
