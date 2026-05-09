@@ -7,6 +7,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/services"
 )
 
@@ -30,12 +31,22 @@ func (h *SessionPrepHandlers) HandleGenerateSessionPrep() server.ToolHandlerFunc
 
 		campaignID := getStringArg(args, "campaign_id")
 		sessionNum := getIntArg(args, "session_num")
+		withScenarios := getBoolArg(args, "with_scenarios")
 
 		if campaignID == "" {
 			return mcp.NewToolResultError("campaign_id is required"), nil
 		}
 
-		prep, warnings, err := h.sessionPrepService.GetPrep(ctx, campaignID, sessionNum)
+		var prep *domain.SessionPrep
+		var warnings []string
+		var err error
+
+		if withScenarios {
+			prep, warnings, err = h.sessionPrepService.GetPrepWithScenarios(ctx, campaignID, sessionNum)
+		} else {
+			prep, warnings, err = h.sessionPrepService.GetPrep(ctx, campaignID, sessionNum)
+		}
+
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}

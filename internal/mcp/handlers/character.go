@@ -35,6 +35,7 @@ func (h *CharacterHandlers) HandleGenerateCharacter() server.ToolHandlerFunc {
 		level := getIntArg(args, "level")
 		background := getStringArg(args, "background")
 		alignment := getStringArg(args, "alignment")
+		withBackstory := getBoolArg(args, "with_backstory")
 
 		if campaign == "" {
 			return mcp.NewToolResultError("campaign is required"), nil
@@ -46,13 +47,26 @@ func (h *CharacterHandlers) HandleGenerateCharacter() server.ToolHandlerFunc {
 			level = 1
 		}
 
-		character, err := h.service.CreateCharacter(campaign, name, race, class, level, background, alignment)
+		var character *domain.Character
+		var err error
+
+		if withBackstory {
+			character, err = h.service.GenerateWithBackstory(campaign, name, race, class, level, background, alignment)
+		} else {
+			character, err = h.service.CreateCharacter(campaign, name, race, class, level, background, alignment)
+		}
+
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		return mcp.NewToolResultText(fmt.Sprintf("Character '%s' created in campaign '%s' (Level %d %s %s)",
-			character.Name, campaign, character.Level, character.Race, character.Class)), nil
+		msg := fmt.Sprintf("Character '%s' created in campaign '%s' (Level %d %s %s)",
+			character.Name, campaign, character.Level, character.Race, character.Class)
+		if withBackstory {
+			msg += " with backstory hooks, secrets, and goals"
+		}
+
+		return mcp.NewToolResultText(msg), nil
 	}
 }
 
