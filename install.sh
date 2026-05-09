@@ -287,6 +287,9 @@ configure_opencode_mcp() {
 # CONFIGURE COMMAND IN OPENCODE.JSON
 # ============================================================================
 configure_opencode_command() {
+    
+    # Step 11: Copy commands directory
+    copy_commands
     local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
     [ ! -f "$OPENCODE_CONFIG" ] && return 0
 
@@ -632,6 +635,9 @@ main() {
 
     # Step 10: Configure command
     configure_opencode_command
+    
+    # Step 11: Copy commands directory
+    copy_commands
 
     # Step 11: Configure agents
     configure_opencode_agents
@@ -644,3 +650,19 @@ main() {
 }
 
 main "$@"
+
+# ============================================================================
+# COPY COMMANDS DIRECTORY (for OpenCode/Claude Code)
+# ============================================================================
+copy_commands() {
+    local src_commands="${INSTALL_DIR}/commands"
+    
+    # Copy commands to plugin directories
+    for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
+        if [ -d "$src_commands" ]; then
+            mkdir -p "$plugin_dir/commands"
+            cp -r "$src_commands/"* "$plugin_dir/commands/" 2>/dev/null || true
+            log "Commands copied to: $plugin_dir/commands"
+        fi
+    done
+}
