@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"testing"
-	"time"
 )
 
 // TestFullCampaignGeneration tests end-to-end campaign generation.
