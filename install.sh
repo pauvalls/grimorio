@@ -223,147 +223,57 @@ setup_plugin() {
     "command": "${CLAUDE_PLUGIN_ROOT}/grimorio",
     "args": [],
     "env": {}
-  }
-}
-EOF
-        else
-            cat > "$plugin_dir/.mcp.json" << EOF
-{
-  "grimorio": {
-    "command": "$plugin_dir/grimorio",
-    "args": [],
-    "env": {}
-  }
-}
-EOF
-        fi
-
-        success "Plugin installed to $plugin_dir"
-    done
-
-    configure_opencode_mcp
+    }
 }
 
-configure_shell() {
-    log "Configuring shell..."
-
-    SHELL_RC=""
-    case "$(basename "$SHELL")" in
-        bash) SHELL_RC="${HOME}/.bashrc" ;;
-        zsh)  SHELL_RC="${HOME}/.zshrc" ;;
-        fish) SHELL_RC="${HOME}/.config/fish/config.fish" ;;
-        *)    SHELL_RC="${HOME}/.profile" ;;
-    esac
-
-    if [ -n "$SHELL_RC" ] && [ -f "$SHELL_RC" ]; then
-        # 1. Clean up legacy standalone lines (re-install compatibility)
-        sed -i '/^# Grimorio$/d' "$SHELL_RC"
-        sed -i '/^export PATH="\$HOME\/\.local\/go\/bin:\$PATH"$/d' "$SHELL_RC"
-        sed -i '/^export PATH="\$HOME\/\.local\/bin:\$PATH"$/d' "$SHELL_RC"
-
-        # 2. Clean up any existing marked block to prevent duplicates
-        awk '
-            /^# === GRIMORIO CONFIG BEGIN ===$/ { in_block=1; next }
-            /^# === GRIMORIO CONFIG END ===$/   { in_block=0; next }
-            !in_block { print }
-        ' "$SHELL_RC" > "${SHELL_RC}.tmp" && mv "${SHELL_RC}.tmp" "$SHELL_RC"
-
-        # 3. Add fresh marked block with both paths
-        cat >> "$SHELL_RC" << 'EOF'
-
-# === GRIMORIO CONFIG BEGIN ===
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="$HOME/.local/go/bin:$PATH"
-# === GRIMORIO CONFIG END ===
-EOF
-
-        log "Shell configured at $SHELL_RC"
-    fi
-
-    success "Shell configured"
-}
-
-configure_opencode_mcp() {
-    local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
-
-    if [ ! -f "$OPENCODE_CONFIG" ]; then
-        log "No opencode.json found, skipping MCP config"
+sync_command_from_agent() {
+    local OPENCODE_CONFIG="$1"
+    local AGENT_FILE="${INSTALL_DIR}/agents/grimorio-architect.md"
+    
+    if [ ! -f "$AGENT_FILE" ]; then
+        log "Agent file not found at $AGENT_FILE, using hardcoded template"
         return 0
     fi
+    
+    log "Syncing command template from grimorio-architect.md..."
+    
+    # Extract Phase 1 questions (between "### Phase 1" and "### Phase 2")
+    local PHASE1_TEXT
+    PHASE1_TEXT=$(sed -n '/^### Phase 1: Gather Requirements/,/^### Phase 2/p' "$AGENT_FILE" | \
+                  head -n -1)
+    
+    # Extract full workflow (from "## Workflow" to end of file or next major section)
+    local WORKFLOW_TEXT
+    WORKFLOW_TEXT=$(sed -n '/^## Workflow/,/^## Rules/p' "$AGENT_FILE" | \
+                    head -n -1 | \
+                    sed 's/^> //g')
+    
+    # Create template file with extracted content
+    local TEMPLATE_FILE=$(mktemp)
+    cat > "$TEMPLATE_FILE" << EOF
+Generate a D&D 5e campaign or one-shot from the user's idea.
 
-    log "Configuring grimorio MCP in opencode.json..."
+## IMPORTANT: Use the grimorio-architect agent. It handles everything end-to-end.
 
-    # Always update (not just add) to ensure latest config
-    if command_exists jq; then
-        jq '.mcp.grimorio = {
-            "command": ["'"$OPENCODE_PLUGIN_DIR/grimorio"'"],
-            "type": "local",
-            "enabled": true
-        }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-        success "grimorio MCP configured in opencode.json"
+## Workflow (followed by grimorio-architect)
+
+${WORKFLOW_TEXT}
+EOF
+    
+    # Escape for JSON and update config
+    local TEMPLATE_JSON
+    TEMPLATE_JSON=$(cat "$TEMPLATE_FILE" | jq -Rs '.')
+    rm -f "$TEMPLATE_FILE"
+    
+    # Update only the template field, preserve other command config
+    if jq -e '.command.grimorio' "$OPENCODE_CONFIG" > /dev/null 2>&1; then
+        jq --argjson template "$TEMPLATE_JSON" '.command.grimorio.template = $template' \
+           "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && \
+           mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
+        success "Command template synced from grimorio-architect.md"
     else
-        warn "jq not found. Please manually add grimorio to your opencode.json mcp section:"
-        warn '{
-  "grimorio": {
-    "command": ["'"$OPENCODE_PLUGIN_DIR/grimorio"'"],
-    "type": "local",
-    "enabled": true
-  }
-}'
-        return 1
+        log "Command not yet configured, will be set by hardcoded template"
     fi
-}
-
-clean_installation() {
-    log "Cleaning previous Grimorio installation..."
-    local cleaned=false
-
-    for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
-        if [ -d "$plugin_dir" ]; then
-            rm -f "$plugin_dir/grimorio"
-            rm -f "$plugin_dir/migrate-v1-to-v2"
-            rm -f "$plugin_dir/.mcp.json"
-            rm -rf "$plugin_dir/.claude-plugin"
-            [ -d "$plugin_dir/commands" ] && rm -f "$plugin_dir/commands/grimorio.md"
-            [ -d "$plugin_dir/agents" ] && rm -f "$plugin_dir/agents/grimorio-*.md"
-            [ -d "$plugin_dir/skills" ] && rm -f "$plugin_dir/skills/grimorio-*.md"
-            log "Cleaned Grimorio files from: $plugin_dir"
-            cleaned=true
-        fi
-    done
-
-    [ -f "$BINARY_DIR/grimorio" ] && rm -f "$BINARY_DIR/grimorio" && log "Removed: $BINARY_DIR/grimorio" && cleaned=true
-    [ -f "$BINARY_DIR/migrate-v1-to-v2" ] && rm -f "$BINARY_DIR/migrate-v1-to-v2" && log "Removed: $BINARY_DIR/migrate-v1-to-v2" && cleaned=true
-
-    if [ -d "$INSTALL_DIR" ]; then
-        rm -rf "$INSTALL_DIR"
-        log "Removed: $INSTALL_DIR"
-        cleaned=true
-    fi
-
-    local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
-    if [ -f "$OPENCODE_CONFIG" ] && command_exists jq; then
-        jq 'del(.mcp.grimorio, .agent["grimorio-architect"], .agent["grimorio-artist"], .agent["grimorio-cartographer"], .agent["grimorio-lore"], .agent["grimorio-npc"], .agent["grimorio-bestiary"], .agent["grimorio-encounters"], .agent["grimorio-areas"], .agent["grimorio-quests"], .agent["grimorio-maps"], .agent["grimorio-characters"], .agent["grimorio-narrative-custodian"], .agent["grimorio-introduction"], .agent["grimorio-setting-guide"], .agent["grimorio-appendices"], .agent["grimorio-integrator"], .agent["grimorio-orchestrator"], .command.grimorio)' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-        log "Cleaned grimorio entries from opencode.json"
-        cleaned=true
-    fi
-
-    local shell_rcs=("${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.config/fish/config.fish" "${HOME}/.profile")
-    for rc in "${shell_rcs[@]}"; do
-        if [ -f "$rc" ]; then
-            awk '
-                /^# === GRIMORIO CONFIG BEGIN ===$/ { in_block=1; next }
-                /^# === GRIMORIO CONFIG END ===$/   { in_block=0; next }
-                !in_block { print }
-            ' "$rc" > "${rc}.tmp" && mv "${rc}.tmp" "$rc"
-            sed -i '/^# Grimorio$/d' "$rc"
-            sed -i '/^export PATH="\$HOME\/\.local\/go\/bin:\$PATH"$/d' "$rc"
-            sed -i '/^export PATH="\$HOME\/\.local\/bin:\$PATH"$/d' "$rc"
-        fi
-    done
-    log "Cleaned shell configuration files"
-
-    [ "$cleaned" = true ] && success "Previous Grimorio installation cleaned" || log "No previous installation found"
 }
 
 configure_opencode_command() {
@@ -378,6 +288,10 @@ configure_opencode_command() {
     if command_exists jq; then
         jq 'del(.agent["grimorio-orchestrator"])' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" 2>/dev/null && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG" || true
     fi
+
+    # CRITICAL: Sync command template from grimorio-architect.md agent file
+    # This ensures the command always uses the latest workflow from the agent definition
+    sync_command_from_agent "$OPENCODE_CONFIG"
 
     # Always update agent (not just add) to ensure latest prompt
     log "Configuring grimorio-architect agent..."
@@ -699,9 +613,10 @@ Generate a D&D 5e campaign or one-shot from the user's idea.
 Ask the user these questions (one at a time, interactively):
 1. What's the campaign name? (kebab-case, e.g. "sunken-city")
 2. One-shot or full campaign?
-3. Player level? (1-3, 4-6, 7-10, 11-15, 16-20)
-4. Desired tone? (heroic, dark, humorous, political intrigue)
-5. Duration? (one-shot, 3-5 sessions, long campaign)
+3. **Campaign idea / brief description?** (What story do you want to tell? 2-3 sentences describing the main plot)
+4. Player level? (1-3, 4-6, 7-10, 11-15, 16-20)
+5. Desired tone? (heroic, dark, humorous, political intrigue)
+6. Duration? (one-shot, 3-5 sessions, long campaign)
 
 ### Phase 2: Create Campaign Structure
 Use the grimorio MCP tool `create_campaign` to create the structure.
