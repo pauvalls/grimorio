@@ -1,0 +1,134 @@
+# Preparación de Sesión {{.SessionNum}}
+
+**Campaña:** {{.CampaignID}}  
+**Fecha de Preparación:** {{.PrepDate.Format "2006-01-02"}}
+
+---
+
+## Previously On
+
+<div class="session-prep-card">
+{{.PreviouslyOn}}
+</div>
+
+---
+
+## Quests Activas
+
+{{if .ActiveQuests}}
+{{range .ActiveQuests}}
+<div class="session-prep-card">
+<div class="prep-item">{{.}}</div>
+</div>
+{{end}}
+{{else}}
+<p>No hay quests activas registradas.</p>
+{{end}}
+
+---
+
+## NPCs Relevantes
+
+{{if .RelevantNPCs}}
+<div class="session-prep-card">
+<h3>NPCs para esta Sesión</h3>
+{{range .RelevantNPCs}}
+<div class="prep-item">• {{.}}</div>
+{{end}}
+</div>
+{{else}}
+<p>No se identificaron NPCs relevantes para esta sesión.</p>
+{{end}}
+
+---
+
+## Escenarios Probables
+
+{{if .LikelyScenarios}}
+{{range .LikelyScenarios}}
+<div class="session-prep-card">
+<div class="prep-item">{{.}}</div>
+</div>
+{{end}}
+{{else}}
+<p>No hay escenarios probables identificados.</p>
+{{end}}
+
+---
+
+## Recomendaciones de Encuentros
+
+{{if .EncounterRecommendations}}
+{{range .EncounterRecommendations}}
+<div class="encounter-recommendation">
+<span class="cr-badge">CR {{.CR}}</span>
+<span class="encounter-type">{{.Type}}</span>
+<strong>{{.Name}}</strong>
+<p>{{.Description}}</p>
+{{if .Context}}
+<p><em>{{.Context}}</em></p>
+{{end}}
+</div>
+{{end}}
+{{else}}
+<p>No hay recomendaciones de encuentros generadas.</p>
+{{end}}
+
+---
+
+## Sugerencias de Loot
+
+{{if .LootSuggestions}}
+<div class="session-prep-card">
+<h3>Recompensas Sugeridas</h3>
+{{range .LootSuggestions}}
+<div class="prep-item">
+<strong>{{.Name}}</strong> ({{.Rarity}}, {{.Type}})<br>
+{{.Description}}
+{{if .Context}}<br><em>{{.Context}}</em>{{end}}
+</div>
+{{end}}
+</div>
+{{else}}
+<p>No hay sugerencias de loot generadas.</p>
+{{end}}
+
+---
+
+## Apariciones de NPCs
+
+{{if .NPCAppearances}}
+{{range .NPCAppearances}}
+<div class="session-prep-card">
+<h3>{{.Name}} <small>({{.Importance}})</small></h3>
+<div class="prep-item"><strong>Rol:</strong> {{.Role}}</div>
+<div class="prep-item"><strong>Contexto:</strong> {{.Context}}</div>
+</div>
+{{end}}
+{{else}}
+<p>No hay apariciones de NPCs planificadas.</p>
+{{end}}
+
+---
+
+## Recordatorios
+
+{{if .Reminders}}
+<div class="session-prep-card">
+<h3>Recordatorios Importantes</h3>
+{{range .Reminders}}
+<div class="prep-item">⚠️ {{.}}</div>
+{{end}}
+</div>
+{{else}}
+<p>No hay recordatorios pendientes.</p>
+{{end}}
+
+---
+
+## Notas Adicionales
+
+<div class="session-prep-card">
+<h3>Espacio para Notas</h3>
+<p>Usá este espacio para anotar ideas, ajustes de última hora, o recordatorios específicos para esta sesión.</p>
+</div>
