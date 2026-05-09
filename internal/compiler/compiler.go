@@ -48,6 +48,12 @@ var settingGuideTemplate string
 //go:embed templates/appendices.md.tmpl
 var appendicesTemplate string
 
+//go:embed templates/session-prep.md.tmpl
+var sessionPrepTemplate string
+
+//go:embed templates/character-sheet.md.tmpl
+var characterSheetTemplate string
+
 type Compiler struct {
 	CampaignDir         string
 	PDFEngine           string
@@ -104,6 +110,10 @@ func GetTemplate(tmplType string) (string, error) {
 		return settingGuideTemplate, nil
 	case "appendices":
 		return appendicesTemplate, nil
+	case "session-prep":
+		return sessionPrepTemplate, nil
+	case "character-sheet":
+		return characterSheetTemplate, nil
 	default:
 		return "", fmt.Errorf("unknown template type: %s", tmplType)
 	}
@@ -421,6 +431,104 @@ func (c *Compiler) generateFlowchartEmbed() string {
 	}
 
 	return fmt.Sprintf(`<h2 id="sec-flowchart">Campaign Flowchart</h2><div class="flowchart">%s</div>`, string(data))
+}
+
+// generateDMSidebar generates a DM-only sidebar with tips and secrets for an area.
+func (c *Compiler) generateDMSidebar(areaID string, tip string, secret string) string {
+	if tip == "" && secret == "" {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="dm-sidebar">`)
+
+	if tip != "" {
+		b.WriteString(`<h5>DM Tip</h5>`)
+		b.WriteString(fmt.Sprintf(`<p>%s</p>`, html.EscapeString(tip)))
+	}
+
+	if secret != "" {
+		b.WriteString(`<h5>Secreto</h5>`)
+		b.WriteString(fmt.Sprintf(`<p>%s</p>`, html.EscapeString(secret)))
+	}
+
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// generateSessionPrepHTML generates HTML for session preparation content.
+func (c *Compiler) generateSessionPrepHTML(sessionNum int) string {
+	// Look for session prep markdown file
+	path := filepath.Join(c.CampaignDir, "session-prep.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		// Try numbered session prep file
+		path = filepath.Join(c.CampaignDir, fmt.Sprintf("session-prep-%d.md", sessionNum))
+		data, err = os.ReadFile(path)
+		if err != nil {
+			return ""
+		}
+	}
+
+	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, fmt.Sprintf("sec-session-prep-%d", sessionNum), new(int), c.seenImages, c.CompilerVersion)
+	if strings.TrimSpace(htmlResult) == "" {
+		return ""
+	}
+
+	return htmlResult
+}
+
+// generateCharacterSheetHTML generates HTML for a character sheet.
+func (c *Compiler) generateCharacterSheetHTML(characterID string) string {
+	// Look for character sheet markdown file
+	path := filepath.Join(c.CampaignDir, "characters", fmt.Sprintf("%s.md", characterID))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+
+	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, fmt.Sprintf("sec-character-%s", characterID), new(int), c.seenImages, c.CompilerVersion)
+	if strings.TrimSpace(htmlResult) == "" {
+		return ""
+	}
+
+	return htmlResult
+}
+
+// generateShockPointsHTML generates HTML for shock points content warnings.
+func (c *Compiler) generateShockPointsHTML(shockPoints []struct {
+	Type        string
+	Severity    string
+	Description string
+	SafetyTools []string
+}) string {
+	if len(shockPoints) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString(`<h3 id="sec-shock-points">Puntos de Shock y Advertencias de Contenido</h3>`)
+
+	for _, sp := range shockPoints {
+		b.WriteString(fmt.Sprintf(`<div class="shock-point %s">`, sp.Severity))
+		b.WriteString(fmt.Sprintf(`<span class="severity-badge">%s</span>`, sp.Severity))
+		b.WriteString(fmt.Sprintf(`<strong>%s</strong>: %s`, html.EscapeString(sp.Type), html.EscapeString(sp.Description)))
+
+		if len(sp.SafetyTools) > 0 {
+			b.WriteString(`<p><strong>Herramientas de seguridad:</strong> `)
+			for i, tool := range sp.SafetyTools {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				b.WriteString(html.EscapeString(tool))
+			}
+			b.WriteString(`</p>`)
+		}
+
+		b.WriteString(`</div>`)
+	}
+
+	return b.String()
 }
 
 // generateAdventureRoster builds Apéndice F from scanned markdown files
