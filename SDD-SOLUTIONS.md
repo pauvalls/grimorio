@@ -2264,3 +2264,89 @@ tree -L 2 /home/pau/campaigns/{campaign}/
 - **Quests/Characters:** JSONs individuales (NO `.md` unificado)
 - **Migración:** Mover canon a raíz, eliminar `areas/`, eliminar `canon/`
 
+
+---
+
+## PDF/HTML No Incluye Personajes ni Misiones (JSON vs MD)
+
+### Problema
+El compilador de Grimorio SOLO incluye archivos `.md` en el PDF/HTML. Los personajes (.json) y misiones (.json) NO aparecen en el documento compilado.
+
+### Sintomas
+- Personajes: 8 archivos .json en `characters/` → NO aparecen en PDF
+- Misiones: 1+ archivos .json en `quests/` → NO aparecen en PDF
+- PDF resultante: Solo tiene lore, áreas, NPCs, bestiary, encuentros, mapas
+
+### Causa Raiz
+
+Codigo del compilador (`internal/compiler/compiler.go`):
+
+```go
+// generateHTML — SOLO incluye estas secciones:
+sections := []struct {
+    name  string
+    path  string
+    isDir bool
+}{
+    {"Chapters (Areas)", filepath.Join(c.CampaignDir, "areas"), true},
+    {"Apéndice A: NPCs y Facciones", filepath.Join(c.CampaignDir, "npcs"), true},
+    {"Apéndice B: Bestiario", filepath.Join(c.CampaignDir, "bestiary"), true},
+    {"Apéndice C: Encuentros", filepath.Join(c.CampaignDir, "encounters"), true},
+    {"Apéndice D: Mapas de Referencia", filepath.Join(c.CampaignDir, "maps"), true},
+    // characters/ y quests/ NO estan en la lista
+}
+
+// Para directorios, SOLO lee archivos .md:
+for _, f := range files {
+    if strings.HasSuffix(f.Name(), ".md") {  // ← FILTRO: solo .md
+        // procesa markdown
+    }
+}
+```
+
+### Solucion
+
+#### Opcion A: Convertir JSON → MD (RECOMENDADA)
+
+**Ventajas:**
+- Sin cambios de codigo (usa compilador actual)
+- Archivos legibles por humanos (no JSON tecnico)
+- Formato consistente con NPCs, bestiary, etc.
+
+**Implementacion:**
+
+1. Crear `/home/pau/campaigns/{campaign}/characters/characters.md` con formato legible
+2. Crear `/home/pau/campaigns/{campaign}/quests/quests.md` con formato legible
+3. Compilar PDF → ahora incluye ambas secciones
+
+#### Opcion B: Script de Conversion Automatica
+
+Crear `scripts/convert-json-to-md.sh` que:
+- Lee `characters/*.json` → genera `characters.md`
+- Lee `quests/*.json` → genera `quests.md`
+- Usa `jq` para parsear JSON
+
+**Uso:**
+```bash
+./scripts/convert-json-to-md.sh la-hoja-de-vlad
+grimorio compile-pdf --campaign la-hoja-de-vlad
+```
+
+### Comandos de Verificacion
+
+```bash
+# Verificar si existen .md en characters/
+ls /home/pau/campaigns/{camp}/characters/*.md
+
+# Verificar si existen .md en quests/
+ls /home/pau/campaigns/{camp}/quests/*.md
+
+# Buscar en HTML
+grep -c "Personajes Jugadores" /home/pau/campaigns/{camp}/campaign.html
+grep -c "Misiones" /home/pau/campaigns/{camp}/campaign.html
+```
+
+---
+
+**TL;DR:** Compilador SOLO lee .md. Personajes (.json) y misiones (.json) NO se incluyen. Solucion: Convertir a .md antes de compilar creando `characters.md` y `quests.md` con formato legible.
+
