@@ -287,9 +287,9 @@ configure_opencode_command() {
     cat > "$TEMPLATE_FILE" << 'TEMPLATE_EOF'
 Generate a D&D 5e campaign or one-shot from the user's idea.
 
-## IMPORTANT: Use the grimorio-architect agent. It handles everything end-to-end.
+## EXECUTION MODE: Main Thread Orchestration
 
-## Workflow (followed by grimorio-architect)
+**You are the orchestrator.** Execute this workflow directly in the main thread. Use MCP tools and delegate to sub-agents as specified below.
 
 ### Phase 1: Gather Requirements
 Ask the user these questions (one at a time, interactively):
@@ -304,11 +304,11 @@ Ask the user these questions (one at a time, interactively):
 Use the grimorio MCP tool `create_campaign` to create the structure.
 
 ### Phase 3-13: End-to-End Orchestration (sequential batches)
-The architect follows strict batch ordering — each batch waits for the previous:
+Follow strict batch ordering — each batch waits for the previous:
 
-- **Batch 1** (parallel): NPCs, bestiary, maps → Consistency Gate
-- **Batch 2** (parallel): lore, quests, encounters, characters → Consistency Gate → Update Narrative State
-- **Batch 3** (parallel): SVG maps, areas → Consistency Gate
+- **Batch 1** (parallel delegate): NPCs, bestiary, maps → Consistency Gate
+- **Batch 2** (parallel delegate): lore, quests, encounters, characters → Consistency Gate → Update Narrative State
+- **Batch 3** (parallel delegate): SVG maps, areas → Consistency Gate
 - **Phase 6**: Artist batch-spec (cover + NPCs + scenes + monsters)
 - **Phase 7**: Generate AI images (1x1 sequential, retry missing)
 - **Phase 8**: Update ALL markdown references
@@ -318,7 +318,7 @@ The architect follows strict batch ordering — each batch waits for the previou
 - **Phase 12**: Compile PDF (embeds all images + flowchart)
 - **Phase 13**: Final report
 
-The architect reports progress to the user after each phase.
+Report progress to the user after each phase.
 
 ### Final: Report
 After completion, report to the user:
@@ -326,7 +326,7 @@ After completion, report to the user:
 - What content was generated
 - Any issues encountered
 
-**DO NOT launch subagents from the command thread — the architect manages all delegation internally.**
+**Use delegate for content generation sub-agents. Execute orchestration logic in main thread.**
 TEMPLATE_EOF
 
     local TEMPLATE_JSON
@@ -334,8 +334,7 @@ TEMPLATE_EOF
     rm -f "$TEMPLATE_FILE"
 
     jq --argjson template "$TEMPLATE_JSON" '.command.grimorio = {
-        "description": "Generate a complete D&D 5e campaign or one-shot from an idea",
-        "agent": "grimorio-architect",
+        "description": "Generate a complete D&D 5e campaign or one-shot from an idea (executes in main thread)",
         "subtask": false,
         "template": $template
     }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && \
