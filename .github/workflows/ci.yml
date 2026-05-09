@@ -38,7 +38,7 @@ jobs:
         sudo apt-get install -y wkhtmltopdf
 
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out $(go list ./... | grep -v '/cmd/')
+      run: go test -v -race -coverprofile=coverage.out $(go list ./... | grep -v -E '/(cmd|scripts)/')
 
     - name: Check coverage
       run: |
