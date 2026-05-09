@@ -4,7 +4,7 @@
 
 **D&D One-shot & Campaign Generator**
 
-[![Version v2.3.0](https://img.shields.io/badge/version-v2.3.0-purple?style=for-the-badge)](#)
+[![Version v2.5.0](https://img.shields.io/badge/version-v2.5.0-purple?style=for-the-badge)](#)
 
 [English](#english) · [Español](#español)
 
@@ -21,7 +21,11 @@ AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into 
 ### Features
 
 - **Full campaign generation** — Lore, acts, NPCs, monsters, encounters, and maps
-- **WotC Format Quality** (v2.3.0) — Enhanced immersion matching official module standards:
+- **WotC Format Quality** (v2.5.0) — Enhanced immersion matching official module standards:
+  - **Template Enforcement**: All content types use structured templates (`get_template` MCP tool) with required fields
+  - **Auto-Regeneration Loops**: 7 agents with max 3 retries when validation fails (areas, npc, bestiary, encounters, lore, maps, quests)
+  - **Blocking Validation**: All agents call `validate_canon` BEFORE `save_*` — content never saved without approval
+  - **Architect Auto-Validation**: Batch validation gates with max 2 retries (Batch 1, 2, 3)
   - **Boxed Text**: Immersive read-aloud narration (2-4 párrafos, 100-600 palabras, formato `>>`)
   - **Character Hooks**: 2+ engagement opportunities per area tied to backgrounds/classes
   - **Developments**: 3+ narrative branches per area with mandatory recovery paths

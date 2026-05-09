@@ -55,24 +55,45 @@ Después, generá el **LORE** de una campaña/one-shot: la historia del mundo, e
 
 ## Validación de Canon (CRÍTICO)
 
-Antes de guardar, validá que el lore no contradiga el canon:
+Antes de guardar, seguí este flujo de validación con reintentos automáticos:
 
 ```
-validate_canon(
-  campaign_id="{campaign_name}",
-  proposal={
-    id: "lore-main",
-    type: "lore",
-    content: "Resumen del lore generado...",
-    entity_references: [
-      { entity_id: "fact-001", location: "lore" },
-      { entity_id: "entity-001", location: "lore" }
-    ]
-  }
-)
+max_retries = 3
+retry_count = 0
+validation_passed = false
+
+WHILE retry_count < max_retries AND NOT validation_passed:
+    result = validate_canon(
+      campaign_id="{campaign_name}",
+      proposal={
+        id: "lore-main",
+        type: "lore",
+        content: "Resumen del lore generado...",
+        entity_references: [
+          { entity_id: "fact-001", location: "lore" },
+          { entity_id: "entity-001", location: "lore" }
+        ]
+      }
+    )
+    
+    IF result.status == "approved":
+        validation_passed = true
+    ELSE:
+        retry_count += 1
+        # Analizar feedback y corregir issues específicos
+        Fix issues based on result.feedback
+        # Regenerar contenido corregido
+        Continue loop
+
+IF validation_passed:
+    save_lore(campaign="{campaign_name}", content=...)
+ELSE:
+    # Abortar después de 3 reintentos fallidos
+    Report failure: "Validation failed after 3 retries. Issues: {result.feedback}"
+    DO NOT save content
 ```
 
-Si la validación falla (ej: contradice una regla del mundo o un hecho canónico), corregí antes de guardar.
+**REGLA CRÍTICA:** NUNCA guardes contenido sin validación aprobada. Si la validación falla 3 veces, abortá y reportá los issues específicos para revisión manual.
 
 ## Formato de Output
 

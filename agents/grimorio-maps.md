@@ -60,24 +60,45 @@ Después, generá las descripciones de mapas usando `save_maps`.
 
 ## Validación de Canon (CRÍTICO)
 
-Antes de guardar, validá que las ubicaciones sean consistentes:
+Antes de guardar, seguí este flujo de validación con reintentos automáticos:
 
 ```
-validate_canon(
-  campaign_id="{campaign_name}",
-  proposal={
-    id: "maps-batch",
-    type: "map",
-    content: "Resumen de mapas...",
-    entity_references: [
-      { entity_id: "location-001", location: "maps" },
-      { entity_id: "location-002", location: "maps" }
-    ]
-  }
-)
+max_retries = 3
+retry_count = 0
+validation_passed = false
+
+WHILE retry_count < max_retries AND NOT validation_passed:
+    result = validate_canon(
+      campaign_id="{campaign_name}",
+      proposal={
+        id: "maps-batch",
+        type: "map",
+        content: "Resumen de mapas...",
+        entity_references: [
+          { entity_id: "location-001", location: "maps" },
+          { entity_id: "location-002", location: "maps" }
+        ]
+      }
+    )
+    
+    IF result.status == "approved":
+        validation_passed = true
+    ELSE:
+        retry_count += 1
+        # Analizar feedback y corregir issues específicos
+        Fix issues based on result.feedback
+        # Regenerar contenido corregido
+        Continue loop
+
+IF validation_passed:
+    save_maps(campaign="{campaign_name}", content=...)
+ELSE:
+    # Abortar después de 3 reintentos fallidos
+    Report failure: "Validation failed after 3 retries. Issues: {result.feedback}"
+    DO NOT save content
 ```
 
-Si la validación falla (ej: ubicación contradice descripción en canon), corregí antes de guardar.
+**REGLA CRÍTICA:** NUNCA guardes contenido sin validación aprobada. Si la validación falla 3 veces, abortá y reportá los issues específicos para revisión manual.
 
 ## Estructura de cada Ubicación
 

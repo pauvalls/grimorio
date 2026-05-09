@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-05-09
+
+### Added
+- **Template Coverage** — All content-generating agents now use structured templates via `get_template` MCP tool
+  - **grimorio-quests**: `type="quest"` template with fields: title, type, hook, stakes, reward, status
+  - **grimorio-characters**: `type="character"` template with fields: name, race, class, level, background, alignment
+  - **grimorio-introduction**: `type="introduction"` template with fields: campaign_name, setting, tone, themes, level_range
+  - **grimorio-setting-guide**: `type="setting"` template with fields: world_overview, factions, key_locations, timeline
+  - **grimorio-appendices**: `type="appendix"` template with fields: items, monsters, handouts, tables
+  - All 5 agents updated to call `get_template()` BEFORE content generation
+
+- **Auto-Regeneration Loops** — 7 agents with max 3 retries when `validate_canon` fails
+  - **grimorio-areas**: Retry loop with fix-and-regenerate logic
+  - **grimorio-npc**: Retry loop with fix-and-regenerate logic
+  - **grimorio-bestiary**: Retry loop with fix-and-regenerate logic
+  - **grimorio-encounters**: Retry loop with fix-and-regenerate logic
+  - **grimorio-lore**: Retry loop with fix-and-regenerate logic
+  - **grimorio-maps**: Retry loop with fix-and-regenerate logic
+  - **grimorio-quests**: Retry loop with fix-and-regenerate logic
+  - **Pseudocode pattern**: `WHILE retry_count < max_retries AND NOT validation_passed: validate → fix → retry`
+  - **Failure handling**: After 3 failed retries, abort and report specific issues for manual review
+
+- **Blocking Validation** — All agents call `validate_canon` BEFORE `save_*` with result checking
+  - **grimorio-architect**: Blocking checks added to Phase 3c, 4c, 5c (Batch 1, 2, 3 validation gates)
+  - **grimorio-areas**: Explicit result check before `save_areas`
+  - **grimorio-npc**: Explicit result check before `save_npcs`
+  - **grimorio-bestiary**: Explicit result check before `save_bestiary`
+  - **grimorio-encounters**: Explicit result check before `save_encounters`
+  - **grimorio-lore**: Explicit result check before `save_lore`
+  - **grimorio-maps**: Explicit result check before `save_maps`
+  - **grimorio-quests**: Explicit result check before `create_personal_quest`
+  - **Rule**: NEVER save content without validation approval
+
+- **Architect Auto-Validation** — Batch validation with max 2 retries per batch
+  - **Phase 3c (Batch 1)**: Auto-retry loop for NPCs, Bestiary, Maps validation
+  - **Phase 4c (Batch 2)**: Auto-retry loop for Lore, Setting Guide, Quests, Encounters, Characters validation
+  - **Phase 5c (Batch 3)**: Auto-retry loop for Acts, SVG Maps validation
+  - **Retry logic**: `WHILE retry_count <= max_retries AND NOT validation_passed: delegate → read result → fix → retry`
+  - **Blocking behavior**: If validation fails after max retries, DO NOT proceed to next phase
+
+### Changed
+- **grimorio-architect workflow** — Enhanced validation phases with explicit retry logic
+  - Phase 3c, 4c, 5c: Changed from simple validation to auto-retry loops (max 2 retries)
+  - Added explicit `delegation_read(id)` calls to inspect validation results
+  - Added failure reporting with specific issue details
+
+- **Agent validation patterns** — All content agents now follow consistent validation flow
+  - Before: Informal "validate then fix" guidance
+  - After: Explicit pseudocode with retry counts, status checks, and abort conditions
+
+- **Template system** — Expanded from 6 template types to 11 template types
+  - New: quest, character, introduction, setting, appendix
+  - All agents updated to reference correct template type in documentation
+
+### Documentation
+- **README.md**: Updated version to v2.5.0, added features section for template enforcement, auto-regen loops, blocking validation, architect auto-validation
+- **CHANGELOG.md**: Complete v2.5.0 entry with all changes documented
+- **Agent files**: 12 agents updated with explicit validation pseudocode and template calls
+
+### Technical Details
+- **Template types**: 11 total (areas, npc, monster, encounter, map, lore, quest, character, introduction, setting, appendix)
+- **Retry counts**: 3 retries for content agents, 2 retries for architect batch validation
+- **Validation gates**: 3 batch gates (Batch 1, 2, 3) with blocking behavior
+- **Agents affected**: 12 (5 template coverage + 7 auto-regen loops + architect validation)
+
+[2.5.0]: https://github.com/pauvalls/grimorio/compare/v2.4.0...v2.5.0
+
 ## [2.4.0] - 2026-05-09
 
 ### Added

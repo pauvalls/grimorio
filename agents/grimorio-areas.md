@@ -230,25 +230,46 @@ Cada área DEBE seguir EXACTAMENTE este formato:
 
 ## Validación de Canon (CRÍTICO)
 
-Antes de guardar cada acto:
+Antes de guardar cada acto, seguí este flujo de validación con reintentos automáticos:
 
 ```
-validate_canon(
-  campaign_id="{campaign_name}",
-  proposal={
-    id: "act-{n}",
-    type: "act",
-    content: "Resumen del acto...",
-    entity_references: [
-      { entity_id: "npc-001", location: "act_{n}" },
-      { entity_id: "monster-001", location: "act_{n}" },
-      { entity_id: "location-001", location: "act_{n}" }
-    ]
-  }
-)
+max_retries = 3
+retry_count = 0
+validation_passed = false
+
+WHILE retry_count < max_retries AND NOT validation_passed:
+    result = validate_canon(
+      campaign_id="{campaign_name}",
+      proposal={
+        id: "act-{n}",
+        type: "act",
+        content: "Resumen del acto...",
+        entity_references: [
+          { entity_id: "npc-001", location: "act_{n}" },
+          { entity_id: "monster-001", location: "act_{n}" },
+          { entity_id: "location-001", location: "act_{n}" }
+        ]
+      }
+    )
+    
+    IF result.status == "approved":
+        validation_passed = true
+    ELSE:
+        retry_count += 1
+        # Analizar feedback y corregir issues específicos
+        Fix issues based on result.feedback
+        # Regenerar contenido corregido
+        Continue loop
+
+IF validation_passed:
+    save_areas(campaign="{campaign_name}", content=...)
+ELSE:
+    # Abortar después de 3 reintentos fallidos
+    Report failure: "Validation failed after 3 retries. Issues: {result.feedback}"
+    DO NOT save content
 ```
 
-Si la validación falla (ej: NPC muerto aparece vivo, ubicación no existe en canon), corregí antes de guardar.
+**REGLA CRÍTICA:** NUNCA guardes contenido sin validación aprobada. Si la validación falla 3 veces, abortá y reportá los issues específicos para revisión manual.
 
 ## Checklist Pre-Guardado (v2.3)
 

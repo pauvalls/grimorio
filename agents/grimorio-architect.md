@@ -177,24 +177,48 @@ WHILE any subagent in Batch 1 is still running:
 
 **Do NOT proceed until Batch 1 completes.**
 
-### Phase 3c: Validate Batch 1 (Consistency Gate)
+### Phase 3c: Validate Batch 1 (Consistency Gate with Auto-Retry)
 Before proceeding, delegate validation to the narrative custodian:
 
 ```
-delegate(agent="grimorio-narrative-custodian", prompt="Validate Batch 1 for campaign '{campaign_name}' at {campaign_path}.
+max_retries = 2
+retry_count = 0
+validation_passed = false
 
-Read canon.json and narrative_state.json, then validate ALL Batch 1 content:
-- NPCs from npcs/npcs_and_factions.md
-- Bestiary from bestiary/bestiary.md
-- Maps from maps/maps_and_scenes.md
+WHILE retry_count <= max_retries AND NOT validation_passed:
+    delegate(agent="grimorio-narrative-custodian", prompt="Validate Batch 1 for campaign '{campaign_name}' at {campaign_path}.
 
-Check for: dead NPCs appearing alive, missing entities, world rule violations, level-appropriate encounters.
+    Read canon.json and narrative_state.json, then validate ALL Batch 1 content:
+    - NPCs from npcs/npcs_and_factions.md
+    - Bestiary from bestiary/bestiary.md
+    - Maps from maps/maps_and_scenes.md
 
-Return a validation report with status (approved/rejected) and specific fix suggestions if rejected.")
+    Check for: dead NPCs appearing alive, missing entities, world rule violations, level-appropriate encounters.
+
+    Return a validation report with status (approved/rejected) and specific fix suggestions if rejected.")
+    
+    Wait for delegation to complete
+    result = delegation_read(id)
+    
+    IF result.status == "approved":
+        validation_passed = true
+    ELSE:
+        retry_count += 1
+        IF retry_count <= max_retries:
+            # Analizar feedback y corregir issues específicos
+            Fix issues based on result.feedback
+            # Re-delegar regeneración de contenido corregido
+            Continue loop
+        ELSE:
+            # Max retries reached
+            Report failure: "Batch 1 validation failed after {max_retries} retries. Issues: {result.feedback}"
+            DO NOT proceed to Batch 2
+
+IF validation_passed:
+    Proceed to Batch 2
 ```
 
-If **rejected**: Review the feedback, fix the issues, and retry.
-If **approved**: Proceed to Batch 2.
+**BLOCKING CHECK:** If validation returns **rejected** after max retries, DO NOT proceed. Report failure and wait for manual intervention.
 
 ### Phase 3d: Report Batch 1
 
@@ -249,25 +273,50 @@ WHILE any subagent in Batch 2 is still running:
 
 **Do NOT proceed until Batch 2 completes.**
 
-### Phase 4c: Validate Batch 2 (Consistency Gate)
-Validate ALL Batch 2 content:
+### Phase 4c: Validate Batch 2 (Consistency Gate with Auto-Retry)
+Validate ALL Batch 2 content with auto-retry logic:
 
 ```
-delegate(agent="grimorio-narrative-custodian", prompt="Validate Batch 2 for campaign '{campaign_name}' at {campaign_path}.
+max_retries = 2
+retry_count = 0
+validation_passed = false
 
-Read canon.json and narrative_state.json, then validate:
-- Lore from lore.md
-- Setting Guide from setting-guide.md
-- Quests from quests/
-- Encounters from encounters/encounters.md
-- Characters from characters/
+WHILE retry_count <= max_retries AND NOT validation_passed:
+    delegate(agent="grimorio-narrative-custodian", prompt="Validate Batch 2 for campaign '{campaign_name}' at {campaign_path}.
 
-Check for: lore contradictions, setting guide inconsistencies, missing prerequisites, dead NPCs in quests, encounter balance.
+    Read canon.json and narrative_state.json, then validate:
+    - Lore from lore.md
+    - Setting Guide from setting-guide.md
+    - Quests from quests/
+    - Encounters from encounters/encounters.md
+    - Characters from characters/
 
-Return validation report with status and fixes.")
+    Check for: lore contradictions, setting guide inconsistencies, missing prerequisites, dead NPCs in quests, encounter balance.
+
+    Return validation report with status and fixes.")
+    
+    Wait for delegation to complete
+    result = delegation_read(id)
+    
+    IF result.status == "approved":
+        validation_passed = true
+    ELSE:
+        retry_count += 1
+        IF retry_count <= max_retries:
+            # Analizar feedback y corregir issues específicos
+            Fix issues based on result.feedback
+            # Re-delegar regeneración de contenido corregido
+            Continue loop
+        ELSE:
+            # Max retries reached
+            Report failure: "Batch 2 validation failed after {max_retries} retries. Issues: {result.feedback}"
+            DO NOT proceed to update narrative state
+
+IF validation_passed:
+    Proceed to Phase 4d (Update Narrative State)
 ```
 
-### Phase 4d: Update Narrative State
+**BLOCKING CHECK:** If validation returns **rejected** after max retries, DO NOT proceed. Report failure and wait for manual intervention.
 After Batch 2 is approved, delegate state update to custodian:
 
 ```
@@ -319,27 +368,54 @@ WHILE cartographer and acts subagents are running:
 
 **Do NOT proceed until Batch 3 completes.**
 
-### Phase 5c: Validate Batch 3 (Consistency Gate)
-Validate acts and SVG maps:
+### Phase 5c: Validate Batch 3 (Consistency Gate with Auto-Retry)
+Validate acts and SVG maps with auto-retry logic:
 
 ```
-delegate(agent="grimorio-narrative-custodian", prompt="Validate Batch 3 for campaign '{campaign_name}' at {campaign_path}.
+max_retries = 2
+retry_count = 0
+validation_passed = false
 
-Read canon.json and narrative_state.json, then validate:
-- All acts from acts/
-- SVG maps and dividers
+WHILE retry_count <= max_retries AND NOT validation_passed:
+    delegate(agent="grimorio-narrative-custodian", prompt="Validate Batch 3 for campaign '{campaign_name}' at {campaign_path}.
 
-Check for: NPC consistency across acts, timeline coherence, location consistency, act transitions.
+    Read canon.json and narrative_state.json, then validate:
+    - All acts from acts/
+    - SVG maps and dividers
 
-**CRITICAL: Check 12 — Chapter Narrative Structure**
-- Mode variety (max 2 consecutive acts with same mode)
-- Mode-content alignment (e.g., 'investigacion' requires investigation areas)
-- Asset chain continuity (Act N handoff → Act N+1 hook)
-- Running guidance word count (150-400 words)
-- Chapter objectives (2-3 per act)
+    Check for: NPC consistency across acts, timeline coherence, location consistency, act transitions.
 
-Return validation report with status and fixes.")
+    **CRITICAL: Check 12 — Chapter Narrative Structure**
+    - Mode variety (max 2 consecutive acts with same mode)
+    - Mode-content alignment (e.g., 'investigacion' requires investigation areas)
+    - Asset chain continuity (Act N handoff → Act N+1 hook)
+    - Running guidance word count (150-400 words)
+    - Chapter objectives (2-3 per act)
+
+    Return validation report with status and fixes.")
+    
+    Wait for delegation to complete
+    result = delegation_read(id)
+    
+    IF result.status == "approved":
+        validation_passed = true
+    ELSE:
+        retry_count += 1
+        IF retry_count <= max_retries:
+            # Analizar feedback y corregir issues específicos
+            Fix issues based on result.feedback
+            # Re-delegar regeneración de contenido corregido
+            Continue loop
+        ELSE:
+            # Max retries reached
+            Report failure: "Batch 3 validation failed after {max_retries} retries. Issues: {result.feedback}"
+            DO NOT proceed to report batch
+
+IF validation_passed:
+    Proceed to Phase 5d (Report Batch 3)
 ```
+
+**BLOCKING CHECK:** If validation returns **rejected** after max retries, DO NOT proceed. Report failure and wait for manual intervention.
 
 ### Phase 5d: Report Batch 3
 

@@ -25,7 +25,12 @@ Este documento CONTIENE SPOILERS. No compartilhar con jugadores. El DM lo usa co
 
 ## Tu Trabajo
 
-**PRIMERO** leé `{campaign_path}/canon.json` para entender los hechos canónicos, entidades, y reglas del mundo establecidas.
+**PRIMERO** leé el template:
+```
+get_template(type="setting")
+```
+
+**DESPUÉS** leé `{campaign_path}/canon.json` para entender los hechos canónicos, entidades, y reglas del mundo establecidas.
 Después, leé `{campaign_path}/lore.md` para entender el conflicto central, tono, y geografía.
 
 Generá la **SETTING GUIDE** usando `save_setting_guide`.

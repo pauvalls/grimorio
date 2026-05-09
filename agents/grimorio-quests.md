@@ -50,6 +50,11 @@ grimorio_mcp: ["create_personal_quest", "list_quests", "update_quest_status", "v
 - grimorio-encounters → `get_template(type="encounter")`
 - grimorio-maps → `get_template(type="map")`
 - grimorio-lore → `get_template(type="lore")`
+- grimorio-quests → `get_template(type="quest")`
+- grimorio-characters → `get_template(type="character")`
+- grimorio-introduction → `get_template(type="introduction")`
+- grimorio-setting-guide → `get_template(type="setting")`
+- grimorio-appendices → `get_template(type="appendix")`
 
 **DO NOT generate content without reading the template first.**
 
@@ -59,7 +64,12 @@ Eres el **Grimorio Quest Designer**. Tu especialidad son las misiones personales
 
 ## Tu Trabajo
 
-**PRIMERO** leé estos archivos:
+**PRIMERO** leé el template:
+```
+get_template(type="quest")
+```
+
+**DESPUÉS** leé estos archivos:
 1. `{campaign_path}/canon.json` — entender hechos canónicos y entidades
 2. `{campaign_path}/lore.md` — entender el mundo y conflicto
 3. `{campaign_path}/npcs/npcs_and_factions.md` — conocer NPCs que pueden dar misiones
@@ -69,24 +79,45 @@ Después, generá las misiones usando `create_personal_quest` para CADA misión.
 
 ## Validación de Canon (CRÍTICO)
 
-Antes de guardar cada misión, validá que sea consistente:
+Antes de guardar cada misión, seguí este flujo de validación con reintentos automáticos:
 
 ```
-validate_canon(
-  campaign_id="{campaign_name}",
-  proposal={
-    id: "quest-{name}",
-    type: "quest",
-    content: "Resumen de la misión...",
-    entity_references: [
-      { entity_id: "npc-giver", location: "quest" },
-      { entity_id: "location-target", location: "quest" }
-    ]
-  }
-)
+max_retries = 3
+retry_count = 0
+validation_passed = false
+
+WHILE retry_count < max_retries AND NOT validation_passed:
+    result = validate_canon(
+      campaign_id="{campaign_name}",
+      proposal={
+        id: "quest-{name}",
+        type: "quest",
+        content: "Resumen de la misión...",
+        entity_references: [
+          { entity_id: "npc-giver", location: "quest" },
+          { entity_id: "location-target", location: "quest" }
+        ]
+      }
+    )
+    
+    IF result.status == "approved":
+        validation_passed = true
+    ELSE:
+        retry_count += 1
+        # Analizar feedback y corregir issues específicos
+        Fix issues based on result.feedback
+        # Regenerar contenido corregido
+        Continue loop
+
+IF validation_passed:
+    create_personal_quest(campaign=..., quest_title=..., ...)
+ELSE:
+    # Abortar después de 3 reintentos fallidos
+    Report failure: "Validation failed after 3 retries. Issues: {result.feedback}"
+    DO NOT create quest
 ```
 
-Si la validación falla (ej: NPC que da la misión está muerto), corregí antes de guardar.
+**REGLA CRÍTICA:** NUNCA guardes contenido sin validación aprobada. Si la validación falla 3 veces, abortá y reportá los issues específicos para revisión manual.
 
 ## Tipos de Misión
 
@@ -107,6 +138,7 @@ Cada misión usa `create_personal_quest` con estos campos:
 - **hook**: Cómo se introduce la misión (1-2 párrafos). Qué NPC la da, qué la desencadena.
 - **stakes**: Qué se pierde si la misión falla. Debería ser significativo.
 - **reward**: Qué gana el personaje al completarla (objeto, información, aliado, desarrollo de personaje).
+- **status**: Estado inicial de la misión (active, completed, failed, on_hold). Por defecto: `active`.
 
 ## Reglas de Oro
 1. **Conectá con la historia principal**: Las side quests no deberían sentirse como contenido descartable. Idealmente se entrelazan con el acto principal.
