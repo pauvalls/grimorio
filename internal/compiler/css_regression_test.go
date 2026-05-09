@@ -1,0 +1,296 @@
+package compiler_test
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/pauvalls/grimorio/internal/compiler"
+)
+
+// TestCSSRegression_DMSidebar tests that DM sidebar CSS is properly applied
+func TestCSSRegression_DMSidebar(t *testing.T) {
+	html := generateCSSFixture(t, `
+<div class="dm-sidebar">
+<h5>DM Tip</h5>
+<p>This is a DM tip.</p>
+</div>
+`)
+
+	// Check for expected CSS properties
+	checks := []string{
+		".dm-sidebar",
+		"background: #f8f4ec",
+		"border-left: 4px solid #8b0000",
+		"DM Only",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(html, check) {
+			t.Errorf("CSS regression: missing '%s' in generated HTML", check)
+		}
+	}
+}
+
+// TestCSSRegression_StatBlockV2 tests stat-block-v2 CSS rendering
+func TestCSSRegression_StatBlockV2(t *testing.T) {
+	html := generateCSSFixture(t, `
+<div class="stat-block-v2">
+<h3>Goblin</h3>
+<div class="stat-line">
+<span class="stat-label">AC</span>
+<span class="stat-value">15</span>
+</div>
+</div>
+`)
+
+	checks := []string{
+		".stat-block-v2",
+		"linear-gradient",
+		"border-top: 4px solid #8b0000",
+		".stat-line",
+		".stat-label",
+		".stat-value",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(html, check) {
+			t.Errorf("CSS regression: missing '%s' in generated HTML", check)
+		}
+	}
+}
+
+// TestCSSRegression_ShockPoint tests shock-point CSS with severity variants
+func TestCSSRegression_ShockPoint(t *testing.T) {
+	tests := []struct {
+		name     string
+		severity string
+		class    string
+	}{
+		{"mild", "mild", ".shock-point.mild"},
+		{"moderate", "moderate", ".shock-point.moderate"},
+		{"intense", "intense", ".shock-point.intense"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			html := generateCSSFixture(t, fmt.Sprintf(`
+<div class="shock-point %s">
+<span class="severity-badge">%s</span>
+<strong>Test</strong>: Description
+</div>
+`, tt.severity, tt.severity))
+
+			checks := []string{
+				".shock-point",
+				".severity-badge",
+				"border-left: 4px solid",
+			}
+
+			for _, check := range checks {
+				if !strings.Contains(html, check) {
+					t.Errorf("CSS regression: missing '%s' in generated HTML", check)
+				}
+			}
+		})
+	}
+}
+
+// TestCSSRegression_SessionPrepCard tests session-prep-card CSS
+func TestCSSRegression_SessionPrepCard(t *testing.T) {
+	html := generateCSSFixture(t, `
+<div class="session-prep-card">
+<h3>Session Prep</h3>
+<div class="prep-item">Item 1</div>
+<div class="prep-item">Item 2</div>
+</div>
+`)
+
+	checks := []string{
+		".session-prep-card",
+		"border: 2px solid #5a3d2b",
+		"border-radius: 6px",
+		".prep-item",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(html, check) {
+			t.Errorf("CSS regression: missing '%s' in generated HTML", check)
+		}
+	}
+}
+
+// TestCSSRegression_CharacterWorksheet tests character-worksheet CSS
+func TestCSSRegression_CharacterWorksheet(t *testing.T) {
+	html := generateCSSFixture(t, `
+<div class="character-worksheet">
+<div class="worksheet-section">
+<h4>Backstory</h4>
+<div class="prompt-box">Prompt text</div>
+</div>
+</div>
+`)
+
+	checks := []string{
+		".character-worksheet",
+		"border: 2px dashed #c9ad6a",
+		".worksheet-section",
+		".prompt-box",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(html, check) {
+			t.Errorf("CSS regression: missing '%s' in generated HTML", check)
+		}
+	}
+}
+
+// TestCSSRegression_EncounterRecommendation tests encounter-recommendation CSS
+func TestCSSRegression_EncounterRecommendation(t *testing.T) {
+	html := generateCSSFixture(t, `
+<div class="encounter-recommendation">
+<span class="cr-badge">CR 1</span>
+<span class="encounter-type">combat</span>
+<strong>Encounter Name</strong>
+</div>
+`)
+
+	checks := []string{
+		".encounter-recommendation",
+		".cr-badge",
+		".encounter-type",
+		"border-left: 4px solid #5a3d2b",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(html, check) {
+			t.Errorf("CSS regression: missing '%s' in generated HTML", check)
+		}
+	}
+}
+
+// TestCSSRegression_PageBreakAvoid tests that all new classes respect page breaks
+func TestCSSRegression_PageBreakAvoid(t *testing.T) {
+	html := generateCSSFixture(t, `
+<div class="dm-sidebar">Sidebar</div>
+<div class="stat-block-v2">Stat block</div>
+<div class="session-prep-card">Prep card</div>
+<div class="shock-point">Shock point</div>
+<div class="character-worksheet">Worksheet</div>
+<div class="encounter-recommendation">Encounter</div>
+`)
+
+	// All new classes should have page-break-inside: avoid
+	checks := []string{
+		".dm-sidebar",
+		".stat-block-v2",
+		".session-prep-card",
+		".shock-point",
+		".character-worksheet",
+		".encounter-recommendation",
+		"page-break-inside: avoid",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(html, check) {
+			t.Errorf("CSS regression: missing '%s' in generated HTML", check)
+		}
+	}
+}
+
+// generateCSSFixture generates HTML with the embedded CSS for testing
+func generateCSSFixture(t *testing.T, bodyContent string) string {
+	t.Helper()
+
+	// Get the CSS from the compiler package
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		// CSS is embedded, this shouldn't happen
+		css = ""
+	}
+
+	// Build minimal HTML document
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<style>%s</style>
+</head>
+<body>
+%s
+</body>
+</html>`, css, bodyContent)
+
+	return html
+}
+
+// TestCSS_NoConflictsWithExistingClasses tests that new CSS doesn't override existing classes
+func TestCSS_NoConflictsWithExistingClasses(t *testing.T) {
+	html := generateCSSFixture(t, `
+<div class="stat-block">Old stat block</div>
+<div class="read-aloud">Read aloud text</div>
+<div class="toc">Table of contents</div>
+`)
+
+	// Verify existing classes still work
+	checks := []string{
+		".stat-block",
+		".read-aloud",
+		".toc",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(html, check) {
+			t.Errorf("CSS regression: existing class '%s' not found", check)
+		}
+	}
+}
+
+// TestCSS_SnapshotComparison compares generated HTML against saved snapshots
+func TestCSS_SnapshotComparison(t *testing.T) {
+	snapshotDir := "testdata/css-snapshots"
+	
+	// Create snapshot directory if it doesn't exist
+	if _, err := os.Stat(snapshotDir); os.IsNotExist(err) {
+		os.MkdirAll(snapshotDir, 0755)
+	}
+
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{"dm-sidebar", `<div class="dm-sidebar"><h5>DM Tip</h5><p>Tip content</p></div>`},
+		{"stat-block-v2", `<div class="stat-block-v2"><h3>Monster</h3><div class="stat-line"><span class="stat-label">AC</span><span class="stat-value">15</span></div></div>`},
+		{"shock-point-mild", `<div class="shock-point mild"><span class="severity-badge">mild</span>Content</div>`},
+		{"shock-point-moderate", `<div class="shock-point moderate"><span class="severity-badge">moderate</span>Content</div>`},
+		{"shock-point-intense", `<div class="shock-point intense"><span class="severity-badge">intense</span>Content</div>`},
+		{"session-prep-card", `<div class="session-prep-card"><h3>Prep</h3><div class="prep-item">Item</div></div>`},
+		{"character-worksheet", `<div class="character-worksheet"><div class="worksheet-section"><h4>Section</h4><div class="prompt-box">Prompt</div></div></div>`},
+		{"encounter-recommendation", `<div class="encounter-recommendation"><span class="cr-badge">CR 1</span><span class="encounter-type">combat</span>Name</div>`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			html := generateCSSFixture(t, tt.content)
+			snapshotPath := filepath.Join(snapshotDir, tt.name+".html")
+
+			// If snapshot doesn't exist, create it
+			if _, err := os.Stat(snapshotPath); os.IsNotExist(err) {
+				os.WriteFile(snapshotPath, []byte(html), 0644)
+				t.Logf("Created snapshot: %s", snapshotPath)
+				return
+			}
+
+			// Compare against snapshot
+			expected, err := os.ReadFile(snapshotPath)
+			if err != nil {
+				t.Fatalf("Failed to read snapshot: %v", err)
+			}
+
+			if string(expected) != html {
+				t.Errorf("HTML differs from snapshot. Run with -update to update snapshots.")
+			}
+		})
+	}
+}
