@@ -223,7 +223,25 @@ setup_plugin() {
     "command": "${CLAUDE_PLUGIN_ROOT}/grimorio",
     "args": [],
     "env": {}
-    }
+  }
+}
+EOF
+        else
+            cat > "$plugin_dir/.mcp.json" << EOF
+{
+  "grimorio": {
+    "command": "$plugin_dir/grimorio",
+    "args": [],
+    "env": {}
+  }
+}
+EOF
+        fi
+
+        success "Plugin installed to $plugin_dir"
+    done
+
+    configure_opencode_mcp
 }
 
 sync_command_from_agent() {
