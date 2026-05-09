@@ -114,6 +114,8 @@ func GetTemplate(tmplType string) (string, error) {
 		return sessionPrepTemplate, nil
 	case "character-sheet":
 		return characterSheetTemplate, nil
+	case "dnd-style":
+		return dndCSS, nil
 	default:
 		return "", fmt.Errorf("unknown template type: %s", tmplType)
 	}
@@ -185,6 +187,8 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 		{"Apéndice C: Encuentros", filepath.Join(c.CampaignDir, "encounters"), true},
 		{"Apéndice D: Mapas de Referencia", filepath.Join(c.CampaignDir, "maps"), true},
 		{"Appendices", filepath.Join(c.CampaignDir, "appendices.md"), false},
+		{"Apéndice G: Character Sheets", filepath.Join(c.CampaignDir, "characters"), true},
+		{"Apéndice H: Quests", filepath.Join(c.CampaignDir, "quests"), true},
 	}
 
 	var htmlParts []string

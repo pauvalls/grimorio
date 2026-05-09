@@ -82,17 +82,18 @@ func (s *CampaignService) generateSessionZero(campaign *domain.Campaign) error {
 	}
 
 	data := struct {
-		Name                string
-		Title               string
-		Setting             string
-		LevelRange          string
-		Tone                string
-		HouseRules          string
-		StartingLevel       string
-		AllowedSources      string
-		StatMethod          string
+		Name                 string
+		Title                string
+		Setting              string
+		LevelRange           string
+		Tone                 string
+		HouseRules           string
+		StartingLevel        string
+		AllowedSources       string
+		StatMethod           string
 		SuggestedBackgrounds string
-		ToneDescription     string
+		ToneDescription      string
+		ShockPoints          []domain.ShockPoint
 	}{
 		Name:                 campaign.Name,
 		Title:                campaign.Title,
@@ -105,6 +106,26 @@ func (s *CampaignService) generateSessionZero(campaign *domain.Campaign) error {
 		StatMethod:           "Standard Array (15, 14, 13, 12, 10, 8) o Point Buy",
 		SuggestedBackgrounds: "Acolyte, Criminal, Folk Hero, Sage, Soldier",
 		ToneDescription:      "Una aventura épica donde los héroes enfrentan desafíos crecientes mientras descubren secretos del mundo.",
+		ShockPoints: []domain.ShockPoint{
+			{
+				Type:        "Violencia",
+				Severity:    "moderate",
+				Description: "Combate fantástico, descripciones de heridas y sangre. No incluye tortura gráfica.",
+				SafetyTools: []string{"X-Card", "Fade to black"},
+			},
+			{
+				Type:        "Horror",
+				Severity:    "mild",
+				Description: "Imaginería perturbadora, criaturas aterradoras. Consultar límites del grupo.",
+				SafetyTools: []string{"X-Card", "Lines and Veils"},
+			},
+			{
+				Type:        "Muerte de Personajes",
+				Severity:    "moderate",
+				Description: "Los personajes pueden morir permanentemente. Las decisiones tienen consecuencias.",
+				SafetyTools: []string{"X-Card", "Session Zero discussion"},
+			},
+		},
 	}
 
 	var buf bytes.Buffer
