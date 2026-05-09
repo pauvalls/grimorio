@@ -4,28 +4,31 @@ import "time"
 
 // Character represents a player character (PC)
 type Character struct {
-	ID            string          `json:"id"`
-	CampaignID    string          `json:"campaign_id"`
-	Name          string          `json:"name"`
-	PlayerName    string          `json:"player_name,omitempty"`
-	Race          string          `json:"race"`
-	Class         string          `json:"class"`
-	Level         int             `json:"level"`
-	Background    string          `json:"background"`
-	Alignment     string          `json:"alignment"`
-	Stats         Stats           `json:"stats"`
-	HP            HP              `json:"hp"`
-	AC            int             `json:"ac"`
-	Proficiency   int             `json:"proficiency_bonus"`
-	Skills        map[string]bool `json:"skills"`
-	Inventory     []Item          `json:"inventory"`
-	Features      []Feature       `json:"features"`
-	Spells        []Spell         `json:"spells,omitempty"`
-	Personality   Personality     `json:"personality"`
-	Relationships []Relationship  `json:"relationships"`
-	Status        string          `json:"status"` // alive, dead, missing, retired
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
+	ID              string          `json:"id"`
+	CampaignID      string          `json:"campaign_id"`
+	Name            string          `json:"name"`
+	PlayerName      string          `json:"player_name,omitempty"`
+	Race            string          `json:"race"`
+	Class           string          `json:"class"`
+	Level           int             `json:"level"`
+	Background      string          `json:"background"`
+	Alignment       string          `json:"alignment"`
+	Stats           Stats           `json:"stats"`
+	HP              HP              `json:"hp"`
+	AC              int             `json:"ac"`
+	Proficiency     int             `json:"proficiency_bonus"`
+	Skills          map[string]bool `json:"skills"`
+	Inventory       []Item          `json:"inventory"`
+	Features        []Feature       `json:"features"`
+	Spells          []Spell         `json:"spells,omitempty"`
+	Personality     Personality     `json:"personality"`
+	Relationships   []Relationship  `json:"relationships"`
+	BackstoryHooks  []string        `json:"backstory_hooks,omitempty"`
+	Secrets         []string        `json:"secrets,omitempty"`
+	Goals           []string        `json:"goals,omitempty"`
+	Status          string          `json:"status"` // alive, dead, missing, retired
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
 }
 
 // Stats represents ability scores

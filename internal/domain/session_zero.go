@@ -7,16 +7,25 @@ import (
 
 // SessionZeroGuide represents a comprehensive Session Zero guide for a campaign.
 type SessionZeroGuide struct {
-	CampaignID         string                `json:"campaign_id"`
-	CampaignPitch      string                `json:"campaign_pitch"`
-	Tone               string                `json:"tone"`
-	Themes             []string              `json:"themes"`
-	ContentWarnings    []ContentWarning      `json:"content_warnings"`
-	SessionExpectations SessionExpectations  `json:"session_expectations"`
-	SafetyTools        []SafetyTool          `json:"safety_tools"`
-	CharacterCreation  CharacterCreationGuide `json:"character_creation"`
-	HouseRules         []HouseRule           `json:"house_rules"`
-	Agenda             []SessionAgendaItem   `json:"agenda"`
+	CampaignID          string                `json:"campaign_id"`
+	CampaignPitch       string                `json:"campaign_pitch"`
+	Tone                string                `json:"tone"`
+	Themes              []string              `json:"themes"`
+	ContentWarnings     []ContentWarning      `json:"content_warnings"`
+	SessionExpectations SessionExpectations   `json:"session_expectations"`
+	SafetyTools         []SafetyTool          `json:"safety_tools"`
+	CharacterCreation   CharacterCreationGuide `json:"character_creation"`
+	HouseRules          []HouseRule           `json:"house_rules"`
+	Agenda              []SessionAgendaItem   `json:"agenda"`
+	ShockPoints         []ShockPoint          `json:"shock_points,omitempty"`
+}
+
+// ShockPoint represents a content warning with severity and safety tools.
+type ShockPoint struct {
+	Type         string   `json:"type"`         // Type of content (violence, horror, etc.)
+	Severity     string   `json:"severity"`     // mild, moderate, intense
+	Description  string   `json:"description"`  // Detailed description
+	SafetyTools  []string `json:"safety_tools"` // Recommended safety tools for this shock point
 }
 
 // ContentWarning represents a content warning with severity.

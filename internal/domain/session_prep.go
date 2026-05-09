@@ -4,14 +4,44 @@ import "time"
 
 // SessionPrep is a synthesized prep sheet for the next session
 type SessionPrep struct {
-	CampaignID      string    `json:"campaign_id"`
-	SessionNum      int       `json:"session_num"`
-	PreviouslyOn    string    `json:"previously_on"`
-	LikelyScenarios []string  `json:"likely_scenarios"`
-	RelevantNPCs    []string  `json:"relevant_npcs"`
-	ActiveQuests    []string  `json:"active_quests"`
-	Reminders       []string  `json:"reminders"`
-	PrepDate        time.Time `json:"prep_date"`
+	CampaignID             string                 `json:"campaign_id"`
+	SessionNum             int                    `json:"session_num"`
+	PreviouslyOn           string                 `json:"previously_on"`
+	LikelyScenarios        []string               `json:"likely_scenarios"`
+	RelevantNPCs           []string               `json:"relevant_npcs"`
+	ActiveQuests           []string               `json:"active_quests"`
+	Reminders              []string               `json:"reminders"`
+	PrepDate               time.Time              `json:"prep_date"`
+	EncounterRecommendations []EncounterRecommendation `json:"encounter_recommendations,omitempty"`
+	LootSuggestions        []LootSuggestion       `json:"loot_suggestions,omitempty"`
+	NPCAppearances         []NPCAppearance        `json:"npc_appearances,omitempty"`
+}
+
+// EncounterRecommendation represents a recommended encounter for a session.
+type EncounterRecommendation struct {
+	Name        string   `json:"name"`
+	CR          string   `json:"cr"`
+	Type        string   `json:"type"` // combat, social, exploration, mixed
+	Description string   `json:"description"`
+	Context     string   `json:"context,omitempty"` // Narrative context for this encounter
+}
+
+// LootSuggestion represents a suggested loot reward.
+type LootSuggestion struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"` // weapon, armor, consumable, magical, gold
+	Rarity      string `json:"rarity"` // common, uncommon, rare, very_rare, legendary
+	Description string `json:"description"`
+	Context     string `json:"context,omitempty"` // Why this loot is appropriate
+}
+
+// NPCAppearance represents an NPC that may appear in a session.
+type NPCAppearance struct {
+	NPCID       string `json:"npc_id"`
+	Name        string `json:"name"`
+	Role        string `json:"role"`
+	Context     string `json:"context"` // Why/how they appear in this session
+	Importance  string `json:"importance"` // major, minor, cameo
 }
 
 // FlowchartNode represents a node in a campaign flowchart
