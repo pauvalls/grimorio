@@ -96,7 +96,7 @@ func (m *MagicItem) Validate() error {
 	if m.Rarity == "" {
 		return errors.New("rarity is required")
 	}
-	if !isValidRarity(m.Rarity) {
+	if !IsValidRarity(m.Rarity) {
 		return fmt.Errorf("invalid rarity: %s", m.Rarity)
 	}
 	if m.Curse != nil && m.Curse.RemovalMethod == "" {
@@ -127,7 +127,7 @@ func (m *MagicItem) Bonus() int {
 }
 
 // IsValidRarity checks if a rarity string is valid.
-func isValidRarity(rarity MagicItemRarity) bool {
+func IsValidRarity(rarity MagicItemRarity) bool {
 	switch rarity {
 	case RarityCommon, RarityUncommon, RarityRare, RarityVeryRare, RarityLegendary, RarityArtifact:
 		return true
