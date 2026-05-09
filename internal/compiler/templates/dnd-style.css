@@ -470,3 +470,218 @@ h3 .area-number {
   font-size: 9pt;
   color: #1a1a1a;
 }
+
+/* ==========================================
+   DM Sidebar - DM-only content (tips, secrets)
+   ========================================== */
+.dm-sidebar {
+  background: #f8f4ec;
+  border-left: 4px solid #8b0000;
+  border-top: 1px dashed #c9ad6a;
+  border-bottom: 1px dashed #c9ad6a;
+  border-right: 1px dashed #c9ad6a;
+  padding: 10px 14px;
+  margin: 12px 0;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.dm-sidebar h5 {
+  font-family: 'Cinzel', serif;
+  font-size: 9pt;
+  color: #8b0000;
+  margin: 0 0 6px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dm-sidebar::before {
+  content: "DM Only";
+  display: block;
+  font-weight: bold;
+  font-family: 'Cinzel', serif;
+  font-size: 8pt;
+  color: #8b0000;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ==========================================
+   Stat Block v2 - Enhanced stat blocks for NPCs/monsters
+   ========================================== */
+.stat-block-v2 {
+  background: linear-gradient(180deg, #fdf1dc 0%, #f5e6c8 100%);
+  border: 2px solid #c9ad6a;
+  border-top: 4px solid #8b0000;
+  border-bottom: 4px solid #8b0000;
+  padding: 14px 16px;
+  margin: 14px 0;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
+  box-shadow: 4px 4px 8px rgba(0,0,0,0.2);
+  border-radius: 3px;
+}
+
+.stat-block-v2 h3 {
+  color: #8b0000;
+  border-bottom: 2px solid #c9ad6a;
+  margin-top: 0;
+  font-size: 13pt;
+  padding-bottom: 6px;
+}
+
+.stat-block-v2 .stat-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px dotted #c9ad6a;
+  font-size: 9pt;
+}
+
+.stat-block-v2 .stat-label {
+  font-weight: bold;
+  color: #5a3d2b;
+}
+
+.stat-block-v2 .stat-value {
+  color: #1a1a1a;
+}
+
+/* ==========================================
+   Session Prep Card - Card-style container for session prep
+   ========================================== */
+.session-prep-card {
+  background: #fff;
+  border: 2px solid #5a3d2b;
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+}
+
+.session-prep-card h3 {
+  color: #5a3d2b;
+  border-bottom: 2px solid #c9ad6a;
+  margin-top: 0;
+  padding-bottom: 6px;
+  font-size: 11pt;
+}
+
+.session-prep-card .prep-item {
+  padding: 6px 0;
+  border-bottom: 1px dotted #c9ad6a;
+}
+
+.session-prep-card .prep-item:last-child {
+  border-bottom: none;
+}
+
+/* ==========================================
+   Shock Point - Content warnings with severity levels
+   ========================================== */
+.shock-point {
+  background: #fff5f5;
+  border-left: 4px solid #c41e3a;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-size: 9pt;
+  column-break-inside: avoid;
+}
+
+.shock-point.mild {
+  border-left-color: #f0ad4e;
+  background: #fffcf5;
+}
+
+.shock-point.moderate {
+  border-left-color: #d9534f;
+  background: #fff5f5;
+}
+
+.shock-point.intense {
+  border-left-color: #c41e3a;
+  background: #fff0f0;
+}
+
+.shock-point .severity-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 7pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  background: #5a3d2b;
+  color: #f5f0e6;
+  margin-right: 6px;
+}
+
+/* ==========================================
+   Character Worksheet - Structured layout for character creation
+   ========================================== */
+.character-worksheet {
+  background: #faf8f3;
+  border: 2px dashed #c9ad6a;
+  padding: 16px;
+  margin: 12px 0;
+  column-break-inside: avoid;
+}
+
+.character-worksheet h4 {
+  color: #8b0000;
+  border-bottom: 1px solid #c9ad6a;
+  padding-bottom: 4px;
+  margin-top: 0;
+}
+
+.character-worksheet .worksheet-section {
+  margin: 12px 0;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e0d5c0;
+  border-radius: 4px;
+}
+
+.character-worksheet .prompt-box {
+  background: #f0ebe0;
+  border-left: 3px solid #5a3d2b;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-style: italic;
+  font-size: 9pt;
+}
+
+/* ==========================================
+   Encounter Recommendation - Card for encounter recommendations
+   ========================================== */
+.encounter-recommendation {
+  background: #f5f0e6;
+  border: 1px solid #c9ad6a;
+  border-left: 4px solid #5a3d2b;
+  padding: 10px 12px;
+  margin: 8px 0;
+  column-break-inside: avoid;
+}
+
+.encounter-recommendation .cr-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #8b0000;
+  color: #f5f0e6;
+  border-radius: 3px;
+  font-size: 8pt;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.encounter-recommendation .encounter-type {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #c9ad6a;
+  color: #1a1a1a;
+  border-radius: 3px;
+  font-size: 8pt;
+  margin-left: 4px;
+}
