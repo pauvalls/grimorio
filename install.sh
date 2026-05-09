@@ -213,15 +213,24 @@ setup_plugin() {
         # Copy binaries
         cp -f "$BINARY_DIR"/{grimorio,migrate-v1-to-v2} "$plugin_dir/"
 
-        # Copy agents
-        [ -d "$INSTALL_DIR/agents" ] && cp -f "$INSTALL_DIR/agents"/grimorio-*.md "$plugin_dir/agents/"
+        # Copy agents (if exist)
+        if [ -d "$INSTALL_DIR/agents" ]; then
+            for f in "$INSTALL_DIR/agents"/grimorio-*.md; do
+                [ -f "$f" ] && cp -f "$f" "$plugin_dir/agents/"
+            done
+        fi
 
-        # Copy skills
-        [ -d "$INSTALL_DIR/skills" ] && cp -f "$INSTALL_DIR/skills"/grimorio-*.md "$plugin_dir/skills/"
+        # Copy skills (if exist)
+        if [ -d "$INSTALL_DIR/skills" ]; then
+            for f in "$INSTALL_DIR/skills"/grimorio-*.md; do
+                [ -f "$f" ] && cp -f "$f" "$plugin_dir/skills/"
+            done
+        fi
 
-        # Copy templates
-        [ -d "$INSTALL_DIR/internal/compiler/templates" ] && \
-            cp -r "$INSTALL_DIR/internal/compiler/templates"/* "$plugin_dir/internal/compiler/templates/"
+        # Copy templates (if exist)
+        if [ -d "$INSTALL_DIR/internal/compiler/templates" ]; then
+            cp -r "$INSTALL_DIR/internal/compiler/templates"/* "$plugin_dir/internal/compiler/templates/" 2>/dev/null || true
+        fi
 
         # Create .mcp.json
         cat > "$plugin_dir/.mcp.json" << EOF
