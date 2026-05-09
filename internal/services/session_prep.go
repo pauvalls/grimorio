@@ -13,6 +13,7 @@ import (
 type SessionPrepService struct {
 	canonRepo   repository.CanonRepository
 	stateRepo   repository.NarrativeStateRepository
+	generator   *SessionGenerator
 }
 
 // NewSessionPrepService creates a new session prep service
@@ -20,6 +21,7 @@ func NewSessionPrepService(canonRepo repository.CanonRepository, stateRepo repos
 	return &SessionPrepService{
 		canonRepo: canonRepo,
 		stateRepo: stateRepo,
+		generator: NewSessionGenerator(canonRepo, stateRepo),
 	}
 }
 
@@ -205,4 +207,58 @@ func (s *SessionPrepService) generateReminders(state *domain.NarrativeState, doc
 	}
 
 	return reminders
+}
+
+// GetPrepWithScenarios extends GetPrep with encounter recommendations, loot suggestions, and NPC appearances.
+func (s *SessionPrepService) GetPrepWithScenarios(ctx context.Context, campaignID string, sessionNum int) (*domain.SessionPrep, []string, error) {
+	prep, warnings, err := s.GetPrep(ctx, campaignID, sessionNum)
+	if err != nil {
+		return nil, warnings, err
+	}
+
+	// Get party level for loot generation
+	partyLevel := s.getPartyLevel(campaignID)
+
+	// Generate encounter recommendations
+	encounters, err := s.generator.GenerateEncounterRecommendations(ctx, campaignID, sessionNum)
+	if err != nil {
+		warnings = append(warnings, fmt.Sprintf("failed to generate encounters: %v", err))
+	} else {
+		prep.EncounterRecommendations = encounters
+	}
+
+	// Generate loot suggestions
+	loot, err := s.generator.GenerateLootSuggestions(ctx, campaignID, partyLevel)
+	if err != nil {
+		warnings = append(warnings, fmt.Sprintf("failed to generate loot: %v", err))
+	} else {
+		prep.LootSuggestions = loot
+	}
+
+	// Generate NPC appearances
+	npcs, err := s.generator.GenerateNPCAppearances(ctx, campaignID, sessionNum)
+	if err != nil {
+		warnings = append(warnings, fmt.Sprintf("failed to generate NPC appearances: %v", err))
+	} else {
+		prep.NPCAppearances = npcs
+	}
+
+	return prep, warnings, nil
+}
+
+// getPartyLevel estimates party level from campaign state.
+func (s *SessionPrepService) getPartyLevel(campaignID string) int {
+	state, err := s.stateRepo.Load(campaignID)
+	if err != nil || state == nil {
+		return 1
+	}
+
+	// Estimate based on session count (typical progression)
+	if state.CurrentSession >= 10 {
+		return 10
+	}
+	if state.CurrentSession >= 5 {
+		return 5
+	}
+	return 1 + state.CurrentSession
 }
