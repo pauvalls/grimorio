@@ -1,0 +1,17 @@
+## Milestone XP Progression
+
+### Chapter {{.ChapterNumber}}: {{.ChapterTitle}}
+
+**Level Range:** {{.LevelRange.Min}}-{{.LevelRange.Max}}
+
+| Session | XP Threshold | Cumulative XP | Level | Sessions to Level |
+|---------|-------------|---------------|-------|-------------------|
+{{range .Milestones}}| {{.SessionNumber}} | {{.XPThreshold}} | {{.CumulativeXP}} | {{.LevelAchieved}} | {{.SessionsToLevel}} |
+{{end}}
+
+---
+
+**DM Notes:**
+- Award XP at the end of each session based on milestone completion
+- Adjust pacing if sessions run longer or shorter than expected
+- Consider story milestones in addition to session count

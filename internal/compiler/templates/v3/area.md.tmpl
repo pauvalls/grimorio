@@ -1,0 +1,45 @@
+## {{.AreaNumber}}. {{.Title}}
+
+**Level Range:** {{.LevelRange.Min}}-{{.LevelRange.Max}}
+
+{{if .ReadAloud}}
+> {{.ReadAloud}}
+{{end}}
+
+### Overview
+
+{{.Summary}}
+
+### Features
+
+{{range .Features}}
+- **{{.Name}}** ({{.Type}}) {{if .Hidden}}[Hidden]{{end}}: {{.Description}}{{if .DC}} (DC {{.DC}}){{end}}
+{{end}}
+
+### Encounters
+
+{{range .Encounters}}
+- **{{.EncounterID}}**: {{.Trigger}} (CR {{.CRTotal}}, {{.XPValue}} XP)
+{{end}}
+
+### NPCs
+
+{{range .NPCs}}
+- **{{.NPCID}}** ({{.Role}}): {{.InteractionNotes}}
+{{end}}
+
+### Treasure
+
+{{range .Treasure}}
+- **{{.Name}}**: {{.Description}}{{if .ValueGP}} ({{.ValueGP}} gp){{end}}
+{{end}}
+
+### Development
+
+{{.Development}}
+
+{{range .DMSidebars}}
+> **DM Sidebar: {{.Title}}**
+>
+> {{.Content}}
+{{end}}
