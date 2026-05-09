@@ -118,7 +118,7 @@ This creates player-facing quest descriptions without spoilers.
 
 ### Use the Generated Acts
 
-Your campaign's `acts/` directory contains numbered areas in WotC format:
+Your campaign's `areas/` directory contains numbered areas in WotC format:
 
 ```markdown
 ### Area 1: Entrance Hall
@@ -374,7 +374,7 @@ Esto crea descripciones de misiones para jugadores sin spoilers.
 
 ### Usar los Actos Generados
 
-El directorio `acts/` de tu campaña contiene áreas numeradas en formato WotC:
+El directorio `areas/` de tu campaña contiene áreas numeradas en formato WotC:
 
 ```markdown
 ### Área 1: Hall de Entrada

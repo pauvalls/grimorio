@@ -87,7 +87,7 @@ Campaigns are stored in `~/campaigns/` by default:
     ├── campaign.pdf          # Final PDF
     ├── campaign.html         # HTML version
     ├── lore.md               # World backstory
-    ├── acts/                 # Chapters with areas
+    ├── areas/                 # Chapters with areas
     ├── npcs/                 # NPCs and factions
     ├── bestiary/             # Monster stat blocks
     ├── characters/           # Character sheets
@@ -180,7 +180,7 @@ Las campañas se guardan en `~/campaigns/` por defecto:
     ├── campaign.pdf          # PDF final
     ├── campaign.html         # Versión HTML
     ├── lore.md               # Trasfondo del mundo
-    ├── acts/                 # Capítulos con áreas
+    ├── areas/                 # Capítulos con áreas
     ├── npcs/                 # NPCs y facciones
     ├── bestiary/             # Estadísticas de monstruos
     ├── characters/           # Hojas de personaje

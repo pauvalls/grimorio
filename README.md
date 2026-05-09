@@ -163,7 +163,7 @@ Ver [CHANGELOG.md](CHANGELOG.md) para detalles completos.
     ├── campaign.pdf          # Final PDF / PDF final
     ├── campaign.html         # HTML version / versión HTML
     ├── lore.md               # World backstory / Trasfondo del mundo
-    ├── acts/                 # Chapters with areas / Capítulos con áreas
+    ├── areas/                 # Chapters with areas / Capítulos con áreas
     ├── npcs/                 # NPCs and factions / NPCs y facciones
     ├── bestiary/             # Monster stat blocks / Estadísticas de monstruos
     ├── encounters/           # Combat challenges / Desafíos de combate
