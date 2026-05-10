@@ -344,29 +344,44 @@ Use update_narrative_state with session_num=0.")
 ✅ Narrative State: Updated
 ```
 
-### Phase 5: Batch 3 — SVG Maps + Acts (PARALLEL)
-SVG Maps necesita maps descriptions. Acts necesita TODO el contenido (lore, NPCs, bestiary, maps, quests, encounters, characters).
+### Phase 5: Batch 3 — SVG Maps + Sequential Acts
+SVG Maps necesita maps descriptions. Acts se generan SECUENCIALMENTE (1 acto por sub-agente) para evitar timeout.
 
-**1. Cartographer — SVG Maps + Dividers**
+**1. Cartographer — SVG Maps + Dividers (PARALLEL con acts)**
 ```
 delegate(agent="grimorio-cartographer", prompt="Generate ALL SVG assets for campaign '{campaign_name}' at {campaign_path}.\n\nSetting: {setting}\nTone: {tone}\n\nRead maps/maps.md and generate battle maps for EACH location. Generate {act_count} ornate dividers.")
 ```
 
-**2. Areas — Agent: grimorio-areas**
-```
-delegate(agent="grimorio-areas", prompt="Generate AREAS for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\nBrief: {brief_description}\n\nGenerate {act_count} acts with 10-15 numbered areas each. CRITICAL: Read ALL source files first:\n- lore.md\n- npcs/npcs_and_factions.md\n- bestiary/bestiary.md\n- maps/maps.md\n- quests/*.md\n- encounters/encounters.md\n- characters/*.md\n\nReference NPCs, creatures, quests, and characters by name. Use [SCENE: ...] placeholders for pivotal moments.")
-```
+**2. Areas — Sequential (1 acto por delegación)**
 
 `act_count` = 1 if `is_oneshot` else 3
+
+```
+act_ids = []
+FOR i = 1 TO act_count:
+    # Build context from previous acts so the sub-agent can reference them
+    previous_context = ""
+    IF i > 1:
+        previous_context = "Previous acts already generated at: acts/act-{1..i-1}.md. Read them to ensure continuity."
+    
+    delegate(agent="grimorio-areas", prompt="Generate ACT {i} of {act_count} for campaign '{campaign_name}' at {campaign_path}.\n\nThis is a {duration} campaign for levels {level_range}. Tone: {tone}.\n\n{previous_context}\n\nBrief: {brief_description}\n\nGenerate 10-15 numbered areas for this act. CRITICAL: Read ALL source files first:\n- lore.md\n- npcs/npcs_and_factions.md\n- bestiary/bestiary.md\n- maps/maps.md\n- quests/*.md (if any)\n- encounters/encounters.md\n- characters/*.md (if any)\n- acts/act-*.md (if previous acts exist)\n\nReference NPCs, creatures, quests, and characters by name. Use [SCENE: ...] placeholders for pivotal moments.\n\nIMPORTANT: Save using save_areas AFTER validation passes, then report the act_id.")
+    
+    Wait for delegation to complete
+    result = delegation_read(id)
+    act_ids = append(act_ids, result.act_id)
+    
+    # Report progress after each act
+    Report: "✅ Act {i}/{act_count} generated."
+```
 
 ### Phase 5b: Monitor Batch 3
 
 ```
-WHILE cartographer and acts subagents are running:
+WHILE cartographer subagent is running:
   delegation_list
 ```
 
-**Do NOT proceed until Batch 3 completes.**
+**Do NOT proceed until both cartographer and all sequential act delegations complete.**
 
 ### Phase 5c: Validate Batch 3 (Consistency Gate with Auto-Retry)
 Validate acts and SVG maps with auto-retry logic:
@@ -424,7 +439,7 @@ IF validation_passed:
 
 ✅ SVG Maps: {cuántos mapas, nombres}
 ✅ Dividers: {cuántos separadores}
-✅ Acts generados: {act_count}
+✅ Acts generados: {act_count} (secuenciales)
 ✅ Consistency Gate: PASSED
 ```
 

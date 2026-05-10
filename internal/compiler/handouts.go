@@ -26,7 +26,7 @@ func (c *Compiler) generateHandouts() (string, error) {
 	// Handout header
 	parts = append(parts, `<div class="handout-page" id="handouts">`)
 	parts = append(parts, `<h1>Player Handouts</h1>`)
-	parts = append(parts, `<p class="handout-note">Estas páginas están diseñadas para imprimir y entregar a los jugadores.</p>`)
+	parts = append(parts, `<!-- <p class="handout-note">Estas páginas están diseñadas para imprimir y entregar a los jugadores.</p> -->`)
 
 	// Try to generate each handout type
 	handoutGen := c.handoutRenderer()

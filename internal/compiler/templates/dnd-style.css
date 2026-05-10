@@ -231,6 +231,15 @@ tr {
   break-inside: avoid;
 }
 
+/* wkhtmltopdf table fix: prevent cell overflow and ensure borders render */
+table, tr, td, th {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+td p, th p {
+  margin: 0;
+}
+
 thead th {
   background: #5a3d2b;
   color: #f5f0e6;
@@ -239,6 +248,8 @@ thead th {
   font-weight: 700;
   text-align: left;
   border: 1px solid #3d2e1f;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 tbody td {
@@ -246,6 +257,8 @@ tbody td {
   border: 1px solid #c9ad6a;
   vertical-align: top;
   line-height: 1.4;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 tbody tr:nth-child(even) {

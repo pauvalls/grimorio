@@ -810,6 +810,13 @@ var (
 	imageRegex        = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	imgTagRegex       = regexp.MustCompile(`<img[^>]*(?:/\s*)?>`)
 
+	// readAloudPrefixRe strips **Read-Aloud:** or **Para Leer en Voz Alta:** labels from blockquote text
+	// (CSS .read-aloud::before pseudo-element provides the visual label, so the inline text would duplicate it)
+	readAloudPrefixRe = regexp.MustCompile(`^\*{2}(?:Read-Aloud|Para Leer en Voz Alta)\*{2}:\s*`)
+
+	// rawTagRe strips raw HTML tags (e.g. <div>, <span>) — <img> tags are preserved via stash/restore
+	rawTagRe = regexp.MustCompile(`<[^>]+>`)
+
 	blockquoteRe   = regexp.MustCompile(`^>\s*(.*)`)
 	codeAssetRegex = regexp.MustCompile("`assets/([\\w\\-]+\\.(svg|png|jpg|jpeg|gif|webp))`")
 	sceneRegex     = regexp.MustCompile(`\[SCENE:\s*(.*?)\]`)
@@ -860,6 +867,15 @@ func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID str
 func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int) string {
 	// Strip HTML comments before processing to prevent artifacts in PDF
 	md = htmlCommentRegex.ReplaceAllString(md, "")
+	// Strip raw HTML tags (except <img>) that would be escaped and rendered as visible text.
+	// Stash <img> tags, strip all remaining HTML tags, then restore <img> tags.
+	imgPlaceholder := "__IMG_TAG_PLACEHOLDER__"
+	imgStash := imgTagRegex.FindAllString(md, -1)
+	md = imgTagRegex.ReplaceAllString(md, imgPlaceholder)
+	md = rawTagRe.ReplaceAllString(md, "")
+	for _, imgTag := range imgStash {
+		md = strings.Replace(md, imgPlaceholder, imgTag, 1)
+	}
 
 	lines := strings.Split(md, "\n")
 	var out []string
@@ -901,6 +917,8 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		if text == "" {
 			return
 		}
+		// Strip **Read-Aloud:** or **Para Leer en Voz Alta:** label (CSS ::before provides it)
+		text = readAloudPrefixRe.ReplaceAllString(text, "")
 		escaped := processInlineText(text, baseDir, seenImages)
 		out = append(out, fmt.Sprintf(`<div class="read-aloud">%s</div>`, escaped))
 	}
