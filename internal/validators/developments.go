@@ -303,7 +303,8 @@ func countBranches(text string) int {
 
 func extractBoxedText(md string) []string {
 	var texts []string
-	pattern := regexp.MustCompile(`>>(?s:.+?)(?=\n>>|\n#|\z)`)
+	// Match >> followed by content until next >>, # heading, or end
+	pattern := regexp.MustCompile(`>>([\s\S]*?)(?=\n>>|\n#|$)`)
 	matches := pattern.FindAllString(md, -1)
 	for _, m := range matches {
 		texts = append(texts, strings.TrimPrefix(m, ">>"))

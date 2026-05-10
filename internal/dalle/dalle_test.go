@@ -22,8 +22,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestNew_FromEnv(t *testing.T) {
-	os.Setenv("OPENAI_API_KEY", "env-key")
-	defer os.Unsetenv("OPENAI_API_KEY")
+	_ = os.Setenv("OPENAI_API_KEY", "env-key")
+	defer func() { _ = os.Unsetenv("OPENAI_API_KEY") }()
 
 	client := New("")
 	if client == nil {

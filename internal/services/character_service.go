@@ -255,12 +255,13 @@ func calculateAC(class string, stats domain.Stats) int {
 
 	// Unarmored defense bonuses
 	if armor.Unarmored {
-		if class == "barbaro" {
+		switch class {
+		case "barbaro":
 			conMod := domain.CalculateModifier(stats.CON)
 			if conMod > 0 {
 				ac += conMod
 			}
-		} else if class == "monje" {
+		case "monje":
 			wisMod := domain.CalculateModifier(stats.WIS)
 			if wisMod > 0 {
 				ac += wisMod
@@ -559,8 +560,8 @@ func (s *CharacterService) generateBackstoryHooks(class, background, alignment s
 		"picaro":   {"Huyó de una vida criminal", "Busca limpiar su nombre"},
 	}
 
-	if hooks, ok := classHooks[class]; ok {
-		hooks = append(hooks, hooks...)
+	if classHook, ok := classHooks[class]; ok {
+		hooks = append(hooks, classHook...)
 	}
 
 	// Background-based hooks
@@ -571,8 +572,8 @@ func (s *CharacterService) generateBackstoryHooks(class, background, alignment s
 		"sabio":   {"Investiga un conocimiento prohibido", "Mentor desaparecido misteriosamente"},
 	}
 
-	if hooks, ok := bgHooks[background]; ok {
-		hooks = append(hooks, hooks...)
+	if bgHook, ok := bgHooks[background]; ok {
+		hooks = append(hooks, bgHook...)
 	}
 
 	// Ensure at least 2 hooks
@@ -601,8 +602,8 @@ func (s *CharacterService) generateSecrets(background, alignment string) []strin
 		"sabio":    {"Conocimiento demasiado peligroso", "Experimentos cuestionables"},
 	}
 
-	if secrets, ok := secretMap[background]; ok {
-		secrets = append(secrets, secrets...)
+	if secret, ok := secretMap[background]; ok {
+		secrets = append(secrets, secret...)
 	}
 
 	if len(secrets) == 0 {
@@ -623,8 +624,8 @@ func (s *CharacterService) generateGoals(class, alignment string) []string {
 		"picaro":   {"Acumular riqueza suficiente", "Vivir sin ataduras"},
 	}
 
-	if goals, ok := goalMap[class]; ok {
-		goals = append(goals, goals...)
+	if goal, ok := goalMap[class]; ok {
+		goals = append(goals, goal...)
 	}
 
 	// Alignment-based goals

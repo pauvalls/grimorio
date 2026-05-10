@@ -70,9 +70,7 @@ func (s *ConsequenceService) PropagateFactionChanges(ctx context.Context, campai
 
 	// BFS propagation through faction relationships
 	// TODO: Implement full propagation logic
-	for _, change := range changes {
-		result.PropagatedChanges = append(result.PropagatedChanges, change)
-	}
+	result.PropagatedChanges = append(result.PropagatedChanges, changes...)
 
 	return result, nil
 }

@@ -34,13 +34,13 @@ func (s *ItemService) GenerateItem(ctx context.Context, campaignID string, rarit
 		return nil, fmt.Errorf("invalid rarity: %s", rarity)
 	}
 
-	rand.Seed(time.Now().UnixNano())
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	item := &domain.MagicItem{
-		ID:                 fmt.Sprintf("item_%s_%d", campaignID, rand.Intn(10000)),
+		ID:                 fmt.Sprintf("item_%s_%d", campaignID, rng.Intn(10000)),
 		Name:               generateItemName(rarity, itemType),
 		Type:               itemType,
 		Rarity:             rarity,
-		AttunementRequired: rand.Intn(2) == 0, // 50% chance
+		AttunementRequired: rng.Intn(2) == 0, // 50% chance
 		Properties:         generateProperties(rarity, itemType),
 		Lore:               generateLore(rarity),
 		Hooks:              generateHooks(),
@@ -117,17 +117,18 @@ func generateProperties(rarity domain.MagicItemRarity, itemType domain.MagicItem
 		bonus := 0
 		if rarity != domain.RarityCommon {
 			bonus = 1
-			if rarity == domain.RarityRare || rarity == domain.RarityVeryRare {
+			switch rarity {
+			case domain.RarityRare, domain.RarityVeryRare:
 				bonus = 2
-			} else if rarity == domain.RarityLegendary || rarity == domain.RarityArtifact {
+			case domain.RarityLegendary, domain.RarityArtifact:
 				bonus = 3
 			}
 		}
 		if bonus > 0 {
 			props = append(props, domain.MagicItemProperty{
-				Name:   "Enhancement Bonus",
+				Name:        "Enhancement Bonus",
 				Description: fmt.Sprintf("Grants a +%d bonus to attack and damage rolls", bonus),
-				Bonus:  bonus,
+				Bonus:       bonus,
 			})
 		}
 	}

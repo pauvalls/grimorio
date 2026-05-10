@@ -54,8 +54,8 @@ func TestNewRaphaelProvider(t *testing.T) {
 }
 
 func TestNewDalleProvider(t *testing.T) {
-	os.Setenv("OPENAI_API_KEY", "test-key")
-	defer os.Unsetenv("OPENAI_API_KEY")
+	_ = os.Setenv("OPENAI_API_KEY", "test-key")
+	defer func() { _ = os.Unsetenv("OPENAI_API_KEY") }()
 
 	d, err := NewDalleProvider("", "")
 	if err != nil {
@@ -76,7 +76,7 @@ func TestNewDalleProvider(t *testing.T) {
 }
 
 func TestNewDalleProvider_MissingKey(t *testing.T) {
-	os.Unsetenv("OPENAI_API_KEY")
+	_ = os.Unsetenv("OPENAI_API_KEY")
 
 	_, err := NewDalleProvider("", "")
 	if err == nil {
@@ -85,7 +85,7 @@ func TestNewDalleProvider_MissingKey(t *testing.T) {
 }
 
 func TestNewDalleProvider_CustomModel(t *testing.T) {
-	os.Setenv("OPENAI_API_KEY", "test-key")
+	_ = os.Setenv("OPENAI_API_KEY", "test-key")
 	defer os.Unsetenv("OPENAI_API_KEY")
 
 	d, _ := NewDalleProvider("test-key", "dall-e-2")

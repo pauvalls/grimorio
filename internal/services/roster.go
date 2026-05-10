@@ -172,7 +172,8 @@ func (s *AdventureRosterService) parseMarkdown(md string, actNum string) ([]doma
 		if m := headingRegex.FindStringSubmatch(trimmed); m != nil {
 			level := len(m[1])
 			text := strings.TrimSpace(m[2])
-			if level == 2 {
+			switch level {
+			case 2:
 				currentSection = text
 				currentArea = ""
 				// In dedicated encounter files, ## headings are encounter names
@@ -194,7 +195,7 @@ func (s *AdventureRosterService) parseMarkdown(md string, actNum string) ([]doma
 						})
 					}
 				}
-			} else if level == 3 {
+			case 3:
 				currentArea = text
 			}
 			continue

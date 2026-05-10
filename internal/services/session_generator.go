@@ -327,10 +327,10 @@ func (s *SessionGenerator) getRandomNPCs(doc *domain.CanonDocument, count int) [
 	}
 
 	// Shuffle and take up to count
-	rand.Seed(time.Now().UnixNano())
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	result := []domain.CanonEntity{}
 	for i := 0; i < count && i < len(npcs); i++ {
-		idx := rand.Intn(len(npcs))
+		idx := rng.Intn(len(npcs))
 		result = append(result, npcs[idx])
 		// Remove selected to avoid duplicates
 		npcs = append(npcs[:idx], npcs[idx+1:]...)

@@ -315,7 +315,7 @@ func (c *Compiler) generateTOC(sections []struct {
 		}
 
 		id := "sec-" + sanitizeID(sec.name)
-		b.WriteString(fmt.Sprintf(`<li><a href="#%s">%s</a><span class="page-ref"></span></li>`, id, html.EscapeString(sec.name)))
+		fmt.Fprintf(&b, `<li><a href="#%s">%s</a><span class="page-ref"></span></li>`, id, html.EscapeString(sec.name))
 
 		// In v2, extract areas from act files for hierarchical TOC
 		if c.CompilerVersion == 2 && sec.isDir && (strings.Contains(strings.ToLower(sec.name), "chapter") || strings.Contains(strings.ToLower(sec.name), "area")) {
@@ -323,7 +323,7 @@ func (c *Compiler) generateTOC(sections []struct {
 			if len(areas) > 0 {
 				b.WriteString(`<ul class="toc-areas">`)
 				for _, area := range areas {
-					b.WriteString(fmt.Sprintf(`<li><a href="#%s">%s</a><span class="page-ref"></span></li>`, area.ID, html.EscapeString(area.Name)))
+					fmt.Fprintf(&b, `<li><a href="#%s">%s</a><span class="page-ref"></span></li>`, area.ID, html.EscapeString(area.Name))
 				}
 				b.WriteString(`</ul>`)
 			}
@@ -403,8 +403,8 @@ func (c *Compiler) generateFactionTracker() string {
 	b.WriteString(`<table><thead><tr><th>Faction</th><th>Party</th><th>Score</th><th>Status</th></tr></thead><tbody>`)
 	for _, e := range matrix.Entries {
 		statusClass := "status-" + strings.ToLower(e.Status)
-		b.WriteString(fmt.Sprintf(`<tr class="%s"><td>%s</td><td>%s</td><td>%d</td><td>%s</td></tr>`,
-			statusClass, html.EscapeString(e.FactionID), html.EscapeString(e.PartyID), e.Score, html.EscapeString(e.Status)))
+		fmt.Fprintf(&b, `<tr class="%s"><td>%s</td><td>%s</td><td>%d</td><td>%s</td></tr>`,
+			statusClass, html.EscapeString(e.FactionID), html.EscapeString(e.PartyID), e.Score, html.EscapeString(e.Status))
 	}
 	b.WriteString(`</tbody></table>`)
 	return b.String()
@@ -438,6 +438,7 @@ func (c *Compiler) generateFlowchartEmbed() string {
 }
 
 // generateDMSidebar generates a DM-only sidebar with tips and secrets for an area.
+// nolint:unused // reserved for future use
 func (c *Compiler) generateDMSidebar(areaID string, tip string, secret string) string {
 	if tip == "" && secret == "" {
 		return ""
@@ -461,6 +462,7 @@ func (c *Compiler) generateDMSidebar(areaID string, tip string, secret string) s
 }
 
 // generateSessionPrepHTML generates HTML for session preparation content.
+// nolint:unused // reserved for future use
 func (c *Compiler) generateSessionPrepHTML(sessionNum int) string {
 	// Look for session prep markdown file
 	path := filepath.Join(c.CampaignDir, "session-prep.md")
@@ -483,6 +485,7 @@ func (c *Compiler) generateSessionPrepHTML(sessionNum int) string {
 }
 
 // generateCharacterSheetHTML generates HTML for a character sheet.
+// nolint:unused // reserved for future use
 func (c *Compiler) generateCharacterSheetHTML(characterID string) string {
 	// Look for character sheet markdown file
 	path := filepath.Join(c.CampaignDir, "characters", fmt.Sprintf("%s.md", characterID))
@@ -500,6 +503,7 @@ func (c *Compiler) generateCharacterSheetHTML(characterID string) string {
 }
 
 // generateShockPointsHTML generates HTML for shock points content warnings.
+// nolint:unused // reserved for future use
 func (c *Compiler) generateShockPointsHTML(shockPoints []struct {
 	Type        string
 	Severity    string

@@ -25,7 +25,7 @@ func setupE2ETestHandlers(tmpDir string) (*CampaignHandlers, func()) {
 
 	handlers := NewCampaignHandlers(campaignService)
 	cleanup := func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 	}
 
 	return handlers, cleanup
@@ -241,7 +241,7 @@ Un viejo soldado que ahora trabaja como herrero. Conoce los secretos de la ciuda
 - INT: 10 (+0) | WIS: 13 (+1) | CHA: 11 (+0)
 
 **Equipment:** Longsword, Shield, Chain Mail`
-	result, err = npcHandler(context.Background(), newToolRequest("save_npcs", map[string]any{
+	_, err = npcHandler(context.Background(), newToolRequest("save_npcs", map[string]any{
 		"campaign": campaignName,
 		"content":  npcContent,
 	}))
@@ -273,7 +273,7 @@ Un viejo soldado que ahora trabaja como herrero. Conoce los secretos de la ciuda
 
 **Actions**
 **Life Drain.** *Melee:* +4 to hit, 5 ft., one creature. *Hit:* 7 (2d6) necrotic damage. Target must succeed DC 10 CON save or have HP max reduced by same amount.`
-	result, err = bestiaryHandler(context.Background(), newToolRequest("save_bestiary", map[string]any{
+	_, err = bestiaryHandler(context.Background(), newToolRequest("save_bestiary", map[string]any{
 		"campaign": campaignName,
 		"content":  bestiaryContent,
 	}))

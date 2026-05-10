@@ -60,7 +60,7 @@ Nombre: Test Campaign
 - Ficha X
 - Líneas y Veos
 `
-	os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte(sessionZero), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte(sessionZero), 0644)
 
 	ctx := context.Background()
 	c := compiler.New(tmpDir, "wkhtmltopdf")
@@ -87,7 +87,7 @@ Nombre: Test Campaign
 func TestBackwardCompatibility_CharacterWithoutBackstory(t *testing.T) {
 	tmpDir := t.TempDir()
 	charactersDir := filepath.Join(tmpDir, "characters")
-	os.MkdirAll(charactersDir, 0755)
+	_ = os.MkdirAll(charactersDir, 0755)
 
 	// Create character WITHOUT backstory hooks, secrets, goals
 	character := &domain.Character{
@@ -105,13 +105,13 @@ func TestBackwardCompatibility_CharacterWithoutBackstory(t *testing.T) {
 	// Save character (service should handle missing optional fields)
 	// This tests that the domain model is backward compatible
 	if character.BackstoryHooks == nil {
-		// Expected - optional field
+		t.Log("BackstoryHooks is nil as expected") // Expected - optional field
 	}
 	if character.Secrets == nil {
-		// Expected - optional field
+		t.Log("Secrets is nil as expected") // Expected - optional field
 	}
 	if character.Goals == nil {
-		// Expected - optional field
+		t.Log("Goals is nil as expected") // Expected - optional field
 	}
 
 	t.Log("Character model backward compatible - optional fields are nil")
@@ -138,7 +138,7 @@ La aventura continúa.
 - Quest 1
 - Quest 2
 `
-	os.WriteFile(filepath.Join(tmpDir, "session-prep.md"), []byte(sessionPrep), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "session-prep.md"), []byte(sessionPrep), 0644)
 
 	ctx := context.Background()
 	c := compiler.New(tmpDir, "wkhtmltopdf")
@@ -212,7 +212,7 @@ func TestBackwardCompatibility_TemplateConditionals(t *testing.T) {
 |-----|-----|-----|-----|-----|-----|
 | 15  | 12  | 14  | 10  | 10  | 8   |
 `
-	os.WriteFile(filepath.Join(charactersDir, "minimal.md"), []byte(charSheet), 0644)
+	_ = os.WriteFile(filepath.Join(charactersDir, "minimal.md"), []byte(charSheet), 0644)
 
 	ctx := context.Background()
 	c := compiler.New(tmpDir, "wkhtmltopdf")
@@ -277,8 +277,8 @@ func TestBackwardCompatibility_CSSNewClassesNotRequired(t *testing.T) {
 Contenido normal sin clases CSS nuevas.
 `
 	areasDir := filepath.Join(tmpDir, "areas")
-	os.MkdirAll(areasDir, 0755)
-	os.WriteFile(filepath.Join(areasDir, "act1.md"), []byte(areaContent), 0644)
+	_ = os.MkdirAll(areasDir, 0755)
+	_ = os.WriteFile(filepath.Join(areasDir, "act1.md"), []byte(areaContent), 0644)
 
 	ctx := context.Background()
 	c := compiler.New(tmpDir, "wkhtmltopdf")

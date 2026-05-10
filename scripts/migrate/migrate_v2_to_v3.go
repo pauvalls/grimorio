@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -123,12 +122,12 @@ func copyDir(src, dst string) error {
 			return os.MkdirAll(dstPath, info.Mode())
 		}
 
-		data, err := ioutil.ReadFile(path)
+		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
 
-		return ioutil.WriteFile(dstPath, data, info.Mode())
+		return os.WriteFile(dstPath, data, info.Mode())
 	})
 }
 
@@ -141,7 +140,7 @@ func detectOldAreaFormat(campaignPath string) ([]map[string]interface{}, error) 
 		return oldAreas, nil
 	}
 
-	data, err := ioutil.ReadFile(canonPath)
+	data, err := os.ReadFile(canonPath)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +185,7 @@ func convertAreasToUnified(campaignPath string, oldAreas []map[string]interface{
 
 	// Write updated canon.json
 	canonPath := filepath.Join(campaignPath, "canon.json")
-	data, err := ioutil.ReadFile(canonPath)
+	data, err := os.ReadFile(canonPath)
 	if err != nil {
 		return err
 	}
@@ -221,10 +220,10 @@ func convertAreasToUnified(campaignPath string, oldAreas []map[string]interface{
 		return err
 	}
 
-	return ioutil.WriteFile(canonPath, updatedData, 0644)
+	return os.WriteFile(canonPath, updatedData, 0644)
 }
 
 func updateVersionMarker(campaignPath, version string) error {
 	versionPath := filepath.Join(campaignPath, "VERSION")
-	return ioutil.WriteFile(versionPath, []byte(version), 0644)
+	return os.WriteFile(versionPath, []byte(version), 0644)
 }

@@ -78,7 +78,7 @@ func (c *Client) Generate(prompt string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -109,7 +109,7 @@ func (c *Client) Generate(prompt string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to download image: %w", err)
 		}
-		defer imgResp.Body.Close()
+		defer func() { _ = imgResp.Body.Close() }()
 
 		imgData, err := io.ReadAll(imgResp.Body)
 		if err != nil {
