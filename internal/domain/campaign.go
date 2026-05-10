@@ -109,8 +109,8 @@ func (a *Act) Validate() error {
 		return NewValidationError("running_guidance", "running guidance is required")
 	}
 	wordCount := countWords(a.RunningGuidance)
-	if wordCount < 150 || wordCount > 400 {
-		return NewValidationError("running_guidance", fmt.Sprintf("must be 150-400 words; got %d", wordCount))
+	if wordCount < 700 {
+		return NewValidationError("running_guidance", fmt.Sprintf("must be at least 700 words for v3.1.0; got %d", wordCount))
 	}
 	if a.AssetHandoff == "" {
 		return NewValidationError("asset_handoff", "asset handoff is required")

@@ -191,7 +191,7 @@ func TestFlowchartService_GenerateMermaid_FromActRepo(t *testing.T) {
 				ChapterObjectives: []string{"Descubrir el misterio inicial"},
 				EstimatedDuration: "2 sesiones",
 				Tone:              "mystery",
-				RunningGuidance:   "Este capítulo introduce el misterio. Los PJs deben encontrar tres pistas clave que los lleven al siguiente capítulo. El ritmo debe ser moderado, permitiendo exploración y roleo. Si los PJs se estancan, un NPC proporciona información crucial. Asegúrate de que cada sesión termine con una revelación que motive a continuar.",
+				RunningGuidance:   strings.Repeat("palabra ", 700),
 				AssetHandoff:      "La pista final revela la ubicación del Acto 2",
 			},
 			{
@@ -202,7 +202,7 @@ func TestFlowchartService_GenerateMermaid_FromActRepo(t *testing.T) {
 				ChapterObjectives: []string{"Confrontar la verdad", "Decidir el próximo paso"},
 				EstimatedDuration: "2-3 sesiones",
 				Tone:              "political",
-				RunningGuidance:   "Este capítulo presenta un giro inesperado. Los PJs deben procesar la revelación y decidir cómo actuar. Hay múltiples caminos posibles y cada decisión tiene consecuencias. El tono es de tensión política. Asegúrate de que los PJs sientan el peso de su elección.",
+				RunningGuidance:   strings.Repeat("palabra ", 700),
 				AssetHandoff:      "La decisión determina qué facciones ayudan en el Acto 3",
 			},
 		},
