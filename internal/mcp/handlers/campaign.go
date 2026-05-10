@@ -91,7 +91,7 @@ func (h *CampaignHandlers) HandleCompilePDF() server.ToolHandlerFunc {
 			return mcp.NewToolResultError("campaign is required"), nil
 		}
 
-		ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 600*time.Second) // 10 minutes for large campaigns
 		defer cancel()
 
 		pdfPath, err := h.service.CompilePDF(ctx, campaign, title)
