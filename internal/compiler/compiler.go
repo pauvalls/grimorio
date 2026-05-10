@@ -809,6 +809,7 @@ var (
 	htmlCommentRegex  = regexp.MustCompile(`<!--[\s\S]*?-->`)
 	imageRegex        = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	imgTagRegex       = regexp.MustCompile(`<img[^>]*(?:/\s*)?>`)
+	htmlBlockRegex    = regexp.MustCompile(`(?s)<div[^>]*>.*?</div>`)
 
 	// readAloudPrefixRe strips **Read-Aloud:** or **Para Leer en Voz Alta:** labels from blockquote text
 	// (CSS .read-aloud::before pseudo-element provides the visual label, so the inline text would duplicate it)
@@ -829,7 +830,8 @@ var (
 // formatInline processes bold and italic markers, ensuring no word merging after </strong>
 func formatInline(text string) string {
 	text = boldRegex.ReplaceAllString(text, "<strong>$1</strong>")
-	text = boldAdjacentRegex.ReplaceAllString(text, "</strong>\u0026thinsp;$1")
+	// Remove &thinsp; - it causes spacing issues like "sol , y" and "volvióazul"
+	text = boldAdjacentRegex.ReplaceAllString(text, "</strong>$1")
 	return italicRegex.ReplaceAllString(text, "<em>$1</em>")
 }
 
@@ -867,6 +869,14 @@ func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID str
 func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int) string {
 	// Strip HTML comments before processing to prevent artifacts in PDF
 	md = htmlCommentRegex.ReplaceAllString(md, "")
+
+	// Extract HTML blocks (like <div>...</div>) before processing to preserve them
+	var htmlBlocks []string
+	md = htmlBlockRegex.ReplaceAllStringFunc(md, func(match string) string {
+		htmlBlocks = append(htmlBlocks, match)
+		return fmt.Sprintf("\x00HTMLBLOCK%d\x00", len(htmlBlocks)-1)
+	})
+
 	// Strip raw HTML tags (except <img>) that would be escaped and rendered as visible text.
 	// Stash <img> tags, strip all remaining HTML tags, then restore <img> tags.
 	imgPlaceholder := "__IMG_TAG_PLACEHOLDER__"
@@ -1197,7 +1207,13 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		out = append(out, "</ul>")
 	}
 
-	return strings.Join(out, "\n")
+	// Restore HTML blocks
+	result := strings.Join(out, "\n")
+	for i, html := range htmlBlocks {
+		result = strings.Replace(result, fmt.Sprintf("\x00HTMLBLOCK%d\x00", i), html, 1)
+	}
+
+	return result
 }
 
 func isTableRow(line string) bool {
