@@ -519,8 +519,8 @@ func (c *Compiler) generateShockPointsHTML(shockPoints []struct {
 
 	for _, sp := range shockPoints {
 		fmt.Fprintf(&b, `<div class="shock-point %s">`, sp.Severity)
-		b.WriteString(fmt.Sprintf(`<span class="severity-badge">%s</span>`, sp.Severity))
-		b.WriteString(fmt.Sprintf(`<strong>%s</strong>: %s`, html.EscapeString(sp.Type), html.EscapeString(sp.Description)))
+		fmt.Fprintf(&b, `<span class="severity-badge">%s</span>`, sp.Severity)
+		fmt.Fprintf(&b, `<strong>%s</strong>: %s`, html.EscapeString(sp.Type), html.EscapeString(sp.Description))
 
 		if len(sp.SafetyTools) > 0 {
 			b.WriteString(`<p><strong>Herramientas de seguridad:</strong> `)
@@ -613,7 +613,7 @@ func (c *Compiler) generateAdventureRoster() string {
 			if len(parts) > 1 {
 				role = parts[1]
 			}
-			b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(name), html.EscapeString(role)))
+			fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(name), html.EscapeString(role))
 		}
 		b.WriteString(`</tbody></table>`)
 	}

@@ -74,7 +74,7 @@ La aventura comienza.
 </div>
 </div>
 `
-	os.WriteFile(filepath.Join(charactersDir, "test-hero.md"), []byte(characterSheet), 0644)
+	_ = os.WriteFile(filepath.Join(charactersDir, "test-hero.md"), []byte(characterSheet), 0644)
 
 	// Compile
 	ctx := context.Background()
@@ -133,7 +133,7 @@ func TestCompileWithDMSidebar(t *testing.T) {
 
 	// Create areas directory with DM sidebar content
 	areasDir := filepath.Join(tmpDir, "areas")
-	os.MkdirAll(areasDir, 0755)
+	_ = os.MkdirAll(areasDir, 0755)
 
 	areaContent := `### Área 1: Entrada
 
@@ -146,7 +146,7 @@ func TestCompileWithDMSidebar(t *testing.T) {
 
 Contenido normal del área.
 `
-	os.WriteFile(filepath.Join(areasDir, "act1.md"), []byte(areaContent), 0644)
+	_ = os.WriteFile(filepath.Join(areasDir, "act1.md"), []byte(areaContent), 0644)
 
 	ctx := context.Background()
 	c := compiler.New(tmpDir, "wkhtmltopdf")
@@ -179,7 +179,7 @@ func TestCompileWithStatBlockV2(t *testing.T) {
 
 	// Create bestiary with v2 stat block
 	bestiaryDir := filepath.Join(tmpDir, "bestiary")
-	os.MkdirAll(bestiaryDir, 0755)
+	_ = os.MkdirAll(bestiaryDir, 0755)
 
 	statBlock := `### Goblin
 
@@ -195,7 +195,7 @@ func TestCompileWithStatBlockV2(t *testing.T) {
 </div>
 </div>
 `
-	os.WriteFile(filepath.Join(bestiaryDir, "goblin.md"), []byte(statBlock), 0644)
+	_ = os.WriteFile(filepath.Join(bestiaryDir, "goblin.md"), []byte(statBlock), 0644)
 
 	ctx := context.Background()
 	c := compiler.New(tmpDir, "wkhtmltopdf")

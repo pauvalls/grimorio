@@ -253,7 +253,7 @@ func TestCSS_SnapshotComparison(t *testing.T) {
 	
 	// Create snapshot directory if it doesn't exist
 	if _, err := os.Stat(snapshotDir); os.IsNotExist(err) {
-		os.MkdirAll(snapshotDir, 0755)
+		_ = os.MkdirAll(snapshotDir, 0755)
 	}
 
 	tests := []struct {
