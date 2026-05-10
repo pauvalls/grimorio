@@ -6,30 +6,146 @@
 > 
 > **Activo Narrativo Transferido:** {{Qué obtienen los PJs en este acto que necesitan para el siguiente (pista, aliado, objeto, información)}}
 
-### Apertura del Capítulo
+---
 
-**Modo de Juego:** {{.GameMode}}{{if .GameModeSecondary}} + {{.GameModeSecondary}}{{end}}
+## Cómo Dirigir Este Capítulo
 
-**Objetivos del Capítulo:**
-{{range .ChapterObjectives}}
-- {{.}}
-{{end}}
+### 1. Preparación Previa a la Sesión
 
-**Duración Estimada:** {{.EstimatedDuration}}
+**Materiales Necesarios:**
+- **Mapas:** {{Lista de mapas necesarios: battle maps, mapas de región, planos de dungeon}}
+- **Handouts:** {{Handouts a imprimir: cartas, documentos, pistas físicas}}
+- **NPCs con Stats:** {{NPCs principales que necesitan stat blocks completos}}
+- **Música/Ambientación:** {{Playlist recomendada o sonidos ambientales}}
+- **Notas de Sesiones Anteriores:** {{Eventos clave de sesiones anteriores que impactan este capítulo}}
 
-**Tono:** {{.Tone}}
+**Repaso de Consecuencias:**
+{{Descripción de 2-3 consecuencias específicas basadas en decisiones previas de los PJs. Ej: "Si los PJs aliaron con la facción X en el acto anterior, ahora tienen acceso a información privilegiada. Si la traicionaron, serán emboscados en el Área 3."}}
 
-**Running this Chapter:**
-{{.RunningGuidance}}
+**Estado Inicial del Mundo:**
+{{Cómo están las facciones, NPCs clave, y el entorno cuando los PJs comienzan este capítulo. Incluir cambios desde el último acto. Ej: "La Guardia de la Ciudad está en alerta máxima después del ataque al almacén. El mercado negro opera solo de noche. El templo ha cerrado sus puertas."}}
 
-**Asset para el Siguiente Capítulo:**
-{{.AssetHandoff}}
+### 2. Ritmo y Timing Sugerido
+
+**Desglose por Escenas:**
+- **Apertura (15-20 min):** {{Descripción de cómo comenzar, ganchos iniciales. Ej: "Comenzar con una escena de viaje que establezca el tono. Los PJs llegan al pueblo al anochecer."}}
+- **Exploración/Investigación (30-45 min):** {{Qué pueden descubrir, CDs clave. Ej: "Los PJs investigan el lugar del crimen. Percepción DC 14 revela huellas, Investigación DC 16 encuentra el arma."}}
+- **Encuentro Principal (45-60 min):** {{Combate, negociación, o desafío social. Ej: "Combate con 4 goblins y 1 ogro en el puente. Alternativa: negociación con el líder goblin."}}
+- **Resolución (15-20 min):** {{Consecuencias, transición al siguiente acto. Ej: "Los PJs reciben recompensa del alcalde. Una carta misteriosa llega con el siguiente gancho."}}
+
+**Señales de Alerta:**
+- **Si los jugadores están aburridos:** {{3 técnicas específicas: "1) Introducir un encuentro sorpresa, 2) Revelar información dramática, 3) Cambiar de escena abruptamente"}}
+- **Si la sesión va muy rápida:** {{2 escenas opcionales de relleno: "1) Encuentro con mercader ambulante, 2) Puzzle ambiental en el dungeon"}}
+- **Si la sesión va muy lenta:** {{Qué saltar: "1) Descripciones extensas de ambientes menores, 2) Combates con minions, 3) Diálogos de NPCs secundarios"}}
+
+### 3. Ganchos de Personaje Obligatorios
+
+**Por Background:**
+- **Soldado:** {{Momento específico: "Un antiguo camarada aparece pidiendo ayuda. O reconocés tácticas militares en el enemigo."}}
+- **Criminal:** {{Momento específico: "Contactos del bajo fondo te reconocen. Podés acceder a información privilegiada."}}
+- **Sabio:** {{Momento específico: "Textos antiguos que solo vos podés traducir. Conocimiento arcano revela secretos."}}
+- **Noble:** {{Momento específico: "Tu linaje te da acceso a eventos exclusivos. Otros nobles te tratan como igual."}}
+- **Ermitaño:** {{Momento específico: "Conocés rituales antiguos que otros ignoran. La naturaleza te responde."}}
+
+**Por Clase:**
+- **Guerrero:** {{Oportunidad: "Combate singular con el campeón enemigo. Demostración de fuerza abre puertas."}}
+- **Mago:** {{Oportunidad: "Problema mágico que requiere identificación de hechizos o contramagia."}}
+- **Pícaro:** {{Oportunidad: "Trampas para desactivar, cerraduras para forzar, información para robar."}}
+- **Clérigo:** {{Oportunidad: "Muertos que necesitan ser guiados, maldiciones que requieren intervención divina."}}
+
+**Momentos de Spotlight:**
+{{Cada PJ debe tener al menos un momento de protagonismo. Ej: "El pícaro desactiva la trampa que salva al grupo. El clérigo reconoce el símbolo sagrado. El guerrero sostiene la puerta mientras los demás escapan."}}
+
+### 4. Manejo de Decisiones Críticas
+
+**Puntos de Ramificación:**
+1. **Decisión:** {{Los PJs ayudan a la facción A o B}}
+   - **Consecuencia inmediata:** {{La facción elegida proporciona recursos}}
+   - **Consecuencia a largo plazo:** {{La facción rechazada se vuelve enemiga en el Acto N+2}}
+   - **Recovery path:** {{Si evitan decidir, ambas facciones los ignoran temporalmente}}
+
+2. **Decisión:** {{Los PJs matan o capturan al villano}}
+   - **Consecuencia inmediata:** {{Muerte: botín inmediato. Captura: información}}
+   - **Consecuencia a largo plazo:** {{Muerte: la facción del villano jura venganza. Captura: el villano escapa más tarde}}
+   - **Recovery path:** {{Si el villano escapa, aparece en el Acto N+1 con refuerzos}}
+
+3. **Decisión:** {{Los PJs revelan o ocultan un secreto}}
+   - **Consecuencia inmediata:** {{Revelar: aliados se ganan. Ocultar: ventaja táctica}}
+   - **Consecuencia a largo plazo:** {{Revelar: enemigos se alertan. Ocultar: aliados se sienten traicionados}}
+   - **Recovery path:** {{Si el secreto sale a la luz más tarde, los PJs pierden credibilidad}}
+
+**Fallo Adelante:**
+{{Cómo aplicar "fail forward". Ej: "Si fallan la tirada de Percepción para detectar la emboscada, no la omitas: los PJs son emboscados pero con ventaja inicial para los enemigos. La historia avanza, pero con complicaciones."}}
+
+**Elecciones Morales:**
+{{Dilemas éticos específicos. Ej: "¿Salvar al pueblo o perseguir al villano? ¿Sacrificar al NPC aliado para salvar a diez inocentes? Cómo manejar discusiones sin imponer: presentar consecuencias, no juzgar."}}
+
+### 5. Gestión de Combates y Encuentros
+
+**Tácticas de Enemigos:**
+{{Cómo se comportan los enemigos. Ej: "Los goblins usan tácticas de guerrilla: atacan desde cobertura, huyen cuando están en desventaja. Los guardias luchan en formación, se retiran si pierden al líder."}}
+
+**Ajuste de Dificultad en Tiempo Real:**
+- **Señales de combate muy fácil:** "Los PJs terminan en 1-2 rondas, sin gastar recursos. *Ajuste:* agregar refuerzos, cambiar terreno a favor de enemigos."
+- **Señales de combate muy difícil:** "Los PJs están cayendo rápido, recursos agotados. *Ajuste:* enemigos huyen por moral, refuerzos aliados llegan."
+- **Técnicas sutiles:** "1) Modificar HP de enemigos en ±20%, 2) Cambiar frecuencia de ataques, 3) Alterar terreno durante combate"
+
+**Recompensas No-Combate:**
+{{Cómo recompensar soluciones creativas. Ej: "Si evitan el combate con diplomacia: mismo XP + reputación +10. Si resuelven con ingenio: XP + objeto especial. Información como recompensa: pistas sobre el villano."}}
+
+### 6. Transiciones y Cierre
+
+**Cierre del Capítulo:**
+{{Cómo reconocer narrativamente que el capítulo termina. Ej: "Los PJs reciben una carta del siguiente contacto. El camino se abre hacia la próxima región. Un evento dramático marca el fin."}}
+
+**Gancho al Siguiente Acto:**
+{{El cliffhanger o transición. Ej: "El villano escapa pero deja un mapa. El aliado revela que es en realidad un enemigo. Una profecía se cumple."}}
+
+**Tarea para el DM:**
+{{Qué debe preparar el DM después de este capítulo. Ej: "Preparar stats del nuevo NPC según decisión de los PJs. Elegir qué facción gana poder. Preparar handout del Acto N+1."}}
+
+### 7. Notas de Seguridad y Herramientas
+
+**Puntos de Shock:**
+{{Advertencias de contenido específicas. Ej: "⚠️ Este capítulo incluye: violencia gráfica (descripciones de cuerpos mutilados), temas de tortura (el villano interroga NPCs), fobias (arañas gigantes en el dungeon)."}}
+
+**Herramientas de Seguridad:**
+{{Recordatorio de herramientas. Ej: "🛡️ Usar X-Card si un jugador se incomoda. Líneas y Velos: discutir antes de la sesión qué temas evitar. Pausa y Check-in: cada 45 minutos preguntar cómo están los jugadores."}}
+
+---
+
+## Timeline del Capítulo
+
+```
+[SESIÓN 1]                    [SESIÓN 2]                    [SESIÓN 3]
+    │                             │                             │
+    ▼                             ▼                             ▼
+┌─────────────┐              ┌─────────────┐              ┌─────────────┐
+│  Apertura   │──────────────│  Desarrollo │──────────────│  Resolución │
+│  (15-20m)   │   Escena 2   │  (45-60m)   │   Escena 4  │  (15-20m)   │
+└─────────────┘              └─────────────┘              └─────────────┘
+       │                           │                           │
+       ▼                           ▼                           ▼
+  [Decisión A]               [Encuentro]                [Consecuencias]
+  Hook: {{descripción}}      CR: {{X-Y}}                Asset: {{objeto}}
+```
+
+**Puntos de Control:**
+- **Minuto 15:** ¿Los PJs están enganchados? SI NO → Activar gancho de emergencia {{descripción del gancho: "NPC aliado es atacado, pidiendo ayuda"}}
+- **Minuto 45:** ¿Combate necesario? SI NO → Saltar a Escena 3 {{alternativa: "transición directa al misterio"}}
+- **Minuto 90:** ¿Tiempo para cierre? SI NO → Cierre rápido con {{técnica: "montaje narrativo de 5 minutos"}}
+
+**Activos Transferidos:**
+| Activo | Tipo | Se Obtiene En | Se Usa En |
+|--------|------|---------------|-----------|
+| {{Nombre}} | {{Objeto/Pista/Aliado}} | Área {{N}} | Acto {{N+1}} |
+| {{Nombre}} | {{Objeto/Pista/Aliado}} | Área {{N}} | Acto {{N+1}} |
 
 ---
 
 ## Adventure Background (para el DM)
 
-{{Contexto que el DM necesita saber antes de dirigir este acto. Eventos que llevaron a esta situación. Estado actual del mundo en este punto de la campaña.}}
+{{Contexto que el DM necesita saber antes de dirigir este acto. Eventos que llevaron a esta situación. Estado actual del mundo en este punto de la campaña. Mínimo 3-4 párrafos densos.}}
 
 ---
 
@@ -43,322 +159,7 @@
 
 ---
 
-## {{NOMBRE DE LA PRIMERA SECCIÓN}}
-
-{{Descripción narrativa de la situación cuando los PJs llegan. Contexto, atmósfera, lo primero que ven/sienten.}}
-
-> **Read-Aloud:** *{{Texto para leer en voz alta cuando los PJs entran por primera vez. Atmosférico, sensorial, 3-5 oraciones en segunda persona, presente.}}*
-
-### {{Subsección 1 — Nombre Descriptivo}}
-
-{{Detalles de lo que ocurre aquí. Decisiones de los PJs, posibles acciones.}}
-
-> **Read-Aloud:** *{{Si aplica, texto para leer en voz alta.}}*
-
-**Lo que los PJs pueden descubrir:**
-- {{Detalle 1 con CD si requiere tirada}}
-- {{Detalle 2 con CD si requiere tirada}}
-
-**Desarrollo:** {{Qué pasa después según las acciones de los PJs. 2-3 opciones con consecuencias.}}
-
----
-
-### {{Subsección 2 — Nombre Descriptivo}}
-
-{{Descripción}}
-
-> **Read-Aloud:** *{{Texto para leer en voz alta}}*
-
-**Personajes presentes:**
-- {{NPC 1}} — {{Qué hace aquí, qué quiere}}
-- {{NPC 2}} — {{Qué hace aquí, qué quiere}}
-
-**Desarrollo:** {{Qué pasa después.}}
-
----
-
-## {{NOMBRE DE LA SEGUNDA SECCIÓN}}
-
-{{Introducción a los personajes clave o la ubicación principal.}}
-
-### {{Nombre de NPC o Área}}
-
-{{Descripción del NPC o área. Si es NPC: apariencia, personalidad, motivación, secreto.}}
-
-> **Read-Aloud:** *{{Texto para leer en voz alta}}*
-
-**Características:** {{Stats o detalles relevantes}}
-**Rol en el acto:** {{Qué hace este NPC o qué pasa en esta área}}
-**Información que revela:** {{Pistas, conocimiento, objetos}}
-
----
-
-### {{Segundo NPC o Área}}
-
-{{Descripción}}
-
----
-
-## {{LOCACIÓN PRINCIPAL DEL ACTO — DUNGEON/ÁREA NUMERADA}}
-
-{{Descripción general de la locación. Cómo se ve desde afuera, historia, propósito.}}
-
-![Mapa de {{NOMBRE}}](assets/{{archivo-del-mapa}}.svg)
-
-> **Read-Aloud:** *{{Texto para leer cuando los PJs entran a la locación por primera vez.}}*
-
-### Características Generales
-
-- **Luces:** {{Iluminación}}
-- **Sonidos:** {{Ambiente sonoro}}
-- **Olores:** {{Atmósfera olfativa}}
-- **Peligros:** {{Peligros ambientales generales}}
-
----
-
-### Área 1: {{Nombre Descriptivo}}
-
->> **Texto para Leer** (2-4 párrafos, 100-600 palabras total, segunda persona presente)
->> 
->> La cámara se extiende ante vosotros, iluminada por antorchas parpadeantes montadas en
->> las paredes de piedra. El aire es húmedo y huele a moho antiguo, mezclado con un
->> tenue rastro de incienso que parece venir de algún lugar más profundo. Las sombras
->> bailan en los rincones, y por un momento juraríais ver movimiento donde no debería
->> haberlo.
->> 
->> Al fondo, un trono de huesos domina el espacio, y frente a él, tres figuras
->> encapuchadas se giran hacia vosotros con movimientos sincrónicos. Sus rostros
->> permanecen ocultos, pero sentís sus miradas penetrantes evaluando cada uno de
->> vuestros movimientos. El peso de la decisión pende sobre el aire como una espada
->> desenvainada.
-
-**Ganchos de Personaje** (mínimo 2 por área, targetear backgrounds/clases específicas)
-- **Para personaje con trasfondo religioso:** Reconocés los símbolos tallados en las paredes como pertenecientes a un culto antiguo que creías extinto. Tu conocimiento religioso te da ventaja en identificar sus rituales.
-- **Para personaje con motivación de venganza:** Una de las figuras encapuchadas lleva un amuleto idéntico al que usaba quien destruyó tu hogar. Este es tu momento de confrontar el pasado.
-- **Para personaje curioso/académico:** Los libros en las estanterías laterales contienen textos prohibidos que podrían revelar secretos del villano principal. Investigación DC 15 para acceder sin activar alarmas.
-
-**Descripción para el DM:**
-3-5 párrafos densos con detalles que los PJs pueden descubrir. Incluí CDs específicos:
-- **Percepción DC XX:** Qué notan si pasan la tirada
-- **Investigación DC XX:** Qué descubren si examinan
-- **Arcano/Religión/Naturaleza DC XX:** Conocimiento especializado
-
-**Desarrollos** (mínimo 3 ramas con recovery paths obligatorios)
-1. **Los PJs investigan las pistas:** Descubren información crucial sobre el villano.
-   - *Recuperación:* Si no investigan, un aliado NPC les proporciona la información más tarde (con costo de reputación -5)
-2. **Los PJs confrontan al NPC:** Se desencadena un combate o negociación crítica.
-   - *Recuperación:* Si evitan la confrontación, el NPC los persigue en el Acto N+1 con refuerzos
-3. **Los PJs ignoran el área:** Pierden oportunidad de obtener ventaja.
-   - *Recuperación:* Consecuencia diferida al Acto N+1: encuentran el área más difícil (+2 DC a todas las tiradas)
-
-**Cómo Dirigir esta Escena** (5 subsecciones obligatorias)
-1. **Preparación:** Qué necesita el DM antes de la sesión
-   - NPCs listos con stats y motivaciones
-   - Mapas o tokens para posicionamiento
-   - Handouts preparados si aplica
-2. **Ritmo Sugerido:** Timing estimado
-   - Exploración inicial: 10-15 min
-   - Interacción/Combate: 20-30 min
-   - Resolución/Consecuencias: 10 min
-3. **Señales de los Jugadores:** Cuándo están enganchados o aburridos
-   - Enganchados: hacen preguntas, toman notas, debaten estrategias
-   - Aburridos: miran celulares, conversaciones fuera de juego, poca participación
-4. **Cuándo Improvisar:** Dónde está OK desviarse del guión
-   - Diálogos de NPCs secundarios
-   - Descripción de ambientes menores
-   - Recompensas creativas por soluciones ingeniosas
-5. **Cuándo ceñirse al Guión:** Elementos críticos que NO deben cambiarse
-   - Muertes de NPCs clave
-   - Revelación de pistas principales
-   - Consecuencias de decisiones mayores
-
-**Evolución del Hub** (opcional, solo para áreas hub: ciudades, bases, campamentos)
-- **Estado Inicial:** Cómo está el hub al llegar los PJs (ej: taberna tranquila, NPCs desconfiados)
-- **Puntos de Cambio:** Eventos que alteran el hub (ej: facción gana poder, ataque enemigo)
-- **Estados Posibles:** 2-3 variaciones según decisiones
-  - **SI** los PJs ayudan a la facción A, **ENTONCES** la taberna se vuelve su base
-  - **SI** los PJs permanecen neutrales, **ENTONCES** el hub se mantiene neutral pero menos útil
-
-### Puntos de Decisión
-
-| Decisión | Condición | Consecuencia Inmediata | Propagación |
-|----------|-----------|------------------------|-------------|
-| **IF** | los PJs [acción concreta] | **THEN** [consecuencia en esta área] | Affects: Área X, Acto N |
-| **IF** | los PJs [acción alternativa] | **THEN** [consecuencia alternativa] | Affects: Área Y, Acto N+1 |
-
-**Cambios de Estado del Mundo:**
-- **NPCs:** [quién muere/sobrevive/cambia actitud]
-- **Facciones:** [cambios de reputación ±X]
-- **Pistas:** [pistas reveladas: clue-id-1, clue-id-2]
-- **Quests:** [quests completadas/falladas/activadas]
-
-> **Ejemplo:**
-> | Decisión | Condición | Consecuencia Inmediata | Propagación |
-> |----------|-----------|------------------------|-------------|
-> | **IF** | los PJs matan al recolector | **THEN** alarma se activa, guardias llegan en 1d4 rondas | Affects: Área 5 (guardias alertados), Acto 2 (Tobias muerto) |
-> | **IF** | los PJs sobornan al recolector | **THEN** recolector proporciona información sobre el almacén | Affects: Área 4 (acceso libre), Facción X (reputación +10) |
->
-> **Cambios de Estado del Mundo:**
-> - **NPCs:** Recolector (vivo/muerto según decisión)
-> - **Facciones:** Guardia de la Ciudad (+10 si soborno, -10 si asesinato)
-> - **Pistas:** clue-003 (ubicación del almacén) revelada
-> - **Quests:** "El Contrabandista" completada si obtienen información
-
-**Características:**
-- **Luces:** {{Iluminación}}
-- **Sonidos:** {{Ambiente sonoro}}
-- **Olores:** {{Atmósfera olfativa}}
-- **Peligros:** {{Peligros ambientales}}
-
-**Criaturas:**
-- Cantidad + Nombre EXACTO del bestiary.md (ej: "2 **Murmuring Specter**")
-- Si es del MM: "3 **Specter** (MM p. 279)"
-
-**Tesoro:**
-- **XP total:** XXX XP
-- **Moneda:** XX gp, XX sp
-- **Objetos:** Lista con nombre y efecto breve
-
-**Conexiones:**
-- → Área X (descripción breve de cómo se llega)
-- ← Área Y (desde dónde se llega)
-- → Salida (condiciones si aplica)
-
-**Secretos y Trampas:**
-- **Trampa/Secreto 1:**
-  - **Detectar:** Percepción DC XX
-  - **Mecanismo:** Cómo funciona
-  - **Consecuencia:** Qué pasa si se activa
-  - **Desactivar:** Herrería/Juego de Manos DC XX
-- **Secreto 2:**
-  - **Encontrar:** Investigación DC XX
-  - **Contenido:** Qué hay detrás/dentro
-
-**Desarrollo:**
-- **Si entran sigilosos:** Qué pasa
-- **Si entran en combate:** Cómo reaccionan las criaturas
-- **Si examinan/interactúan:** Resultados específicos
-- **Si se van:** Consecuencias (alarmas, persecuciones, cambios en otras áreas)
-
----
-
-### Área 2: {{Nombre Descriptivo}}
-
->> **Texto para Leer** (2-4 párrafos, 100-600 palabras total)
->> 
->> El pasillo se estrecha mientras avanzáis, las paredes de piedra pulida reflejan la luz
->> de vuestras antorchas como espejos oscuros. Un zumbido apenas perceptible vibra en
->> el aire, haciendo que el vello de vuestros brazos se erice. El suelo está marcado
->> con símbolos que brillan tenuemente bajo vuestros pies.
->> 
->> Al final del corredor, una puerta de bronce masiva bloquea el camino. Grabados
->> antiguos cubren su superficie, representando escenas de batallas olvidadas. Sentís
->> el peso de la historia presionando sobre vuestros hombros, y la certeza de que
->> cruzar ese umbral cambiará vuestro destino para siempre.
-
-**Ganchos de Personaje:**
-- **Para personaje soldado/guerrero:** Las marcas en la puerta son tácticas militares antiguas que reconocés de tus entrenamientos.
-- **Para personaje con trasfondo criminal:** Notás mecanismos de trampa que otros pasarían por alto. Ventaja en Percepción para detectar peligros.
-
-**Descripción para el DM:**
-{{Detalles con CDs específicos.}}
-
-**Desarrollos:**
-1. **Los PJs examinan la puerta:** Descubren el mecanismo de apertura.
-   - *Recuperación:* Si no examinan, un NPC les da la clave más tarde (con costo)
-2. **Los PJs fuerzan la entrada:** Activan alarmas pero avanzan rápido.
-   - *Recuperación:* Si no pueden forzarla, encuentran ruta alternativa más larga
-3. **Los PJs buscan otra ruta:** Encuentran pasaje secreto.
-   - *Recuperación:* Si no buscan, la puerta se abre sola más tarde (pero pierden tesoro)
-
-**Cómo Dirigir esta Escena:**
-1. **Preparación:** {{Qué necesita el DM}}
-2. **Ritmo Sugerido:** {{Timing estimado}}
-3. **Señales de los Jugadores:** {{Engagement indicators}}
-4. **Cuándo Improvisar:** {{Flexibility zones}}
-5. **Cuándo ceñirse al Guión:** {{Critical elements}}
-
-**Evolución del Hub:** (si aplica)
-- **Estado Inicial:** {{cómo está}}
-- **Puntos de Cambio:** {{eventos que alteran}}
-- **Estados Posibles:** {{2-3 variaciones}}
-
-**Características:**
-- **Luces:** {{Iluminación}}
-- **Sonidos:** {{Ambiente sonoro}}
-- **Olores:** {{Atmósfera olfativa}}
-- **Peligros:** {{Peligros ambientales}}
-
-**Criaturas:**
-- {{Lista de criaturas}}
-
-**Tesoro:**
-- **XP total:** XXX XP
-- **Moneda:** XX gp, XX sp
-- **Objetos:** {{Lista}}
-
-**Conexiones:**
-- → Área X (descripción breve)
-- ← Área Y (desde dónde se llega)
-
-**Secretos y Trampas:**
-- {{Secretos/trampas con DCs numéricos}}
-
-**Desarrollo:**
-- {{Qué pasa según las acciones de los PJs}}
-
----
-
-### Área 3: {{Nombre Descriptivo}}
-
->> **Texto para Leer** (2-4 párrafos, 100-600 palabras total)
->> 
->> {{Repetir estructura WotC con boxed text completo por cada área numerada...}}
-
-**Ganchos de Personaje:**
-- {{Hook 1 targeteando background/clase específica}}
-- {{Hook 2 targeteando background/clase específica}}
-
-**Descripción para el DM:**
-{{Detalles con CDs específicos.}}
-
-**Desarrollos:**
-1. {{Rama 1 con trigger, outcome, recovery}}
-2. {{Rama 2 con trigger, outcome, recovery}}
-3. {{Rama 3 con trigger, outcome, recovery}}
-
-**Cómo Dirigir esta Escena:**
-1. **Preparación:** {{qué necesita el DM}}
-2. **Ritmo Sugerido:** {{timing}}
-3. **Señales de los Jugadores:** {{indicadores}}
-4. **Cuándo Improvisar:** {{zonas flexibles}}
-5. **Cuándo ceñirse al Guión:** {{elementos críticos}}
-
-**Evolución del Hub:** (si aplica)
-- {{estados y cambios}}
-
----
-
-## Tablas Aleatorias (si aplica)
-
-### {{Tipo de Tabla — Ej: Encuentros, Rumores, Ambiente}}
-
-| d{{X}} | Resultado |
-|--------|-----------|
-| 1 | {{Resultado 1}} |
-| 2 | {{Resultado 2}} |
-| 3 | {{Resultado 3}} |
-| 4 | {{Resultado 4}} |
-| 5 | {{Resultado 5}} |
-| 6 | {{Resultado 6}} |
-
----
-
-## Información y Pistas
-
-- **Pista Principal:** {{La revelación central del acto}}
-- **Pista Secundaria 1:** {{Pista que conecta con otro acto}}
-- **Pista Secundaria 2:** {{Detalle que los PJs pueden descubrir}}
+{{.ChapterContent}}
 
 ---
 

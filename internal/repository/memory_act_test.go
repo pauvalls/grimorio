@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -18,7 +19,7 @@ func TestMemoryActRepository(t *testing.T) {
 		ChapterObjectives: []string{"Investigar el crimen", "Identificar al culpable"},
 		EstimatedDuration: "2-3 sesiones",
 		Tone:              "mystery",
-		RunningGuidance:   "Este capítulo introduce a los personajes jugadores en el misterio central de la campaña. Comienza con una escena social en la que un NPC aliado presenta el hook principal de la aventura. La investigación debe llevar a los personajes a través de tres ubicaciones clave: primero el distrito comercial donde pueden hablar con mercaderes y recolectar rumores, luego los archivos del gremio donde pueden encontrar documentos importantes, y finalmente la taberna del puerto donde un contacto les proporciona información crucial. Cada ubicación debe revelar una pista diferente que avance la trama principal. Si los personajes se estancan en algún punto, usa un encuentro aleatorio o haz que un NPC contacte con información adicional. El ritmo debe ser moderado, permitiendo tiempo para exploración y roleo, pero con tensión creciente a medida que se acerca el final del capítulo. Asegúrate de que cada sesión termine con un cliffhanger o revelación importante que motive a los jugadores a continuar.",
+		RunningGuidance:   strings.Repeat("palabra ", 700),
 		AssetHandoff:      "La evidencia encontrada apunta al Acto 2",
 	}
 

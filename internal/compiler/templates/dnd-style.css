@@ -186,7 +186,7 @@ p {
 strong {
   font-weight: 700;
   color: #1a1a1a;
-  margin-right: 0.1em;
+  margin-right: 0.3em; /* Improved spacing */
 }
 
 em {
@@ -211,6 +211,24 @@ table {
   font-size: 9pt;
   column-break-inside: avoid;
   page-break-inside: avoid;
+  break-inside: avoid; /* wkhtmltopdf compatibility */
+  page-break-before: avoid;
+  page-break-after: auto;
+}
+
+thead {
+  display: table-header-group; /* Keeps header at top of page */
+  page-break-after: avoid;
+}
+
+tbody {
+  display: table-row-group;
+  page-break-before: avoid;
+}
+
+tr {
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 thead th {
@@ -268,7 +286,7 @@ tbody tr:nth-child(odd) {
 }
 
 .read-aloud::before {
-  content: "Read-Aloud";
+  content: "📖 Para Leer en Voz Alta"; /* Spanish label */
   display: block;
   font-weight: bold;
   font-family: 'Cinzel', serif;

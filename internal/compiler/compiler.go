@@ -801,7 +801,8 @@ func (c *Compiler) htmlToPDF(ctx context.Context, htmlPath, pdfPath string) erro
 var (
 	boldRegex         = regexp.MustCompile(`\*\*(.+?)\*\*`)
 	italicRegex       = regexp.MustCompile(`\*(.+?)\*`)
-	boldAdjacentRegex = regexp.MustCompile(`</strong>([^\s<])`)
+	boldAdjacentRegex = regexp.MustCompile(`</strong>([^\s<:;,\.!?])`) // Exclude punctuation to prevent &thinsp; leak
+	htmlCommentRegex  = regexp.MustCompile(`<!--[\s\S]*?-->`)
 	imageRegex        = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	imgTagRegex       = regexp.MustCompile(`<img[^>]*(?:/\s*)?>`)
 
@@ -853,6 +854,9 @@ func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID str
 }
 
 func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int) string {
+	// Strip HTML comments before processing to prevent artifacts in PDF
+	md = htmlCommentRegex.ReplaceAllString(md, "")
+
 	lines := strings.Split(md, "\n")
 	var out []string
 	inList := false
