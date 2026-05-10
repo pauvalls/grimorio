@@ -97,6 +97,30 @@ Después, generá los actos usando `save_areas` para CADA acto.
 - Contexto que el DM necesita saber ANTES de dirigir
 - Estado actual del mundo en este punto
 
+### PRÓLOGO NARRATIVO (Capítulo 1 ONLY)
+
+**El Acto 1 DEBE comenzar con un prólogo narrativo de 400-600 palabras.** Los Actos 2+ NO incluyen prólogo.
+
+**Estructura del Prólogo (4 partes):**
+
+1. **Escena de apertura (100-150 palabras):** Descripción atmosférica del setting. Usar segunda persona presente (*"Ves"*, *"Escuchas"*, *"Sientes"*). Establecer tono y mood.
+
+2. **Conflicto central (100-150 palabras):** Introducir la amenaza o problema principal. Mostrar (no contar) por qué es peligroso.
+
+3. **Lo que está en juego (100-150 palabras):** Conectar emocionalmente con los PJs. Por qué deberían importarles. Consecuencias si no actúan.
+
+4. **Gancho de acción (100-150 palabras):** Transición directa a la Área 1. Qué están haciendo los PJs cuando comienza la aventura.
+
+**Reglas del Prólogo:**
+- ✅ **400-600 palabras total** (contar palabras antes de guardar)
+- ✅ **Segunda persona presente**: *"El viento golpea tu rostro. Escuchas pasos..."*
+- ✅ **Solo narrativa**: Sin mecánicas, DCs, stats, o reglas
+- ✅ **Tono consistente**: Debe coincidir con el tono del lore.md
+- ✅ **Transición clara**: La última oración debe llevar directamente a la Área 1
+- ❌ **NO incluir**: Spoilers de twists, nombres de villanos finales, o el ending
+
+**Ubicación:** El prólogo va DESPUÉS de "Adventure Background" y ANTES de "Área 1".
+
 ### ÁREAS NUMERADAS (Mínimo 5, ideal 10-15 por acto)
 
 Cada área DEBE seguir EXACTAMENTE este formato:
@@ -275,6 +299,7 @@ ELSE:
 
 Antes de llamar `save_areas`, verificá CADA ítem:
 
+- [ ] **¿Capítulo 1 tiene prólogo narrativo de 400-600 palabras?** (Actos 2+ NO llevan prólogo)
 - [ ] ¿El acto tiene al menos 3 puntos de decisión con consecuencias visibles?
 - [ ] ¿Cada punto de decisión tiene estructura IF-THEN explícita?
 - [ ] ¿Hay propagación cross-área documentada (qué áreas/acts se ven afectados)?
