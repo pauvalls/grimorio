@@ -199,7 +199,7 @@ func TestBackwardCompatibility_TemplateConditionals(t *testing.T) {
 
 	// Create character sheet template test
 	charactersDir := filepath.Join(tmpDir, "characters")
-	os.MkdirAll(charactersDir, 0755)
+	_ = os.MkdirAll(charactersDir, 0755)
 
 	// Character sheet with minimal data (no spells, no backstory, etc.)
 	charSheet := `# Minimal Character
@@ -298,7 +298,7 @@ func createMinimalCampaign(t *testing.T, dir string) {
 	// Create required directories
 	dirs := []string{"areas", "npcs", "bestiary", "encounters", "maps", "assets", "characters"}
 	for _, d := range dirs {
-		os.MkdirAll(filepath.Join(dir, d), 0755)
+		_ = os.MkdirAll(filepath.Join(dir, d), 0755)
 	}
 
 	// Create minimal required files
@@ -309,7 +309,7 @@ func createMinimalCampaign(t *testing.T, dir string) {
 	}
 
 	for path, content := range files {
-		os.WriteFile(filepath.Join(dir, path), []byte(content), 0644)
+		_ = os.WriteFile(filepath.Join(dir, path), []byte(content), 0644)
 	}
 }
 

@@ -87,9 +87,9 @@ func (r *RaphaelProvider) Generate(prompt string) ([]byte, error) {
 
 	resp, err := r.Client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("raphael request failed: %w", err)
+		return nil, fmt.Errorf("failed to download image: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -129,9 +129,9 @@ func (r *RaphaelProvider) downloadImage(url string) ([]byte, error) {
 
 	resp, err := r.Client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to download image: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

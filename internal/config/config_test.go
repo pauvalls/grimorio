@@ -112,8 +112,8 @@ func TestLoadConfig_EmptyFields(t *testing.T) {
 }
 
 func TestLoadConfig_DalleKeyFromEnv(t *testing.T) {
-	os.Setenv("OPENAI_API_KEY", "test-key")
-	defer os.Unsetenv("OPENAI_API_KEY")
+	_ = os.Setenv("OPENAI_API_KEY", "test-key")
+	defer func() { _ = os.Unsetenv("OPENAI_API_KEY") }()
 
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")

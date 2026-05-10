@@ -86,7 +86,7 @@ func TestNewDalleProvider_MissingKey(t *testing.T) {
 
 func TestNewDalleProvider_CustomModel(t *testing.T) {
 	_ = os.Setenv("OPENAI_API_KEY", "test-key")
-	defer os.Unsetenv("OPENAI_API_KEY")
+	defer func() { _ = os.Unsetenv("OPENAI_API_KEY") }()
 
 	d, _ := NewDalleProvider("test-key", "dall-e-2")
 	if d.Model != "dall-e-2" {

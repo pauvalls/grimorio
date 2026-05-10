@@ -449,12 +449,12 @@ func (c *Compiler) generateDMSidebar(areaID string, tip string, secret string) s
 
 	if tip != "" {
 		b.WriteString(`<h5>DM Tip</h5>`)
-		b.WriteString(fmt.Sprintf(`<p>%s</p>`, html.EscapeString(tip)))
+		fmt.Fprintf(&b, `<p>%s</p>`, html.EscapeString(tip))
 	}
 
 	if secret != "" {
 		b.WriteString(`<h5>Secreto</h5>`)
-		b.WriteString(fmt.Sprintf(`<p>%s</p>`, html.EscapeString(secret)))
+		fmt.Fprintf(&b, `<p>%s</p>`, html.EscapeString(secret))
 	}
 
 	b.WriteString(`</div>`)
@@ -518,7 +518,7 @@ func (c *Compiler) generateShockPointsHTML(shockPoints []struct {
 	b.WriteString(`<h3 id="sec-shock-points">Puntos de Shock y Advertencias de Contenido</h3>`)
 
 	for _, sp := range shockPoints {
-		b.WriteString(fmt.Sprintf(`<div class="shock-point %s">`, sp.Severity))
+		fmt.Fprintf(&b, `<div class="shock-point %s">`, sp.Severity)
 		b.WriteString(fmt.Sprintf(`<span class="severity-badge">%s</span>`, sp.Severity))
 		b.WriteString(fmt.Sprintf(`<strong>%s</strong>: %s`, html.EscapeString(sp.Type), html.EscapeString(sp.Description)))
 

@@ -33,7 +33,7 @@ func TestCompileWithAllFeatures(t *testing.T) {
 <strong>Violencia</strong>: Combate fantástico
 </div>
 `
-	os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte(sessionZero), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte(sessionZero), 0644)
 
 	// Add session-prep.md
 	sessionPrep := `# Preparación de Sesión 1
@@ -49,11 +49,11 @@ La aventura comienza.
 <strong>Combate</strong>
 </div>
 `
-	os.WriteFile(filepath.Join(tmpDir, "session-prep.md"), []byte(sessionPrep), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "session-prep.md"), []byte(sessionPrep), 0644)
 
 	// Create characters directory with a character sheet
 	charactersDir := filepath.Join(tmpDir, "characters")
-	os.MkdirAll(charactersDir, 0755)
+	_ = os.MkdirAll(charactersDir, 0755)
 
 	characterSheet := `# Hoja de Personaje: Test Hero
 
