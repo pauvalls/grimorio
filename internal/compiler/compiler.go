@@ -627,7 +627,7 @@ func (c *Compiler) generateAdventureRoster() string {
 			if len(parts) > 1 {
 				cr = parts[1]
 			}
-			b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(name), html.EscapeString(cr)))
+			fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(name), html.EscapeString(cr))
 		}
 		b.WriteString(`</tbody></table>`)
 	}
@@ -635,7 +635,7 @@ func (c *Compiler) generateAdventureRoster() string {
 	if len(encounters) > 0 {
 		b.WriteString(`<h3>Encuentros</h3><table><thead><tr><th>Nombre</th></tr></thead><tbody>`)
 		for _, e := range encounters {
-			b.WriteString(fmt.Sprintf(`<tr><td>%s</td></tr>`, html.EscapeString(e)))
+			fmt.Fprintf(&b, `<tr><td>%s</td></tr>`, html.EscapeString(e))
 		}
 		b.WriteString(`</tbody></table>`)
 	}
@@ -968,9 +968,9 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				align = alignments[i]
 			}
 			if align != "" {
-				htmlOut.WriteString(fmt.Sprintf(`<th style="text-align:%s">%s</th>`, align, h))
+				fmt.Fprintf(&htmlOut, `<th style="text-align:%s">%s</th>`, align, h)
 			} else {
-				htmlOut.WriteString(fmt.Sprintf(`<th>%s</th>`, h))
+				fmt.Fprintf(&htmlOut, `<th>%s</th>`, h)
 			}
 		}
 		htmlOut.WriteString(`</tr></thead><tbody>`)

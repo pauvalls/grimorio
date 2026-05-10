@@ -259,19 +259,19 @@ func createTestCampaign(t *testing.T, dir, name string) {
 
 Esta es una campaña de prueba.
 `
-	os.WriteFile(filepath.Join(dir, "introduction.md"), []byte(intro), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "introduction.md"), []byte(intro), 0644)
 
 	// Create lore.md
 	lore := `# Lore y Ambientación
 
 Este es el lore de la campaña de prueba.
 `
-	os.WriteFile(filepath.Join(dir, "lore.md"), []byte(lore), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "lore.md"), []byte(lore), 0644)
 
 	// Create appendices.md
 	appendices := `# Appendices
 
 Apéndices de la campaña.
 `
-	os.WriteFile(filepath.Join(dir, "appendices.md"), []byte(appendices), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "appendices.md"), []byte(appendices), 0644)
 }
