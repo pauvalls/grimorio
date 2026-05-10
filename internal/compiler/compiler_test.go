@@ -674,7 +674,8 @@ func TestFormatInline_NoThinSpaceBeforeQuestion(t *testing.T) {
 
 func TestFormatInline_ThinSpaceBeforeLetter(t *testing.T) {
 	input := "**texto**palabra"
-	expected := "<strong>texto</strong>&thinsp;palabra"
+	// No thin space added - it caused spacing issues in PDF
+	expected := "<strong>texto</strong>palabra"
 	result := formatInline(input)
 	if result != expected {
 		t.Errorf("formatInline() = %q, want %q", result, expected)
@@ -683,7 +684,8 @@ func TestFormatInline_ThinSpaceBeforeLetter(t *testing.T) {
 
 func TestFormatInline_ThinSpaceBeforeNumber(t *testing.T) {
 	input := "**texto**123"
-	expected := "<strong>texto</strong>&thinsp;123"
+	// No thin space added - it caused spacing issues in PDF
+	expected := "<strong>texto</strong>123"
 	result := formatInline(input)
 	if result != expected {
 		t.Errorf("formatInline() = %q, want %q", result, expected)
