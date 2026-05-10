@@ -615,3 +615,131 @@ func TestCompile_SuccessWithContext(t *testing.T) {
 		t.Log("Compile with context completed without error (echo returned 0)")
 	}
 }
+
+// Phase 1: Compiler HTML Bug Fixes Tests
+
+func TestFormatInline_NoThinSpaceBeforeColon(t *testing.T) {
+	input := "**Importante**: Esto es crucial"
+	expected := "<strong>Importante</strong>: Esto es crucial"
+	result := formatInline(input)
+	if result != expected {
+		t.Errorf("formatInline() = %q, want %q", result, expected)
+	}
+}
+
+func TestFormatInline_NoThinSpaceBeforeSemicolon(t *testing.T) {
+	input := "**texto**; más texto"
+	expected := "<strong>texto</strong>; más texto"
+	result := formatInline(input)
+	if result != expected {
+		t.Errorf("formatInline() = %q, want %q", result, expected)
+	}
+}
+
+func TestFormatInline_NoThinSpaceBeforeComma(t *testing.T) {
+	input := "**texto**, y más"
+	expected := "<strong>texto</strong>, y más"
+	result := formatInline(input)
+	if result != expected {
+		t.Errorf("formatInline() = %q, want %q", result, expected)
+	}
+}
+
+func TestFormatInline_NoThinSpaceBeforePeriod(t *testing.T) {
+	input := "**texto**. Fin."
+	expected := "<strong>texto</strong>. Fin."
+	result := formatInline(input)
+	if result != expected {
+		t.Errorf("formatInline() = %q, want %q", result, expected)
+	}
+}
+
+func TestFormatInline_NoThinSpaceBeforeExclamation(t *testing.T) {
+	input := "**texto**! ¡Wow!"
+	expected := "<strong>texto</strong>! ¡Wow!"
+	result := formatInline(input)
+	if result != expected {
+		t.Errorf("formatInline() = %q, want %q", result, expected)
+	}
+}
+
+func TestFormatInline_NoThinSpaceBeforeQuestion(t *testing.T) {
+	input := "**texto**? ¿Qué?"
+	expected := "<strong>texto</strong>? ¿Qué?"
+	result := formatInline(input)
+	if result != expected {
+		t.Errorf("formatInline() = %q, want %q", result, expected)
+	}
+}
+
+func TestFormatInline_ThinSpaceBeforeLetter(t *testing.T) {
+	input := "**texto**palabra"
+	expected := "<strong>texto</strong>&thinsp;palabra"
+	result := formatInline(input)
+	if result != expected {
+		t.Errorf("formatInline() = %q, want %q", result, expected)
+	}
+}
+
+func TestFormatInline_ThinSpaceBeforeNumber(t *testing.T) {
+	input := "**texto**123"
+	expected := "<strong>texto</strong>&thinsp;123"
+	result := formatInline(input)
+	if result != expected {
+		t.Errorf("formatInline() = %q, want %q", result, expected)
+	}
+}
+
+func TestMarkdownToHTML_StripsComments(t *testing.T) {
+	input := "Texto <!-- comentario --> más texto"
+	result := markdownToHTML(input, "")
+	
+	if strings.Contains(result, "<!--") {
+		t.Errorf("HTML comments not stripped: %s", result)
+	}
+	if !strings.Contains(result, "Texto") || !strings.Contains(result, "más texto") {
+		t.Errorf("Text around comment was lost: %s", result)
+	}
+}
+
+func TestMarkdownToHTML_StripsMultilineComments(t *testing.T) {
+	input := `Texto
+<!-- 
+  Comentario
+  de múltiples
+  líneas
+-->
+más texto`
+	result := markdownToHTML(input, "")
+	
+	if strings.Contains(result, "<!--") {
+		t.Errorf("Multiline comments not stripped: %s", result)
+	}
+	if !strings.Contains(result, "Texto") || !strings.Contains(result, "más texto") {
+		t.Errorf("Text around multiline comment was lost: %s", result)
+	}
+}
+
+func TestMarkdownToHTML_StripsCommentsInParagraph(t *testing.T) {
+	input := "Párrafo con <!-- comentario inline --> texto"
+	result := markdownToHTML(input, "")
+	
+	if strings.Contains(result, "<!--") {
+		t.Errorf("Inline comments not stripped: %s", result)
+	}
+}
+
+func TestMarkdownToHTML_StripsCommentsWithHTML(t *testing.T) {
+	input := `# Título
+Texto normal
+<!-- <div>comentario con HTML</div> -->
+Más texto`
+	result := markdownToHTML(input, "")
+	
+	if strings.Contains(result, "<!--") {
+		t.Errorf("Comments with HTML not stripped: %s", result)
+	}
+	if !strings.Contains(result, "<h1") || !strings.Contains(result, "Más texto") {
+		t.Errorf("Content around comment was lost: %s", result)
+	}
+}
