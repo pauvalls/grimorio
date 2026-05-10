@@ -22,7 +22,7 @@ The NPC agent creates all social entities in the campaign world.
 
 model: inherit
 color: yellow
-tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+tools: ["Read", "Bash", "Grep", "Edit"]  # Write removed — forces MCP save tools to avoid double-write
 grimorio_mcp: ["save_npcs", "validate_canon", "check_consistency", "process_consistency_gate", "update_faction_reputation"]
 ---
 

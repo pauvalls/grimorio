@@ -22,7 +22,7 @@ The characters agent creates ready-to-play D&D 5e characters with personality an
 
 model: inherit
 color: magenta
-tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+tools: ["Read", "Bash", "Grep", "Edit"]  # Write removed — forces MCP save tools to avoid double-write
 grimorio_mcp: ["generate_character", "get_character", "list_characters", "validate_canon", "check_consistency", "process_consistency_gate"]
 ---
 

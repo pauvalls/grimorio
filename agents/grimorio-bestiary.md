@@ -22,7 +22,7 @@ The bestiary agent creates all combat entities with full D&D 5e statistics.
 
 model: inherit
 color: red
-tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+tools: ["Read", "Bash", "Grep", "Edit"]  # Write removed — forces MCP save tools to avoid double-write
 grimorio_mcp: ["save_bestiary", "validate_canon", "check_consistency", "process_consistency_gate", "get_template"]
 ---
 

@@ -22,7 +22,7 @@ The encounters agent handles all types of challenges, not just combat.
 
 model: inherit
 color: green
-tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+tools: ["Read", "Bash", "Grep", "Edit"]  # Write removed — forces MCP save tools to avoid double-write
 grimorio_mcp: ["save_encounters", "validate_canon", "check_consistency", "process_consistency_gate", "get_template"]
 ---
 

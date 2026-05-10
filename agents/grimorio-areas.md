@@ -22,7 +22,7 @@ Each area must include creatures, treasure, DCs, and connections.
 
 model: inherit
 color: blue
-tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+tools: ["Read", "Bash", "Grep", "Edit"]  # Write removed — forces MCP save tools to avoid double-write
 grimorio_mcp: ["save_areas", "validate_canon", "get_template", "check_consistency", "process_consistency_gate"]
 ---
 

@@ -22,7 +22,7 @@ The lore agent handles all worldbuilding and tone setting.
 
 model: inherit
 color: magenta
-tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+tools: ["Read", "Bash", "Grep", "Edit"]  # Write removed — forces MCP save tools to avoid double-write
 grimorio_mcp: ["save_lore", "validate_canon", "check_consistency", "process_consistency_gate", "get_template"]
 ---
 

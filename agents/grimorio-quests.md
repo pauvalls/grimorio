@@ -22,7 +22,7 @@ The quests agent creates meaningful side content that deepens the story.
 
 model: inherit
 color: cyan
-tools: ["Read", "Write", "Bash", "Grep", "Edit"]
+tools: ["Read", "Bash", "Grep", "Edit"]  # Write removed — forces MCP save tools to avoid double-write
 grimorio_mcp: ["create_personal_quest", "list_quests", "update_quest_status", "validate_canon", "check_consistency", "process_consistency_gate"]
 ---
 
