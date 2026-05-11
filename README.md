@@ -72,7 +72,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 <a name="español"></a>
 
-## 🇬🇧 Español
+## 🇪🇸 Español
 
 Generador de campañas y one-shots de D&D 5e potenciado por IA. Convierte una chispa de idea en un libro de aventuras en PDF completamente formateado, listo para imprimir — con trasfondo, NPCs, bestiario, encuentros, y diseños con estilo inspirado en los manuales oficiales de Wizards of the Coast.
 
