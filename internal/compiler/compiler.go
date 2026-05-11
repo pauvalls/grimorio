@@ -984,9 +984,9 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				}
 				cellEsc := processInlineText(cell, baseDir, seenImages)
 				if align != "" {
-					htmlOut.WriteString(fmt.Sprintf(`<td style="text-align:%s">%s</td>`, align, cellEsc))
+					fmt.Fprintf(&htmlOut, `<td style="text-align:%s">%s</td>`, align, cellEsc)
 				} else {
-					htmlOut.WriteString(fmt.Sprintf(`<td>%s</td>`, cellEsc))
+					fmt.Fprintf(&htmlOut, `<td>%s</td>`, cellEsc)
 				}
 			}
 			htmlOut.WriteString(`</tr>`)

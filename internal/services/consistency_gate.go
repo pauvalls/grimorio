@@ -267,13 +267,13 @@ func (s *ConsistencyGateService) aggregateSuggestions(reports []domain.Validatio
 func (s *ConsistencyGateService) renderRetryPrompt(proposal domain.BatchProposal, suggestions []domain.Suggestion) string {
 	var builder strings.Builder
 
-	builder.WriteString(fmt.Sprintf("Batch %s (attempt %d) was rejected by the consistency gate.\n\n", proposal.BatchID, proposal.Attempt))
+	fmt.Fprintf(&builder, "Batch %s (attempt %d) was rejected by the consistency gate.\n\n", proposal.BatchID, proposal.Attempt)
 	builder.WriteString("Issues found:\n")
 
 	for i, suggestion := range suggestions {
-		builder.WriteString(fmt.Sprintf("%d. %s\n", i+1, suggestion.Problem))
-		builder.WriteString(fmt.Sprintf("   Fix: %s\n", suggestion.Fix))
-		builder.WriteString(fmt.Sprintf("   Rationale: %s\n", suggestion.Rationale))
+		fmt.Fprintf(&builder, "%d. %s\n", i+1, suggestion.Problem)
+		fmt.Fprintf(&builder, "   Fix: %s\n", suggestion.Fix)
+		fmt.Fprintf(&builder, "   Rationale: %s\n", suggestion.Rationale)
 	}
 
 	builder.WriteString("\nPlease fix these issues and resubmit the batch.")

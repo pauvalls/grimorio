@@ -277,7 +277,9 @@ func TestCSS_SnapshotComparison(t *testing.T) {
 
 			// If snapshot doesn't exist, create it
 			if _, err := os.Stat(snapshotPath); os.IsNotExist(err) {
-				os.WriteFile(snapshotPath, []byte(html), 0644)
+				if err := os.WriteFile(snapshotPath, []byte(html), 0644); err != nil {
+				t.Fatalf("Failed to write snapshot: %v", err)
+			}
 				t.Logf("Created snapshot: %s", snapshotPath)
 				return
 			}
