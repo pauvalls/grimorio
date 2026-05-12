@@ -54,6 +54,9 @@ var sessionPrepTemplate string
 //go:embed templates/character-sheet.md.tmpl
 var characterSheetTemplate string
 
+//go:embed templates/prologue.md.tmpl
+var prologueTemplate string
+
 type Compiler struct {
 	CampaignDir         string
 	PDFEngine           string
@@ -114,6 +117,8 @@ func GetTemplate(tmplType string) (string, error) {
 		return sessionPrepTemplate, nil
 	case "character-sheet":
 		return characterSheetTemplate, nil
+	case "prologue":
+		return prologueTemplate, nil
 	case "dnd-style":
 		return dndCSS, nil
 	default:
@@ -215,6 +220,14 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 	if sessionZeroHTML != "" {
 		htmlParts = append(htmlParts, `<div class="section-break"></div>`)
 		htmlParts = append(htmlParts, sessionZeroHTML)
+		htmlParts = append(htmlParts, `<div class="section-break"></div>`)
+	}
+
+	// Prologue narrative (if available)
+	prologueHTML := c.generatePrologue()
+	if prologueHTML != "" {
+		htmlParts = append(htmlParts, `<div class="section-break"></div>`)
+		htmlParts = append(htmlParts, prologueHTML)
 		htmlParts = append(htmlParts, `<div class="section-break"></div>`)
 	}
 
@@ -424,6 +437,22 @@ func (c *Compiler) generateSessionZero() string {
 	}
 
 	return htmlResult // markdown already contains the heading with proper id
+}
+
+// generatePrologue reads prologue.md and converts to HTML
+func (c *Compiler) generatePrologue() string {
+	path := filepath.Join(c.CampaignDir, "prologue.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "" // no prologue, skip
+	}
+
+	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-prologue", new(int), c.seenImages, c.CompilerVersion)
+	if strings.TrimSpace(htmlResult) == "" {
+		return ""
+	}
+
+	return htmlResult
 }
 
 // generateFlowchartEmbed embeds the flowchart SVG if available
@@ -809,7 +838,7 @@ var (
 	htmlCommentRegex  = regexp.MustCompile(`<!--[\s\S]*?-->`)
 	imageRegex        = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	imgTagRegex       = regexp.MustCompile(`<img[^>]*(?:/\s*)?>`)
-	htmlBlockRegex    = regexp.MustCompile(`(?s)<div[^>]*>.*?</div>`)
+	htmlBlockRegex    = regexp.MustCompile(`(?s)<div[^>]*>.*?</div>`) // Deprecated: replaced by extractBalancedDivs for nested div support
 	htmlBlockPlaceholderRegex = regexp.MustCompile(`^\x00HTMLBLOCK\d+\x00$`)
 
 	// readAloudPrefixRe strips **Read-Aloud:** or **Para Leer en Voz Alta:** labels from blockquote text
@@ -863,6 +892,63 @@ func processInlineText(text string, baseDir string, seenImages map[string]bool) 
 	return text
 }
 
+// extractBalancedDivs extracts HTML div blocks with proper nesting support.
+// It tracks opening and closing div tags to handle nested structures correctly.
+// Returns the markdown with div blocks replaced by placeholders, and the extracted blocks.
+func extractBalancedDivs(md string) (string, []string) {
+	var blocks []string
+	var result strings.Builder
+	i := 0
+
+	for i < len(md) {
+		// Look for <div start
+		if i+4 <= len(md) && strings.ToLower(md[i:i+4]) == "<div" {
+			// Found div start, now track depth
+			start := i
+			depth := 0
+			j := i
+
+			for j < len(md) {
+				// Check for div open
+				if j+4 <= len(md) && strings.ToLower(md[j:j+4]) == "<div" {
+					depth++
+					j += 4
+					continue
+				}
+
+				// Check for div close
+				if j+6 <= len(md) && strings.ToLower(md[j:j+6]) == "</div>" {
+					depth--
+					j += 6
+					if depth == 0 {
+						// Complete block found
+						block := md[start:j]
+						placeholder := fmt.Sprintf("\x00HTMLBLOCK%d\x00", len(blocks))
+						result.WriteString(placeholder)
+						blocks = append(blocks, block)
+						i = j
+						break
+					}
+					continue
+				}
+
+				j++
+			}
+
+			// If we reached end without closing, treat as regular text
+			if depth > 0 {
+				result.WriteString(md[i:j])
+				i = j
+			}
+		} else {
+			result.WriteByte(md[i])
+			i++
+		}
+	}
+
+	return result.String(), blocks
+}
+
 func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool) string {
 	return markdownToHTMLWithID(md, baseDir, sectionID, headingCounter, seenImages, c.CompilerVersion)
 }
@@ -872,11 +958,8 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 	md = htmlCommentRegex.ReplaceAllString(md, "")
 
 	// Extract HTML blocks (like <div>...</div>) before processing to preserve them
-	var htmlBlocks []string
-	md = htmlBlockRegex.ReplaceAllStringFunc(md, func(match string) string {
-		htmlBlocks = append(htmlBlocks, match)
-		return fmt.Sprintf("\x00HTMLBLOCK%d\x00", len(htmlBlocks)-1)
-	})
+	// Uses depth-tracking to handle nested divs correctly
+	md, htmlBlocks := extractBalancedDivs(md)
 
 	// Strip raw HTML tags (except <img>) that would be escaped and rendered as visible text.
 	// Stash <img> tags, strip all remaining HTML tags, then restore <img> tags.

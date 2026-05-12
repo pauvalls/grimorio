@@ -769,3 +769,83 @@ Some text after.
 		t.Errorf("HTML should contain the div, got: %s", html)
 	}
 }
+
+// Phase 2: Worksheet Nesting Tests
+
+func TestWorksheetNestedDivs(t *testing.T) {
+	md := `### Worksheet de Creación de Personaje
+
+<div class="character-worksheet">
+<div class="worksheet-section">
+<h4>Antecedentes y Conexiones</h4>
+<div class="prompt-box">¿Qué conecta a tu personaje con esta región?</div>
+</div>
+
+<div class="worksheet-section">
+<h4>Motivaciones</h4>
+<div class="prompt-box">¿Qué busca tu personaje?</div>
+</div>
+
+<div class="worksheet-section">
+<h4>Vínculos con el Partido</h4>
+<div class="prompt-box">¿Cómo conoció al grupo?</div>
+</div>
+
+<div class="worksheet-section">
+<h4>Secretos y Defectos</h4>
+<div class="prompt-box">¿Qué oculta tu personaje?</div>
+</div>
+</div>
+`
+	
+	html := markdownToHTML(md, "/tmp")
+	
+	// Verify all opening tags have closing tags
+	openCount := strings.Count(html, `<div class="worksheet-section">`)
+	closeCount := strings.Count(html, `</div>`)
+	
+	// Should have 4 worksheet-section opening tags
+	if openCount != 4 {
+		t.Errorf("Expected 4 worksheet-section opening tags, got %d", openCount)
+	}
+	
+	// Should have enough closing tags (4 worksheet-section + 1 character-worksheet + 4 prompt-box = 9 minimum)
+	if closeCount < 9 {
+		t.Errorf("Expected at least 9 closing </div> tags, got %d. HTML:\n%s", closeCount, html)
+	}
+	
+	// Verify no <p><div> nesting
+	if strings.Contains(html, "<p><div") {
+		t.Errorf("HTML should not wrap <div> in <p> tags:\n%s", html)
+	}
+	
+	// Verify character-worksheet div is present
+	if !strings.Contains(html, `<div class="character-worksheet">`) {
+		t.Errorf("HTML should contain character-worksheet div:\n%s", html)
+	}
+}
+
+func TestDeeplyNestedDivs(t *testing.T) {
+	md := `<div class="level1">
+<div class="level2">
+<div class="level3">
+<div class="level4">Deep content</div>
+</div>
+</div>
+</div>`
+	
+	html := markdownToHTML(md, "/tmp")
+	
+	// Count each level
+	level1Open := strings.Count(html, `<div class="level1">`)
+	level1Close := strings.Count(html, `</div>`) // This counts all, but we need at least 4 total
+	
+	if level1Open != 1 {
+		t.Errorf("Expected 1 level1 div, got %d", level1Open)
+	}
+	
+	// Should have at least 4 closing divs for 4 levels
+	if level1Close < 4 {
+		t.Errorf("Expected at least 4 closing divs for nested structure, got %d. HTML:\n%s", level1Close, html)
+	}
+}
