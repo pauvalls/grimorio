@@ -810,6 +810,7 @@ var (
 	imageRegex        = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	imgTagRegex       = regexp.MustCompile(`<img[^>]*(?:/\s*)?>`)
 	htmlBlockRegex    = regexp.MustCompile(`(?s)<div[^>]*>.*?</div>`)
+	htmlBlockPlaceholderRegex = regexp.MustCompile(`^\x00HTMLBLOCK\d+\x00$`)
 
 	// readAloudPrefixRe strips **Read-Aloud:** or **Para Leer en Voz Alta:** labels from blockquote text
 	// (CSS .read-aloud::before pseudo-element provides the visual label, so the inline text would duplicate it)
@@ -1190,6 +1191,14 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				inList = false
 			}
 			out = append(out, processImages(trimmed, baseDir, seenImages))
+		} else if htmlBlockPlaceholderRegex.MatchString(trimmed) {
+			// HTML block placeholder — flush paragraph and output directly without <p> wrapper
+			flushParagraph()
+			if inList {
+				out = append(out, "</ul>")
+				inList = false
+			}
+			out = append(out, trimmed)
 		} else {
 			if inList {
 				out = append(out, "</ul>")
