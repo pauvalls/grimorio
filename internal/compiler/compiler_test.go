@@ -745,3 +745,27 @@ Más texto`
 		t.Errorf("Content around comment was lost: %s", result)
 	}
 }
+
+func TestHTMLBlockNotWrappedInParagraph(t *testing.T) {
+	md := `# Test
+
+Some text before.
+
+<div class="shock-point moderate">
+<span class="severity-badge">moderate</span>
+<strong>Violencia</strong>: Test content.
+</div>
+
+Some text after.
+`
+	
+	html := markdownToHTML(md, "/tmp")
+	
+	if strings.Contains(html, "<p><div") {
+		t.Errorf("HTML should not wrap <div> in <p> tags, got: %s", html)
+	}
+	
+	if !strings.Contains(html, `<div class="shock-point`) {
+		t.Errorf("HTML should contain the div, got: %s", html)
+	}
+}
