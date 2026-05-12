@@ -30,7 +30,7 @@ func TestE2E_FactionUpdatePropagationMatrix(t *testing.T) {
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 	canonSvc := NewCanonService(canonRepo, stateRepo)
 	stateSvc := NewNarrativeStateService(stateRepo, canonRepo)
-	validationEngine := NewValidationEngine(canonSvc, stateSvc, factionRepo)
+	validationEngine := NewValidationEngine(canonSvc, stateSvc, factionRepo, "")
 	_ = canonRepo.Save("e2e-campaign", doc)
 	_ = stateRepo.Save("e2e-campaign", &domain.NarrativeState{SchemaVersion: domain.SchemaVersionV2, CampaignID: "e2e-campaign"})
 

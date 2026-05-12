@@ -14,7 +14,7 @@ func setupGateService(t *testing.T) (*ConsistencyGateService, *repository.Memory
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 	canonSvc := NewCanonService(canonRepo, stateRepo)
 	stateSvc := NewNarrativeStateService(stateRepo, canonRepo)
-	validator := NewValidationEngine(canonSvc, stateSvc, nil)
+	validator := NewValidationEngine(canonSvc, stateSvc, nil, "")
 
 	gateSvc := NewConsistencyGateService(canonSvc, stateSvc, validator)
 	return gateSvc, canonRepo, stateRepo
@@ -384,7 +384,7 @@ func BenchmarkConsistencyGate_ProcessBatch(b *testing.B) {
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 	canonSvc := NewCanonService(canonRepo, stateRepo)
 	stateSvc := NewNarrativeStateService(stateRepo, canonRepo)
-	validator := NewValidationEngine(canonSvc, stateSvc, nil)
+	validator := NewValidationEngine(canonSvc, stateSvc, nil, "")
 	gateSvc := NewConsistencyGateService(canonSvc, stateSvc, validator)
 	ctx := context.Background()
 

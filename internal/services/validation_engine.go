@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -17,14 +19,16 @@ type ValidationEngine struct {
 	canonService *CanonService
 	stateService *NarrativeStateService
 	factionRepo  repository.FactionReputationRepository
+	campaignDir  string // base directory where campaign subdirs live (e.g. ~/campaigns)
 }
 
 // NewValidationEngine creates a new validation engine
-func NewValidationEngine(canonService *CanonService, stateService *NarrativeStateService, factionRepo repository.FactionReputationRepository) *ValidationEngine {
+func NewValidationEngine(canonService *CanonService, stateService *NarrativeStateService, factionRepo repository.FactionReputationRepository, campaignDir string) *ValidationEngine {
 	return &ValidationEngine{
 		canonService: canonService,
 		stateService: stateService,
 		factionRepo:  factionRepo,
+		campaignDir:  campaignDir,
 	}
 }
 
@@ -213,12 +217,195 @@ func (e *ValidationEngine) CheckConsistency(ctx context.Context, campaignID stri
 				}
 			}
 		}
+
+		// WotC Format Validations — run on all act files
+		e.runWotCConsistencyChecks(report, campaignID)
+
+		// Integration cross-reference: act <-> bestiary <-> npcs
+		e.runIntegrationChecks(report, campaignID)
 	}
 
 	// Compute report statistics
 	e.computeConsistencyStats(report)
 
 	return report, nil
+}
+
+// runWotCConsistencyChecks runs WotC format validations on all act files when scope=full.
+func (e *ValidationEngine) runWotCConsistencyChecks(report *domain.ConsistencyReport, campaignID string) {
+	areasDir := filepath.Join(e.campaignDir, campaignID, "areas")
+	info, err := os.Stat(areasDir)
+	if err != nil || !info.IsDir() {
+		return // no areas directory — nothing to validate
+	}
+
+	files, err := os.ReadDir(areasDir)
+	if err != nil {
+		return
+	}
+
+	for _, f := range files {
+		if !strings.HasSuffix(f.Name(), ".md") {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(areasDir, f.Name()))
+		if err != nil {
+			continue
+		}
+		chapterName := strings.TrimSuffix(f.Name(), ".md")
+
+		// 1. Developments: 3-5 IF-THEN branches
+		devResult := validators.ValidateDevelopments(string(content))
+		for _, verr := range devResult.Errors {
+			report.Issues = append(report.Issues, domain.CheckResult{
+				Rule:     "wotc_developments",
+				Passed:   false,
+				Severity: "warning",
+				Message:  fmt.Sprintf("[%s] %s", chapterName, verr.Message),
+				Location: chapterName,
+			})
+		}
+
+		// 2. Multiple solution paths
+		solResult := validators.ValidateMultipleSolutions(string(content))
+		for _, verr := range solResult.Errors {
+			report.Issues = append(report.Issues, domain.CheckResult{
+				Rule:     "wotc_multiple_solutions",
+				Passed:   false,
+				Severity: "warning",
+				Message:  fmt.Sprintf("[%s] %s", chapterName, verr.Message),
+				Location: chapterName,
+			})
+		}
+
+		// 3. Character hooks
+		hooksResult := validators.ValidateCharacterHooks(string(content))
+		for _, verr := range hooksResult.Errors {
+			report.Issues = append(report.Issues, domain.CheckResult{
+				Rule:     "wotc_character_hooks",
+				Passed:   false,
+				Severity: "warning",
+				Message:  fmt.Sprintf("[%s] %s", chapterName, verr.Message),
+				Location: chapterName,
+			})
+		}
+
+		// 4. Boxed text quality
+		boxedResult := validators.ValidateBoxedText(string(content))
+		for _, verr := range boxedResult.Errors {
+			report.Issues = append(report.Issues, domain.CheckResult{
+				Rule:     "wotc_boxed_text",
+				Passed:   false,
+				Severity: "warning",
+				Message:  fmt.Sprintf("[%s] %s", chapterName, verr.Message),
+				Location: chapterName,
+			})
+		}
+	}
+
+	// 5. NPC word count — validate against npcs directory
+	npcsDir := filepath.Join(e.campaignDir, campaignID, "npcs")
+	npcsInfo, npcsErr := os.Stat(npcsDir)
+	if npcsErr == nil && npcsInfo.IsDir() {
+		npcFiles, _ := os.ReadDir(npcsDir)
+		for _, f := range npcFiles {
+			if !strings.HasSuffix(f.Name(), ".md") {
+				continue
+			}
+			npcContent, err := os.ReadFile(filepath.Join(npcsDir, f.Name()))
+			if err != nil {
+				continue
+			}
+			npcResult := validators.ValidateNPCWordCount(string(npcContent))
+			for _, verr := range npcResult.Errors {
+				report.Issues = append(report.Issues, domain.CheckResult{
+					Rule:     "wotc_npc_word_count",
+					Passed:   false,
+					Severity: "warning",
+					Message:  fmt.Sprintf("[%s] %s", f.Name(), verr.Message),
+					Location: f.Name(),
+				})
+			}
+			for _, warn := range npcResult.Warnings {
+				report.Issues = append(report.Issues, domain.CheckResult{
+					Rule:     "wotc_npc_word_count",
+					Passed:   false,
+					Severity: "warning",
+					Message:  fmt.Sprintf("[%s] %s", f.Name(), warn),
+					Location: f.Name(),
+				})
+			}
+		}
+	}
+}
+
+// runIntegrationChecks validates cross-references between acts, bestiary, and NPCs.
+func (e *ValidationEngine) runIntegrationChecks(report *domain.ConsistencyReport, campaignID string) {
+	campDir := filepath.Join(e.campaignDir, campaignID)
+
+	// Read bestiary
+	bestiaryPath := filepath.Join(campDir, "bestiary")
+	bestiaryContent := ""
+	if bi, err := os.Stat(bestiaryPath); err == nil && bi.IsDir() {
+		var parts []string
+		files, _ := os.ReadDir(bestiaryPath)
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".md") {
+				data, err := os.ReadFile(filepath.Join(bestiaryPath, f.Name()))
+				if err == nil {
+					parts = append(parts, string(data))
+				}
+			}
+		}
+		bestiaryContent = strings.Join(parts, "\n")
+	}
+
+	// Read NPCs
+	npcsPath := filepath.Join(campDir, "npcs")
+	npcsContent := ""
+	if ni, err := os.Stat(npcsPath); err == nil && ni.IsDir() {
+		var parts []string
+		files, _ := os.ReadDir(npcsPath)
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".md") {
+				data, err := os.ReadFile(filepath.Join(npcsPath, f.Name()))
+				if err == nil {
+					parts = append(parts, string(data))
+				}
+			}
+		}
+		npcsContent = strings.Join(parts, "\n")
+	}
+
+	// Read acts
+	areasPath := filepath.Join(campDir, "areas")
+	if ai, err := os.Stat(areasPath); err != nil || !ai.IsDir() {
+		return
+	}
+
+	files, _ := os.ReadDir(areasPath)
+	for _, f := range files {
+		if !strings.HasSuffix(f.Name(), ".md") {
+			continue
+		}
+		actContent, err := os.ReadFile(filepath.Join(areasPath, f.Name()))
+		if err != nil {
+			continue
+		}
+		chapterName := strings.TrimSuffix(f.Name(), ".md")
+
+		// Integration validation per act
+		integResult := validators.ValidateIntegration(string(actContent), bestiaryContent, npcsContent)
+		for _, verr := range integResult.Errors {
+			report.Issues = append(report.Issues, domain.CheckResult{
+				Rule:     "integration",
+				Passed:   false,
+				Severity: "error",
+				Message:  fmt.Sprintf("[%s] %s", chapterName, verr.Message),
+				Location: chapterName,
+			})
+		}
+	}
 }
 
 func (e *ValidationEngine) validate(ctx context.Context, campaignID string, proposal domain.ContentProposal) (*domain.ValidationReport, error) {

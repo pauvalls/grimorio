@@ -15,7 +15,7 @@ func setupValidationEngine() (*ValidationEngine, *CanonService, *NarrativeStateS
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 	canonSvc := NewCanonService(canonRepo, stateRepo)
 	stateSvc := NewNarrativeStateService(stateRepo, canonRepo)
-	validator := NewValidationEngine(canonSvc, stateSvc, nil)
+	validator := NewValidationEngine(canonSvc, stateSvc, nil, "")
 	return validator, canonSvc, stateSvc
 }
 

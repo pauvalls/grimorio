@@ -48,7 +48,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	}
 
 	narrativeStateService := services.NewNarrativeStateService(narrativeStateRepo, canonRepo)
-	validationEngine := services.NewValidationEngine(canonService, narrativeStateService, factionRepo)
+	validationEngine := services.NewValidationEngine(canonService, narrativeStateService, factionRepo, cfg.OutputDir)
 	consistencyGateService := services.NewConsistencyGateService(canonService, narrativeStateService, validationEngine)
 	factionService := services.NewFactionService(canonRepo, factionRepo)
 	tableService := services.NewRandomTableService(canonRepo)
