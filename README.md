@@ -65,6 +65,8 @@ Then type in your AI assistant chat:
 - **Structured Quests** — 3+ distinct approaches (combat, social, stealth)
 - **Consequence Tables** — Act transition tracking with faction reputation
 - **PDF Compiler Enhancements** — Characters/Quests in PDF, WotC-style CSS, Shock Points
+- **WotC Format Validation** — `check_consistency scope=full` validates developments (3-5 IF-THEN branches), multiple solutions (stealth/social/combat), character hooks, boxed text (100-600 words), NPC word count, and integration cross-references (act ↔ bestiary ↔ NPCs)
+- **HTML Rendering Fix** — Fixed invalid `<p><div>` nesting for proper CSS rendering in PDF
 
 See [CHANGELOG.md](CHANGELOG.md) for full details.
 
@@ -123,6 +125,8 @@ Luego escribe en el chat de tu asistente IA:
 - **Misiones Estructuradas** — 3+ enfoques distintos (combate, social, sigilo)
 - **Tablas de Consecuencias** — Seguimiento de transición de actos con reputación de facciones
 - **Mejoras al Compilador PDF** — Personajes/Misiones en PDF, CSS estilo WotC, Puntos de Shock
+- **Validación de Formato WotC** — `check_consistency scope=full` valida developments (3-5 ramas IF-THEN), múltiples soluciones (sigilo/social/combate), ganchos de personaje, boxed text (100-600 palabras), cantidad de palabras en NPCs, e integración cross-reference (act ↔ bestiary ↔ NPCs)
+- **Fix de Renderizado HTML** — Corregido nesting inválido `<p><div>` para renderizado CSS correcto en PDF
 
 Ver [CHANGELOG.md](CHANGELOG.md) para detalles completos.
 
