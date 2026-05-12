@@ -362,6 +362,66 @@ verify_scripts() {
     fi
 }
 
+copy_skills() {
+    print_step "Copying Skills to ~/.config/opencode/skills/..."
+    echo ""
+    
+    # Check source skills directory
+    local source_skills="$PROJECT_ROOT/skills"
+    if [ ! -d "$source_skills" ]; then
+        print_error "Source skills directory not found: $source_skills"
+        return 1
+    fi
+    
+    # Create destination directory
+    mkdir -p "$SKILLS_DIR"
+    print_success "Skills directory created: $SKILLS_DIR"
+    
+    # Copy all skill directories
+    local skill_dirs=(
+        "grimorio-architect"
+        "grimorio-artist"
+        "grimorio-cartographer"
+        "grimorio-lore"
+        "grimorio-npc"
+        "grimorio-bestiary"
+        "grimorio-encounters"
+        "grimorio-areas"
+        "grimorio-quests"
+        "grimorio-maps"
+        "grimorio-characters"
+        "grimorio-narrative-custodian"
+        "grimorio-introduction"
+        "grimorio-setting-guide"
+        "grimorio-appendices"
+        "grimorio-integrator"
+        "dnd-5e-srd"
+    )
+    
+    local copied=0
+    local failed=0
+    for skill_dir in "${skill_dirs[@]}"; do
+        if [ -d "$source_skills/$skill_dir" ]; then
+            cp -r "$source_skills/$skill_dir" "$SKILLS_DIR/"
+            echo -e "  ${GREEN}✅${NC} $skill_dir"
+            copied=$((copied + 1))
+        else
+            echo -e "  ${RED}❌${NC} $skill_dir (not found)"
+            failed=$((failed + 1))
+        fi
+    done
+    
+    echo ""
+    
+    if [ $failed -gt 0 ]; then
+        print_error "$failed skill(s) failed to copy"
+        return 1
+    else
+        print_success "All $copied skills copied successfully"
+        return 0
+    fi
+}
+
 verify_skills() {
     print_step "Verifying Skills..."
     echo ""
@@ -375,12 +435,50 @@ verify_skills() {
     
     print_success "Skills directory exists"
     
-    # Check grimorio-architect skill
-    if [ -f "$SKILLS_DIR/grimorio-architect/SKILL.md" ]; then
-        local lines=$(wc -l < "$SKILLS_DIR/grimorio-architect/SKILL.md")
-        print_success "grimorio-architect skill ($lines lines)"
+    # Count installed skills
+    local skill_count=$(find "$SKILLS_DIR" -maxdepth 2 -name "SKILL.md" | wc -l)
+    print_success "Total skills installed: $skill_count"
+    
+    # Verify all 17 grimorio + dnd-5e-srd skills
+    local required_skills=(
+        "grimorio-architect"
+        "grimorio-artist"
+        "grimorio-cartographer"
+        "grimorio-lore"
+        "grimorio-npc"
+        "grimorio-bestiary"
+        "grimorio-encounters"
+        "grimorio-areas"
+        "grimorio-quests"
+        "grimorio-maps"
+        "grimorio-characters"
+        "grimorio-narrative-custodian"
+        "grimorio-introduction"
+        "grimorio-setting-guide"
+        "grimorio-appendices"
+        "grimorio-integrator"
+        "dnd-5e-srd"
+    )
+    
+    local missing=0
+    for skill in "${required_skills[@]}"; do
+        if [ -f "$SKILLS_DIR/$skill/SKILL.md" ]; then
+            local lines=$(wc -l < "$SKILLS_DIR/$skill/SKILL.md")
+            echo -e "  ${GREEN}✅${NC} $skill ($lines lines)"
+        else
+            echo -e "  ${RED}❌${NC} $skill"
+            missing=$((missing + 1))
+        fi
+    done
+    
+    echo ""
+    
+    if [ $missing -gt 0 ]; then
+        print_error "$missing skill(s) missing"
+        print_warning "Run ./scripts/install.sh --reinstall to copy all skills"
+        return 1
     else
-        print_warning "grimorio-architect skill not found"
+        print_success "All ${#required_skills[@]} skills present"
     fi
     
     # Check skill registry
@@ -466,9 +564,9 @@ print_summary() {
     echo "  ✅ Grimorio binary compiled"
     echo "  ✅ OpenCode configuration verified"
     echo "  ✅ Agents configured ($(grep -c '"grimorio-' "$OPENCODE_CONFIG" 2>/dev/null || echo 0))"
+    echo "  ✅ Skills installed ($(find "$SKILLS_DIR" -maxdepth 2 -name "SKILL.md" 2>/dev/null | wc -l))"
     echo "  ✅ Templates verified ($(ls -1 "$PROJECT_ROOT/internal/compiler/templates"/*.tmpl 2>/dev/null | wc -l))"
     echo "  ✅ Scripts verified ($(ls -1 "$PROJECT_ROOT/scripts"/*.sh 2>/dev/null | wc -l))"
-    echo "  ✅ Skills configured"
     echo "  ✅ MCP servers configured"
     echo ""
     echo -e "${BLUE}Next Steps:${NC}"
@@ -531,6 +629,8 @@ case $MODE in
     reinstall|full)
         install_dependencies || exit 1
         build_grimorio || exit 1
+        verify_opencode_config || exit 1
+        copy_skills || exit 1
         verify_opencode_config || exit 1
         verify_agents || exit 1
         verify_templates || exit 1
