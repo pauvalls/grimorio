@@ -31,7 +31,7 @@ See `_shared/skill-resolver.md` for the full resolution protocol.
 
 | Trigger | Skill | Path |
 |---------|-------|------|
-| D&D 5e campaign design, encounter balance, narrative coherence, SRD rules | dnd-5e-srd | /home/pau/Grimorio/skills/dnd-5e-srd/SKILL.md |
+| D&D 5e campaign design, encounter balance, narrative coherence, SRD rules | dnd-5e-srd | ~/.config/opencode/skills/dnd-5e-srd/SKILL.md |
 | Generate D&D 5e campaigns end-to-end via delegate pattern, WotC standards | grimorio-architect | ~/.config/opencode/skills/grimorio-architect/SKILL.md |
 | Consolidate campaign reference material — magic items, stat blocks, handouts, maps, tables | grimorio-appendices | ~/.config/opencode/skills/grimorio-appendices/SKILL.md |
 | Generate numbered playable areas (10-15 per act) with WotC format validation | grimorio-areas | ~/.config/opencode/skills/grimorio-areas/SKILL.md |
