@@ -46,13 +46,13 @@ func (s *FlowchartService) GenerateMermaid(ctx context.Context, campaignID strin
 		label := strings.ReplaceAll(node.Label, `"`, `\"`)
 		switch node.Type {
 		case "act":
-			sb.WriteString(fmt.Sprintf("    %s[%s]\n", node.ID, label))
+			fmt.Fprintf(&sb, "    %s[%s]\n", node.ID, label)
 		case "decision":
-			sb.WriteString(fmt.Sprintf("    %s{%s}\n", node.ID, label))
+			fmt.Fprintf(&sb, "    %s{%s}\n", node.ID, label)
 		case "event":
-			sb.WriteString(fmt.Sprintf("    %s(%s)\n", node.ID, label))
+			fmt.Fprintf(&sb, "    %s(%s)\n", node.ID, label)
 		default:
-			sb.WriteString(fmt.Sprintf("    %s[%s]\n", node.ID, label))
+			fmt.Fprintf(&sb, "    %s[%s]\n", node.ID, label)
 		}
 	}
 

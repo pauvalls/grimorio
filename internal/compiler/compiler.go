@@ -838,7 +838,7 @@ var (
 	htmlCommentRegex  = regexp.MustCompile(`<!--[\s\S]*?-->`)
 	imageRegex        = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	imgTagRegex       = regexp.MustCompile(`<img[^>]*(?:/\s*)?>`)
-	htmlBlockRegex    = regexp.MustCompile(`(?s)<div[^>]*>.*?</div>`) // Deprecated: replaced by extractBalancedDivs for nested div support
+
 	htmlBlockPlaceholderRegex = regexp.MustCompile(`^\x00HTMLBLOCK\d+\x00$`)
 
 	// readAloudPrefixRe strips **Read-Aloud:** or **Para Leer en Voz Alta:** labels from blockquote text
