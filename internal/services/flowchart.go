@@ -59,7 +59,7 @@ func (s *FlowchartService) GenerateMermaid(ctx context.Context, campaignID strin
 	// Write edges
 	for _, node := range nodes {
 		for _, dep := range node.Dependencies {
-			sb.WriteString(fmt.Sprintf("    %s --> %s\n", dep, node.ID))
+			fmt.Fprintf(&sb, "    %s --> %s\n", dep, node.ID)
 		}
 	}
 
@@ -249,12 +249,12 @@ func (s *FlowchartService) renderFlowchartSVG(nodes []domain.FlowchartNode) stri
 	height := margin*2 + rows*nodeHeight + (rows-1)*vSpacing + 40
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" style="background:#faf8f5;" font-family="Arial,sans-serif" font-size="12">`,
-		width, height, width, height))
+	fmt.Fprintf(&sb, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" style="background:#faf8f5;" font-family="Arial,sans-serif" font-size="12">`,
+		width, height, width, height)
 
 	// Title
-	sb.WriteString(fmt.Sprintf(`<text x="%d" y="25" text-anchor="middle" font-size="16" font-weight="bold" fill="#5a3d2b">Campaign Flowchart</text>`,
-		width/2))
+	fmt.Fprintf(&sb, `<text x="%d" y="25" text-anchor="middle" font-size="16" font-weight="bold" fill="#5a3d2b">Campaign Flowchart</text>`,
+		width/2)
 
 	// Calculate positions
 	positions := make(map[string]struct{ x, y int })
@@ -278,9 +278,9 @@ func (s *FlowchartService) renderFlowchartSVG(nodes []domain.FlowchartNode) stri
 				continue
 			}
 			// Draw line from dep to node
-			sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#8b7355" stroke-width="1.5" marker-end="url(#arrowhead)"/>`,
+			fmt.Fprintf(&sb, `<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#8b7355" stroke-width="1.5" marker-end="url(#arrowhead)"/>`,
 				depPos.x+nodeWidth/2, depPos.y+nodeHeight,
-				pos.x+nodeWidth/2, pos.y))
+				pos.x+nodeWidth/2, pos.y)
 		}
 	}
 
@@ -307,15 +307,15 @@ func (s *FlowchartService) renderFlowchartSVG(nodes []domain.FlowchartNode) stri
 			stroke = "#8b7355"
 		}
 
-		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" rx="4" fill="%s" stroke="%s" stroke-width="1.5"/>`,
-			pos.x, pos.y, nodeWidth, nodeHeight, fill, stroke))
+		fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" rx="4" fill="%s" stroke="%s" stroke-width="1.5"/>`,
+			pos.x, pos.y, nodeWidth, nodeHeight, fill, stroke)
 
 		label := node.Label
 		if len(label) > 20 {
 			label = label[:17] + "..."
 		}
-		sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" text-anchor="middle" dominant-baseline="central" fill="#2c1e14">%s</text>`,
-			pos.x+nodeWidth/2, pos.y+nodeHeight/2, label))
+		fmt.Fprintf(&sb, `<text x="%d" y="%d" text-anchor="middle" dominant-baseline="central" fill="#2c1e14">%s</text>`,
+			pos.x+nodeWidth/2, pos.y+nodeHeight/2, label)
 	}
 
 	sb.WriteString(`</svg>`)
