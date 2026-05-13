@@ -138,8 +138,8 @@ func (g *HandoutGenerator) GenerateNPCReference() (string, error) {
 		location := extractField(block, "Ubicación")
 		role := extractField(block, "Rol en la historia")
 
-		sb.WriteString(fmt.Sprintf("| **%s** | %s | %s | %s |\n",
-			npcName, raceClass, location, role))
+		fmt.Fprintf(&sb, "| **%s** | %s | %s | %s |\n",
+			npcName, raceClass, location, role)
 	}
 
 	return sb.String(), nil
@@ -164,11 +164,11 @@ func (g *HandoutGenerator) GenerateSessionRecap() (string, error) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("## Resumen de la Sesión %d\n\n", sessionNum))
+	fmt.Fprintf(&sb, "## Resumen de la Sesión %d\n\n", sessionNum)
 
 	if last, ok := state["last_session"].(map[string]interface{}); ok {
 		if areas, ok := last["areas_visited"].([]interface{}); ok {
-			sb.WriteString(fmt.Sprintf("En esta sesión explorasteis **%d áreas**: ", len(areas)))
+			fmt.Fprintf(&sb, "En esta sesión explorasteis **%d áreas**: ", len(areas))
 			var names []string
 			for _, a := range areas {
 				if name, ok := a.(string); ok {
