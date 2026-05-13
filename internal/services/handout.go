@@ -180,7 +180,7 @@ func (g *HandoutGenerator) GenerateSessionRecap() (string, error) {
 		}
 
 		if combats, ok := last["combats"].(float64); ok {
-			sb.WriteString(fmt.Sprintf("Participasteis en **%.0f combates**. ", combats))
+			fmt.Fprintf(&sb, "Participasteis en **%.0f combates**. ", combats)
 		}
 
 		if decisions, ok := last["key_decisions"].([]interface{}); ok && len(decisions) > 0 {

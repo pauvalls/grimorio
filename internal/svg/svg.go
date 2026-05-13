@@ -206,15 +206,15 @@ func renderSVG(cfg BattleMapConfig, rooms []Room, corridors []Corridor) string {
 	var sb strings.Builder
 	gs := cfg.GridSize
 
-	sb.WriteString(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`,
-		cfg.Width, cfg.Height, cfg.Width, cfg.Height))
+	fmt.Fprintf(&sb, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`,
+		cfg.Width, cfg.Height, cfg.Width, cfg.Height)
 
 	// Definitions
 	sb.WriteString(`<defs>`)
 
 	// Grid pattern
-	sb.WriteString(fmt.Sprintf(`<pattern id="grid" width="%d" height="%d" patternUnits="userSpaceOnUse">`, gs, gs))
-	sb.WriteString(fmt.Sprintf(`<path d="M %d 0 L 0 0 0 %d" fill="none" stroke="#c9ad6a" stroke-width="0.5" opacity="0.3"/>`, gs, gs))
+	fmt.Fprintf(&sb, `<pattern id="grid" width="%d" height="%d" patternUnits="userSpaceOnUse">`, gs, gs)
+	fmt.Fprintf(&sb, `<path d="M %d 0 L 0 0 0 %d" fill="none" stroke="#c9ad6a" stroke-width="0.5" opacity="0.3"/>`, gs, gs)
 	sb.WriteString(`</pattern>`)
 
 	// Shadow filter for rooms
