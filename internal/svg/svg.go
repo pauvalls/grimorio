@@ -225,8 +225,8 @@ func renderSVG(cfg BattleMapConfig, rooms []Room, corridors []Corridor) string {
 	sb.WriteString(`</defs>`)
 
 	// Background
-	sb.WriteString(fmt.Sprintf(`<rect width="%d" height="%d" fill="#2c1e14"/>`, cfg.Width, cfg.Height))
-	sb.WriteString(fmt.Sprintf(`<rect width="%d" height="%d" fill="url(#grid)"/>`, cfg.Width, cfg.Height))
+	fmt.Fprintf(&sb, `<rect width="%d" height="%d" fill="#2c1e14"/>`, cfg.Width, cfg.Height)
+	fmt.Fprintf(&sb, `<rect width="%d" height="%d" fill="url(#grid)"/>`, cfg.Width, cfg.Height)
 
 	// Render corridors first (so they appear under rooms)
 	for _, corr := range corridors {
@@ -245,14 +245,14 @@ func renderSVG(cfg BattleMapConfig, rooms []Room, corridors []Corridor) string {
 
 	// Title
 	if cfg.Title != "" {
-		sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#c9ad6a" text-anchor="middle" font-weight="bold">%s</text>`,
-			cfg.Width/2, 30, cfg.Title))
+		fmt.Fprintf(&sb, `<text x="%d" y="%d" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#c9ad6a" text-anchor="middle" font-weight="bold">%s</text>`,
+			cfg.Width/2, 30, cfg.Title)
 	}
 
 	// Room count info
 	if len(rooms) > 0 {
-		sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" font-family="Arial, sans-serif" font-size="11" fill="#c9ad6a" text-anchor="end" opacity="0.7">%d zonas</text>`,
-			cfg.Width-10, cfg.Height-10, len(rooms)))
+		fmt.Fprintf(&sb, `<text x="%d" y="%d" font-family="Arial, sans-serif" font-size="11" fill="#c9ad6a" text-anchor="end" opacity="0.7">%d zonas</text>`,
+			cfg.Width-10, cfg.Height-10, len(rooms))
 	}
 
 	sb.WriteString(`</svg>`)
@@ -276,38 +276,38 @@ func renderCorridor(corr Corridor, cfg BattleMapConfig, gs int) string {
 	switch cfg.Style {
 	case MapStyleDungeon:
 		// Draw corridor with slight offset for 3D effect
-		sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#1a1a1a" stroke-width="%d" opacity="0.5"/>`,
-			x1+2, y1+2, x2+2, y2+2, cw+4))
-		sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#5a3d2b" stroke-width="%d"/>`,
-			x1, y1, x2, y2, cw))
-		sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#8b7355" stroke-width="%d" opacity="0.6"/>`,
-			x1, y1, x2, y2, cw-4))
+		fmt.Fprintf(&sb, `<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#1a1a1a" stroke-width="%d" opacity="0.5"/>`,
+			x1+2, y1+2, x2+2, y2+2, cw+4)
+		fmt.Fprintf(&sb, `<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#5a3d2b" stroke-width="%d"/>`,
+			x1, y1, x2, y2, cw)
+		fmt.Fprintf(&sb, `<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#8b7355" stroke-width="%d" opacity="0.6"/>`,
+			x1, y1, x2, y2, cw-4)
 
 		// Doorways at room connections
-		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="%d" fill="#3d2e1f" stroke="#c9ad6a" stroke-width="1"/>`,
-			x1, y1, cw/2+2))
-		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="%d" fill="#3d2e1f" stroke="#c9ad6a" stroke-width="1"/>`,
-			x2, y2, cw/2+2))
+		fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="%d" fill="#3d2e1f" stroke="#c9ad6a" stroke-width="1"/>`,
+			x1, y1, cw/2+2)
+		fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="%d" fill="#3d2e1f" stroke="#c9ad6a" stroke-width="1"/>`,
+			x2, y2, cw/2+2)
 
 	case MapStyleLandscape:
 		// Natural paths
-		sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#3d5a37" stroke-width="%d" stroke-dasharray="5,3" opacity="0.8"/>`,
-			x1, y1, x2, y2, cw))
+		fmt.Fprintf(&sb, `<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#3d5a37" stroke-width="%d" stroke-dasharray="5,3" opacity="0.8"/>`,
+			x1, y1, x2, y2, cw)
 
 		// Path markers
-		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="4" fill="#2d4a27"/>`, x1, y1))
-		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="4" fill="#2d4a27"/>`, x2, y2))
+		fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="4" fill="#2d4a27"/>`, x1, y1)
+		fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="4" fill="#2d4a27"/>`, x2, y2)
 
 	case MapStyleCity:
 		// Streets
-		sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#8b7355" stroke-width="%d"/>`,
-			x1, y1, x2, y2, cw+2))
-		sb.WriteString(fmt.Sprintf(`<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#d4c5a9" stroke-width="%d"/>`,
-			x1, y1, x2, y2, cw-2))
+		fmt.Fprintf(&sb, `<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#8b7355" stroke-width="%d"/>`,
+			x1, y1, x2, y2, cw+2)
+		fmt.Fprintf(&sb, `<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#d4c5a9" stroke-width="%d"/>`,
+			x1, y1, x2, y2, cw-2)
 
 		// Street intersections
-		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="5" fill="#c9ad6a"/>`, x1, y1))
-		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="5" fill="#c9ad6a"/>`, x2, y2))
+		fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="5" fill="#c9ad6a"/>`, x1, y1)
+		fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="5" fill="#c9ad6a"/>`, x2, y2)
 	}
 
 	return sb.String()
@@ -322,37 +322,37 @@ func renderRoom(room Room, cfg BattleMapConfig, gs int) string {
 	h := room.H * gs
 
 	// Room shadow
-	sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#1a1a1a" opacity="0.3" rx="3"/>`,
-		x+3, y+3, w, h))
+	fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" fill="#1a1a1a" opacity="0.3" rx="3"/>`,
+		x+3, y+3, w, h)
 
 	switch cfg.Style {
 	case MapStyleDungeon:
 		// Main room
-		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#3d2e1f" stroke="#c9ad6a" stroke-width="2" rx="3" filter="url(#shadow)"/>`,
-			x, y, w, h))
+		fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" fill="#3d2e1f" stroke="#c9ad6a" stroke-width="2" rx="3" filter="url(#shadow)"/>`,
+			x, y, w, h)
 
 		// Inner floor detail
-		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#4a3a2a" stroke="#8b7355" stroke-width="1" rx="2" opacity="0.5"/>`,
-			x+6, y+6, w-12, h-12))
+		fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" fill="#4a3a2a" stroke="#8b7355" stroke-width="1" rx="2" opacity="0.5"/>`,
+			x+6, y+6, w-12, h-12)
 
 		// Corner accents
-		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+8, y+8))
-		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+w-8, y+8))
-		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+8, y+h-8))
-		sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+w-8, y+h-8))
+		fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+8, y+8)
+		fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+w-8, y+8)
+		fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+8, y+h-8)
+		fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="3" fill="#8b7355"/>`, x+w-8, y+h-8)
 
 	case MapStyleLandscape:
 		// Natural area
-		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#4a6741" stroke="#2d4a27" stroke-width="2" rx="8" filter="url(#shadow)"/>`,
-			x, y, w, h))
+		fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" fill="#4a6741" stroke="#2d4a27" stroke-width="2" rx="8" filter="url(#shadow)"/>`,
+			x, y, w, h)
 
 		// Trees/bushes
 		numTrees := rng.Intn(3) + 1
 		for i := 0; i < numTrees; i++ {
 			tx := x + rng.Intn(w-20) + 10
 			ty := y + rng.Intn(h-20) + 10
-			sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="8" fill="#2d4a27" opacity="0.7"/>`, tx, ty))
-			sb.WriteString(fmt.Sprintf(`<circle cx="%d" cy="%d" r="5" fill="#3d5a37"/>`, tx, ty-3))
+			fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="8" fill="#2d4a27" opacity="0.7"/>`, tx, ty)
+			fmt.Fprintf(&sb, `<circle cx="%d" cy="%d" r="5" fill="#3d5a37"/>`, tx, ty-3)
 		}
 
 		// Rocks
@@ -360,26 +360,26 @@ func renderRoom(room Room, cfg BattleMapConfig, gs int) string {
 		for i := 0; i < numRocks; i++ {
 			rx := x + rng.Intn(w-15) + 8
 			ry := y + rng.Intn(h-15) + 8
-			sb.WriteString(fmt.Sprintf(`<polygon points="%d,%d %d,%d %d,%d" fill="#6b6b6b" opacity="0.6"/>`,
-				rx, ry, rx+8, ry-5, rx+12, ry+3))
+			fmt.Fprintf(&sb, `<polygon points="%d,%d %d,%d %d,%d" fill="#6b6b6b" opacity="0.6"/>`,
+				rx, ry, rx+8, ry-5, rx+12, ry+3)
 		}
 
 	case MapStyleCity:
 		// Building
-		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#d4c5a9" stroke="#8b7355" stroke-width="2" filter="url(#shadow)"/>`,
-			x, y, w, h))
+		fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" fill="#d4c5a9" stroke="#8b7355" stroke-width="2" filter="url(#shadow)"/>`,
+			x, y, w, h)
 
 		// Inner courtyard/detail
-		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#c9ad6a" stroke="#a08c5a" stroke-width="1"/>`,
-			x+4, y+4, w-8, h-8))
+		fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" fill="#c9ad6a" stroke="#a08c5a" stroke-width="1"/>`,
+			x+4, y+4, w-8, h-8)
 
 		// Windows/doors
-		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#5a3d2b"/>`,
-			x+w/2-4, y+4, 8, 12))
-		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#5a3d2b"/>`,
-			x+6, y+h/2-4, 8, 8))
-		sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="%d" fill="#5a3d2b"/>`,
-			x+w-14, y+h/2-4, 8, 8))
+		fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" fill="#5a3d2b"/>`,
+			x+w/2-4, y+4, 8, 12)
+		fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" fill="#5a3d2b"/>`,
+			x+6, y+h/2-4, 8, 8)
+		fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" fill="#5a3d2b"/>`,
+			x+w-14, y+h/2-4, 8, 8)
 	}
 
 	return sb.String()
@@ -403,11 +403,11 @@ func renderRoomLabel(room Room, gs int) string {
 		textWidth = 50
 	}
 
-	sb.WriteString(fmt.Sprintf(`<rect x="%d" y="%d" width="%d" height="20" fill="#1a1a1a" opacity="0.8" rx="4"/>`,
-		x+w/2-textWidth/2, y+h/2-10, textWidth))
+	fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="20" fill="#1a1a1a" opacity="0.8" rx="4"/>`,
+		x+w/2-textWidth/2, y+h/2-10, textWidth)
 
-	sb.WriteString(fmt.Sprintf(`<text x="%d" y="%d" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#f5f0e6" text-anchor="middle" dominant-baseline="central" font-weight="bold">%s</text>`,
-		x+w/2, y+h/2, room.Label))
+	fmt.Fprintf(&sb, `<text x="%d" y="%d" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#f5f0e6" text-anchor="middle" dominant-baseline="central" font-weight="bold">%s</text>`,
+		x+w/2, y+h/2, room.Label)
 
 	return sb.String()
 }
