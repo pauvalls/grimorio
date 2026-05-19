@@ -1,3 +1,11 @@
-# Prólogo
+<div class="prologue">
+  <h2 id="sec-prologue">Prólogo</h2>
 
-{{.Content}}
+  {{range .Parts}}
+  <div class="prologue-part-{{.Order}}">
+    <h3>{{.Title}}</h3>
+    {{if .IsReadAloud}}<div class="read-aloud">{{.Content}}</div>{{else}}<p>{{.Content}}</p>{{end}}
+  </div>
+
+  {{end}}
+</div>

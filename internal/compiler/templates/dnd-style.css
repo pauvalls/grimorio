@@ -750,3 +750,30 @@ h3 .area-number {
   column-break-inside: avoid;
   page-break-inside: avoid;
 }
+
+/* Prologue sections */
+.prologue {
+    column-span: all;
+    page-break-inside: avoid;
+}
+.prologue h2 {
+    text-align: center;
+    font-size: 1.8em;
+    margin-bottom: 1.5em;
+    border-bottom: 3px double #c0a060;
+    padding-bottom: 0.5em;
+}
+.prologue h3 {
+    font-size: 1.2em;
+    color: #8b0000;
+    border-bottom: 1px solid #c0a060;
+    padding-bottom: 0.3em;
+    margin-top: 1.2em;
+}
+.prologue-part-1, .prologue-part-2, .prologue-part-3, .prologue-part-4 {
+    margin-bottom: 1.5em;
+    page-break-inside: avoid;
+}
+.prologue .read-aloud {
+    margin: 0.8em 0;
+}
