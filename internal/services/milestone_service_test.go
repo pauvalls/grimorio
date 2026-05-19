@@ -2,104 +2,128 @@ package services
 
 import (
 	"context"
+	"os"
 	"testing"
+
 	"github.com/pauvalls/grimorio/internal/domain"
 )
 
-// MockMilestoneXPRepository for testing
-type MockMilestoneXPRepository struct {
-	totalXP int
-	err     error
+// mockMilestoneRepo implements MilestoneXPRepository for testing.
+type mockMilestoneRepo struct {
+	tables map[string]*domain.ChapterXPTable
 }
 
-func (m *MockMilestoneXPRepository) Create(ctx context.Context, campaignID string, table *domain.ChapterXPTable) error {
+func newMockMilestoneRepo() *mockMilestoneRepo {
+	return &mockMilestoneRepo{tables: make(map[string]*domain.ChapterXPTable)}
+}
+
+func (r *mockMilestoneRepo) Create(ctx context.Context, campaignID string, table *domain.ChapterXPTable) error {
+	r.tables[table.ChapterID] = table
 	return nil
 }
 
-func (m *MockMilestoneXPRepository) Read(ctx context.Context, campaignID string, chapterID string) (*domain.ChapterXPTable, error) {
-	return nil, nil
+func (r *mockMilestoneRepo) Read(ctx context.Context, campaignID string, chapterID string) (*domain.ChapterXPTable, error) {
+	table, ok := r.tables[chapterID]
+	if !ok {
+		return nil, os.ErrNotExist
+	}
+	return table, nil
 }
 
-func (m *MockMilestoneXPRepository) Update(ctx context.Context, campaignID string, table *domain.ChapterXPTable) error {
+func (r *mockMilestoneRepo) Update(ctx context.Context, campaignID string, table *domain.ChapterXPTable) error {
+	r.tables[table.ChapterID] = table
 	return nil
 }
 
-func (m *MockMilestoneXPRepository) Delete(ctx context.Context, campaignID string, chapterID string) error {
+func (r *mockMilestoneRepo) Delete(ctx context.Context, campaignID string, chapterID string) error {
+	delete(r.tables, chapterID)
 	return nil
 }
 
-func (m *MockMilestoneXPRepository) GetTotalXP(ctx context.Context, campaignID string, partyID string) (int, error) {
-	return m.totalXP, m.err
+func (r *mockMilestoneRepo) GetTotalXP(ctx context.Context, campaignID string, partyID string) (int, error) {
+	total := 0
+	for _, table := range r.tables {
+		for _, m := range table.Milestones {
+			total += m.CumulativeXP
+		}
+	}
+	return total, nil
 }
 
-func TestMilestoneService_GenerateChapterTable_ValidLevelRange(t *testing.T) {
-	repo := &MockMilestoneXPRepository{}
-	service := NewMilestoneService(repo)
+func TestMilestoneService_UpdateSessionXP(t *testing.T) {
+	repo := newMockMilestoneRepo()
+	svc := NewMilestoneService(repo)
 
-	table, err := service.GenerateChapterTable(context.Background(), "chapter_1", "The Beginning", domain.LevelRange{Min: 1, Max: 5})
+	table := &domain.ChapterXPTable{
+		ChapterID:    "chapter_1",
+		ChapterTitle: "The Beginning",
+		LevelRange:   domain.LevelRange{Min: 1, Max: 3},
+		Milestones: []domain.MilestoneXP{
+			{ChapterID: "chapter_1", SessionNumber: 1, XPThreshold: 300, CumulativeXP: 300, LevelAchieved: 2},
+			{ChapterID: "chapter_1", SessionNumber: 2, XPThreshold: 600, CumulativeXP: 900, LevelAchieved: 3},
+		},
+		TotalSessions: 2,
+	}
+
+	if err := repo.Create(context.Background(), "campaign-1", table); err != nil {
+		t.Fatalf("failed to seed table: %v", err)
+	}
+
+	// Update XP for session 1
+	err := svc.UpdateSessionXP(context.Background(), "campaign-1", "chapter_1", 100)
 	if err != nil {
-		t.Fatalf("GenerateChapterTable() error = %v", err)
+		t.Fatalf("UpdateSessionXP() error: %v", err)
 	}
 
-	if table.ChapterID != "chapter_1" {
-		t.Errorf("ChapterID = %s, want chapter_1", table.ChapterID)
-	}
-	if table.LevelRange.Min != 1 || table.LevelRange.Max != 5 {
-		t.Errorf("LevelRange = %v, want {1 5}", table.LevelRange)
-	}
-	if len(table.Milestones) == 0 {
-		t.Error("Expected milestones, got none")
+	// Verify update was persisted
+	updated, _ := repo.Read(context.Background(), "campaign-1", "chapter_1")
+	if updated.Milestones[0].XPThreshold != 400 {
+		t.Errorf("Milestone[0].XPThreshold = %d, want 400", updated.Milestones[0].XPThreshold)
 	}
 }
 
-func TestMilestoneService_GenerateChapterTable_InvalidLevelRange(t *testing.T) {
-	repo := &MockMilestoneXPRepository{}
-	service := NewMilestoneService(repo)
+func TestMilestoneService_UpdateSessionXP_Negative(t *testing.T) {
+	repo := newMockMilestoneRepo()
+	svc := NewMilestoneService(repo)
 
-	_, err := service.GenerateChapterTable(context.Background(), "chapter_1", "Invalid", domain.LevelRange{Min: 5, Max: 3})
+	err := svc.UpdateSessionXP(context.Background(), "campaign-1", "chapter_1", -50)
 	if err == nil {
-		t.Error("Expected error for invalid level range, got nil")
+		t.Error("expected error for negative xp_awarded, got nil")
 	}
 }
 
-func TestMilestoneService_CalculatePartyLevel_ExactMilestone(t *testing.T) {
-	repo := &MockMilestoneXPRepository{totalXP: 300} // Level 2
-	service := NewMilestoneService(repo)
+func TestMilestoneService_UpdateSessionXP_TableNotFound(t *testing.T) {
+	repo := newMockMilestoneRepo()
+	svc := NewMilestoneService(repo)
 
-	level, err := service.CalculatePartyLevel(context.Background(), "campaign_1", "party_1")
+	err := svc.UpdateSessionXP(context.Background(), "campaign-1", "nonexistent", 100)
+	if err == nil {
+		t.Error("expected error for nonexistent table, got nil")
+	}
+}
+
+func TestMilestoneService_CalculatePartyLevel(t *testing.T) {
+	repo := newMockMilestoneRepo()
+	svc := NewMilestoneService(repo)
+
+	table := &domain.ChapterXPTable{
+		ChapterID:    "chapter_1",
+		ChapterTitle: "Test",
+		LevelRange:   domain.LevelRange{Min: 1, Max: 3},
+		Milestones: []domain.MilestoneXP{
+			{ChapterID: "chapter_1", SessionNumber: 1, XPThreshold: 300, CumulativeXP: 300, LevelAchieved: 2},
+		},
+		TotalSessions: 1,
+	}
+	if err := repo.Create(context.Background(), "campaign-1", table); err != nil {
+		t.Fatalf("failed to seed table: %v", err)
+	}
+
+	level, err := svc.CalculatePartyLevel(context.Background(), "campaign-1", "party_1")
 	if err != nil {
-		t.Fatalf("CalculatePartyLevel() error = %v", err)
+		t.Fatalf("CalculatePartyLevel() error: %v", err)
 	}
 	if level != 2 {
-		t.Errorf("Level = %d, want 2", level)
-	}
-}
-
-func TestMilestoneService_CalculatePartyLevel_BetweenMilestones(t *testing.T) {
-	repo := &MockMilestoneXPRepository{totalXP: 600} // Between level 2 and 3
-	service := NewMilestoneService(repo)
-
-	level, err := service.CalculatePartyLevel(context.Background(), "campaign_1", "party_1")
-	if err != nil {
-		t.Fatalf("CalculatePartyLevel() error = %v", err)
-	}
-	if level != 2 {
-		t.Errorf("Level = %d, want 2 (between milestones)", level)
-	}
-}
-
-func TestMilestoneService_GetNextMilestone(t *testing.T) {
-	repo := &MockMilestoneXPRepository{}
-	service := NewMilestoneService(repo)
-
-	milestone, err := service.GetNextMilestone(context.Background(), "campaign_1", 0) // Level 1
-	if err != nil {
-		t.Fatalf("GetNextMilestone() error = %v", err)
-	}
-	if milestone == nil {
-		t.Fatal("Expected milestone, got nil")
-	}
-	if milestone.LevelAchieved != 2 {
-		t.Errorf("LevelAchieved = %d, want 2", milestone.LevelAchieved)
+		t.Errorf("level = %d, want 2", level)
 	}
 }
