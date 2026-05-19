@@ -26,23 +26,30 @@ func NewPlayerMapService(mapRepo PlayerMapRepository) *PlayerMapService {
 }
 
 // GeneratePlayerVariant generates a player-facing map from a DM map.
-func (s *PlayerMapService) GeneratePlayerVariant(ctx context.Context, dmMapID string, areaID string) (*domain.PlayerMap, error) {
-	// TODO: Load DM map and filter secrets
-	playerMap := &domain.PlayerMap{
-		ID:              fmt.Sprintf("player_map_%s", dmMapID),
-		SourceMapID:     dmMapID,
-		AreaID:          areaID,
-		Title:           "Area Map",
-		Description:     "Player-facing map with secret features hidden",
-		IncludedFeatures: []domain.MapFeature{},
-		ExcludedFeatures: []string{},
-		ExportFormats:   []string{"svg", "pdf", "png"},
-		GridVisible:     true,
-		Scale:           "1 square = 5 feet",
+func (s *PlayerMapService) GeneratePlayerVariant(ctx context.Context, campaignID string, dmMapID string, areaID string) (*domain.PlayerMap, error) {
+	// Load the source DM map from the repository
+	dmMap, err := s.mapRepo.Read(ctx, campaignID, dmMapID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load DM map: %w", err)
 	}
+
+	// Redact secret features
+	playerMap, err := s.RedactSecretFeatures(ctx, dmMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to redact secrets: %w", err)
+	}
+
+	// Override area ID
+	playerMap.AreaID = areaID
+	playerMap.CampaignID = campaignID
 
 	if err := playerMap.Validate(); err != nil {
 		return nil, fmt.Errorf("generated player map validation failed: %w", err)
+	}
+
+	// Persist the player map
+	if err := s.mapRepo.Create(ctx, campaignID, playerMap); err != nil {
+		return nil, fmt.Errorf("failed to save player map: %w", err)
 	}
 
 	return playerMap, nil

@@ -42,6 +42,13 @@ type CharacterRepositoryV3 interface {
 	GetByCampaign(ctx context.Context, campaignID string) ([]*domain.PregenCharacter, error)
 }
 
+// TacticsRepository defines repository interface for tactics.
+type TacticsRepository interface {
+	Create(ctx context.Context, campaignID string, tactics *domain.Tactics) error
+	Read(ctx context.Context, campaignID string, tacticsID string) (*domain.Tactics, error)
+	ListByEncounter(ctx context.Context, campaignID string, encounterID string) ([]*domain.Tactics, error)
+}
+
 // HandoutRepositoryV3 defines repository interface for V3 handouts.
 type HandoutRepositoryV3 interface {
 	Create(ctx context.Context, campaignID string, handout *domain.Handout) error

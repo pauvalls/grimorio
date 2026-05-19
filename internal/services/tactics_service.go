@@ -11,6 +11,7 @@ type TacticsService struct {
 	monsterRepo   MonsterRepository
 	encounterRepo EncounterRepository
 	areaRepo      AreaRepository
+	tacticsRepo   TacticsRepository
 }
 
 // MonsterRepository defines repository interface for monsters.
@@ -33,11 +34,13 @@ func NewTacticsService(
 	monsterRepo MonsterRepository,
 	encounterRepo EncounterRepository,
 	areaRepo AreaRepository,
+	tacticsRepo TacticsRepository,
 ) *TacticsService {
 	return &TacticsService{
 		monsterRepo:   monsterRepo,
 		encounterRepo: encounterRepo,
 		areaRepo:      areaRepo,
+		tacticsRepo:   tacticsRepo,
 	}
 }
 
@@ -104,6 +107,14 @@ func (s *TacticsService) GenerateEncounterTactics(
 		if err != nil {
 			return nil, err
 		}
+
+		// Persist each generated tactics
+		if s.tacticsRepo != nil {
+			if err := s.tacticsRepo.Create(ctx, encounter.CampaignID, tactics); err != nil {
+				return nil, fmt.Errorf("failed to persist tactics: %w", err)
+			}
+		}
+
 		allTactics = append(allTactics, tactics)
 	}
 
@@ -111,9 +122,11 @@ func (s *TacticsService) GenerateEncounterTactics(
 }
 
 // GetTacticsByEncounter retrieves tactics for a specific encounter.
-func (s *TacticsService) GetTacticsByEncounter(ctx context.Context, encounterID string) ([]*domain.Tactics, error) {
-	// TODO: Implement repository method
-	return nil, nil
+func (s *TacticsService) GetTacticsByEncounter(ctx context.Context, campaignID string, encounterID string) ([]*domain.Tactics, error) {
+	if s.tacticsRepo == nil {
+		return nil, fmt.Errorf("tactics repository not configured")
+	}
+	return s.tacticsRepo.ListByEncounter(ctx, campaignID, encounterID)
 }
 
 // EvaluateTacticComplexity returns a complexity rating for tactics.

@@ -82,7 +82,16 @@ func (s *AreaService) GenerateChapterAreas(ctx context.Context, chapterID string
 
 // GetAreaByNumber retrieves an area by chapter and number.
 func (s *AreaService) GetAreaByNumber(ctx context.Context, campaignID string, chapterNumber, areaNumber int) (*domain.Area, error) {
-	// TODO: Implement repository method
+	chapterID := fmt.Sprintf("chapter_%d", chapterNumber)
+	areas, err := s.areaRepo.GetByChapter(ctx, campaignID, chapterID)
+	if err != nil {
+		return nil, err
+	}
+	for _, area := range areas {
+		if area.AreaNumber == areaNumber {
+			return area, nil
+		}
+	}
 	return nil, nil
 }
 

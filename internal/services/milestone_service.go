@@ -116,8 +116,47 @@ func (s *MilestoneService) GetNextMilestone(ctx context.Context, campaignID stri
 	}, nil
 }
 
-// UpdateSessionXP updates XP for a session (placeholder for future implementation).
-func (s *MilestoneService) UpdateSessionXP(ctx context.Context, sessionID string, xpAwarded int) error {
-	// TODO: Implement session XP tracking
-	return nil
+// UpdateSessionXP updates XP for a session.
+func (s *MilestoneService) UpdateSessionXP(ctx context.Context, campaignID string, sessionID string, xpAwarded int) error {
+	if xpAwarded < 0 {
+		return fmt.Errorf("xp_awarded must be non-negative")
+	}
+
+	table, err := s.xpRepo.Read(ctx, campaignID, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to load milestone table: %w", err)
+	}
+
+	// Find the milestone for this session and add XP
+	for i := range table.Milestones {
+		m := &table.Milestones[i]
+		if m.SessionNumber == getSessionNumber(sessionID) {
+			m.XPThreshold += xpAwarded
+			break
+		}
+	}
+
+	return s.xpRepo.Update(ctx, campaignID, table)
+}
+
+// getSessionNumber extracts a session number from a session ID.
+func getSessionNumber(sessionID string) int {
+	// Session IDs are like "chapter_1" or "session_5" or "my-campaign"
+	var n int
+	if _, err := fmt.Sscanf(sessionID, "session_%d", &n); err != nil {
+		// If not a session_ pattern, try just getting trailing digits
+		for i := len(sessionID) - 1; i >= 0; i-- {
+			if sessionID[i] < '0' || sessionID[i] > '9' {
+				i++
+				if i < len(sessionID) {
+					fmt.Sscanf(sessionID[i:], "%d", &n)
+				}
+				break
+			}
+		}
+	}
+	if n == 0 {
+		n = 1
+	}
+	return n
 }

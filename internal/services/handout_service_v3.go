@@ -67,9 +67,17 @@ func (s *HandoutServiceV3) GetHandoutsByQuest(ctx context.Context, campaignID, q
 }
 
 // ExportHandout exports a handout in the specified format.
-func (s *HandoutServiceV3) ExportHandout(ctx context.Context, handoutID, format string) ([]byte, error) {
-	// TODO: Implement export logic
-	return []byte{}, nil
+func (s *HandoutServiceV3) ExportHandout(ctx context.Context, campaignID, handoutID, format string) ([]byte, error) {
+	if format != "text" {
+		return nil, fmt.Errorf("unsupported export format: %s", format)
+	}
+
+	handout, err := s.handoutRepo.Read(ctx, campaignID, handoutID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load handout: %w", err)
+	}
+
+	return []byte(handout.Content), nil
 }
 
 func generateHandoutTitle(t domain.HandoutType) string {
