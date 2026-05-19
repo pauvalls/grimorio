@@ -935,11 +935,18 @@ func extractBalancedDivs(md string) (string, []string) {
 				j++
 			}
 
-			// If we reached end without closing, treat as regular text
-			if depth > 0 {
-				result.WriteString(md[i:j])
-				i = j
+		// If we reached end without closing, auto-close remaining divs
+		if depth > 0 {
+			block := md[start:j]
+			// Append closing tags for remaining depth
+			for d := 0; d < depth; d++ {
+				block += "</div>"
 			}
+			placeholder := fmt.Sprintf("\x00HTMLBLOCK%d\x00", len(blocks))
+			result.WriteString(placeholder)
+			blocks = append(blocks, block)
+			i = j
+		}
 		} else {
 			result.WriteByte(md[i])
 			i++

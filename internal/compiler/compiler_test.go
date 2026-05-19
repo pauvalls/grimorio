@@ -849,3 +849,78 @@ func TestDeeplyNestedDivs(t *testing.T) {
 		t.Errorf("Expected at least 4 closing divs for nested structure, got %d. HTML:\n%s", level1Close, html)
 	}
 }
+
+// Phase 3: Unclosed Div Auto-Close Tests
+
+func TestExtractBalancedDivs_UnclosedDiv(t *testing.T) {
+	md := `<div class="foo">some content`
+	
+	html := markdownToHTML(md, "/tmp")
+	
+	// Verify the div is auto-closed
+	if !strings.Contains(html, `<div class="foo">`) {
+		t.Errorf("Expected opening div tag, got: %s", html)
+	}
+	if !strings.Contains(html, `</div>`) {
+		t.Errorf("Expected closing div tag (auto-closed), got: %s", html)
+	}
+	if !strings.Contains(html, "some content") {
+		t.Errorf("Expected content preserved, got: %s", html)
+	}
+	
+	// Verify balanced tags
+	openCount := strings.Count(html, `<div class="foo">`)
+	closeCount := strings.Count(html, `</div>`)
+	if openCount != closeCount {
+		t.Errorf("Unbalanced divs: %d opens, %d closes. HTML:\n%s", openCount, closeCount, html)
+	}
+}
+
+func TestExtractBalancedDivs_NestedUnclosed(t *testing.T) {
+	md := `<div class="outer"><div class="inner">nested content`
+	
+	html := markdownToHTML(md, "/tmp")
+	
+	// Verify both divs are auto-closed
+	if !strings.Contains(html, `<div class="outer">`) {
+		t.Errorf("Expected outer div opening tag, got: %s", html)
+	}
+	if !strings.Contains(html, `<div class="inner">`) {
+		t.Errorf("Expected inner div opening tag, got: %s", html)
+	}
+	if !strings.Contains(html, "nested content") {
+		t.Errorf("Expected content preserved, got: %s", html)
+	}
+	
+	// Verify balanced tags (2 opens, 2 closes)
+	openCount := strings.Count(html, `<div class="`)
+	closeCount := strings.Count(html, `</div>`)
+	if openCount != closeCount {
+		t.Errorf("Unbalanced divs: %d opens, %d closes. HTML:\n%s", openCount, closeCount, html)
+	}
+}
+
+func TestExtractBalancedDivs_Mismatched(t *testing.T) {
+	// 3 opens, 2 closes = net 1 unclosed
+	md := `<div class="a"><div class="b"><div class="c">content</div></div>`
+	
+	html := markdownToHTML(md, "/tmp")
+	
+	// Verify all opening tags are present
+	if !strings.Contains(html, `<div class="a">`) {
+		t.Errorf("Expected div a opening tag, got: %s", html)
+	}
+	if !strings.Contains(html, `<div class="b">`) {
+		t.Errorf("Expected div b opening tag, got: %s", html)
+	}
+	if !strings.Contains(html, `<div class="c">`) {
+		t.Errorf("Expected div c opening tag, got: %s", html)
+	}
+	
+	// Verify balanced tags (3 opens, 3 closes)
+	openCount := strings.Count(html, `<div class="`)
+	closeCount := strings.Count(html, `</div>`)
+	if openCount != closeCount {
+		t.Errorf("Unbalanced divs: %d opens, %d closes. HTML:\n%s", openCount, closeCount, html)
+	}
+}

@@ -277,6 +277,7 @@ tbody tr:nth-child(odd) {
   padding: 12px;
   margin: 12px 0;
   column-break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .stat-block h3 {
@@ -295,6 +296,7 @@ tbody tr:nth-child(odd) {
   margin: 10px 0;
   font-style: italic;
   column-break-inside: avoid;
+  page-break-inside: avoid;
   box-shadow: 2px 2px 4px rgba(0,0,0,0.1);
 }
 
@@ -420,6 +422,7 @@ h3 .area-number {
   font-style: italic;
   color: #666;
   column-break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .encounter-table {
@@ -620,6 +623,7 @@ h3 .area-number {
   margin: 8px 0;
   font-size: 9pt;
   column-break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .shock-point.mild {
@@ -658,6 +662,7 @@ h3 .area-number {
   padding: 16px;
   margin: 12px 0;
   column-break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .character-worksheet h4 {
@@ -673,6 +678,8 @@ h3 .area-number {
   background: #fff;
   border: 1px solid #e0d5c0;
   border-radius: 4px;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .character-worksheet .prompt-box {
@@ -682,6 +689,8 @@ h3 .area-number {
   margin: 8px 0;
   font-style: italic;
   font-size: 9pt;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 /* ==========================================
@@ -694,6 +703,7 @@ h3 .area-number {
   padding: 10px 12px;
   margin: 8px 0;
   column-break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .encounter-recommendation .cr-badge {
@@ -715,4 +725,28 @@ h3 .area-number {
   border-radius: 3px;
   font-size: 8pt;
   margin-left: 4px;
+}
+
+/* ==========================================
+   Flowchart - Campaign flowchart container
+   ========================================== */
+.flowchart {
+  column-span: all;
+  page-break-inside: avoid;
+  text-align: center;
+  margin: 16px 0;
+}
+
+/* ==========================================
+   Scene Description - Scene marker styling
+   ========================================== */
+.scene-description {
+  background: #f0ebe0;
+  border-left: 3px solid #8b0000;
+  padding: 8px 12px;
+  margin: 10px 0;
+  font-style: italic;
+  color: #5a3d2b;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
 }

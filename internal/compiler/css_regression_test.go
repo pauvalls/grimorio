@@ -171,31 +171,60 @@ func TestCSSRegression_EncounterRecommendation(t *testing.T) {
 	}
 }
 
-// TestCSSRegression_PageBreakAvoid tests that all new classes respect page breaks
+// TestCSSRegression_PageBreakAvoid tests that all div-based classes have page-break-inside: avoid
 func TestCSSRegression_PageBreakAvoid(t *testing.T) {
-	html := generateCSSFixture(t, `
-<div class="dm-sidebar">Sidebar</div>
-<div class="stat-block-v2">Stat block</div>
-<div class="session-prep-card">Prep card</div>
-<div class="shock-point">Shock point</div>
-<div class="character-worksheet">Worksheet</div>
-<div class="encounter-recommendation">Encounter</div>
-`)
+	// Get the CSS directly
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
 
-	// All new classes should have page-break-inside: avoid
-	checks := []string{
+	// All div-based classes must have page-break-inside: avoid
+	classesRequiringPageBreak := []string{
+		".cover-wrapper",
+		".toc",
+		".stat-block",
+		".read-aloud",
+		".handout-section",
+		".map-description",
+		".campaign-image",
+		".code-block",
 		".dm-sidebar",
 		".stat-block-v2",
 		".session-prep-card",
 		".shock-point",
 		".character-worksheet",
+		".character-worksheet .worksheet-section",
+		".character-worksheet .prompt-box",
 		".encounter-recommendation",
-		"page-break-inside: avoid",
+		".flowchart",
+		".scene-description",
 	}
 
-	for _, check := range checks {
-		if !strings.Contains(html, check) {
-			t.Errorf("CSS regression: missing '%s' in generated HTML", check)
+	for _, class := range classesRequiringPageBreak {
+		// Find the class definition in CSS
+		classIdx := strings.Index(css, class+" {")
+		if classIdx == -1 {
+			// Try with space before brace
+			classIdx = strings.Index(css, class+"{")
+		}
+		if classIdx == -1 {
+			t.Errorf("CSS regression: class '%s' not found in CSS", class)
+			continue
+		}
+
+		// Find the closing brace for this class
+		closeIdx := strings.Index(css[classIdx:], "}")
+		if closeIdx == -1 {
+			t.Errorf("CSS regression: could not find closing brace for class '%s'", class)
+			continue
+		}
+
+		classBlock := css[classIdx : classIdx+closeIdx+1]
+
+		// Check for page-break-inside: avoid
+		if !strings.Contains(classBlock, "page-break-inside: avoid") {
+			t.Errorf("CSS regression: class '%s' missing 'page-break-inside: avoid'. Block: %s", class, classBlock)
 		}
 	}
 }
