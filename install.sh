@@ -10,6 +10,7 @@ INSTALL_DIR="${HOME}/.local/share/grimorio"
 CLAUDE_PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
 OPENCODE_PLUGIN_DIR="${HOME}/.config/opencode/plugins/grimorio"
 BINARY_DIR="${HOME}/.local/bin"
+GLOBAL_SKILLS_DIR="${HOME}/.config/opencode/skills"
 METADATA_FILE="${HOME}/.config/grimorio/install-meta.json"
 
 # Colors
@@ -328,10 +329,19 @@ setup_plugin() {
             done
         fi
 
-        # Copy skills (if exist)
+        # Copy skills (if exist) — subdirectories with SKILL.md
         if [ -d "$INSTALL_DIR/skills" ]; then
-            for f in "$INSTALL_DIR/skills"/grimorio-*.md; do
-                [ -f "$f" ] && cp -f "$f" "$plugin_dir/skills/"
+            mkdir -p "$plugin_dir/skills"
+            for skill_dir_entry in "$INSTALL_DIR/skills"/*/; do
+                [ -d "$skill_dir_entry" ] || continue
+                local sname="${skill_dir_entry%/}"; sname="${sname##*/}"
+                local sfile="$skill_dir_entry/SKILL.md"
+                [ -f "$sfile" ] || continue
+                mkdir -p "$plugin_dir/skills/$sname"
+                cp -f "$sfile" "$plugin_dir/skills/$sname/SKILL.md"
+                # Also copy to global skills directory
+                mkdir -p "$GLOBAL_SKILLS_DIR/$sname"
+                cp -f "$sfile" "$GLOBAL_SKILLS_DIR/$sname/SKILL.md"
             done
         fi
 
@@ -627,6 +637,7 @@ do_update() {
     if [ -d "$INSTALL_DIR/skills" ]; then
         local current_meta
         current_meta=$(read_meta)
+        # Copy to plugin directories
         for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
             mkdir -p "$plugin_dir/skills"
             for skill_dir in "$INSTALL_DIR/skills"/*/; do
@@ -640,6 +651,18 @@ do_update() {
                 mkdir -p "$plugin_dir/skills/$skill_name"
                 copy_if_changed "$skill_file" "$plugin_dir/skills/$skill_name/SKILL.md" "$current_hash"
             done
+        done
+        # Also copy to global skills directory (OpenCode loads skills from here)
+        for skill_dir_entry in "$INSTALL_DIR/skills"/*/; do
+            [ -d "$skill_dir_entry" ] || continue
+            local sname="${skill_dir_entry%/}"; sname="${sname##*/}"
+            local sfile="$skill_dir_entry/SKILL.md"
+            [ -f "$sfile" ] || continue
+            local shash
+            shash=$(echo "$current_meta" | jq -r ".skills[\"$sname\"] // \"\"" 2>/dev/null)
+            shash="${shash#sha256-}"
+            mkdir -p "$GLOBAL_SKILLS_DIR/$sname"
+            copy_if_changed "$sfile" "$GLOBAL_SKILLS_DIR/$sname/SKILL.md" "$shash"
         done
     fi
 
