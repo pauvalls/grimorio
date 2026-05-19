@@ -9,6 +9,7 @@ import (
 	"github.com/pauvalls/grimorio/internal/config"
 	"github.com/pauvalls/grimorio/internal/mcp/handlers"
 	"github.com/pauvalls/grimorio/internal/repository"
+	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
 	"github.com/pauvalls/grimorio/internal/services"
 )
 
@@ -30,6 +31,15 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	canonRepo := repository.NewFilesystemCanonRepository(cfg.OutputDir)
 	narrativeStateRepo := repository.NewFilesystemNarrativeStateRepository(cfg.OutputDir)
 	factionRepo := repository.NewFilesystemFactionRepository(cfg.OutputDir)
+
+	// V3 filesystem repositories
+	monsterRepo := fsrepo.NewFilesystemMonsterRepository(cfg.OutputDir)
+	encounterRepo := fsrepo.NewFilesystemEncounterRepository(cfg.OutputDir)
+	areaRepoV3 := fsrepo.NewFilesystemAreaRepositoryV3(cfg.OutputDir)
+	handoutRepoV3 := fsrepo.NewFilesystemHandoutRepositoryV3(cfg.OutputDir)
+	milestoneXpRepo := fsrepo.NewFilesystemMilestoneXPRepository(cfg.OutputDir)
+	tacticsRepo := fsrepo.NewFilesystemTacticsRepository(cfg.OutputDir)
+	playerMapRepo := fsrepo.NewFilesystemPlayerMapRepository(cfg.OutputDir)
 
 	// Initialize services
 	campaignService := services.NewCampaignService(
@@ -61,6 +71,17 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	prologueService := services.NewPrologueService(cfg.OutputDir, canonRepo)
 	_ = adaptationPatchService
 
+	// V3 services
+	playerMapService := services.NewPlayerMapService(playerMapRepo)
+	handoutServiceV3 := services.NewHandoutServiceV3(handoutRepoV3)
+	milestoneService := services.NewMilestoneService(milestoneXpRepo)
+	tacticsService := services.NewTacticsService(
+		monsterRepo,
+		encounterRepo,
+		areaRepoV3,
+		tacticsRepo,
+	)
+
 	// Initialize handlers
 	campaignHandlers := handlers.NewCampaignHandlers(campaignService)
 	characterHandlers := handlers.NewCharacterHandlers(characterService)
@@ -75,6 +96,12 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	flowchartHandlers := handlers.NewFlowchartHandlers(flowchartService)
 	hookHandlers := handlers.NewHookHandlers(hookService)
 	prologueHandlers := handlers.NewPrologueHandlers(prologueService, campaignService)
+
+	// V3 handlers
+	tacticsHandlers := handlers.NewTacticsHandlers(tacticsService, encounterRepo, areaRepoV3)
+	milestoneHandlers := handlers.NewMilestoneHandlers(milestoneService)
+	playerMapHandlers := handlers.NewPlayerMapHandlers(playerMapService)
+	handoutV3Handlers := handlers.NewHandoutV3Handlers(handoutServiceV3)
 
 	// Register tools
 	// Campaign management
@@ -346,6 +373,48 @@ s.AddTool(mcp.NewTool("save_maps",
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithString("detail_level", mcp.Description("Detail level: overview, act, decision"), mcp.DefaultString("overview")),
 	), flowchartHandlers.HandleGenerateFlowchart())
+
+	// V3 tools
+	s.AddTool(mcp.NewTool("grimorio_generate_tactics",
+		mcp.WithDescription("Generate combat tactics for all monsters in an encounter"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("encounter_id", mcp.Required(), mcp.Description("Encounter ID")),
+		mcp.WithString("area_id", mcp.Description("Area ID for environmental tactics")),
+	), tacticsHandlers.HandleGenerateTactics())
+
+	s.AddTool(mcp.NewTool("grimorio_get_tactics",
+		mcp.WithDescription("Retrieve generated tactics for an encounter"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("encounter_id", mcp.Required(), mcp.Description("Encounter ID")),
+	), tacticsHandlers.HandleGetTactics())
+
+	s.AddTool(mcp.NewTool("grimorio_generate_xp_table",
+		mcp.WithDescription("Generate a milestone XP table for a chapter"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithNumber("chapter_number", mcp.Required(), mcp.Description("Chapter number")),
+		mcp.WithNumber("level_min", mcp.Description("Minimum level for this chapter"), mcp.DefaultNumber(1)),
+		mcp.WithNumber("level_max", mcp.Description("Maximum level for this chapter"), mcp.DefaultNumber(5)),
+	), milestoneHandlers.HandleGenerateXPTable())
+
+	s.AddTool(mcp.NewTool("grimorio_track_party_progress",
+		mcp.WithDescription("Track party progress and calculate current level from XP"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("party_id", mcp.Required(), mcp.Description("Party identifier")),
+	), milestoneHandlers.HandleTrackPartyProgress())
+
+	s.AddTool(mcp.NewTool("grimorio_generate_player_map",
+		mcp.WithDescription("Generate a player-facing map variant with secrets redacted"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("dm_map_id", mcp.Required(), mcp.Description("DM map ID (source)")),
+		mcp.WithString("area_id", mcp.Description("Area ID to associate the player map with")),
+	), playerMapHandlers.HandleGeneratePlayerMap())
+
+	s.AddTool(mcp.NewTool("grimorio_export_handout",
+		mcp.WithDescription("Export a handout in the specified format"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("handout_id", mcp.Required(), mcp.Description("Handout ID")),
+		mcp.WithString("format", mcp.Description("Export format (text, pdf)"), mcp.DefaultString("text")),
+	), handoutV3Handlers.HandleExportHandout())
 
 	return s
 }
