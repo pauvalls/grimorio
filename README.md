@@ -6,9 +6,7 @@
 
 [![Version](https://img.shields.io/github/v/release/pauvalls/grimorio?label=version&style=for-the-badge&color=purple)](https://github.com/pauvalls/grimorio/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/pauvalls/grimorio/ci.yml?branch=main&style=for-the-badge&label=CI&color=blue)](https://github.com/pauvalls/grimorio/actions/workflows/ci.yml)
-[![Go](https://img.shields.io/github/go-mod/go-version/pauvalls/grimorio?style=for-the-badge&label=Go&color=cyan)](https://go.dev)
 [![License](https://img.shields.io/github/license/pauvalls/grimorio?style=for-the-badge&label=License&color=green)](LICENSE)
-[![Go Report](https://goreportcard.com/badge/github.com/pauvalls/grimorio?style=for-the-badge)](https://goreportcard.com/report/github.com/pauvalls/grimorio)
 
 [🇬🇧 English](#english) · [🇪🇸 Español](#español)
 
