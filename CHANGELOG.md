@@ -16,6 +16,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add v3.6.0 and v3.7.0 highlights (readme)
 - Update changelog for v3.8.0
 - Update changelog for v3.8.0
+- Update changelog for v3.8.0
+
+### Feat
+
+- Add campaign management CLI commands and MCP visualization tools (campaign)
+
+### Fix
+
+- Check fmt.Sscanf error return in milestone_service.go (lint)
+- .gitignore grimorio pattern was ignoring cmd/grimorio/commands/
+- Resolve 36 errcheck and staticcheck issues across tests (lint)
+- Resolve remaining 18 errcheck/staticcheck issues (lint)
+
+## [v3.8.0] - 2026-05-19
+
+### Ci
+
+- Add go mod download before golangci-lint
+
+### Docs
+
+- Update changelog for v3.7.0
+- Add v3.6.0 and v3.7.0 highlights (readme)
+- Update changelog for v3.8.0
+- Update changelog for v3.8.0
 
 ### Feat
 
