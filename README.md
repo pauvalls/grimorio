@@ -4,7 +4,8 @@
 
 **D&D One-shot & Campaign Generator**
 
-[![Version v3.0.0](https://img.shields.io/badge/version-v3.0.0-purple?style=for-the-badge)](#)
+[![Version](https://img.shields.io/github/v/release/pauvalls/grimorio?label=version&style=for-the-badge)](https://github.com/pauvalls/grimorio/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/pauvalls/grimorio/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/pauvalls/grimorio/actions/workflows/ci.yml)
 
 [English](#english) · [Español](#español)
 
@@ -53,22 +54,15 @@ Then type in your AI assistant chat:
 | **[DM Guide](docs/dm-guide.md)** | General advice for running games |
 | **[Developer Guide](docs/developer-guide.md)** | Contributing to Grimorio |
 
-### What's New in v3.0.0
+### What's New
 
-**Major Features:**
-- **Milestone XP Tracking** — Per-chapter XP tables with party level progression
-- **WotC Unified Area Format** — Sequential numbering (1-15 per chapter)
-- **Enhanced Magic Items** — Full stat blocks with rarity and attunement
-- **Combat Tactics Engine** — Intelligence-based tactics (instinctive to strategic)
-- **Player-Facing Maps** — Automatic secret feature redaction
-- **Session Zero Generator** — Campaign-specific guides with safety tools
-- **Structured Quests** — 3+ distinct approaches (combat, social, stealth)
-- **Consequence Tables** — Act transition tracking with faction reputation
-- **PDF Compiler Enhancements** — Characters/Quests in PDF, WotC-style CSS, Shock Points
-- **WotC Format Validation** — `check_consistency scope=full` validates developments (3-5 IF-THEN branches), multiple solutions (stealth/social/combat), character hooks, boxed text (100-600 words), NPC word count, and integration cross-references (act ↔ bestiary ↔ NPCs)
-- **HTML Rendering Fix** — Fixed invalid `<p><div>` nesting for proper CSS rendering in PDF
+See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 
-See [CHANGELOG.md](CHANGELOG.md) for full details.
+Recent highlights:
+- **Automated Releases** — Push a `v*` tag and CI creates the release + updates the changelog
+- **WotC Format Validation** — `check_consistency scope=full` validates developments, multiple solutions, character hooks, boxed text, and integration cross-references
+- **PDF Compiler Enhancements** — Auto-close unclosed divs, `page-break-inside: avoid` on all components, CSS for flowcharts and scene descriptions
+- **16 Grimorio Skills** — WotC standards preserved for AI-assisted campaign generation
 
 ---
 
@@ -113,22 +107,15 @@ Luego escribe en el chat de tu asistente IA:
 | **[Guía de DM](docs/dm-guide.md)** | Consejos generales para dirigir juegos |
 | **[Guía de Desarrollador](docs/developer-guide.md)** | Contribuir a Grimorio |
 
-### Nuevo en v3.0.0
+### Novedades
 
-**Características Principales:**
-- **Seguimiento de XP por Hitos** — Tablas de XP por capítulo con progresión de nivel
-- **Formato Unificado de Áreas WotC** — Numeración secuencial (1-15 por capítulo)
-- **Objetos Mágicos Mejorados** — Estadísticas completas con rareza y sintonización
-- **Motor de Tácticas de Combate** — Tácticas basadas en inteligencia (instintivo a estratégico)
-- **Mapas para Jugadores** — Redacción automática de características secretas
-- **Generador de Sesión Cero** — Guías específicas de campaña con herramientas de seguridad
-- **Misiones Estructuradas** — 3+ enfoques distintos (combate, social, sigilo)
-- **Tablas de Consecuencias** — Seguimiento de transición de actos con reputación de facciones
-- **Mejoras al Compilador PDF** — Personajes/Misiones en PDF, CSS estilo WotC, Puntos de Shock
-- **Validación de Formato WotC** — `check_consistency scope=full` valida developments (3-5 ramas IF-THEN), múltiples soluciones (sigilo/social/combate), ganchos de personaje, boxed text (100-600 palabras), cantidad de palabras en NPCs, e integración cross-reference (act ↔ bestiary ↔ NPCs)
-- **Fix de Renderizado HTML** — Corregido nesting inválido `<p><div>` para renderizado CSS correcto en PDF
+Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 
-Ver [CHANGELOG.md](CHANGELOG.md) para detalles completos.
+Highlights recientes:
+- **Releases Automatizados** — Pusheá un tag `v*` y CI crea el release + actualiza el changelog
+- **Validación de Formato WotC** — `check_consistency scope=full` valida developments, múltiples soluciones, ganchos de personaje, boxed text, e integración cross-reference
+- **Mejoras al Compilador PDF** — Auto-close de divs sin cierre, `page-break-inside: avoid` en todos los componentes, CSS para flowcharts y scene descriptions
+- **16 Skills de Grimorio** — Estándares WotC preservados para generación de campañas asistida por IA
 
 ---
 
