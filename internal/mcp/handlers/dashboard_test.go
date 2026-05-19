@@ -16,7 +16,7 @@ func TestHandleFactionDashboard_HappyPath(t *testing.T) {
 	narrativeStateRepo := repository.NewMemoryNarrativeStateRepository()
 
 	// Seed canon with faction entities (one secret)
-	canonRepo.Save("test-campaign", &domain.CanonDocument{
+	_ = canonRepo.Save("test-campaign", &domain.CanonDocument{
 		SchemaVersion: domain.SchemaVersionV2,
 		CampaignID:    "test-campaign",
 		Entities: []domain.CanonEntity{
@@ -28,8 +28,8 @@ func TestHandleFactionDashboard_HappyPath(t *testing.T) {
 
 	// Seed reputation via faction service
 	factionService := services.NewFactionService(canonRepo, factionRepo)
-	factionService.UpdateReputation(context.Background(), "test-campaign", "fac1", "party1", 30, "Helped villagers", "manual")
-	factionService.UpdateReputation(context.Background(), "test-campaign", "fac2", "party1", -40, "Stole from guild", "manual")
+	_, _ = factionService.UpdateReputation(context.Background(), "test-campaign", "fac1", "party1", 30, "Helped villagers", "manual")
+	_, _ = factionService.UpdateReputation(context.Background(), "test-campaign", "fac2", "party1", -40, "Stole from guild", "manual")
 
 	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
 	dash := NewDashboardHandlers(factionService, canonService)
@@ -76,7 +76,7 @@ func TestHandleFactionDashboard_NoData(t *testing.T) {
 	narrativeStateRepo := repository.NewMemoryNarrativeStateRepository()
 
 	// Seed empty canon
-	canonRepo.Save("empty-campaign", &domain.CanonDocument{
+	_ = canonRepo.Save("empty-campaign", &domain.CanonDocument{
 		SchemaVersion: domain.SchemaVersionV2,
 		CampaignID:    "empty-campaign",
 	})

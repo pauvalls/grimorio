@@ -23,7 +23,7 @@ func TestHandleRelationshipGraph_HappyPath(t *testing.T) {
 	viz, canonService := setupVizTest()
 
 	// Seed canon with some entities and relationships
-	canonService.SaveCanon(context.Background(), &domain.CanonDocument{
+	_ = canonService.SaveCanon(context.Background(), &domain.CanonDocument{
 		SchemaVersion: domain.SchemaVersionV2,
 		CampaignID:    "test-campaign",
 		Entities: []domain.CanonEntity{
@@ -65,7 +65,7 @@ func TestHandleRelationshipGraph_NoEntities(t *testing.T) {
 	viz, canonService := setupVizTest()
 
 	// Seed empty canon for this campaign
-	canonService.SaveCanon(context.Background(), &domain.CanonDocument{
+	_ = canonService.SaveCanon(context.Background(), &domain.CanonDocument{
 		SchemaVersion: domain.SchemaVersionV2,
 		CampaignID:    "empty-campaign",
 	})

@@ -45,10 +45,18 @@ func TestBuildFileMap(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create some test files
-	os.MkdirAll(filepath.Join(tmpDir, "sub"), 0755)
-	os.WriteFile(filepath.Join(tmpDir, "a.md"), []byte("hello"), 0644)
-	os.WriteFile(filepath.Join(tmpDir, "b.json"), []byte("{}"), 0644)
-	os.WriteFile(filepath.Join(tmpDir, "sub", "c.md"), []byte("world"), 0644)
+	if err := os.MkdirAll(filepath.Join(tmpDir, "sub"), 0755); err != nil {
+		t.Fatalf("mkdir sub: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "a.md"), []byte("hello"), 0644); err != nil {
+		t.Fatalf("write a.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "b.json"), []byte("{}"), 0644); err != nil {
+		t.Fatalf("write b.json: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "sub", "c.md"), []byte("world"), 0644); err != nil {
+		t.Fatalf("write c.md: %v", err)
+	}
 
 	files := buildFileMap(tmpDir)
 
@@ -82,9 +90,9 @@ func TestBuildFileMap_EmptyDir(t *testing.T) {
 func TestCreateTarGzAndGetTopLevelDir(t *testing.T) {
 	tmpDir := t.TempDir()
 	campaignDir := filepath.Join(tmpDir, "my-campaign")
-	os.MkdirAll(filepath.Join(campaignDir, "maps"), 0755)
-	os.WriteFile(filepath.Join(campaignDir, "lore.md"), []byte("# Lore"), 0644)
-	os.WriteFile(filepath.Join(campaignDir, "maps", "dungeon.svg"), []byte("<svg/>"), 0644)
+	_ = os.MkdirAll(filepath.Join(campaignDir, "maps"), 0755)
+	_ = os.WriteFile(filepath.Join(campaignDir, "lore.md"), []byte("# Lore"), 0644)
+	_ = os.WriteFile(filepath.Join(campaignDir, "maps", "dungeon.svg"), []byte("<svg/>"), 0644)
 
 	archivePath := filepath.Join(tmpDir, "my-campaign.tar.gz")
 
@@ -112,13 +120,13 @@ func TestCreateTarGzAndGetTopLevelDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	gzReader, err := gzip.NewReader(file)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer gzReader.Close()
+	defer func() { _ = gzReader.Close() }()
 
 	tarReader := tar.NewReader(gzReader)
 	foundFiles := make(map[string]bool)
@@ -141,7 +149,7 @@ func TestCreateTarGzAndGetTopLevelDir(t *testing.T) {
 func TestCreateTarGz_EmptyOutputDir(t *testing.T) {
 	tmpDir := t.TempDir()
 	emptyCampaign := filepath.Join(tmpDir, "empty-campaign")
-	os.MkdirAll(emptyCampaign, 0755)
+	_ = os.MkdirAll(emptyCampaign, 0755)
 
 	archivePath := filepath.Join(tmpDir, "empty.tar.gz")
 	err := CreateTarGz(emptyCampaign, archivePath)
@@ -154,7 +162,7 @@ func TestCreateTarGz_EmptyOutputDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	gzReader, err := gzip.NewReader(file)
 	if err != nil {
@@ -168,7 +176,7 @@ func TestCreateTarGz_EmptyOutputDir(t *testing.T) {
 func TestGetArchiveTopLevelDir_InvalidFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	invalidPath := filepath.Join(tmpDir, "not-a-tar.gz")
-	os.WriteFile(invalidPath, []byte("not-gzip-data"), 0644)
+	_ = os.WriteFile(invalidPath, []byte("not-gzip-data"), 0644)
 
 	_, err := GetArchiveTopLevelDir(invalidPath)
 	if err == nil {
@@ -193,10 +201,10 @@ func TestExtractTarGz(t *testing.T) {
 
 	// Create a source tar.gz to extract
 	sourceCampaign := filepath.Join(tmpDir, "src-campaign")
-	os.MkdirAll(sourceCampaign, 0755)
-	os.WriteFile(filepath.Join(sourceCampaign, "note.md"), []byte("# Note"), 0644)
-	os.MkdirAll(filepath.Join(sourceCampaign, "sub"), 0755)
-	os.WriteFile(filepath.Join(sourceCampaign, "sub", "deep.md"), []byte("deep"), 0644)
+	_ = os.MkdirAll(sourceCampaign, 0755)
+	_ = os.WriteFile(filepath.Join(sourceCampaign, "note.md"), []byte("# Note"), 0644)
+	_ = os.MkdirAll(filepath.Join(sourceCampaign, "sub"), 0755)
+	_ = os.WriteFile(filepath.Join(sourceCampaign, "sub", "deep.md"), []byte("deep"), 0644)
 
 	archivePath := filepath.Join(tmpDir, "test.tar.gz")
 	if err := CreateTarGz(sourceCampaign, archivePath); err != nil {
@@ -205,7 +213,7 @@ func TestExtractTarGz(t *testing.T) {
 
 	// Extract to a different location
 	extractDir := filepath.Join(tmpDir, "output")
-	os.MkdirAll(extractDir, 0755)
+	_ = os.MkdirAll(extractDir, 0755)
 
 	if err := ExtractTarGz(archivePath, extractDir); err != nil {
 		t.Fatalf("ExtractTarGz() error: %v", err)
@@ -253,7 +261,7 @@ func TestExtractTarGz_DirectoryTraversal(t *testing.T) {
 
 	// Try extracting — should fail with security error
 	extractDir := filepath.Join(tmpDir, "safe-extract")
-	os.MkdirAll(extractDir, 0755)
+	_ = os.MkdirAll(extractDir, 0755)
 
 	err = ExtractTarGz(archivePath, extractDir)
 	if err == nil {
@@ -267,7 +275,7 @@ func TestExtractTarGz_DirectoryTraversal(t *testing.T) {
 func TestExtractTarGz_InvalidGzip(t *testing.T) {
 	tmpDir := t.TempDir()
 	invalidPath := filepath.Join(tmpDir, "invalid.gz")
-	os.WriteFile(invalidPath, []byte("not-gzip"), 0644)
+	_ = os.WriteFile(invalidPath, []byte("not-gzip"), 0644)
 
 	err := ExtractTarGz(invalidPath, tmpDir)
 	if err == nil {
@@ -286,10 +294,10 @@ func TestExportImportRoundTrip(t *testing.T) {
 	sourceDir := filepath.Join(tmpDir, campaignName)
 
 	// Create a campaign
-	os.MkdirAll(sourceDir, 0755)
-	os.WriteFile(filepath.Join(sourceDir, "lore.md"), []byte("# Round Trip Lore"), 0644)
-	os.MkdirAll(filepath.Join(sourceDir, "npcs"), 0755)
-	os.WriteFile(filepath.Join(sourceDir, "npcs", "gandalf.md"), []byte("## Gandalf\nA wizard"), 0644)
+	_ = os.MkdirAll(sourceDir, 0755)
+	_ = os.WriteFile(filepath.Join(sourceDir, "lore.md"), []byte("# Round Trip Lore"), 0644)
+	_ = os.MkdirAll(filepath.Join(sourceDir, "npcs"), 0755)
+	_ = os.WriteFile(filepath.Join(sourceDir, "npcs", "gandalf.md"), []byte("## Gandalf\nA wizard"), 0644)
 
 	// Export
 	archivePath := filepath.Join(tmpDir, campaignName+".tar.gz")
@@ -302,7 +310,7 @@ func TestExportImportRoundTrip(t *testing.T) {
 
 	// Import
 	importDir := filepath.Join(tmpDir, "imported")
-	os.MkdirAll(importDir, 0755)
+	_ = os.MkdirAll(importDir, 0755)
 	if err := ExtractTarGz(archivePath, importDir); err != nil {
 		t.Fatal(err)
 	}

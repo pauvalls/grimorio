@@ -68,6 +68,8 @@ func runList(cCtx *cli.Context) error {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
 			c.Name, c.Title, c.Status, c.Acts, c.NPCs, c.Characters, updated)
 	}
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		return fmt.Errorf("flush output: %w", err)
+	}
 	return nil
 }

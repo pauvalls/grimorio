@@ -18,23 +18,6 @@ func setupTimelineTest() *TimelineHandlers {
 	return NewTimelineHandlers(narrativeStateService)
 }
 
-func seedSessionLog(t *testing.T, nss *services.NarrativeStateService, campaignID string, sessions []domain.SessionRecord) {
-	t.Helper()
-
-	// Create narrative state directly in repo
-	state := &domain.NarrativeState{
-		SchemaVersion:  domain.SchemaVersionV2,
-		CampaignID:     campaignID,
-		CurrentSession: len(sessions),
-		SessionLog:     sessions,
-		LastUpdated:    time.Now(),
-	}
-
-	// Save via the service
-	repo := repository.NewMemoryNarrativeStateRepository()
-	_ = repo.Save(campaignID, state)
-	_ = nss // We need to reload from the repo used by the handler
-}
 
 func TestHandleSessionTimeline_HappyPath(t *testing.T) {
 	_ = setupTimelineTest()
@@ -69,13 +52,12 @@ func TestHandleSessionTimeline_HappyPath(t *testing.T) {
 
 	// Save to the handler's service
 	state := &domain.NarrativeState{
-		SchemaVersion:  domain.SchemaVersionV2,
 		CampaignID:     "timeline-test",
-		CurrentSession: 2,
+		CurrentSession: len(sessions),
 		SessionLog:     sessions,
-		LastUpdated:    now,
+		LastUpdated:    time.Now(),
 	}
-	repository.NewMemoryNarrativeStateRepository().Save("timeline-test", state)
+	_ = repository.NewMemoryNarrativeStateRepository().Save("timeline-test", state)
 
 	// Reload: we need a fresh handler that uses the saved data
 	nss := services.NewNarrativeStateService(
@@ -92,7 +74,7 @@ func TestHandleSessionTimeline_HappyPath(t *testing.T) {
 
 	// Actually, let's just use the repo directly and create a handler pointing to it
 	repo := repository.NewMemoryNarrativeStateRepository()
-	repo.Save("timeline-test", &domain.NarrativeState{
+	_ = repo.Save("timeline-test", &domain.NarrativeState{
 		SchemaVersion:  domain.SchemaVersionV2,
 		CampaignID:     "timeline-test",
 		CurrentSession: 2,
@@ -139,7 +121,7 @@ func TestHandleSessionTimeline_NoSessions(t *testing.T) {
 	now := time.Now()
 
 	// Seed narrative state with empty session log
-	repo.Save("empty-campaign", &domain.NarrativeState{
+	_ = repo.Save("empty-campaign", &domain.NarrativeState{
 		SchemaVersion:  domain.SchemaVersionV2,
 		CampaignID:     "empty-campaign",
 		CurrentSession: 0,
@@ -186,7 +168,7 @@ func TestSessionTimeline_SummaryTruncation(t *testing.T) {
 
 	longSummary := strings.Repeat("A very long session summary that should definitely be truncated because it exceeds the 120 character limit. ", 5)
 
-	repo.Save("trunc-test", &domain.NarrativeState{
+	_ = repo.Save("trunc-test", &domain.NarrativeState{
 		SchemaVersion:  domain.SchemaVersionV2,
 		CampaignID:     "trunc-test",
 		CurrentSession: 1,
@@ -224,7 +206,7 @@ func TestSessionTimeline_NoDecisions(t *testing.T) {
 	repo := repository.NewMemoryNarrativeStateRepository()
 	now := time.Now()
 
-	repo.Save("no-decision-test", &domain.NarrativeState{
+	_ = repo.Save("no-decision-test", &domain.NarrativeState{
 		SchemaVersion:  domain.SchemaVersionV2,
 		CampaignID:     "no-decision-test",
 		CurrentSession: 1,
