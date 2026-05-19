@@ -55,7 +55,7 @@ Then type in your AI assistant chat:
 | **[Character Creation](docs/tutorials/character-creation.md)** | Generate PCs, pre-gens, character worksheets |
 | **[Session Generator](docs/tutorials/session-generator.md)** | Adapt sessions to specific characters |
 | **[PDF Compiler](docs/features/pdf-compiler.md)** | Customize PDF output, CSS styles, sections |
-| **[MCP Tools](docs/features/mcp-tools.md)** | Full tool reference (29 tools) |
+| **[MCP Tools](docs/features/mcp-tools.md)** | Full tool reference (30+ tools) |
 | **[Architecture](docs/features/architecture.md)** | How Grimorio works internally |
 | **[DM Guide](docs/dm-guide.md)** | General advice for running games |
 | **[Developer Guide](docs/developer-guide.md)** | Contributing to Grimorio |
@@ -67,9 +67,12 @@ See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 Recent highlights:
 - **Automated Releases** — Push a `v*` tag and CI creates the release + auto-updates the changelog
 - **Self-Update** — `install.sh --update` detects changes, rebuilds only what's needed, preserves your config
+- **Narrative Prologue** — `grimorio_generate_prologue` generates 4-part WotC-style prologue with read-aloud boxes
+- **V3 Service Complete** — All 12 TODOs resolved: Tactics, PlayerMap, Area, Handout, Milestone services with filesystem repositories
+- **New MCP Tools** — `grimorio_generate_tactics`, `grimorio_get_tactics`, `grimorio_export_handout`, `grimorio_update_session_xp`, `grimorio_generate_area_by_number`, `grimorio_generate_player_map`
 - **`make install` / `make update`** — Developer-friendly targets with version metadata and plugin sync
 - **`grimorio version`** — Now shows real version (git describe), commit, build date, and Go version
-- **16 Agent Prompts** — Extracted to `agents/` directory as filesystem source of truth
+- **16 Agent Prompts** — Extracted to `agents/` directory as filesystem source of truth with full MCP tool references
 - **WotC Format Validation** — `check_consistency scope=full` validates developments, multiple solutions, character hooks, boxed text, and integration cross-references
 - **16 Grimorio Skills** — WotC standards preserved for AI-assisted campaign generation
 - **PDF Compiler Enhancements** — Auto-close unclosed divs, `page-break-inside: avoid` on all components, CSS for flowcharts and scene descriptions
@@ -118,7 +121,7 @@ Luego escribe en el chat de tu asistente IA:
 | **[Creación de Personajes](docs/tutorials/character-creation.md)** | Genera PJs, pre-generados, hojas de trabajo |
 | **[Generador de Sesiones](docs/tutorials/session-generator.md)** | Adapta sesiones a personajes específicos |
 | **[Compilador PDF](docs/features/pdf-compiler.md)** | Personaliza salida PDF, estilos CSS, secciones |
-| **[Herramientas MCP](docs/features/mcp-tools.md)** | Referencia completa de herramientas (29 herramientas) |
+| **[Herramientas MCP](docs/features/mcp-tools.md)** | Referencia completa de herramientas (30+ herramientas) |
 | **[Arquitectura](docs/features/architecture.md)** | Cómo funciona Grimorio internamente |
 | **[Guía de DM](docs/dm-guide.md)** | Consejos generales para dirigir juegos |
 | **[Guía de Desarrollador](docs/developer-guide.md)** | Contribuir a Grimorio |
@@ -130,10 +133,14 @@ Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 Highlights recientes:
 - **Releases Automatizados** — Pusheá un tag `v*` y CI crea el release + actualiza el changelog
 - **Auto-Actualización** — `install.sh --update` detecta cambios, recompila solo lo necesario, preserva tu configuración
+- **Prólogo Narrativo** — `grimorio_generate_prologue` genera prólogo 4 partes estilo WotC con boxed text
+- **Servicios V3 Completos** — Los 12 TODOs resueltos: Tactics, PlayerMap, Area, Handout, Milestone con repositorios filesystem
+- **Nuevas Herramientas MCP** — `grimorio_generate_tactics`, `grimorio_get_tactics`, `grimorio_export_handout`, `grimorio_update_session_xp`, `grimorio_generate_area_by_number`, `grimorio_generate_player_map`
 - **`make install` / `make update`** — Targets para developers con metadata de versión y sync de plugins
 - **`grimorio version`** — Muestra versión real (git describe), commit, fecha de build y versión de Go
-- **16 Prompts de Agentes** — Extraídos a `agents/` como fuente de verdad en filesystem
+- **16 Prompts de Agentes** — Extraídos a `agents/` como fuente de verdad con referencias completas a herramientas MCP
 - **Validación de Formato WotC** — `check_consistency scope=full` valida developments, múltiples soluciones, ganchos de personaje, boxed text, e integración cross-reference
+- **16 Skills de Grimorio** — Estándares WotC preservados para generación de campañas asistida por IA
 - **Mejoras al Compilador PDF** — Auto-close de divs sin cierre, `page-break-inside: avoid` en todos los componentes, CSS para flowcharts y scene descriptions
 
 ---
