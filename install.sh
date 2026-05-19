@@ -1,6 +1,4 @@
 #!/bin/bash
-set -e
-
 # Grimorio - Clean Installer v2
 # Complete MCP installation - removes old, installs fresh
 # Usage: curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
@@ -36,6 +34,13 @@ sha256_file() {
 
 copy_if_changed() {
     local src="$1" dst="$2" current_hash="$3"
+    # Always copy if destination does not exist
+    if [ ! -f "$dst" ]; then
+        mkdir -p "$(dirname "$dst")"
+        cp "$src" "$dst"
+        log "Copied: $src -> $dst"
+        return 1
+    fi
     local file_hash
     file_hash=$(sha256_file "$src" 2>/dev/null || echo "")
     [ -n "$current_hash" ] && [ "$file_hash" = "$current_hash" ] && return 0
@@ -262,10 +267,10 @@ setup_repo() {
     log "Setting up repository..."
     [ -d "$INSTALL_DIR" ] && rm -rf "$INSTALL_DIR"
     mkdir -p "$INSTALL_DIR"
-    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null || \
-        curl -sSL "${REPO_URL}/archive/refs/heads/main.tar.gz" | tar -xzf - -C "$INSTALL_DIR" --strip-components=1
+    git clone --depth 200 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null || \
+        (curl -sSL "${REPO_URL}/archive/refs/heads/main.tar.gz" | tar -xzf - -C "$INSTALL_DIR" --strip-components=1)
     # Fetch tags for proper version detection
-    git -C "$INSTALL_DIR" fetch --depth 1 origin 'refs/tags/*:refs/tags/*' 2>/dev/null || true
+    git -C "$INSTALL_DIR" fetch --tags 2>/dev/null || true
     success "Repository ready at $INSTALL_DIR"
 }
 
