@@ -168,7 +168,7 @@ func TestCreateTarGz_EmptyOutputDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Created archive is not valid gzip: %v", err)
 	}
-	gzReader.Close()
+	_ = gzReader.Close()
 }
 
 // --- GetArchiveTopLevelDir edge cases ---
@@ -255,9 +255,9 @@ func TestExtractTarGz_DirectoryTraversal(t *testing.T) {
 	if _, err := tarWriter.Write([]byte("root")); err != nil {
 		t.Fatal(err)
 	}
-	tarWriter.Close()
-	gzWriter.Close()
-	outFile.Close()
+	_ = tarWriter.Close()
+	_ = gzWriter.Close()
+	_ = outFile.Close()
 
 	// Try extracting — should fail with security error
 	extractDir := filepath.Join(tmpDir, "safe-extract")
@@ -306,7 +306,7 @@ func TestExportImportRoundTrip(t *testing.T) {
 	}
 
 	// Remove original
-	os.RemoveAll(sourceDir)
+	_ = os.RemoveAll(sourceDir)
 
 	// Import
 	importDir := filepath.Join(tmpDir, "imported")

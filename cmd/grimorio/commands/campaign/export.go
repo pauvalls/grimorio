@@ -75,13 +75,13 @@ func CreateTarGz(sourceDir, targetFile string) error {
 	if err != nil {
 		return fmt.Errorf("cannot create output file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
 	gzWriter := gzip.NewWriter(outFile)
-	defer gzWriter.Close()
+	defer func() { _ = gzWriter.Close() }()
 
 	tarWriter := tar.NewWriter(gzWriter)
-	defer tarWriter.Close()
+	defer func() { _ = tarWriter.Close() }()
 
 	baseName := filepath.Base(sourceDir)
 
@@ -128,7 +128,7 @@ func CreateTarGz(sourceDir, targetFile string) error {
 			if err != nil {
 				return fmt.Errorf("error opening file %s: %w", relPath, err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			if _, err := io.Copy(tarWriter, file); err != nil {
 				return fmt.Errorf("error writing file %s to archive: %w", relPath, err)

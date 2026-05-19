@@ -50,29 +50,7 @@ func TestHandleSessionTimeline_HappyPath(t *testing.T) {
 		},
 	}
 
-	// Save to the handler's service
-	state := &domain.NarrativeState{
-		CampaignID:     "timeline-test",
-		CurrentSession: len(sessions),
-		SessionLog:     sessions,
-		LastUpdated:    time.Now(),
-	}
-	_ = repository.NewMemoryNarrativeStateRepository().Save("timeline-test", state)
-
-	// Reload: we need a fresh handler that uses the saved data
-	nss := services.NewNarrativeStateService(
-		repository.NewMemoryNarrativeStateRepository(),
-		repository.NewMemoryCanonRepository(),
-	)
-	// Load the saved state from the first repo and save it to the second
-	tmpRepo := repository.NewMemoryNarrativeStateRepository()
-	savedState, _ := tmpRepo.Load("timeline-test")
-	if savedState != nil {
-		// State was saved to tmpRepo, need to use the same repo for the handler
-	}
-	_ = nss
-
-	// Actually, let's just use the repo directly and create a handler pointing to it
+	// Save and reload with a handler pointing to the same repo
 	repo := repository.NewMemoryNarrativeStateRepository()
 	_ = repo.Save("timeline-test", &domain.NarrativeState{
 		SchemaVersion:  domain.SchemaVersionV2,

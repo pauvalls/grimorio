@@ -59,13 +59,13 @@ func runList(cCtx *cli.Context) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "NAME\tTITLE\tSTATUS\tACTS\tNPCS\tCHARS\tUPDATED")
+_, _ = fmt.Fprintln(w, "NAME\tTITLE\tSTATUS\tACTS\tNPCS\tCHARS\tUPDATED")
 	for _, c := range campaigns {
 		updated := c.UpdatedAt.Format(time.RFC3339)
 		if c.UpdatedAt.IsZero() {
 			updated = "-"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
+_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
 			c.Name, c.Title, c.Status, c.Acts, c.NPCs, c.Characters, updated)
 	}
 	if err := w.Flush(); err != nil {

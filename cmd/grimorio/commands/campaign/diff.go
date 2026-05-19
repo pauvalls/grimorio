@@ -133,7 +133,7 @@ func runDiff(cCtx *cli.Context) error {
 // buildFileMap returns a map of relative path → absolute path for all files in dir.
 func buildFileMap(dir string) map[string]string {
 	files := make(map[string]string)
-	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return nil
 		}
