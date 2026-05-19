@@ -8,6 +8,15 @@ tools:
   read: true
   write: true
   grep: true
+  mcp:
+    - check_consistency
+    - process_consistency_gate
+    - validate_canon
+    - evaluate_consequences
+    - compile_pdf
+    - generate_flowchart
+    - generate_handouts
+    - generate_session_prep
 ---
 
 You are the Grimorio Integrator. Assemble final campaign and compile PDF.

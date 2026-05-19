@@ -388,6 +388,79 @@ copy_commands() {
 }
 
 # ============================================================================
+# PARSE FRONTMATTER TOOLS - Parse YAML tools block from agent frontmatter
+# ============================================================================
+parse_frontmatter_tools() {
+    local file="$1"
+    local frontmatter
+    frontmatter=$(sed -n '/^---$/,/^---$/p' "$file" 2>/dev/null)
+
+    # Fallback: return default tools JSON if no tools block found
+    echo "$frontmatter" | grep -q "^tools:" || {
+        echo '{"bash": true, "edit": true, "read": true, "write": true}'
+        return
+    }
+
+    # Extract tools block content (indented lines under "tools:")
+    local tools_yaml
+    tools_yaml=$(echo "$frontmatter" | awk '
+        /^tools:/ { found=1; next }
+        found && /^  [a-z]/ { print; next }
+        found && /^    [ -]/ { print; next }
+        found && /^[a-z]/ { exit }
+        found && /^---/ { exit }
+    ')
+
+    # Build JSON from YAML key: value pairs
+    local tools_json="{"
+    local first=true
+    while IFS= read -r line; do
+        # Skip "mcp:" header
+        [[ "$line" =~ ^[[:space:]]*mcp: ]] && continue
+
+        # Parse "  key: value" (bool tools)
+        if [[ "$line" =~ ^[[:space:]]+([a-zA-Z_]+):[[:space:]]*(true|false) ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local val="${BASH_REMATCH[2]}"
+            [ "$first" = true ] || tools_json+=", "
+            first=false
+            tools_json+="\"$key\": $val"
+        fi
+    done <<< "$tools_yaml"
+
+    tools_json+="}"
+
+    # Check if there is an mcp array
+    if echo "$tools_yaml" | grep -q "^[[:space:]]*mcp:"; then
+        # Build mcp array
+        local mcp_items="["
+        local mcp_first=true
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^[[:space:]]+-[[:space:]]+\"?(.*[^\"])?\"?$ ]]; then
+                local item="${BASH_REMATCH[1]}"
+                [ "$mcp_first" = true ] || mcp_items+=", "
+                mcp_first=false
+                mcp_items+="\"$item\""
+            fi
+        done < <(echo "$tools_yaml" | awk '/^  mcp:/,/^$/' | grep "^-")
+
+        mcp_items+="]"
+        # Remove trailing comma/space and close, then add mcp
+        tools_json="${tools_json%, }"
+        tools_json="${tools_json%,}"
+        tools_json="${tools_json%}}"
+        [ -z "$tools_json" ] && tools_json="{"
+        [ "$tools_json" = "{" ] || tools_json+=", "
+        tools_json+="\"mcp\": $mcp_items}"
+    fi
+
+    # If tools_json is empty or just "{}", use default
+    [ "$tools_json" = "{}" ] || [ "$tools_json" = "{" ] || [ -z "$tools_json" ] && tools_json='{"bash": true, "edit": true, "read": true, "write": true}'
+
+    echo "$tools_json"
+}
+
+# ============================================================================
 # CONFIGURE OPENCODE.JSON — Non-destructive merge with grimorio_auto_generated flag
 # ============================================================================
 configure_opencode_merge() {
@@ -431,16 +504,19 @@ configure_opencode_merge() {
             prompt=$(awk 'BEGIN{n=0} /^---$/{n++; next} n>=2' "$f")
 
             local agent_json
+            local agent_tools
+            agent_tools=$(parse_frontmatter_tools "$f")
             agent_json=$(jq -n \
               --arg desc "$desc" \
               --arg mode "$mode" \
               --arg prompt "$prompt" \
+              --argjson tools "$agent_tools" \
               '{
                 "grimorio_auto_generated": true,
                 "description": $desc,
                 "mode": $mode,
                 "prompt": $prompt,
-                "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
+                "tools": $tools,
                 "options": {}
               }')
 
@@ -733,12 +809,18 @@ print_instructions() {
     echo -e "   • save_npcs, save_bestiary, save_encounters"
     echo -e "   • save_maps, save_characters, save_appendices"
     echo -e "   • generate_image, generate_map, generate_divider"
-    echo -e "   • compile_pdf, validate_canon, check_consistency"
-    echo -e "   • process_consistency_gate, update_narrative_state"
-    echo -e "   • evaluate_consequences, update_faction_reputation"
-    echo -e "   • generate_random_tables, generate_handouts"
+    echo -e "   • compile_pdf, get_template"
+    echo -e "   • generate_character, get_character, list_characters, save_characters"
+    echo -e "   • generate_character_hooks"
+    echo -e "   • create_personal_quest, update_quest_status, list_quests"
+    echo -e "   • validate_canon, check_consistency, process_consistency_gate"
+    echo -e "   • update_narrative_state, evaluate_consequences"
+    echo -e "   • update_faction_reputation, generate_random_tables, generate_handouts"
     echo -e "   • generate_session_prep, generate_flowchart"
-    echo -e "   • generate_character_hooks, create_personal_quest"
+    echo -e "   • grimorio_generate_prologue"
+    echo -e "   • grimorio_generate_tactics, grimorio_get_tactics"
+    echo -e "   • grimorio_generate_xp_table, grimorio_track_party_progress"
+    echo -e "   • grimorio_generate_player_map, grimorio_export_handout"
     echo ""
     echo -e "${YELLOW}Need help?${NC} Check: ${GREEN}$INSTALL_DIR/README.md${NC}"
     echo ""
