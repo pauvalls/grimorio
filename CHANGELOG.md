@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v3.7.0] - 2026-05-19
+
+### Cleanup
+
+- Remove vestigial ConsequenceService
+
+### Docs
+
+- Update changelog for v3.6.0
+- Update changelog for v3.5.0
+
+### Feat
+
+- Add release-tag target for auto-versioning (make)
+- Add filesystem V3 repository implementations
+- Implement service TODO stubs for V3
+- Wire V3 handlers and register MCP tools
+- Update agents and install.sh for V3 tools
+
+### Test
+
+- Add round-trip and service unit tests for V3 changes
+
 
 ## [v3.6.0] - 2026-05-19
 
