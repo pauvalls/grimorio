@@ -27,10 +27,12 @@ lint: ## Run golangci-lint
 build: ## Build the grimorio binary
 	go build -ldflags "$(LDFLAGS)" -v -o grimorio ./cmd/grimorio
 
-install: build ## Build and install grimorio binary to ~/.local/bin
+install: build ## Build and install grimorio binary to ~/.local/bin and plugin dir
 	mkdir -p $(HOME)/.local/bin
 	cp grimorio $(HOME)/.local/bin/grimorio
-	@echo "Installed grimorio to $(HOME)/.local/bin/grimorio"
+	mkdir -p $(HOME)/.config/opencode/plugins/grimorio
+	cp grimorio $(HOME)/.config/opencode/plugins/grimorio/grimorio
+	@echo "Installed grimorio to $(HOME)/.local/bin/grimorio and $(HOME)/.config/opencode/plugins/grimorio/grimorio"
 
 update: ## Run install.sh --update to update grimorio
 	bash install.sh --update
