@@ -71,3 +71,25 @@ changelog-update: ## Generate and prepend changelog for a specific tag
 
 changelog-all: ## Regenerate full changelog from all tags
 	git-cliff --config cliff.toml --tag "next" > CHANGELOG.md
+
+release-tag: ## Auto-detect next version and create/push tag
+	@echo "Determining next version from conventional commits..."
+	$(eval LATEST_TAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"))
+	$(eval MAJOR := $(shell echo "$(LATEST_TAG)" | sed 's/v//' | cut -d. -f1))
+	$(eval MINOR := $(shell echo "$(LATEST_TAG)" | sed 's/v//' | cut -d. -f2))
+	$(eval PATCH := $(shell echo "$(LATEST_TAG)" | sed 's/v//' | cut -d. -f3))
+	$(eval HAS_BREAKING := $(shell git log "$(LATEST_TAG)..HEAD" --oneline | grep -c "!:" 2>/dev/null || echo 0))
+	$(eval HAS_FEAT := $(shell git log "$(LATEST_TAG)..HEAD" --oneline | grep -c "feat" 2>/dev/null || echo 0))
+	@if [ "$(HAS_BREAKING)" -gt 0 ]; then \
+		MAJOR=$$(($(MAJOR) + 1)); \
+		NEW_TAG="v$${MAJOR}.0.0"; \
+	elif [ "$(HAS_FEAT)" -gt 0 ]; then \
+		MINOR=$$(($(MINOR) + 1)); \
+		NEW_TAG="v$(MAJOR).$${MINOR}.0"; \
+	else \
+		PATCH=$$(($(PATCH) + 1)); \
+		NEW_TAG="v$(MAJOR).$(MINOR).$${PATCH}"; \
+	fi; \
+	echo "Creating tag: $$NEW_TAG"; \
+	git tag -a "$$NEW_TAG" -m "Release $$NEW_TAG"; \
+	git push origin "$$NEW_TAG"
