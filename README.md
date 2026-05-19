@@ -6,7 +6,7 @@
 
 [![Version](https://img.shields.io/github/v/release/pauvalls/grimorio?label=version&style=for-the-badge&color=purple)](https://github.com/pauvalls/grimorio/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/pauvalls/grimorio/ci.yml?branch=main&style=for-the-badge&label=CI&color=blue)](https://github.com/pauvalls/grimorio/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/pauvalls/grimorio?style=for-the-badge&label=License&color=green)](LICENSE)
+[![License](https://img.shields.io/github/license/pauvalls/grimorio?style=for-the-badge&color=green)](LICENSE)
 
 [🇬🇧 English](#english) · [🇪🇸 Español](#español)
 
@@ -253,7 +253,9 @@ Highlights recientes:
 
 ## License / Licencia
 
-MIT License — See [LICENSE](LICENSE) for details.
+**Mozilla Public License 2.0** — See [LICENSE](LICENSE) for details.
+
+Copyright (c) 2026 Pau Valls
 
 ---
 
