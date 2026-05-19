@@ -52,12 +52,23 @@ jobs:
 
       - name: Generate changelog
         run: |
-          git-cliff --config cliff.toml --unreleased --tag "${{ github.ref_name }}" --prepend CHANGELOG.md
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            echo "Generating changelog from $PREV_TAG to ${{ github.ref_name }}"
+            git-cliff --config cliff.toml --tag "${{ github.ref_name }}" "$PREV_TAG..${{ github.ref_name }}" --prepend CHANGELOG.md
+          else
+            echo "No previous tag found, generating full changelog"
+            git-cliff --config cliff.toml --tag "${{ github.ref_name }}" --prepend CHANGELOG.md
+          fi
 
       - name: Commit changelog
         run: |
           git config user.name "grimorio-bot"
           git config user.email "bot@grimorio"
           git add CHANGELOG.md
-          git diff --cached --quiet || git commit -m "docs: update changelog for ${{ github.ref_name }}"
-          git push origin main
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: update changelog for ${{ github.ref_name }}"
+            git push origin main
+          else
+            echo "No changes to CHANGELOG.md, skipping commit"
+          fi
