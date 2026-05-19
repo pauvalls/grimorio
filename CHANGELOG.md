@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v3.6.0] - 2026-05-19
+
+### Feat
+
+- Add domain model, template, and CSS for 4-part narrative prologue (prologue)
+- Add PrologueService and CampaignService.SavePrologue (prologue)
+- Add MCP tool handler and server registration (prologue)
+
+### Fix
+
+- Integrator agent missing consistency tool references
+- Replace WriteString(fmt.Sprintf) with fmt.Fprintf in prologue_service.go (lint)
+
+### Test
+
+- Add tests for domain, service, handler, template, and CSS (prologue)
+
 ## [v3.4.0] - 2026-05-19
 
 ### Chore
