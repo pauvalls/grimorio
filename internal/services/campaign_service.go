@@ -45,6 +45,11 @@ func NewCampaignService(
 	}
 }
 
+// GetBaseDir returns the base directory for campaign files
+func (s *CampaignService) GetBaseDir() string {
+	return s.baseDir
+}
+
 // CreateCampaign creates a new campaign
 func (s *CampaignService) CreateCampaign(name, title, setting string) (*domain.Campaign, error) {
 	if title == "" {
@@ -209,6 +214,26 @@ func (s *CampaignService) SaveBestiary(campaignID, content string) error {
 // SaveMaps saves maps to a campaign as markdown
 func (s *CampaignService) SaveMaps(campaignID, content string) error {
 	return s.saveMarkdownFile(campaignID, "maps", "maps.md", content)
+}
+
+// SavePrologue saves a prologue to a campaign as markdown
+func (s *CampaignService) SavePrologue(campaignID string, prologue *domain.Prologue) error {
+	tmplStr, err := compiler.GetTemplate("prologue")
+	if err != nil {
+		return err
+	}
+
+	tmpl, err := template.New("prologue").Parse(tmplStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse prologue template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, prologue); err != nil {
+		return fmt.Errorf("failed to execute prologue template: %w", err)
+	}
+
+	return s.saveMarkdownFile(campaignID, "", "prologue.md", buf.String())
 }
 
 // SaveIntroduction saves the campaign introduction/overview document
