@@ -284,3 +284,69 @@ To prove cache hit vs miss:
 - [Canon Schema](../internal/domain/canon.go) — Data structures
 - [Gate Schema](../internal/domain/gate.go) — BatchProposal and GateResult
 - [Cache Implementation](../internal/cache/lru.go) — LRU cache internals
+
+---
+
+## SDD Workflow (Spec-Driven Development)
+
+Grimorio uses **SDD** (Spec-Driven Development) for substantial changes. The orchestrator agent (`gentle-orchestrator`) coordinates the workflow by delegating phases to specialized sub-agents.
+
+### SDD Phases
+
+```
+proposal → specs → tasks → apply → verify → archive
+               ↑
+             design
+```
+
+| Phase | Agent | Purpose |
+|-------|-------|---------|
+| **Explore** | `sdd-explore` | Investigate codebase, compare approaches, clarify requirements. No files created. |
+| **Propose** | `sdd-propose` | Formalize intent, scope, approach, and risks. |
+| **Spec** | `sdd-spec` | Write delta specs with requirements, scenarios, and acceptance criteria. |
+| **Design** | `sdd-design` | Create technical design with file-by-file plan and architecture decisions. |
+| **Tasks** | `sdd-tasks` | Break design into concrete, orderable implementation tasks. |
+| **Apply** | `sdd-apply` | Implement code changes task by task. |
+| **Verify** | `sdd-verify` | Validate implementation against specs, run tests, report compliance. |
+| **Archive** | `sdd-archive` | Persist final state, reconcile spec deltas, close the change. |
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/sdd-init` | Initialize SDD context; detects stack, bootstraps Engram persistence. |
+| `/sdd-explore <topic>` | Investigate an idea; reads codebase, returns report. |
+| `/sdd-apply [change]` | Implement tasks in batches. |
+| `/sdd-verify [change]` | Validate implementation against specs. |
+| `/sdd-archive [change]` | Close a change and persist final state. |
+
+### Meta-Commands
+
+| Command | Description |
+|---------|-------------|
+| `/sdd-new <change>` | Start a new change by delegating exploration + proposal. |
+| `/sdd-ff <name>` | Fast-forward: proposal → specs → design → tasks in one shot. |
+| `/sdd-continue [change]` | Run the next dependency-ready phase. |
+
+### Execution Modes
+
+- **Automatic** (`auto`) — All phases run back-to-back without pausing. Final result only.
+- **Interactive** (`interactive`) — After each phase, show result and ask to continue.
+
+### Artifact Store
+
+| Mode | Backend | Use Case |
+|------|---------|---------|
+| `engram` | Engram (default) | Fast, no files created. |
+| `openspec` | `openspec/` directory | File-based, shareable artifacts. |
+| `hybrid` | Both | Cross-session recovery + local files. |
+
+### Making a Release
+
+After completing an SDD cycle:
+
+```bash
+make release-tag
+```
+
+This auto-detects the next version from conventional commits, creates and pushes the tag. CI then creates the GitHub release with binaries and updates the CHANGELOG via git-cliff.

@@ -103,6 +103,11 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	playerMapHandlers := handlers.NewPlayerMapHandlers(playerMapService)
 	handoutV3Handlers := handlers.NewHandoutV3Handlers(handoutServiceV3)
 
+	// Visualization and dashboard handlers
+	vizHandlers := handlers.NewVizHandlers(canonService)
+	dashboardHandlers := handlers.NewDashboardHandlers(factionService, canonService)
+	timelineHandlers := handlers.NewTimelineHandlers(narrativeStateService)
+
 	// Register tools
 	// Campaign management
 	s.AddTool(mcp.NewTool("create_campaign",
@@ -415,6 +420,22 @@ s.AddTool(mcp.NewTool("save_maps",
 		mcp.WithString("handout_id", mcp.Required(), mcp.Description("Handout ID")),
 		mcp.WithString("format", mcp.Description("Export format (text, pdf)"), mcp.DefaultString("text")),
 	), handoutV3Handlers.HandleExportHandout())
+
+	// Visualization tools
+	s.AddTool(mcp.NewTool("visualize_relationship_graph",
+		mcp.WithDescription("Visualize the entity relationship graph for a campaign as an interactive D3.js force-directed graph"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+	), vizHandlers.HandleGenerateRelationshipGraph())
+
+	s.AddTool(mcp.NewTool("faction_reputation_dashboard",
+		mcp.WithDescription("Show a visual dashboard of all faction reputations with color-coded badges and trend sparklines"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+	), dashboardHandlers.HandleFactionDashboard())
+
+	s.AddTool(mcp.NewTool("session_timeline",
+		mcp.WithDescription("Show a vertical timeline of all recorded sessions with expandable key decisions"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+	), timelineHandlers.HandleSessionTimeline())
 
 	return s
 }

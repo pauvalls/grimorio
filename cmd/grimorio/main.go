@@ -1,16 +1,13 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
-	"strconv"
 
-	"github.com/mark3labs/mcp-go/server"
-	"github.com/pauvalls/grimorio/internal/config"
-	mcpserver "github.com/pauvalls/grimorio/internal/mcp"
+	"github.com/pauvalls/grimorio/cmd/grimorio/commands"
+	"github.com/pauvalls/grimorio/cmd/grimorio/commands/campaign"
+	"github.com/urfave/cli/v2"
 )
 
 var (
@@ -20,54 +17,32 @@ var (
 )
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "version" {
-		fmt.Printf("grimorio %s\nCommit: %s\nBuildDate: %s\nGoVersion: %s\n", version, commit, date, runtime.Version())
-		os.Exit(0)
+	app := &cli.App{
+		Name:    "grimorio",
+		Usage:   "Grimorio TTRPG campaign manager",
+		Version: fmt.Sprintf("%s (commit: %s, build date: %s, go: %s)", version, commit, date, runtime.Version()),
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:  "compiler-version",
+				Usage: "Compiler version (1 or 2)",
+			},
+		},
+		// Default action: start MCP server (backward compatible)
+		Action: commands.RunMCPServer,
+		Commands: []*cli.Command{
+			{
+				Name:  "mcp",
+				Usage: "Start the MCP stdio server",
+				Action: func(cCtx *cli.Context) error {
+					return commands.RunMCPServer(cCtx)
+				},
+			},
+		campaign.NewCampaignCommand(),
+		},
 	}
 
-	// Parse flags
-	compilerVersion := 0
-	for i := 1; i < len(os.Args); i++ {
-		if os.Args[i] == "--compiler-version" && i+1 < len(os.Args) {
-			if v, err := strconv.Atoi(os.Args[i+1]); err == nil && (v == 1 || v == 2) {
-				compilerVersion = v
-			}
-			i++
-		}
-	}
-
-	home, _ := os.UserHomeDir()
-	configPath := filepath.Join(home, ".config", "grimorio", "config.json")
-
-	// Ensure config dir exists
-	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating config dir: %v\n", err)
-		os.Exit(1)
-	}
-
-	cfg, err := config.LoadConfig(configPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Override compiler version from flag
-	if compilerVersion != 0 {
-		cfg.CompilerVersion = compilerVersion
-	}
-
-	// If no config exists, create default
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		if err := cfg.Save(configPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Error saving default config: %v\n", err)
-		}
-	}
-
-	// Start MCP stdio server
-	mcpServer := mcpserver.NewServer(cfg)
-	stdioServer := server.NewStdioServer(mcpServer)
-	if err := stdioServer.Listen(context.Background(), os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+	if err := app.Run(os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
