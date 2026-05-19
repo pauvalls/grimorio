@@ -264,6 +264,8 @@ setup_repo() {
     mkdir -p "$INSTALL_DIR"
     git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null || \
         curl -sSL "${REPO_URL}/archive/refs/heads/main.tar.gz" | tar -xzf - -C "$INSTALL_DIR" --strip-components=1
+    # Fetch tags for proper version detection
+    git -C "$INSTALL_DIR" fetch --depth 1 origin 'refs/tags/*:refs/tags/*' 2>/dev/null || true
     success "Repository ready at $INSTALL_DIR"
 }
 
