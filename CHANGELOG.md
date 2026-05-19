@@ -13,6 +13,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Docs
 
 - Add WotC validation and HTML fix to changelog (README)
+- Update version badge to dynamic shield.io + simplify what's new (readme)
+
+### Feat
+
+- Add 16 grimorio skills with WotC standards preserved
+- Extend check_consistency with WotC format + integration validation
+- Fix nested divs + add narrative prologue support (compiler)
+- Automate releases and changelogs with git-cliff
+
+### Fix
+
+- Resolve final 6 linter errors (CI green)
+- Update to fix lit ci issues (lint)
+- Update skill registry paths to ~/.config/opencode/skills/
+- Prevent <p> wrapping around HTML block placeholders (compiler)
+- Resolve staticcheck and unused linter errors
+- Replace WriteString(fmt.Sprintf) with fmt.Fprintf in flowchart.go
+- Replace WriteString(fmt.Sprintf) with fmt.Fprintf in handout.go
+- Replace WriteString(fmt.Sprintf) with fmt.Fprintf in handout.go and svg.go
+- Replace all WriteString(fmt.Sprintf) with fmt.Fprintf in svg.go
+- Auto-close unclosed divs and add missing page-break CSS (compiler)
+- Install git-cliff directly instead of using action (ci)
+- Checkout main branch for changelog job to avoid detached HEAD (ci)
+- Use commit range for git-cliff instead of --unreleased flag (ci)
+- Use GH_PAT secret to bypass branch protection for changelog push (ci)
+
+### Refactor
+
+- Delete agents/ directory (consolidated into skills/)
+- Consolidate skills+agents architecture, fix install script
+
+### Test
+
+- Add regression test for HTML block wrapping bug (compiler)
+
+## [v3.4.0] - 2026-05-19
+
+### Chore
+
+- Remove orphaned SDD markdown files from root
+
+### Docs
+
+- Add WotC validation and HTML fix to changelog (README)
 
 ### Feat
 
