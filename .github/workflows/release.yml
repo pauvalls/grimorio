@@ -40,6 +40,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install git-cliff
@@ -59,4 +60,4 @@ jobs:
           git config user.email "bot@grimorio"
           git add CHANGELOG.md
           git diff --cached --quiet || git commit -m "docs: update changelog for ${{ github.ref_name }}"
-          git push
+          git push origin main
