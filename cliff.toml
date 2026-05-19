@@ -1,0 +1,40 @@
+# git-cliff ~ configuration file
+# https://git-cliff.org
+
+[changelog]
+header = """\
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\
+"""
+body = """
+{% if version %}\
+## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {% if commit.breaking %}[breaking] {% endif %}{{ commit.message | upper_first }}{% if commit.scope %} ({{ commit.scope }}){% endif %}
+{%- endfor %}
+{% endfor %}
+"""
+# Prepend new entries (keep existing content below)
+trim = true
+postprocess = [
+  { replace = '\(#(\d+)\)', with = '[#$1](https://github.com/pauvalls/grimorio/issues/$1)' },
+]
+
+[git]
+conventional_commits = true
+commit_preprocessors = [
+  { pattern = '\((\w+\s)?#', replace = '' },  # remove '(#123)' style issue refs
+]
+filter_unconventional = true
+split_commits = false
+
+# Generate per-tag
+[tags]
+pattern = "v[0-9].*"

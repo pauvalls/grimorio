@@ -4,106 +4,410 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v3.4.0] - 2026-05-19
 
-## [3.0.0] - 2026-05-09
+### Chore
 
-**WotC Professional Quality** — Major version bump with unified area format, milestone XP, enhanced handouts, and E2E testing
+- Remove orphaned SDD markdown files from root
 
-### Added
+### Docs
 
-#### Domain Models (Phase 1 - TASK-001 to TASK-008)
-- **MilestoneXP** domain model with PHB threshold tracking ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- **MagicItem** domain model with rarity, attunement, and curse support ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- **Tactics** domain model with intelligence tiers and environmental tactics ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- **PlayerMap** domain model for player-facing maps with secret redaction ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- **SessionZeroGuide** domain model with content warnings and safety tools ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- **ConsequenceTable** domain model for act transition tracking ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- **Area** unified WotC format with sequential numbering 1-15 ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- **PregenCharacter** with campaign-specific bonds/ideals/flaws ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- Enhanced **Handout** with type/format/style fields (letter, clue, document, journal) ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- Enhanced **Quest** with QuestApproach, QuestFailure, QuestClue structures ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
+- Add WotC validation and HTML fix to changelog (README)
 
-#### Services (Phase 1 - TASK-009 to TASK-018)
-- **MilestoneService** for XP table generation and party level tracking ([`06c22d4`](https://github.com/pauvalls/grimorio/commit/06c22d4))
-- **ItemService** for magic item generation with rarity validation ([`06c22d4`](https://github.com/pauvalls/grimorio/commit/06c22d4))
-- **TacticsService** for enemy AI and combat guidance ([`06c22d4`](https://github.com/pauvalls/grimorio/commit/06c22d4))
-- **PlayerMapService** for player-facing map generation ([`06c22d4`](https://github.com/pauvalls/grimorio/commit/06c22d4))
-- **SessionZeroService** for campaign-specific Session Zero guides ([`06c22d4`](https://github.com/pauvalls/grimorio/commit/06c22d4))
-- **HandoutServiceV3** for enhanced handout generation ([`06c22d4`](https://github.com/pauvalls/grimorio/commit/06c22d4))
-- **ConsequenceService** for act transition consequence tracking ([`06c22d4`](https://github.com/pauvalls/grimorio/commit/06c22d4))
-- **AreaService** for unified WotC area generation ([`06c22d4`](https://github.com/pauvalls/grimorio/commit/06c22d4))
+### Feat
 
-#### MCP Handlers (Phase 2 - TASK-021 to TASK-028)
-- `grimorio_generate_xp_table` — Generate milestone XP tables ([`23e4559`](https://github.com/pauvalls/grimorio/commit/23e4559))
-- `grimorio_track_party_progress` — Track party level progression ([`23e4559`](https://github.com/pauvalls/grimorio/commit/23e4559))
-- `grimorio_generate_magic_item` — Generate magic items by rarity ([`23e4559`](https://github.com/pauvalls/grimorio/commit/23e4559))
-- `grimorio_generate_tactics` — Generate enemy combat tactics ([`23e4559`](https://github.com/pauvalls/grimorio/commit/23e4559))
-- `grimorio_generate_area` — Generate WotC-format areas ([`23e4559`](https://github.com/pauvalls/grimorio/commit/23e4559))
-- `grimorio_generate_areas_chapter` — Generate full chapter areas ([`23e4559`](https://github.com/pauvalls/grimorio/commit/23e4559))
+- Add 16 grimorio skills with WotC standards preserved
+- Extend check_consistency with WotC format + integration validation
+- Fix nested divs + add narrative prologue support (compiler)
 
-#### Templates (Phase 2 - TASK-029, TASK-035)
-- **milestone-xp.md.tmpl** — XP table markdown template ([`23e4559`](https://github.com/pauvalls/grimorio/commit/23e4559))
-- **area.md.tmpl** — Unified WotC area template ([`23e4559`](https://github.com/pauvalls/grimorio/commit/23e4559))
+### Fix
 
-#### Validators (Phase 2 - TASK-037, TASK-038)
-- **AreaValidator** with WotC quality checks ([`23e4559`](https://github.com/pauvalls/grimorio/commit/23e4559))
-- **QuestValidator** with 3-approach validation ([`23e4559`](https://github.com/pauvalls/grimorio/commit/23e4559))
+- Resolve final 6 linter errors (CI green)
+- Update to fix lit ci issues (lint)
+- Update skill registry paths to ~/.config/opencode/skills/
+- Prevent <p> wrapping around HTML block placeholders (compiler)
+- Resolve staticcheck and unused linter errors
+- Replace WriteString(fmt.Sprintf) with fmt.Fprintf in flowchart.go
+- Replace WriteString(fmt.Sprintf) with fmt.Fprintf in handout.go
+- Replace WriteString(fmt.Sprintf) with fmt.Fprintf in handout.go and svg.go
+- Replace all WriteString(fmt.Sprintf) with fmt.Fprintf in svg.go
+- Auto-close unclosed divs and add missing page-break CSS (compiler)
 
-#### Phase 3: Assets & Handouts (TASK-041 to TASK-055)
-- **PlayerMapGenerator** for player-facing map variants ([`1352898`](https://github.com/pauvalls/grimorio/commit/1352898))
-- **HandoutGenerator** for letters, clues, documents ([`1352898`](https://github.com/pauvalls/grimorio/commit/1352898))
-- **ConsequenceGenerator** for act transition tables ([`1352898`](https://github.com/pauvalls/grimorio/commit/1352898))
-- **SessionZeroGenerator** for campaign-specific guides ([`1352898`](https://github.com/pauvalls/grimorio/commit/1352898))
-- **FactionTracker** for reputation tracking ([`1352898`](https://github.com/pauvalls/grimorio/commit/1352898))
+### Refactor
 
-#### Phase 4: Testing & Automation (TASK-056 to TASK-070)
-- **E2E Test Suite** with 7 comprehensive tests ([`1352898`](https://github.com/pauvalls/grimorio/commit/1352898))
-  - e2e_full_campaign_test.go
-  - e2e_milestone_test.go
-  - e2e_consequence_test.go
-  - e2e_session_flow_test.go
-  - e2e_handout_test.go
-  - e2e_random_tables_test.go
-  - e2e_canon_validation_test.go
-- **Changelog Automation** script ([`1352898`](https://github.com/pauvalls/grimorio/commit/1352898))
-- **Migration Script** v2 to v3 with rollback support ([`1352898`](https://github.com/pauvalls/grimorio/commit/1352898))
-- **Migration Guide** documentation ([`1352898`](https://github.com/pauvalls/grimorio/commit/1352898))
+- Delete agents/ directory (consolidated into skills/)
+- Consolidate skills+agents architecture, fix install script
 
-### Changed
+### Test
 
-- Extended `domain.Handout` with V3 types (letter, clue, document, journal, etc.) ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- Extended `domain.Quest` with QuestApproach, QuestFailure, QuestClue structures ([`c7173a9`](https://github.com/pauvalls/grimorio/commit/c7173a9))
-- Exported `domain.IsValidRarity` for service use ([`06c22d4`](https://github.com/pauvalls/grimorio/commit/06c22d4))
-- Updated README.md with v3.0.0 features ([`1352898`](https://github.com/pauvalls/grimorio/commit/1352898))
+- Add regression test for HTML block wrapping bug (compiler)
+## [v3.3.3] - 2026-05-10
 
-### Technical Details
+### Fix
 
-**Architecture**: Hexagonal architecture with domain-driven design  
-**Test Coverage**: Unit tests for all domain models and core services + E2E test suite  
-**Backward Compatibility**: Additive changes only, existing campaigns remain valid  
-**Total Lines**: ~6000 lines across 70 tasks  
-**Commits**: 8 logical work-unit commits
+- Resolve 9 remaining linter errors (6 errcheck, 3 staticcheck)
+## [v3.3.2] - 2026-05-10
 
-### Migration
+### Fix
 
-Existing v2.6.0 campaigns remain compatible. New fields are optional/omitted for legacy campaigns.
+- PDF HTML rendering (preserve HTML blocks, remove &thinsp; spacing issues)
+## [v3.3.1] - 2026-05-10
 
-**Automated Migration**:
-```bash
-go run scripts/migrate/migrate_v2_to_v3.go <campaign_path>
-```
+### Feat
 
-**Documentation**: See `docs/migration-v2-to-v3.md` for complete migration guide.
+- Add narrative prologue requirement for Chapter 1 (400-600 words, 4-part structure)
 
----
+### Fix
 
-## [2.6.0] - Previous Version
+- Preserve HTML blocks and fix spacing in PDF rendering
+## [v3.3.0] - 2026-05-10
 
-See git history for v2.6.0 changes.
+### Fix
 
----
+- Resolve remaining 16 linter errors (errcheck, staticcheck)
+## [v3.2.3] - 2026-05-10
 
-**Full Changelog**: [v2.6.0...v3.0.0](https://github.com/pauvalls/grimorio/compare/v2.6.0...v3.0.0)  
-**Release Date**: 2026-05-09  
-**Total Changes**: ~6000 lines across 70 tasks  
-**Phases Completed**: 4 of 4 (100%)
+### Fix
+
+- Increase compilePDF timeout to 600s (10 min) for large campaigns
+## [v3.2.2] - 2026-05-10
+
+### Fix
+
+- Remove Write tool from 8 content agents to prevent double-write
+## [v3.2.0] - 2026-05-10
+
+### Fix
+
+- PDF generation bugs and sequential act generation
+## [v3.1.1] - 2026-05-10
+
+### Fix
+
+- Resolve 49 linter errors (errcheck, govet, staticcheck, ineffassign)
+## [v3.1.0] - 2026-05-10
+
+### Fix
+
+- Exclude /scripts/ from go test to prevent covdata error (ci)
+## [v3.0.5] - 2026-05-09
+
+### Fix
+
+- Copy_commands function order and missing closing
+## [v3.0.4] - 2026-05-09
+
+### Feat
+
+- Add grimorio command file for OpenCode/Claude Code
+## [v3.0.3] - 2026-05-09
+
+### Ci
+
+- Update to Go 1.25 and golangci-lint-action@v7
+## [v3.0.2] - 2026-05-09
+
+### Test
+
+- Fix CI tests - skip when wkhtmltopdf unavailable
+## [v3.0.1] - 2026-05-09
+
+### Chore
+
+- Update install.sh with proper version ldflags
+
+### Docs
+
+- Add comprehensive PDF Compiler Enhancements guide
+- Restructure documentation with bilingual support (EN/ES)
+- Fix acts/ to areas/ directory references
+
+### Feat
+
+- Add CSS classes for DM sidebars, stat-blocks v2, and session components
+- Extend domain models with ShockPoints, BackstoryHooks, and SessionPrep enhancements
+- Add Shock Points generation to Session Zero Service
+- Add Shock Points section and character worksheet to Session Zero template
+- Create SessionGenerator service for contextual session content
+- Add GetPrepWithScenarios() method to SessionPrepService
+- Create Session Prep template with comprehensive sections
+- Expand CharacterService with backstory and narrative generation
+- Create Character Sheet template with comprehensive sections
+- Extend PDF Compiler with new HTML generation methods
+- Update MCP handlers with expanded functionality
+
+### Fix
+
+- /grimorio command executes in main thread (no agent delegation)
+- Install.sh now validates JSON and creates backups before modifying opencode.json
+
+### Test
+
+- Add integration tests for PDF compilation with new features
+- Add CSS visual regression tests
+- Add backward compatibility verification tests
+## [v3.0.0] - 2026-05-09
+
+### Docs
+
+- Add CHANGELOG.md v3.0.0 entry
+- Update CHANGELOG.md with complete v3.0.0 entry (70 tasks)
+
+### Feat
+
+- Sync command template from grimorio-architect agent
+- Clean Installer v2 - Complete MCP installation
+- Add V3 domain models (milestone, magic item, tactics, areas, consequences)
+- Implement Phase 1 services (milestone, item, tactics, area, consequence)
+- Implement Phase 2 MCP handlers, templates, and validators (TASK-021 to TASK-040)
+- Complete Phase 3 & 4 - E2E tests, changelog automation, migration (TASK-041 to TASK-070)
+
+### Fix
+
+- Correct sync_command_from_agent function placement
+- Restore clean_installation function
+- Handle missing files in setup_plugin gracefully
+- Remove unused import in E2E tests
+- Test updates for v3.0 compatibility
+
+### Refactor
+
+- Organize scripts into subdirectories, remove duplicate generators
+## [v2.6.0] - 2026-05-09
+
+### Add
+
+- Campaign PDF for La Hoja de Vlad example
+
+### Docs
+
+- Add SDD solutions reference for common problems
+- Add solution for agents not using templates
+- Add path issue solution to SDD-SOLUTIONS
+- Add story brief requirement to SDD-SOLUTIONS
+- Add timeout configuration for grimorio-areas
+- Add real campaign structure examples from la-hoja-de-vlad
+- Documentation Consolidation v2.4.0
+
+### Feat
+
+- Add WotC quality validators and character hooks integration
+- Integrate WotC standards into agents 2)
+- Add WotC enhanced NPC standards and validators
+- Add JSON→MD conversion script for PDF inclusion
+- Add campaign brief_description support
+- Add La Hoja de Vlad campaign example
+- Template & Validation Enforcement v2.5.0
+- WotC Quality Fixes v2.6.0
+
+### Fix
+
+- Add explicit delegation strategy to grimorio-architect
+- Add CRITICAL instruction to READ TEMPLATE FIRST
+- Add CRITICAL template instruction to all agents
+## [v2.3.0] - 2026-05-08
+
+### Chore
+
+- Remove stale campaign data from repo
+
+### Feat
+
+- Add version badge to README and dynamic version in install output
+- Narrative quality improvements (decision trees, faction reputation, world state tracking)
+- Add explicit Check 12 validation for chapter narrative structure (architect)
+- WotC Format Improvements - Complete (v2.3.0)
+
+### Fix
+
+- Guard cp commands in setup_plugin to avoid errors when directories don't exist
+- Remove duplicate v prefix in version display
+- Reexec from cloned repo to bypass GitHub raw cache 2)
+- Sync agents with actual repo state (remove grimorio-acts, add areas/introduction/setting-guide/appendices/integrator)
+- Remove grimorio_ prefix from MCP tool names (agents)
+- Install.sh copies templates to plugin directory
+
+### Refactor
+
+- Surgical plugin install - only touch Grimorio files, preserve user customizations
+- Rename save_act→save_areas, add 4 agents, update install.sh
+## [v2.1.0] - 2026-05-08
+
+### Docs
+
+- Update README and CHANGELOG for WotC professional format
+
+### Feat
+
+- Add Introduction, Setting Guide, and Appendices (professional-wotc-format)
+- Add sidebar CSS styling for DM tips and notes (compiler)
+
+### Fix
+
+- Resolve all golangci-lint errors
+- Resolve remaining golangci-lint errors
+- Resolve final batch of golangci-lint errors
+- Resolve last golangci-lint error in canon_test.go
+- Resolve remaining golangci-lint errors in canon_service_test.go
+- Resolve critical bugs in MCP server (mcp)
+- Use grimorio-areas instead of non-existent grimorio-acts (architect)
+- Remove duplicate Session Zero heading (compiler)
+
+### Test
+
+- Add test cases for new WotC templates (compiler)
+- Add WotC professional format E2E test (e2e)
+- Update TestGenerateHTML_WithNewSections to use proper WotC area format (compiler)
+## [v2.0.0] - 2026-05-08
+
+### Chore
+
+- Add grimorio-sdd-roadmap.md to .gitignore
+- Ignore build artifacts and sdd directory (gitignore)
+
+### Docs
+
+- Add migration script and update README for v2.0 coherence tools
+- Add process_consistency_gate to narrative coherence docs (readme)
+- Update CHANGELOG, ROADMAP, and install.sh for v2.0.0
+- Add mandatory development rules for artifact updates (sdd)
+- Update roadmap, agents, README, CHANGELOG for Fase 3 completion
+- Mark Fase 5 complete, update CHANGELOG for v2.0.0 release
+- Add complete user guide to README, update agents with Phase 3-4 MCP tools
+- Update CHANGELOG with v2.0 area-based generation
+
+### Feat
+
+- Add narrative coherence subsystem (canon)
+- Add narrative coherence tools and server wiring (mcp)
+- Implement Fase 2 narrative coherence gates (consistency-gate)
+- Update all markdown templates for v2 narrative coherence (templates)
+- Update dnd-5e-srd skill with official adventure patterns (skill)
+- Add grimorio-narrative-custodian agent for coherence (agents)
+- Implement Fase 3 - factions, consequences, random tables, handouts (living-world)
+- Implement Fase 4 - session prep, flowcharts, roster, hooks (dm-experience)
+- Implement Fase 5 - caching, benchmarks, CI/CD, docs, release (polish)
+- Add clean_installation() to wipe previous install before reinstall (install)
+- Agent v2 formats + compiler version flag (f1-foundation)
+- Area validator v2 + grimorio-areas agent (f2-areas)
+- Cross-reference validator + XP budget + treasure checks (f3-integration)
+- Handout generator + compiler integration (f4-visuals)
+- Compiler v2 + templates + CSS + migrator (f5-compilation)
+
+### Fix
+
+- Resolve golangci-lint errors and update agents for v2 (lint)
+- Update command template to Phase 3-13 with Living World + DM Experience (install)
+- Add grimorio_mcp to all subagents, install.sh configures narrative-custodian (agents)
+- Add missing parameters to consistency gate and related tools (mcp)
+- Arregla 3 bugs críticos en herramientas MCP (grimorio)
+
+### Test
+
+- Add missing state error scenario test (session-prep)
+## [v0.1.2] - 2026-05-07
+
+### Fix
+
+- Switch release to manual trigger (workflow_dispatch) (ci)
+## [v0.1.1] - 2026-05-07
+
+### Fix
+
+- Commit changelog changes before goreleaser (ci)
+## [v0.1.0] - 2026-05-07
+
+### Chore
+
+- Update ASCII art in install.sh
+- Remove grimorio-orchestrator references from install.sh and README
+- Remove last orchestrator mention from print_instructions (install)
+
+### Ci
+
+- Update Go version from 1.21 to 1.25 in workflow
+- Downgrade Go to 1.24 and fix all golangci-lint issues
+
+### Docs
+
+- Update workflow to reflect orchestrator pattern (readme)
+- List all 8 content subagents in post-install instructions (install)
+
+### Feat
+
+- Initial release - D&D one-shot and campaign generator
+- Added grimorio command to generate all easy (add-command)
+- Added svg and dalle api vinculation (images)
+- Added svg and dalle api vinculation (images)
+- Added svg and dalle api vinculation (images)
+- Added svg and dalle api vinculation (images)
+- Pdf issues (fix)
+- Add code block support with styling for ASCII maps (pdf)
+- [breaking] Free AI image generation via Pollinations.ai + improved SVG maps
+- Reorder generation workflow - acts generated last
+- Images generated in parallel from the start, optional
+- Emphasize acts are generated last before PDF
+- Cover page now fills entire page
+- Add grimorio-orchestrator to eliminate main thread polling (orchestrator)
+- Add generate_images_batch tool for parallel AI image generation (mcp)
+- [breaking] Implement clean architecture with TDD for Phase 0 (architecture)
+- Add 5 missing content tools and fix image/PDF generation (mcp)
+- Add user-visible progress reporting after each phase (orchestrator)
+- Add Raphael AI fallback and sequential batch generation (image)
+- Force sequential generation and remove batch tool (image)
+- Enforce ALL image types and verify references before PDF (architect)
+- Restructure PDF compilation order and redesign act template (compiler)
+- Add optional markdown linking with inline image references (generate_image)
+- Add optional markdown linking for SVG assets (generate_map/divider)
+- Add semantic versioning with GoReleaser and automatic changelog (ci)
+
+### Fix
+
+- Correct repo URL to pauvalls/Grimorio
+- Update install URLs in README and add .gitignore
+- Install plugin in OpenCode and fix color codes (install)
+- Always update opencode config, add visual generation to /grimorio (install)
+- 1-page cover, link maps to scenes with zone descriptions (pdf)
+- Resolve ../assets paths, fix cover to 1 page without flex (pdf)
+- Cover wrapper, blockquote read-aloud, bare asset detection (pdf)
+- Simplify cover, handle backtick asset refs (pdf)
+- Cover 1 page, no blank pages, readable ASCII maps, SVG in acts (pdf)
+- Cover fills page, code blocks span both columns (pdf)
+- Delegate image generation to grimorio-cartographer subagent
+- SVG to PNG conversion + cover art on first page + remove gallery
+- Improve SVG text readability and cover page layout
+- SVG rendering in PDF + install.sh syntax error
+- Prevent duplicate headings + cover art now mandatory
+- Force cartographer subagent + acts last + delegate tool
+- Update commands/grimorio.md with new template
+- Install.sh always updates commands/grimorio.md
+- Remove stale grimorio template files from old locations (install)
+- Remove subagent orchestration from architect agent (architect)
+- Deduplicate images and ignore horizontal rules (compiler)
+- Register grimorio-orchestrator agent in opencode.json (install)
+- Make cartographer run AFTER content generation (orchestrator)
+- Add explicit file-reading workflow (cartographer)
+- Make image linking explicit and mandatory (cartographer)
+- Generate ALL images, not minimums (cartographer)
+- Complete image generation pipeline with parallel batch + fallback (images)
+- GenerateMap and GenerateDivider now write SVG files to disk instead of discarding content (assets)
+- Remove deprecated grimorio-orchestrator from opencode.json on re-install (install)
+- Add HTTP timeouts to image providers and create content-specific subagents (image)
+- Reorder generation phases in correct dependency order (architect)
+- Update command template to reflect 3-batch ordering (template)
+- Move lore to Batch 2 (architect)
+- Search cover-*.png, add bold spacing, and enrich scene structure (compiler)
+- Replace blocking Lock with TryLock and fix cover image glob
+- Preserve raw HTML img tags and add post-PDF image verification with retry (compiler)
+- Add narrative quest types and fix create_personal_quest (quests)
+- Make configure_shell idempotent, prevent duplicate PATH entries (install)
+- Prevent duplicate PATH entries on reinstall via marked blocks (install)
+
+### Refactor
+
+- Grimorio-architect ahora orquesta directamente todo el flujo de generación (agents)
+
+### Test
+
+- Add image embedding tests for PNG, SVG, missing, dedup, and code asset refs (compiler)
+- Add comprehensive test suite and fix formatting

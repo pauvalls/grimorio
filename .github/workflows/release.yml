@@ -1,15 +1,40 @@
 name: Release
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
   packages: write
 
 jobs:
-  release:
+  goreleaser:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  changelog:
+    runs-on: ubuntu-latest
+    needs: goreleaser
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,29 +42,18 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v4
         with:
-          go-version: '1.24'
-
-      - name: Run tests
-        run: go test -v ./...
-
-      - name: Get next version
-        id: semver
-        uses: go-semantic-release/action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          changelog-file: CHANGELOG.md
-          allow-initial-development-versions: true
-
-      - name: Run GoReleaser
-        if: steps.semver.outputs.version != ''
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean
+          config: cliff.toml
+          args: --unreleased --tag "${{ github.ref_name }}" --prepend CHANGELOG.md
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_CURRENT_TAG: v${{ steps.semver.outputs.version }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Commit changelog
+        run: |
+          git config user.name "grimorio-bot"
+          git config user.email "bot@grimorio"
+          git add CHANGELOG.md
+          git diff --cached --quiet || git commit -m "docs: update changelog for ${{ github.ref_name }}"
+          git push

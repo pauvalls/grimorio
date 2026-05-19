@@ -48,3 +48,16 @@ clean: ## Clean build artifacts
 
 release: ## Create release binaries (requires scripts/release.sh)
 	bash scripts/release.sh
+
+changelog: ## Preview changelog for unreleased commits
+	git-cliff --config cliff.toml --unreleased --tag "next"
+
+changelog-update: ## Generate and prepend changelog for a specific tag
+	@if [ -z "$(TAG)" ]; then \
+		echo "Usage: make changelog-update TAG=v3.4.0"; \
+		exit 1; \
+	fi
+	git-cliff --config cliff.toml --unreleased --tag "$(TAG)" --prepend CHANGELOG.md
+
+changelog-all: ## Regenerate full changelog from all tags
+	git-cliff --config cliff.toml --tag "next" > CHANGELOG.md
