@@ -171,6 +171,72 @@ func TestCSSRegression_EncounterRecommendation(t *testing.T) {
 	}
 }
 
+// TestCSSRegression_Prologue tests prologue CSS classes
+func TestCSSRegression_Prologue(t *testing.T) {
+	html := generateCSSFixture(t, `
+<div class="prologue">
+<h2 id="sec-prologue">Prólogo</h2>
+<div class="prologue-part-1">
+<h3>Gancho Narrativo</h3>
+<div class="read-aloud">Hook text</div>
+</div>
+<div class="prologue-part-2">
+<h3>Trasfondo</h3>
+<p>Context text</p>
+</div>
+</div>
+`)
+
+	checks := []string{
+		".prologue",
+		"column-span: all",
+		"page-break-inside: avoid",
+		".prologue h2",
+		".prologue h3",
+		".prologue-part-1",
+		".prologue-part-2",
+		".prologue-part-3",
+		".prologue-part-4",
+		".prologue .read-aloud",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(html, check) {
+			t.Errorf("CSS regression: missing '%s' in generated HTML", check)
+		}
+	}
+}
+
+// TestCSSRegression_PrologueDefaultStyles tests that prologue styles include expected CSS properties
+func TestCSSRegression_PrologueDefaultStyles(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	// Find the .prologue class block
+	classIdx := strings.Index(css, ".prologue {")
+	if classIdx == -1 {
+		classIdx = strings.Index(css, ".prologue{")
+	}
+	if classIdx == -1 {
+		t.Fatal("CSS regression: '.prologue' class not found in CSS")
+	}
+
+	closeIdx := strings.Index(css[classIdx:], "}")
+	if closeIdx == -1 {
+		t.Fatal("CSS regression: could not find closing brace for .prologue")
+	}
+	block := css[classIdx : classIdx+closeIdx+1]
+
+	if !strings.Contains(block, "column-span: all") {
+		t.Errorf("CSS regression: .prologue missing 'column-span: all'. Block: %s", block)
+	}
+	if !strings.Contains(block, "page-break-inside: avoid") {
+		t.Errorf("CSS regression: .prologue missing 'page-break-inside: avoid'. Block: %s", block)
+	}
+}
+
 // TestCSSRegression_PageBreakAvoid tests that all div-based classes have page-break-inside: avoid
 func TestCSSRegression_PageBreakAvoid(t *testing.T) {
 	// Get the CSS directly
@@ -199,6 +265,7 @@ func TestCSSRegression_PageBreakAvoid(t *testing.T) {
 		".encounter-recommendation",
 		".flowchart",
 		".scene-description",
+		".prologue",
 	}
 
 	for _, class := range classesRequiringPageBreak {
