@@ -149,7 +149,9 @@ func getSessionNumber(sessionID string) int {
 			if sessionID[i] < '0' || sessionID[i] > '9' {
 				i++
 				if i < len(sessionID) {
-					fmt.Sscanf(sessionID[i:], "%d", &n)
+					if _, err := fmt.Sscanf(sessionID[i:], "%d", &n); err != nil {
+						n = 0
+					}
 				}
 				break
 			}
