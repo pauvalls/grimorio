@@ -167,11 +167,10 @@ func ExtractTarGz(archivePath, targetDir string) error {
 			if err != nil {
 				return fmt.Errorf("error creating file %s: %w", targetPath, err)
 			}
+			defer func() { _ = outFile.Close() }()
 			if _, err := io.Copy(outFile, tarReader); err != nil {
-				outFile.Close()
 				return fmt.Errorf("error writing file %s: %w", targetPath, err)
 			}
-			outFile.Close()
 		}
 	}
 
