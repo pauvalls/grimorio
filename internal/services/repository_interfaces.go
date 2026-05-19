@@ -18,8 +18,6 @@ import (
 
 // SessionZeroRepository is already defined in session_zero_service.go
 
-// ConsequenceTableRepository is already defined in consequence_service.go
-
 // AreaRepositoryV3 is already defined in area_service.go
 
 // QuestRepositoryV3 defines repository interface for V3 quests.
