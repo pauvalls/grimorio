@@ -10,6 +10,7 @@ INSTALL_DIR="${HOME}/.local/share/grimorio"
 CLAUDE_PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
 OPENCODE_PLUGIN_DIR="${HOME}/.config/opencode/plugins/grimorio"
 BINARY_DIR="${HOME}/.local/bin"
+METADATA_FILE="${HOME}/.config/grimorio/install-meta.json"
 
 # Colors
 RED='\033[0;31m'
@@ -24,6 +25,107 @@ error() { echo -e "${RED}[ERROR]${NC} $1" >&2; exit 1; }
 success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
+
+# ============================================================================
+# SHA256 HELPERS
+# ============================================================================
+sha256_file() {
+    sha256sum "$1" | cut -d' ' -f1
+}
+
+copy_if_changed() {
+    local src="$1" dst="$2" current_hash="$3"
+    local file_hash
+    file_hash=$(sha256_file "$src" 2>/dev/null || echo "")
+    [ -n "$current_hash" ] && [ "$file_hash" = "$current_hash" ] && return 0
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+    log "Copied: $src -> $dst"
+    return 1
+}
+
+# ============================================================================
+# METADATA MANAGEMENT
+# ============================================================================
+read_meta() {
+    cat "$METADATA_FILE" 2>/dev/null || echo "{}"
+}
+
+write_meta() {
+    mkdir -p "$(dirname "$METADATA_FILE")"
+    command_exists jq || return 1
+
+    local binary_hash
+    binary_hash=$(sha256_file "$BINARY_DIR/grimorio" 2>/dev/null || echo "unknown")
+
+    local version commit build_date installed_at
+    version=$(git -C "$INSTALL_DIR" describe --tags --always --dirty 2>/dev/null || echo "v3.5.0")
+    commit=$(git -C "$INSTALL_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    # Hash agents
+    local agents_json="{}"
+    if [ -d "$INSTALL_DIR/agents" ]; then
+        for f in "$INSTALL_DIR/agents"/grimorio-*.md; do
+            [ -f "$f" ] || continue
+            local name hash
+            name=$(basename "$f")
+            hash=$(sha256_file "$f")
+            agents_json=$(jq --arg name "$name" --arg hash "sha256-$hash" '.[$name] = $hash' <<< "$agents_json" 2>/dev/null)
+        done
+    fi
+
+    # Hash skills
+    local skills_json="{}"
+    if [ -d "$INSTALL_DIR/skills" ]; then
+        for skill_dir in "$INSTALL_DIR/skills"/*/; do
+            [ -d "$skill_dir" ] || continue
+            local skill_name="${skill_dir%/}"; skill_name="${skill_name##*/}"
+            local skill_file="$skill_dir/SKILL.md"
+            if [ -f "$skill_file" ]; then
+                local hash
+                hash=$(sha256_file "$skill_file")
+                skills_json=$(jq --arg name "$skill_name" --arg hash "sha256-$hash" '.[$name] = $hash' <<< "$skills_json" 2>/dev/null)
+            fi
+        done
+    fi
+
+    # Hash templates
+    local templates_json="{}"
+    local tmpl_dir="$INSTALL_DIR/internal/compiler/templates"
+    if [ -d "$tmpl_dir" ]; then
+        for f in "$tmpl_dir"/*.tmpl; do
+            [ -f "$f" ] || continue
+            local tmpl_name hash
+            tmpl_name=$(basename "$f")
+            hash=$(sha256_file "$f")
+            templates_json=$(jq --arg name "$tmpl_name" --arg hash "sha256-$hash" '.[$name] = $hash' <<< "$templates_json" 2>/dev/null)
+        done
+    fi
+
+    jq -n \
+      --arg version "$version" \
+      --arg commit "$commit" \
+      --arg buildDate "$build_date" \
+      --arg installedAt "$installed_at" \
+      --argjson agents "$agents_json" \
+      --argjson skills "$skills_json" \
+      --argjson templates "$templates_json" \
+      --arg binaryHash "sha256-$binary_hash" \
+      '{
+        "version": $version,
+        "commit": $commit,
+        "buildDate": $buildDate,
+        "installedAt": $installedAt,
+        "agents": $agents,
+        "skills": $skills,
+        "templates": $templates,
+        "binaryHash": $binaryHash
+      }' > "$METADATA_FILE"
+
+    success "Install metadata written to $METADATA_FILE"
+}
 
 # ============================================================================
 # CLEAN INSTALLATION - Remove EVERYTHING from previous installs
@@ -253,39 +355,6 @@ EOF
 }
 
 # ============================================================================
-# CONFIGURE MCP IN OPENCODE.JSON
-# ============================================================================
-configure_opencode_mcp() {
-    local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
-    [ ! -f "$OPENCODE_CONFIG" ] && { log "No opencode.json, skipping MCP config"; return 0; }
-
-    log "Configuring MCP in opencode.json..."
-    command_exists jq || { warn "jq not found, manual config required"; return 1; }
-
-    # Validate JSON before modifying
-    if ! jq empty "$OPENCODE_CONFIG" 2>/dev/null; then
-        warn "opencode.json is not valid JSON, backing up and recreating"
-        cp "$OPENCODE_CONFIG" "${OPENCODE_CONFIG}.backup.$(date +%Y%m%d%H%M%S)"
-        echo '{}' > "$OPENCODE_CONFIG"
-    fi
-
-    # Backup before modifying
-    cp "$OPENCODE_CONFIG" "${OPENCODE_CONFIG}.backup.$(date +%Y%m%d%H%M%S)"
-
-    jq '.mcp.grimorio = {
-        "command": ["'"$OPENCODE_PLUGIN_DIR/grimorio"'"],
-        "type": "local",
-        "enabled": true
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && \
-        mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG" || \
-        { warn "Failed to update opencode.json, restoring backup"; mv "${OPENCODE_CONFIG}.backup."* "$OPENCODE_CONFIG" 2>/dev/null; return 1; }
-
-    success "MCP configured"
-}
-
-# ============================================================================
-
-# ============================================================================
 # COPY COMMANDS DIRECTORY (for OpenCode/Claude Code)
 # ============================================================================
 copy_commands() {
@@ -300,237 +369,141 @@ copy_commands() {
         fi
     done
 }
-# CONFIGURE COMMAND IN OPENCODE.JSON
+
 # ============================================================================
-configure_opencode_command() {
-    
+# CONFIGURE OPENCODE.JSON — Non-destructive merge with grimorio_auto_generated flag
+# ============================================================================
+configure_opencode_merge() {
     local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
-    [ ! -f "$OPENCODE_CONFIG" ] && return 0
 
-    log "Configuring grimorio command..."
-    command_exists jq || return 1
-
-    # Validate JSON first
-    if ! jq empty "$OPENCODE_CONFIG" 2>/dev/null; then
-        warn "opencode.json invalid, skipping command config"
-        return 1
+    # Create default if missing
+    if [ ! -f "$OPENCODE_CONFIG" ]; then
+        log "No opencode.json found, creating default..."
+        mkdir -p "$(dirname "$OPENCODE_CONFIG")"
+        echo '{}' > "$OPENCODE_CONFIG"
     fi
 
-    # Create template
-    local TEMPLATE_FILE=$(mktemp)
-    cat > "$TEMPLATE_FILE" << 'TEMPLATE_EOF'
-Generate a D&D 5e campaign or one-shot from the user's idea.
+    command_exists jq || { warn "jq not found, opencode.json merge skipped"; return 1; }
 
-## EXECUTION MODE: Main Thread Orchestration
+    # Validate JSON
+    if ! jq empty "$OPENCODE_CONFIG" 2>/dev/null; then
+        warn "opencode.json is not valid JSON, backing up and recreating"
+        cp "$OPENCODE_CONFIG" "${OPENCODE_CONFIG}.backup.$(date +%Y%m%d%H%M%S)"
+        echo '{}' > "$OPENCODE_CONFIG"
+    fi
 
-**You are the orchestrator.** Execute this workflow directly in the main thread. Use MCP tools and delegate to sub-agents as specified below.
+    # Backup before modifying
+    cp "$OPENCODE_CONFIG" "${OPENCODE_CONFIG}.backup.$(date +%Y%m%d%H%M%S)"
 
-### Phase 1: Gather Requirements
-Ask the user these questions (one at a time, interactively):
-1. What's the campaign name? (kebab-case, e.g. "sunken-city")
-2. One-shot or full campaign?
-3. **Campaign idea / brief description?** (What story do you want to tell? 2-3 sentences describing the main plot)
-4. Player level? (1-3, 4-6, 7-10, 11-15, 16-20)
-5. Desired tone? (heroic, dark, humorous, political intrigue)
-6. Duration? (one-shot, 3-5 sessions, long campaign)
+    log "Merging grimorio configuration into opencode.json..."
 
-### Phase 2: Create Campaign Structure
-Use the grimorio MCP tool `create_campaign` to create the structure.
+    # ------------------------------------------------------------------
+    # Build agent entries from agents/ directory
+    # ------------------------------------------------------------------
+    local new_agents="{}"
+    if [ -d "$INSTALL_DIR/agents" ]; then
+        for f in "$INSTALL_DIR/agents"/grimorio-*.md; do
+            [ -f "$f" ] || continue
+            local name
+            name=$(basename "$f" .md)
+            local desc
+            desc=$(sed -n '/^---$/,/^---$/p' "$f" | grep "^description:" | sed 's/^description: "\(.*\)"$/\1/')
+            local mode
+            mode=$(sed -n '/^---$/,/^---$/p' "$f" | grep "^mode:" | awk '{print $2}')
+            local prompt
+            prompt=$(awk 'BEGIN{n=0} /^---$/{n++; next} n>=2' "$f")
 
-### Phase 3-13: End-to-End Orchestration (sequential batches)
-Follow strict batch ordering — each batch waits for the previous:
+            local agent_json
+            agent_json=$(jq -n \
+              --arg desc "$desc" \
+              --arg mode "$mode" \
+              --arg prompt "$prompt" \
+              '{
+                "grimorio_auto_generated": true,
+                "description": $desc,
+                "mode": $mode,
+                "prompt": $prompt,
+                "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
+                "options": {}
+              }')
 
-- **Batch 1** (parallel delegate): NPCs, bestiary, maps → Consistency Gate
-- **Batch 2** (parallel delegate): lore, quests, encounters, characters → Consistency Gate → Update Narrative State
-- **Batch 3** (parallel delegate): SVG maps, areas → Consistency Gate
-- **Phase 6**: Artist batch-spec (cover + NPCs + scenes + monsters)
-- **Phase 7**: Generate AI images (1x1 sequential, retry missing)
-- **Phase 8**: Update ALL markdown references
-- **Phase 9**: Living World tools (factions, random tables, handouts, consequences) → Consistency Gate
-- **Phase 10**: DM Experience tools (session prep, flowchart)
-- **Phase 11**: Final consistency check
-- **Phase 12**: Compile PDF (embeds all images + flowchart)
-- **Phase 13**: Final report
+            new_agents=$(jq --arg name "$name" --argjson agent "$agent_json" \
+              '.[$name] = $agent' <<< "$new_agents" 2>/dev/null)
 
-Report progress to the user after each phase.
+            log "  Agent built: $name"
+        done
+    fi
 
-### Final: Report
-After completion, report to the user:
-- Where the PDF was saved
-- What content was generated
-- Any issues encountered
+    # ------------------------------------------------------------------
+    # Build command entry from grimorio-architect prompt
+    # ------------------------------------------------------------------
+    local command_json="{}"
+    if [ -f "$INSTALL_DIR/agents/grimorio-architect.md" ]; then
+        local architect_prompt
+        architect_prompt=$(awk 'BEGIN{n=0} /^---$/{n++; next} n>=2' "$INSTALL_DIR/agents/grimorio-architect.md")
+        command_json=$(jq -n \
+          --arg template "$architect_prompt" \
+          '{
+            "grimorio_auto_generated": true,
+            "description": "Generate a complete D&D 5e campaign or one-shot from an idea (executes in main thread)",
+            "subtask": false,
+            "template": $template
+          }')
+    fi
 
-**Use delegate for content generation sub-agents. Execute orchestration logic in main thread.**
-TEMPLATE_EOF
+    # ------------------------------------------------------------------
+    # Build MCP entry
+    # ------------------------------------------------------------------
+    local mcp_json
+    mcp_json=$(jq -n \
+      --arg path "$OPENCODE_PLUGIN_DIR/grimorio" \
+      '{
+        "grimorio_auto_generated": true,
+        "command": [$path],
+        "type": "local",
+        "enabled": true
+      }')
 
-    local TEMPLATE_JSON
-    TEMPLATE_JSON=$(cat "$TEMPLATE_FILE" | jq -Rs '.')
-    rm -f "$TEMPLATE_FILE"
+    # ------------------------------------------------------------------
+    # Merge into opencode.json
+    # Strategy: for each grimorio-owned key, if it exists WITHOUT the
+    # grimorio_auto_generated flag, preserve it (user customized).
+    # Otherwise, replace with our value.
+    # ------------------------------------------------------------------
+    jq \
+      --argjson new_agents "$new_agents" \
+      --argjson new_command "$command_json" \
+      --argjson new_mcp "$mcp_json" \
+      '
+      # Merge agents: for each grimorio agent, check ownership
+      .agent = (.agent // {})
+      | .agent = (
+          reduce ($new_agents | to_entries[]) as $entry (.agent;
+            if .[$entry.key] and (.[$entry.key].grimorio_auto_generated != true) then
+              .
+            else
+              .[$entry.key] = $entry.value
+            end
+          )
+        )
+      # Merge command.grimorio
+      | .command = (.command // {})
+      | if .command.grimorio and (.command.grimorio.grimorio_auto_generated != true) then
+          .
+        else
+          .command.grimorio = $new_command
+        end
+      # Merge mcp.grimorio
+      | .mcp = (.mcp // {})
+      | if .mcp.grimorio and (.mcp.grimorio.grimorio_auto_generated != true) then
+          .
+        else
+          .mcp.grimorio = $new_mcp
+        end
+      ' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && \
+        mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
 
-    jq --argjson template "$TEMPLATE_JSON" '.command.grimorio = {
-        "description": "Generate a complete D&D 5e campaign or one-shot from an idea (executes in main thread)",
-        "subtask": false,
-        "template": $template
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && \
-        mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG" || \
-        { warn "Failed to update opencode.json"; return 1; }
-
-    success "Command configured"
-}
-
-# ============================================================================
-# CONFIGURE ALL AGENTS IN OPENCODE.JSON
-# ============================================================================
-configure_opencode_agents() {
-    local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
-    [ ! -f "$OPENCODE_CONFIG" ] && return 0
-    command_exists jq || return 1
-
-    log "Configuring grimorio-architect agent..."
-    jq '.agent["grimorio-architect"] = {
-        "description": "Expert Dungeon Master agent for D&D 5e campaign generation",
-        "mode": "primary",
-        "prompt": "You are an expert Dungeon Master and campaign designer. Your job is to:\n1. Ask the user clarifying questions about their campaign idea (level, tone, duration, name)\n2. After gathering all requirements, create the campaign structure and orchestrate ALL phases directly via delegate and MCP tools\n3. Report progress to the user after each phase\n4. Report the final result\n\nDO NOT edit files in the main thread. Always use delegate for content generation.",
-        "tools": {"bash": true, "delegate": true, "edit": true, "read": true, "write": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-artist agent..."
-    jq '.agent["grimorio-artist"] = {
-        "description": "Campaign artist — prepares image specs and updates markdown references",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Artist. Prepare image batch specifications and update markdown references.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-cartographer agent..."
-    jq '.agent["grimorio-cartographer"] = {
-        "description": "Campaign cartographer — generates SVG battle maps and decorative dividers",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Cartographer. Generate ALL SVG assets for a campaign: battle maps, decorative dividers, and stat block borders.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-lore agent..."
-    jq '.agent["grimorio-lore"] = {
-        "description": "Campaign lore writer — world backstory, setting, history, and atmosphere",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Lore Master. Generate world lore, backstory, setting, and atmosphere for a D&D 5e campaign.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-npc agent..."
-    jq '.agent["grimorio-npc"] = {
-        "description": "Campaign NPC designer — characters, factions, and social relationships",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio NPC Designer. Generate NPCs, factions, and social entities for a D&D 5e campaign.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-bestiary agent..."
-    jq '.agent["grimorio-bestiary"] = {
-        "description": "Campaign bestiary designer — monster stat blocks, abilities, and tactics",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Bestiary Designer. Generate monsters, creatures, and stat blocks for a D&D 5e campaign.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-encounters agent..."
-    jq '.agent["grimorio-encounters"] = {
-        "description": "Campaign encounter designer — combat, social, exploration challenges",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Encounter Designer. Generate balanced encounters and challenges for a D&D 5e campaign.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-areas agent..."
-    jq '.agent["grimorio-areas"] = {
-        "description": "Campaign areas designer — numbered playable areas (10-15 per act, WotC format)",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Areas Designer. Generate numbered playable areas for a D&D 5e campaign in WotC format.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-quests agent..."
-    jq '.agent["grimorio-quests"] = {
-        "description": "Campaign quest designer — personal quests, side missions, narrative hooks",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Quest Designer. Generate personal quests, side missions, and narrative hooks.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-maps agent..."
-    jq '.agent["grimorio-maps"] = {
-        "description": "Campaign map describer — location details, zone breakdowns, scene layouts",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Map Describer. Generate location descriptions and zone breakdowns.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-characters agent..."
-    jq '.agent["grimorio-characters"] = {
-        "description": "Campaign character builder — pre-generated player character sheets",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Character Builder. Generate pre-generated player characters with backstories.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-narrative-custodian agent..."
-    jq '.agent["grimorio-narrative-custodian"] = {
-        "description": "Campaign narrative custodian — validates canon consistency",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Narrative Custodian. Validate campaign content for narrative coherence.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-introduction agent..."
-    jq '.agent["grimorio-introduction"] = {
-        "description": "Campaign introduction writer — overview and hooks",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Introduction Writer. Generate campaign introduction and overview.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-setting-guide agent..."
-    jq '.agent["grimorio-setting-guide"] = {
-        "description": "Campaign setting guide writer — DM-only reference",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Setting Guide Writer. Generate DM-only setting reference.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-appendices agent..."
-    jq '.agent["grimorio-appendices"] = {
-        "description": "Campaign appendices compiler — reference material",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Appendices Compiler. Consolidate reference material.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    log "Configuring grimorio-integrator agent..."
-    jq '.agent["grimorio-integrator"] = {
-        "description": "Campaign integrator — final assembly and PDF",
-        "mode": "subagent",
-        "prompt": "You are the Grimorio Integrator. Assemble final campaign and compile PDF.",
-        "tools": {"bash": true, "edit": true, "read": true, "write": true, "grep": true},
-        "options": {}
-    }' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    success "All agents configured"
+    success "OpenCode configuration merged (user-customized grimorio keys preserved)"
 }
 
 # ============================================================================
@@ -562,6 +535,143 @@ export PATH="$HOME/.local/go/bin:$PATH"
 EOF
 
     log "Shell configured: $SHELL_RC"
+}
+
+# ============================================================================
+# UPDATE MODE — Incremental update via git pull + conditional rebuild
+# ============================================================================
+do_update() {
+    log "Starting incremental update..."
+
+    # Check for prior install — fall back to full install if no meta
+    [ -f "$METADATA_FILE" ] || { warn "No prior install found, running full install"; do_install; return; }
+
+    log "Reading install metadata from $METADATA_FILE..."
+
+    # Ensure we're in the install dir
+    if [ ! -d "$INSTALL_DIR" ]; then
+        warn "Install directory not found, running full install"
+        do_install
+        return
+    fi
+
+    # git pull
+    log "Pulling latest changes..."
+    cd "$INSTALL_DIR"
+    if ! git pull origin main 2>/dev/null && ! git pull 2>/dev/null; then
+        error "Update failed: git pull failed. Check network connection."
+        return 1
+    fi
+
+    # Check if anything changed
+    local changed_files
+    changed_files=$(git diff --name-only HEAD@{1} HEAD 2>/dev/null || echo "")
+    if [ -z "$changed_files" ]; then
+        success "Already up to date"
+        return 0
+    fi
+
+    log "Changes detected in: $(echo "$changed_files" | wc -l) file(s)"
+
+    # Determine if rebuild is needed
+    local needs_build=false
+    if echo "$changed_files" | grep -qE '^(cmd/|go\.mod|go\.sum|internal/|Makefile)'; then
+        needs_build=true
+        log "Source code changes detected, rebuilding binary..."
+    fi
+
+    if [ "$needs_build" = true ]; then
+        export PATH="${HOME}/.local/go/bin:$PATH"
+        make build || { error "Build failed. Check for compilation errors."; return 1; }
+
+        mkdir -p "$BINARY_DIR"
+        cp grimorio "$BINARY_DIR/grimorio"
+        chmod +x "$BINARY_DIR/grimorio"
+        log "Binary updated: $BINARY_DIR/grimorio"
+
+        # Sync to plugin dirs
+        for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
+            mkdir -p "$plugin_dir"
+            cp grimorio "$plugin_dir/grimorio"
+            chmod +x "$plugin_dir/grimorio"
+            log "Plugin binary synced: $plugin_dir/grimorio"
+
+            # Also sync migrate binary if it exists
+            if [ -f migrate-v1-to-v2 ]; then
+                cp migrate-v1-to-v2 "$plugin_dir/migrate-v1-to-v2"
+                chmod +x "$plugin_dir/migrate-v1-to-v2"
+            fi
+        done
+    fi
+
+    # Copy agents with hash comparison
+    if [ -d "$INSTALL_DIR/agents" ]; then
+        local current_meta
+        current_meta=$(read_meta)
+        for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
+            mkdir -p "$plugin_dir/agents"
+            for f in "$INSTALL_DIR/agents"/grimorio-*.md; do
+                [ -f "$f" ] || continue
+                local fname
+                fname=$(basename "$f")
+                local current_hash
+                current_hash=$(echo "$current_meta" | jq -r ".agents[\"$fname\"] // \"\"" 2>/dev/null)
+                # Strip "sha256-" prefix for comparison
+                current_hash="${current_hash#sha256-}"
+                copy_if_changed "$f" "$plugin_dir/agents/$fname" "$current_hash"
+            done
+        done
+    fi
+
+    # Copy skills with hash comparison
+    if [ -d "$INSTALL_DIR/skills" ]; then
+        local current_meta
+        current_meta=$(read_meta)
+        for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
+            mkdir -p "$plugin_dir/skills"
+            for skill_dir in "$INSTALL_DIR/skills"/*/; do
+                [ -d "$skill_dir" ] || continue
+                local skill_name="${skill_dir%/}"; skill_name="${skill_name##*/}"
+                local skill_file="$skill_dir/SKILL.md"
+                [ -f "$skill_file" ] || continue
+                local current_hash
+                current_hash=$(echo "$current_meta" | jq -r ".skills[\"$skill_name\"] // \"\"" 2>/dev/null)
+                current_hash="${current_hash#sha256-}"
+                mkdir -p "$plugin_dir/skills/$skill_name"
+                copy_if_changed "$skill_file" "$plugin_dir/skills/$skill_name/SKILL.md" "$current_hash"
+            done
+        done
+    fi
+
+    # Copy templates with hash comparison
+    local tmpl_dir="$INSTALL_DIR/internal/compiler/templates"
+    if [ -d "$tmpl_dir" ]; then
+        local current_meta
+        current_meta=$(read_meta)
+        for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
+            mkdir -p "$plugin_dir/internal/compiler/templates"
+            for f in "$tmpl_dir"/*.tmpl; do
+                [ -f "$f" ] || continue
+                local tmpl_name
+                tmpl_name=$(basename "$f")
+                local current_hash
+                current_hash=$(echo "$current_meta" | jq -r ".templates[\"$tmpl_name\"] // \"\"" 2>/dev/null)
+                current_hash="${current_hash#sha256-}"
+                copy_if_changed "$f" "$plugin_dir/internal/compiler/templates/$tmpl_name" "$current_hash"
+            done
+        done
+    fi
+
+    # Copy commands directory
+    copy_commands
+
+    # Merge opencode.json (preserve user customizations)
+    configure_opencode_merge
+
+    # Update metadata
+    write_meta
+
+    success "Update complete!"
 }
 
 # ============================================================================
@@ -605,20 +715,20 @@ print_instructions() {
 }
 
 # ============================================================================
-# MAIN
+# FULL INSTALL — Fresh installation from scratch
 # ============================================================================
-main() {
+do_install() {
     echo -e "${GREEN}"
     echo "  ____      _                      _"
     echo " / ___|_ __(_)_ __ ___   ___  _ __(_) ___"
-    echo "| |  _| '__| | '_ \` _ \ / _ \| '__| |/ _ \\"
+    echo "| |_| | '__| | '_ \` _ \ / _ \| '__| |/ _ \\"
     echo "| |_| | |  | | | | | | | (_) | |  | | (_) |"
     echo " \____|_|  |_|_| |_| |_|\___/|_|  |_|\___/"
     echo -e "${NC}"
     echo "       D&D One-shot & Campaign Generator"
     echo ""
 
-    log "Starting installation..."
+    log "Starting full installation..."
 
     # Step 1: Clean everything
     clean_installation
@@ -644,23 +754,31 @@ main() {
     # Step 8: Setup plugin
     setup_plugin
 
-    # Step 9: Configure MCP
-    configure_opencode_mcp
-
-    # Step 10: Configure command
-    configure_opencode_command
-    
-    # Step 11: Copy commands directory
+    # Step 9: Copy commands directory
     copy_commands
 
-    # Step 11: Configure agents
-    configure_opencode_agents
+    # Step 10: Merge opencode.json (reads from agents/ + templates)
+    configure_opencode_merge
 
-    # Step 12: Configure shell
+    # Step 11: Configure shell
     configure_shell
+
+    # Step 12: Write install metadata
+    write_meta
 
     success "Installation complete!"
     print_instructions
+}
+
+main() {
+    # Parse --update flag
+    if [ "$1" = "--update" ]; then
+        shift
+        do_update "$@"
+        return $?
+    fi
+
+    do_install
 }
 
 main "$@"
