@@ -58,6 +58,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	sessionPrepService := services.NewSessionPrepService(canonRepo, narrativeStateRepo)
 	flowchartService := services.NewFlowchartService(canonRepo, actRepo)
 	hookService := services.NewPlayerHookService(charRepo, canonRepo)
+	prologueService := services.NewPrologueService(cfg.OutputDir, canonRepo)
 	_ = adaptationPatchService
 
 	// Initialize handlers
@@ -73,6 +74,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	sessionPrepHandlers := handlers.NewSessionPrepHandlers(sessionPrepService)
 	flowchartHandlers := handlers.NewFlowchartHandlers(flowchartService)
 	hookHandlers := handlers.NewHookHandlers(hookService)
+	prologueHandlers := handlers.NewPrologueHandlers(prologueService, campaignService)
 
 	// Register tools
 	// Campaign management
@@ -183,6 +185,14 @@ s.AddTool(mcp.NewTool("save_maps",
 		mcp.WithDescription("Generate personalized plot hooks for all player characters in a campaign. Returns hooks organized by character and by area for easy integration."),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 	), hookHandlers.HandleGenerateCharacterHooks())
+
+	s.AddTool(mcp.NewTool("grimorio_generate_prologue",
+		mcp.WithDescription("Generate a 4-part narrative prologue for a campaign."),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("tone", mcp.Description("Tone: grim, heroic, mystery, horror (default: heroic)")),
+		mcp.WithArray("character_hooks", mcp.Description("Optional character hook strings to weave into the prologue")),
+		mcp.WithBoolean("regenerate", mcp.Description("Force regeneration even if prologue already exists"), mcp.DefaultBool(false)),
+	), prologueHandlers.HandleGeneratePrologue())
 
 	// Quest management
 	s.AddTool(mcp.NewTool("create_personal_quest",
