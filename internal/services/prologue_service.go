@@ -279,7 +279,7 @@ func buildContextText(settingDesc, loreContent, introContent, campaignName strin
 	}
 
 	if campaignName != "" {
-		b.WriteString(fmt.Sprintf("El destino de %s pende de un hilo, y solo aquellos con el valor suficiente podrán cambiar el curso de los acontecimientos.", campaignName))
+		fmt.Fprintf(&b, "El destino de %s pende de un hilo, y solo aquellos con el valor suficiente podrán cambiar el curso de los acontecimientos.", campaignName)
 	}
 
 	result := strings.TrimSpace(b.String())
