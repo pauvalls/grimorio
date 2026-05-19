@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [v3.8.0] - 2026-05-19
 
+### Ci
+
+- Add go mod download before golangci-lint
+
+### Docs
+
+- Update changelog for v3.7.0
+- Add v3.6.0 and v3.7.0 highlights (readme)
+- Update changelog for v3.8.0
+
+### Feat
+
+- Add campaign management CLI commands and MCP visualization tools (campaign)
+
+### Fix
+
+- Check fmt.Sscanf error return in milestone_service.go (lint)
+- .gitignore grimorio pattern was ignoring cmd/grimorio/commands/
+
+## [v3.8.0] - 2026-05-19
+
 ### Docs
 
 - Update changelog for v3.7.0
