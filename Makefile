@@ -27,6 +27,14 @@ lint: ## Run golangci-lint
 build: ## Build the grimorio binary
 	go build -ldflags "$(LDFLAGS)" -v -o grimorio ./cmd/grimorio
 
+install: build ## Build and install grimorio binary to ~/.local/bin
+	mkdir -p $(HOME)/.local/bin
+	cp grimorio $(HOME)/.local/bin/grimorio
+	@echo "Installed grimorio to $(HOME)/.local/bin/grimorio"
+
+update: ## Run install.sh --update to update grimorio
+	bash install.sh --update
+
 build-migrate: ## Build the migrate-v1-to-v2 binary
 	go build -ldflags "$(LDFLAGS)" -v -o migrate-v1-to-v2 ./cmd/migrate-v1-to-v2
 

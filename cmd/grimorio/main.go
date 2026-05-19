@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 
 	"github.com/mark3labs/mcp-go/server"
@@ -20,7 +21,7 @@ var (
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "version" {
-		fmt.Printf("grimorio %s (commit: %s, built: %s)\n", version, commit, date)
+		fmt.Printf("grimorio %s\nCommit: %s\nBuildDate: %s\nGoVersion: %s\n", version, commit, date, runtime.Version())
 		os.Exit(0)
 	}
 
