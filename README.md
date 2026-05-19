@@ -21,8 +21,14 @@ AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into 
 
 ### Quick Start
 
+**Fresh install:**
 ```bash
 curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+```
+
+**Already installed? Update in place:**
+```bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash -s -- --update
 ```
 
 Then type in your AI assistant chat:
@@ -59,10 +65,14 @@ Then type in your AI assistant chat:
 See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 
 Recent highlights:
-- **Automated Releases** — Push a `v*` tag and CI creates the release + updates the changelog
+- **Automated Releases** — Push a `v*` tag and CI creates the release + auto-updates the changelog
+- **Self-Update** — `install.sh --update` detects changes, rebuilds only what's needed, preserves your config
+- **`make install` / `make update`** — Developer-friendly targets with version metadata and plugin sync
+- **`grimorio version`** — Now shows real version (git describe), commit, build date, and Go version
+- **16 Agent Prompts** — Extracted to `agents/` directory as filesystem source of truth
 - **WotC Format Validation** — `check_consistency scope=full` validates developments, multiple solutions, character hooks, boxed text, and integration cross-references
-- **PDF Compiler Enhancements** — Auto-close unclosed divs, `page-break-inside: avoid` on all components, CSS for flowcharts and scene descriptions
 - **16 Grimorio Skills** — WotC standards preserved for AI-assisted campaign generation
+- **PDF Compiler Enhancements** — Auto-close unclosed divs, `page-break-inside: avoid` on all components, CSS for flowcharts and scene descriptions
 
 ---
 
@@ -74,8 +84,14 @@ Generador de campañas y one-shots de D&D 5e potenciado por IA. Convierte una ch
 
 ### Inicio Rápido
 
+**Instalación desde cero:**
 ```bash
 curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+```
+
+**¿Ya lo tenés instalado? Actualizalo:**
+```bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash -s -- --update
 ```
 
 Luego escribe en el chat de tu asistente IA:
@@ -113,9 +129,12 @@ Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 
 Highlights recientes:
 - **Releases Automatizados** — Pusheá un tag `v*` y CI crea el release + actualiza el changelog
+- **Auto-Actualización** — `install.sh --update` detecta cambios, recompila solo lo necesario, preserva tu configuración
+- **`make install` / `make update`** — Targets para developers con metadata de versión y sync de plugins
+- **`grimorio version`** — Muestra versión real (git describe), commit, fecha de build y versión de Go
+- **16 Prompts de Agentes** — Extraídos a `agents/` como fuente de verdad en filesystem
 - **Validación de Formato WotC** — `check_consistency scope=full` valida developments, múltiples soluciones, ganchos de personaje, boxed text, e integración cross-reference
 - **Mejoras al Compilador PDF** — Auto-close de divs sin cierre, `page-break-inside: avoid` en todos los componentes, CSS para flowcharts y scene descriptions
-- **16 Skills de Grimorio** — Estándares WotC preservados para generación de campañas asistida por IA
 
 ---
 
