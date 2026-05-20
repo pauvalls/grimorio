@@ -223,6 +223,26 @@ Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 | wkhtmltopdf | ✅ Yes / Sí | Compile PDF / Compilar PDF |
 | Git | ❌ Must have / Debes tener | Clone repo / Clonar repo |
 
+## Troubleshooting / Solución de Problemas
+
+**Update fails with "git pull failed" / El update falla con "git pull failed":**
+
+If the incremental update fails, the install directory may be corrupted. The script now auto-detects this and falls back to a full install. If it still fails, manually remove and reinstall:
+
+```bash
+rm -rf ~/.local/share/grimorio
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+```
+
+**El update incremental falla:**
+
+Si el directorio de instalación está corrupto, el script ahora lo detecta automáticamente y hace una instalación completa. Si aún falla, eliminalo manualmente y reinstalá:
+
+```bash
+rm -rf ~/.local/share/grimorio
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+```
+
 ---
 
 ## Architecture Overview / Resumen de Arquitectura
