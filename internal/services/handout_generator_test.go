@@ -69,7 +69,8 @@ func TestHandoutGenerator_GenerateClueList(t *testing.T) {
 			{"id": "clue-2", "description": "Lord Blackthorn es un vampiro", "session": 2}
 		]
 	}`
-	statePath := filepath.Join(tmpDir, "narrative_state.json")
+	statePath := filepath.Join(tmpDir, "canon", "narrative_state.json")
+	_ = os.MkdirAll(filepath.Join(tmpDir, "canon"), 0755)
 	_ = os.WriteFile(statePath, []byte(state), 0644)
 
 	gen := NewHandoutGenerator(tmpDir)
@@ -127,7 +128,8 @@ func TestHandoutGenerator_GenerateNPCReference(t *testing.T) {
 		"campaign_id": "test",
 		"met_npcs": ["Eldrin"]
 	}`
-	statePath := filepath.Join(tmpDir, "narrative_state.json")
+	statePath := filepath.Join(tmpDir, "canon", "narrative_state.json")
+	_ = os.MkdirAll(filepath.Join(tmpDir, "canon"), 0755)
 	_ = os.WriteFile(statePath, []byte(state), 0644)
 
 	gen := NewHandoutGenerator(tmpDir)
@@ -162,7 +164,8 @@ func TestHandoutGenerator_GenerateSessionRecap(t *testing.T) {
 			"key_decisions": ["Dejaron escapar al villano"]
 		}
 	}`
-	statePath := filepath.Join(tmpDir, "narrative_state.json")
+	statePath := filepath.Join(tmpDir, "canon", "narrative_state.json")
+	_ = os.MkdirAll(filepath.Join(tmpDir, "canon"), 0755)
 	_ = os.WriteFile(statePath, []byte(state), 0644)
 
 	gen := NewHandoutGenerator(tmpDir)

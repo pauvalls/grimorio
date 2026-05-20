@@ -30,7 +30,8 @@ func TestGenerateHandouts_V2(t *testing.T) {
 
 	// Create narrative state
 	state := `{"campaign_id":"test","revealed_clues":[{"description":"la llave está en la torre"}],"met_npcs":["Eldrin"],"last_session":{"session_num":3,"areas_visited":["Área 1"],"combats":1,"key_decisions":[]}}`
-	_ = os.WriteFile(filepath.Join(tmpDir, "narrative_state.json"), []byte(state), 0644)
+	_ = os.MkdirAll(filepath.Join(tmpDir, "canon"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "canon", "narrative_state.json"), []byte(state), 0644)
 
 	// Create NPCs
 	_ = os.MkdirAll(filepath.Join(tmpDir, "npcs"), 0755)

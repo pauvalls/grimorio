@@ -199,7 +199,8 @@ func (g *HandoutGenerator) GenerateSessionRecap() (string, error) {
 }
 
 func (g *HandoutGenerator) loadNarrativeState() (map[string]interface{}, error) {
-	statePath := filepath.Join(g.CampaignDir, "narrative_state.json")
+	// v2 stores narrative state in canon/ directory
+	statePath := filepath.Join(g.CampaignDir, "canon", "narrative_state.json")
 	data, err := os.ReadFile(statePath)
 	if err != nil {
 		return map[string]interface{}{}, nil // return empty state if file missing
