@@ -670,20 +670,41 @@ do_update() {
         return
     fi
 
+    # Check if it's actually a git repo
+    if [ ! -d "$INSTALL_DIR/.git" ]; then
+        warn "Install directory is not a git repository, running full install"
+        do_install
+        return
+    fi
+
     # git pull
     log "Pulling latest changes..."
     cd "$INSTALL_DIR"
-    local pull_output
-    pull_output=$(git pull origin main 2>&1) || {
-        error "Update failed: git pull failed."
-        error "Git output: $pull_output"
+    if ! git remote get-url origin &>/dev/null; then
+        warn "No git remote configured, running full install"
+        do_install
+        return
+    fi
+
+    local pull_output pull_exit
+    pull_output=$(git pull origin main 2>&1)
+    pull_exit=$?
+    if [ $pull_exit -ne 0 ]; then
+        error "Update failed: git pull failed (exit $pull_exit)"
+        if [ -n "$pull_output" ]; then
+            error "Git output: $pull_output"
+        fi
         if echo "$pull_output" | grep -q "would be overwritten"; then
             warn "You have local changes that conflict with the update."
             warn "Run: cd $INSTALL_DIR && git status"
             warn "Then either commit/stash changes or run: git reset --hard && git clean -fd"
+        elif echo "$pull_output" | grep -q "not a git repository"; then
+            warn "Repository corrupted. Running full install..."
+            do_install
+            return
         fi
         return 1
-    }
+    fi
 
     # Check if anything changed
     local changed_files
