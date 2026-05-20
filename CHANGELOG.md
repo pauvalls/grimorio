@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v4.0.0] - 2026-05-20
+
+### Docs
+
+- Update changelog for v3.8.0
+- Add MIT license file and prettier README badges
+- Simplify badges to version, CI, and license (readme)
+- Replace MIT with MPL-2.0 license, fix author name
+
+### Feat
+
+- Add grimorio-dm AI Dungeon Master agent (v4.0) (dm)
+
+### Fix
+
+- Check outFile.Close in import.go (lint)
+- Check errcheck in dm_context_service pdf extraction (lint)
+
 ## [v3.8.0] - 2026-05-19
 
 ### Ci
