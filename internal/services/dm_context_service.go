@@ -359,8 +359,8 @@ func (s *DMContextService) extractPDFText(pdfPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer os.Remove(tmpFile.Name())
-	tmpFile.Close()
+	defer func(name string) { _ = os.Remove(name) }(tmpFile.Name())
+	_ = tmpFile.Close()
 
 	// Run pdftotext
 	cmd := exec.Command("pdftotext", pdfPath, tmpFile.Name())
