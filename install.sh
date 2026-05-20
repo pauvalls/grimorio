@@ -327,7 +327,14 @@ setup_plugin() {
         mkdir -p "$plugin_dir"/{agents,skills,internal/compiler/templates}
 
         # Copy binaries
-        cp -f "$BINARY_DIR"/{grimorio,migrate-v1-to-v2} "$plugin_dir/"
+        # Copy binaries (use temp+mv to avoid "text file busy")
+        for bin in grimorio migrate-v1-to-v2; do
+            if [ -f "$BINARY_DIR/$bin" ]; then
+                cp -f "$BINARY_DIR/$bin" "$plugin_dir/$bin.tmp"
+                chmod +x "$plugin_dir/$bin.tmp"
+                mv -f "$plugin_dir/$bin.tmp" "$plugin_dir/$bin"
+            fi
+        done
 
         # Copy agents (if exist)
         if [ -d "$INSTALL_DIR/agents" ]; then
@@ -506,6 +513,12 @@ configure_opencode_merge() {
             local agent_json
             local agent_tools
             agent_tools=$(parse_frontmatter_tools "$f")
+            # Validate tools JSON before using it
+            if ! echo "$agent_tools" | jq empty 2>/dev/null; then
+                warn "  Invalid tools JSON for agent '$name', using defaults"
+                agent_tools='{"bash": true, "edit": true, "read": true, "write": true}'
+            fi
+
             agent_json=$(jq -n \
               --arg desc "$desc" \
               --arg mode "$mode" \
@@ -520,10 +533,19 @@ configure_opencode_merge() {
                 "options": {}
               }')
 
+            if [ $? -ne 0 ] || [ -z "$agent_json" ]; then
+                warn "  Failed to build agent '$name' (invalid frontmatter)"
+                continue
+            fi
+
             new_agents=$(jq --arg name "$name" --argjson agent "$agent_json" \
               '.[$name] = $agent' <<< "$new_agents" 2>/dev/null)
 
-            log "  Agent built: $name"
+            if [ $? -eq 0 ]; then
+                log "  Agent built: $name"
+            else
+                warn "  Failed to register agent: $name"
+            fi
         done
     fi
 
@@ -651,10 +673,17 @@ do_update() {
     # git pull
     log "Pulling latest changes..."
     cd "$INSTALL_DIR"
-    if ! git pull origin main 2>/dev/null && ! git pull 2>/dev/null; then
-        error "Update failed: git pull failed. Check network connection."
+    local pull_output
+    pull_output=$(git pull origin main 2>&1) || {
+        error "Update failed: git pull failed."
+        error "Git output: $pull_output"
+        if echo "$pull_output" | grep -q "would be overwritten"; then
+            warn "You have local changes that conflict with the update."
+            warn "Run: cd $INSTALL_DIR && git status"
+            warn "Then either commit/stash changes or run: git reset --hard && git clean -fd"
+        fi
         return 1
-    fi
+    }
 
     # Check if anything changed
     local changed_files
@@ -678,21 +707,25 @@ do_update() {
         make build || { error "Build failed. Check for compilation errors."; return 1; }
 
         mkdir -p "$BINARY_DIR"
-        cp grimorio "$BINARY_DIR/grimorio"
-        chmod +x "$BINARY_DIR/grimorio"
+        cp grimorio "$BINARY_DIR/grimorio.tmp"
+        chmod +x "$BINARY_DIR/grimorio.tmp"
+        mv -f "$BINARY_DIR/grimorio.tmp" "$BINARY_DIR/grimorio"
         log "Binary updated: $BINARY_DIR/grimorio"
 
         # Sync to plugin dirs
         for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
             mkdir -p "$plugin_dir"
-            cp grimorio "$plugin_dir/grimorio"
-            chmod +x "$plugin_dir/grimorio"
+            # Use temp file + mv to avoid "text file busy" when binary is running
+            cp grimorio "$plugin_dir/grimorio.tmp"
+            chmod +x "$plugin_dir/grimorio.tmp"
+            mv -f "$plugin_dir/grimorio.tmp" "$plugin_dir/grimorio"
             log "Plugin binary synced: $plugin_dir/grimorio"
 
             # Also sync migrate binary if it exists
             if [ -f migrate-v1-to-v2 ]; then
-                cp migrate-v1-to-v2 "$plugin_dir/migrate-v1-to-v2"
-                chmod +x "$plugin_dir/migrate-v1-to-v2"
+                cp migrate-v1-to-v2 "$plugin_dir/migrate-v1-to-v2.tmp"
+                chmod +x "$plugin_dir/migrate-v1-to-v2.tmp"
+                mv -f "$plugin_dir/migrate-v1-to-v2.tmp" "$plugin_dir/migrate-v1-to-v2"
             fi
         done
     fi
