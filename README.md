@@ -67,7 +67,15 @@ Then type in your AI assistant chat:
 
 See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 
-Recent highlights:
+**v4.0.0 — AI Dungeon Master (Latest)**
+- **🤖 AI Dungeon Master** — `grimorio-dm` primary agent runs live D&D 5e sessions with narrative depth, strict information hiding, and canon compliance
+- **📦 Campaign Context Aggregation** — `dm_session_context` MCP tool loads all campaign data (canon, narrative state, areas, NPCs, bestiary, prologue, factions) in a single payload
+- **🎲 Dice Modes** — Auto (DM rolls), Manual (players roll), or Mixed (default) per session
+- **📖 Game Modes** — Narrative (1-2 combats, social-first) or Tactical (3-5 combates, resource-heavy)
+- **🎭 NPC Voices** — Each NPC has a unique `dialogue_voice` for distinct, immersive dialogue
+- **🚫 Information Hiding** — Never reveals enemy HP, AC, or dice rolls; uses descriptive damage states instead
+
+**Previous Highlights**
 - **Automated Releases** — Push a `v*` tag and CI creates the release + auto-updates the changelog
 - **Self-Update** — `install.sh --update` detects changes, rebuilds only what's needed, preserves your config
 - **Narrative Prologue** — `grimorio_generate_prologue` generates 4-part WotC-style prologue with read-aloud boxes
@@ -77,7 +85,6 @@ Recent highlights:
 - **`grimorio version`** — Now shows real version (git describe), commit, build date, and Go version
 - **16 Agent Prompts** — Extracted to `agents/` directory as filesystem source of truth with full MCP tool references
 - **WotC Format Validation** — `check_consistency scope=full` validates developments, multiple solutions, character hooks, boxed text, and integration cross-references
-- **AI Dungeon Master** — `grimorio-dm` primary agent with `dm_session_context` MCP tool for live D&D 5e sessions
 - **16 Grimorio Skills** — WotC standards preserved for AI-assisted campaign generation
 - **PDF Compiler Enhancements** — Auto-close unclosed divs, `page-break-inside: avoid` on all components, CSS for flowcharts and scene descriptions
 
@@ -136,7 +143,15 @@ Luego escribe en el chat de tu asistente IA:
 
 Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 
-Highlights recientes:
+**v4.0.0 — Dungeon Master IA (Último)**
+- **🤖 Dungeon Master IA** — Agente `grimorio-dm` ejecuta sesiones en vivo de D&D 5e con profundidad narrativa, ocultamiento de información y cumplimiento de canon
+- **📦 Agregación de Contexto** — Herramienta MCP `dm_session_context` carga todos los datos de la campaña (canon, estado narrativo, áreas, NPCs, bestiario, prólogo, facciones) en un solo payload
+- **🎲 Modos de Dados** — Automático (DM tira), Manual (jugadores tiran), o Mixto (default) por sesión
+- **📖 Modos de Juego** — Narrativo (1-2 combates, social primero) o Táctico (3-5 combates, gestión de recursos)
+- **🎭 Voces de NPCs** — Cada NPC tiene un `dialogue_voice` único para diálogos distintivos e inmersivos
+- **🚫 Ocultamiento de Información** — Nunca revela HP, AC o tiradas de enemigos; usa estados de daño descriptivos
+
+**Highlights Anteriores**
 - **Releases Automatizados** — Pusheá un tag `v*` y CI crea el release + actualiza el changelog
 - **Auto-Actualización** — `install.sh --update` detecta cambios, recompila solo lo necesario, preserva tu configuración
 - **Prólogo Narrativo** — `grimorio_generate_prologue` genera prólogo 4 partes estilo WotC con boxed text
@@ -147,7 +162,6 @@ Highlights recientes:
 - **16 Prompts de Agentes** — Extraídos a `agents/` como fuente de verdad con referencias completas a herramientas MCP
 - **Validación de Formato WotC** — `check_consistency scope=full` valida developments, múltiples soluciones, ganchos de personaje, boxed text, e integración cross-reference
 - **16 Skills de Grimorio** — Estándares WotC preservados para generación de campañas asistida por IA
-- **Dungeon Master IA** — Agente `grimorio-dm` con herramienta MCP `dm_session_context` para sesiones en vivo de D&D 5e
 - **Mejoras al Compilador PDF** — Auto-close de divs sin cierre, `page-break-inside: avoid` en todos los componentes, CSS para flowcharts y scene descriptions
 
 ---
