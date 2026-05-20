@@ -45,6 +45,7 @@ Then type in your AI assistant chat:
 - **AI Images** — FREE cover art and illustrations (Pollinations.ai, no API key)
 - **Procedural Maps** — SVG battle maps and decorative dividers
 - **MCP Server** — Native integration with OpenCode and Claude Code
+- **AI Dungeon Master** — `grimorio-dm` agent runs live D&D 5e sessions with narrative depth, strict information hiding, and canon compliance
 - **100% Local** — No cloud dependencies required
 
 ### Documentation
@@ -59,6 +60,7 @@ Then type in your AI assistant chat:
 | **[MCP Tools](docs/features/mcp-tools.md)** | Full tool reference (30+ tools) |
 | **[Architecture](docs/features/architecture.md)** | How Grimorio works internally |
 | **[DM Guide](docs/dm-guide.md)** | General advice for running games |
+| **[DM Agent Guide](docs/dm-agent-guide.md)** | Running live sessions with the AI Dungeon Master |
 | **[Developer Guide](docs/developer-guide.md)** | Contributing to Grimorio |
 
 ### What's New
@@ -75,6 +77,7 @@ Recent highlights:
 - **`grimorio version`** — Now shows real version (git describe), commit, build date, and Go version
 - **16 Agent Prompts** — Extracted to `agents/` directory as filesystem source of truth with full MCP tool references
 - **WotC Format Validation** — `check_consistency scope=full` validates developments, multiple solutions, character hooks, boxed text, and integration cross-references
+- **AI Dungeon Master** — `grimorio-dm` primary agent with `dm_session_context` MCP tool for live D&D 5e sessions
 - **16 Grimorio Skills** — WotC standards preserved for AI-assisted campaign generation
 - **PDF Compiler Enhancements** — Auto-close unclosed divs, `page-break-inside: avoid` on all components, CSS for flowcharts and scene descriptions
 
@@ -111,6 +114,7 @@ Luego escribe en el chat de tu asistente IA:
 - **Imágenes IA** — Portada e ilustraciones GRATIS (Pollinations.ai, sin API key)
 - **Mapas Procedimentales** — Mapas de batalla SVG y divisores decorativos
 - **Servidor MCP** — Integración nativa con OpenCode y Claude Code
+- **Dungeon Master IA** — Agente `grimorio-dm` ejecuta sesiones en vivo de D&D 5e con profundidad narrativa, ocultamiento de información y cumplimiento de canon
 - **100% Local** — Sin dependencias de nube requeridas
 
 ### Documentación
@@ -125,6 +129,7 @@ Luego escribe en el chat de tu asistente IA:
 | **[Herramientas MCP](docs/features/mcp-tools.md)** | Referencia completa de herramientas (30+ herramientas) |
 | **[Arquitectura](docs/features/architecture.md)** | Cómo funciona Grimorio internamente |
 | **[Guía de DM](docs/dm-guide.md)** | Consejos generales para dirigir juegos |
+| **[Guía del Agente DM](docs/dm-agent-guide.md)** | Ejecutar sesiones en vivo con el Dungeon Master IA |
 | **[Guía de Desarrollador](docs/developer-guide.md)** | Contribuir a Grimorio |
 
 ### Novedades
@@ -142,6 +147,7 @@ Highlights recientes:
 - **16 Prompts de Agentes** — Extraídos a `agents/` como fuente de verdad con referencias completas a herramientas MCP
 - **Validación de Formato WotC** — `check_consistency scope=full` valida developments, múltiples soluciones, ganchos de personaje, boxed text, e integración cross-reference
 - **16 Skills de Grimorio** — Estándares WotC preservados para generación de campañas asistida por IA
+- **Dungeon Master IA** — Agente `grimorio-dm` con herramienta MCP `dm_session_context` para sesiones en vivo de D&D 5e
 - **Mejoras al Compilador PDF** — Auto-close de divs sin cierre, `page-break-inside: avoid` en todos los componentes, CSS para flowcharts y scene descriptions
 
 ---
@@ -245,7 +251,9 @@ Highlights recientes:
 │                                                              │
 │  DM Experience (Phase 4):                                   │
 │  ├─ generate_session_prep                                   │
-│  └─ generate_flowchart                                      │
+│  ├─ generate_flowchart                                      │
+│  ├─ dm_session_context  (v4.0)                              │
+│  └─ grimorio-dm agent (v4.0)                                │
 └─────────────────────────────────────────────────────────────┘
 ```
 

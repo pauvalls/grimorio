@@ -70,3 +70,9 @@ func (r *FilesystemAreaRepositoryV3) GetByChapter(ctx context.Context, campaignI
 	}
 	return result, nil
 }
+
+// ListAll returns all areas for a campaign regardless of chapter.
+func (r *FilesystemAreaRepositoryV3) ListAll(ctx context.Context, campaignID string) ([]*domain.Area, error) {
+	dir := filepath.Join(campaignDir(r.baseDir, campaignID), "areas_v3")
+	return listJSONFiles[domain.Area](dir)
+}

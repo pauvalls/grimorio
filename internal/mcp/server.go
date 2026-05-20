@@ -66,6 +66,10 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	consequenceEngine := services.NewConsequenceEngine(canonRepo)
 	adaptationPatchService := services.NewAdaptationPatchService(actRepo, canonRepo)
 	sessionPrepService := services.NewSessionPrepService(canonRepo, narrativeStateRepo)
+	dmContextService := services.NewDMContextService(
+		canonRepo, narrativeStateRepo, charRepo, npcRepo, questRepo,
+		monsterRepo, areaRepoV3, factionRepo, sessionPrepService, cfg.OutputDir,
+	)
 	flowchartService := services.NewFlowchartService(canonRepo, actRepo)
 	hookService := services.NewPlayerHookService(charRepo, canonRepo)
 	prologueService := services.NewPrologueService(cfg.OutputDir, canonRepo)
@@ -93,6 +97,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 	handoutHandlers := handlers.NewHandoutHandlers(handoutService)
 	consequenceHandlers := handlers.NewConsequenceHandlers(consequenceEngine, narrativeStateService)
 	sessionPrepHandlers := handlers.NewSessionPrepHandlers(sessionPrepService)
+	dmContextHandlers := handlers.NewDMContextHandlers(dmContextService)
 	flowchartHandlers := handlers.NewFlowchartHandlers(flowchartService)
 	hookHandlers := handlers.NewHookHandlers(hookService)
 	prologueHandlers := handlers.NewPrologueHandlers(prologueService, campaignService)
@@ -378,6 +383,15 @@ s.AddTool(mcp.NewTool("save_maps",
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithString("detail_level", mcp.Description("Detail level: overview, act, decision"), mcp.DefaultString("overview")),
 	), flowchartHandlers.HandleGenerateFlowchart())
+
+	// DM context tool
+	s.AddTool(mcp.NewTool("dm_session_context",
+		mcp.WithDescription("Aggregate all campaign data into a single JSON payload for the AI Dungeon Master"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithNumber("session_num", mcp.Description("Session number (defaults to current session)")),
+		mcp.WithBoolean("include_prologue", mcp.Description("Include prologue in payload"), mcp.DefaultBool(true)),
+		mcp.WithBoolean("include_pdf_text", mcp.Description("Extract and include text from compiled PDF if available"), mcp.DefaultBool(false)),
+	), dmContextHandlers.HandleDMContext())
 
 	// V3 tools
 	s.AddTool(mcp.NewTool("grimorio_generate_tactics",

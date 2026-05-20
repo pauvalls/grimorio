@@ -9,6 +9,7 @@ coverage.out
 grimorio-sdd-roadmap.md
 grimorio-test
 migrate-v1-to-v2
+.sdd/
 sdd/
 openspec/
 campaigns/
