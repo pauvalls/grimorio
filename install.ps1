@@ -473,7 +473,12 @@ function Show-Instructions {
     Write-Host "Next steps:"
     Write-Host "   1. Restart your terminal or run: refreshenv"
     Write-Host "   2. Run: grimorio --version"
-    Write-Host "   3. Use: grimorio create_campaign <name>"
+    Write-Host "   3. Update skills:   grimorio update skills"
+    Write-Host "   4. Update agents:   grimorio update agents"
+    Write-Host "   5. Use:             grimorio create_campaign <name>"
+    Write-Host ""
+    Write-Host "IMPORTANT: Run steps 3 and 4 before starting OpenCode to ensure"
+    Write-Host "all Grimorio skills and agents are available."
     Write-Host ""
 }
 

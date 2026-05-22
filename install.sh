@@ -552,7 +552,12 @@ print_instructions() {
     printf "Next steps:\n"
     printf "   1. Restart your terminal or add %s to PATH\n" "$BINARY_DIR"
     printf "   2. Run: grimorio --version\n"
-    printf "   3. Use: grimorio create_campaign <name>\n"
+    printf "   3. Update skills:   grimorio update skills\n"
+    printf "   4. Update agents:   grimorio update agents\n"
+    printf "   5. Use:             grimorio create_campaign <name>\n"
+    printf "\n"
+    printf "IMPORTANT: Run steps 3 and 4 before starting OpenCode to ensure\n"
+    printf "all Grimorio skills and agents are available.\n"
     printf "\n"
 }
 
