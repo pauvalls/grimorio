@@ -560,6 +560,7 @@ func TestMergeOpencodeConfig_CreateNew(t *testing.T) {
 ` + extractFunction(installShPath(), "command_exists") + `
 ` + extractFunction(installShPath(), "create_mcp_json") + `
 HOME="` + tmpDir + `"
+INSTALL_DIR="$HOME/.grimorio"
 OPENCODE_PLUGIN_DIR="` + tmpDir + `/.config/opencode/plugins/grimorio"
 merge_opencode_config
 cat "$HOME/.config/opencode/opencode.json"
@@ -575,6 +576,13 @@ cat "$HOME/.config/opencode/opencode.json"
 	}
 	if !strings.Contains(output, "mcp") {
 		t.Error("opencode.json must contain mcp section")
+	}
+	// Regression test: MCP must point to install dir, not plugin dir
+	if strings.Contains(output, "plugins/grimorio/grimorio") {
+		t.Error("MCP binary path must point to ~/.grimorio/grimorio, not the plugin directory")
+	}
+	if !strings.Contains(output, "/.grimorio/grimorio") {
+		t.Error("MCP binary path must point to ~/.grimorio/grimorio")
 	}
 }
 

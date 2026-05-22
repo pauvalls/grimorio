@@ -312,9 +312,9 @@ setup_plugins() {
 # ============================================================================
 create_mcp_json() {
     local plugin_dir="$1"
-    local binary_path="${plugin_dir}/grimorio"
+    local binary_path="${INSTALL_DIR}/grimorio"
     if [ "$OS" = "windows" ]; then
-        binary_path="${plugin_dir}/grimorio.exe"
+        binary_path="${INSTALL_DIR}/grimorio.exe"
     fi
 
     cat > "${plugin_dir}/.mcp.json" << EOF
@@ -334,9 +334,9 @@ EOF
 merge_opencode_config() {
     local config_file="${HOME}/.config/opencode/opencode.json"
     local plugin_dir="$OPENCODE_PLUGIN_DIR"
-    local binary_path="${plugin_dir}/grimorio"
+    local binary_path="${INSTALL_DIR}/grimorio"
     if [ "$OS" = "windows" ]; then
-        binary_path="${plugin_dir}/grimorio.exe"
+        binary_path="${INSTALL_DIR}/grimorio.exe"
     fi
 
     mkdir -p "$(dirname "$config_file")"
