@@ -42,7 +42,7 @@ func TestIntegration_DownloadAndExtractArchive(t *testing.T) {
 			http.ServeFile(w, r, archivePath)
 		case "/checksums.txt":
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "%s  grimorio_Linux_x86_64.tar.gz\n", hash)
+			_, _ = fmt.Fprintf(w, "%s  grimorio_Linux_x86_64.tar.gz\n", hash)
 		default:
 			http.NotFound(w, r)
 		}
@@ -113,7 +113,7 @@ func TestIntegration_DownloadAndExtract_WithBadChecksum(t *testing.T) {
 			http.ServeFile(w, r, archivePath)
 		case "/checksums.txt":
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprint(w, "0000000000000000000000000000000000000000000000000000000000000000  grimorio_Linux_x86_64.tar.gz\n")
+			_, _ = fmt.Fprint(w, "0000000000000000000000000000000000000000000000000000000000000000  grimorio_Linux_x86_64.tar.gz\n")
 		default:
 			http.NotFound(w, r)
 		}
@@ -141,7 +141,7 @@ func computeFileSHA256(t *testing.T, path string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {

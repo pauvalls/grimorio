@@ -103,7 +103,7 @@ func TestFetchLatestRelease(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{
+		_, _ = fmt.Fprint(w, `{
 			"tag_name": "v1.3.0",
 			"assets": [
 				{"name": "grimorio_Linux_x86_64.tar.gz", "browser_download_url": "https://example.com/linux.tar.gz"},
@@ -129,7 +129,7 @@ func TestFetchLatestRelease(t *testing.T) {
 func TestFetchLatestRelease_APIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		fmt.Fprint(w, `{"message": "API rate limit exceeded"}`)
+		_, _ = fmt.Fprint(w, `{"message": "API rate limit exceeded"}`)
 	}))
 	defer server.Close()
 
@@ -204,7 +204,7 @@ func TestDownloadFile(t *testing.T) {
 	content := []byte("test archive content")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(content)
+		_, _ = w.Write(content)
 	}))
 	defer server.Close()
 
@@ -653,13 +653,13 @@ func createTestTarGz(t *testing.T, path string, files map[string][]byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	gzWriter := gzip.NewWriter(f)
-	defer gzWriter.Close()
+	defer func() { _ = gzWriter.Close() }()
 
 	tarWriter := tar.NewWriter(gzWriter)
-	defer tarWriter.Close()
+	defer func() { _ = tarWriter.Close() }()
 
 	for name, content := range files {
 		hdr := &tar.Header{
@@ -688,10 +688,10 @@ func createTestZip(t *testing.T, path string, files map[string][]byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	zipWriter := zip.NewWriter(f)
-	defer zipWriter.Close()
+	defer func() { _ = zipWriter.Close() }()
 
 	for name, content := range files {
 		w, err := zipWriter.Create(name)
@@ -743,7 +743,9 @@ func TestCopyDir(t *testing.T) {
 	dst := t.TempDir()
 
 	// Create a test file structure
-	os.WriteFile(filepath.Join(src, "test.md"), []byte("test content"), 0644)
+	if err := os.WriteFile(filepath.Join(src, "test.md"), []byte("test content"), 0644); err != nil {
+		t.Fatalf("creating test file: %v", err)
+	}
 
 	if err := copyDir(src, dst); err != nil {
 		t.Fatalf("copyDir() error = %v", err)

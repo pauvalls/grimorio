@@ -26,13 +26,13 @@ func backupCurrentBinary(binaryPath, backupDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("opening current binary: %w", err)
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	dst, err := os.Create(backupPath)
 	if err != nil {
 		return "", fmt.Errorf("creating backup file: %w", err)
 	}
-	defer dst.Close()
+	defer func() { _ = dst.Close() }()
 
 	if _, err := io.Copy(dst, src); err != nil {
 		return "", fmt.Errorf("copying binary to backup: %w", err)
@@ -55,7 +55,7 @@ func replaceBinary(binaryPath, newPath string) error {
 		return fmt.Errorf("creating temp file: %w", err)
 	}
 	tempPath := tempFile.Name()
-	tempFile.Close()
+	_ = tempFile.Close()
 
 	if err := copyFile(newPath, tempPath); err != nil {
 		_ = os.Remove(tempPath)
@@ -100,13 +100,13 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return fmt.Errorf("opening source: %w", err)
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	destination, err := os.Create(dst)
 	if err != nil {
 		return fmt.Errorf("creating destination: %w", err)
 	}
-	defer destination.Close()
+	defer func() { _ = destination.Close() }()
 
 	if _, err := io.Copy(destination, source); err != nil {
 		return fmt.Errorf("copying data: %w", err)

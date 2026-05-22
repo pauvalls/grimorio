@@ -578,7 +578,9 @@ func TestMergeOpencodeConfig_CreateNew(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	configDir := filepath.Join(tmpDir, ".config", "opencode")
-	os.MkdirAll(configDir, 0755)
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("creating config dir: %v", err)
+	}
 
 	script := `
 ` + extractFunction(installShPath(), "merge_opencode_config") + `
@@ -621,11 +623,15 @@ func TestMergeOpencodeConfig_PreservesExisting(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	configDir := filepath.Join(tmpDir, ".config", "opencode")
-	os.MkdirAll(configDir, 0755)
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("creating config dir: %v", err)
+	}
 
 	existingConfig := `{"custom_key": "custom_value", "mcp": {"other": {"enabled": true}}}`
 	configFile := filepath.Join(configDir, "opencode.json")
-	os.WriteFile(configFile, []byte(existingConfig), 0644)
+	if err := os.WriteFile(configFile, []byte(existingConfig), 0644); err != nil {
+		t.Fatalf("writing existing config: %v", err)
+	}
 
 	script := `
 ` + extractFunction(installShPath(), "merge_opencode_config") + `
@@ -683,9 +689,10 @@ func extractFunction(path, name string) string {
 		line := lines[i]
 		// Count braces (rough heuristic)
 		for _, ch := range line {
-			if ch == '{' {
+			switch ch {
+			case '{':
 				depth++
-			} else if ch == '}' {
+			case '}':
 				depth--
 			}
 		}

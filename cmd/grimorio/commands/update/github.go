@@ -17,7 +17,10 @@ func detectPlatform() (string, string, error) {
 // mapGoArchToGoreleaser maps Go runtime OS/arch values to GoReleaser naming conventions.
 // GoReleaser uses title-cased OS names and maps amd64 → x86_64.
 func mapGoArchToGoreleaser(goos, goarch string) (string, string) {
-	osName := strings.Title(goos)
+	osName := goos
+	if len(goos) > 0 {
+		osName = strings.ToUpper(goos[:1]) + goos[1:]
+	}
 	archName := goarch
 	if goarch == "amd64" {
 		archName = "x86_64"
@@ -33,14 +36,6 @@ func archiveName(goos, goarch string) string {
 		ext = ".zip"
 	}
 	return fmt.Sprintf("grimorio_%s_%s%s", gos, arch, ext)
-}
-
-// archiveExt returns the archive extension for the given OS.
-func archiveExt(goos string) string {
-	if goos == "windows" {
-		return ".zip"
-	}
-	return ".tar.gz"
 }
 
 // --- GitHub API ---
@@ -77,7 +72,7 @@ func fetchLatestRelease(owner, repo string, client *http.Client, apiBaseURL stri
 	if err != nil {
 		return nil, fmt.Errorf("fetching release: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)

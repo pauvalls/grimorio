@@ -30,7 +30,7 @@ func downloadFile(url, dest string, client *http.Client) error {
 	if err != nil {
 		return fmt.Errorf("downloading %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download returned status %d for %s", resp.StatusCode, url)
@@ -40,7 +40,7 @@ func downloadFile(url, dest string, client *http.Client) error {
 	if err != nil {
 		return fmt.Errorf("creating dest file %s: %w", dest, err)
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	if _, err := io.Copy(out, resp.Body); err != nil {
 		return fmt.Errorf("writing download to %s: %w", dest, err)
@@ -55,7 +55,7 @@ func verifyChecksum(filePath, expectedHash string) error {
 	if err != nil {
 		return fmt.Errorf("opening file for checksum: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
@@ -112,7 +112,7 @@ func extractTarGz(archivePath, destDir string) error {
 	if err != nil {
 		return fmt.Errorf("not a valid gzip file: %w", err)
 	}
-	defer gzReader.Close()
+	defer func() { _ = gzReader.Close() }()
 
 	tarReader := tar.NewReader(gzReader)
 	for {
@@ -145,10 +145,10 @@ func extractTarGz(archivePath, destDir string) error {
 				return fmt.Errorf("creating file %s: %w", targetPath, err)
 			}
 			if _, err := io.Copy(out, tarReader); err != nil {
-				out.Close()
+				_ = out.Close()
 				return fmt.Errorf("writing file %s: %w", targetPath, err)
 			}
-			out.Close()
+			_ = out.Close()
 		default:
 			// Skip symlinks and other special files for security
 			continue
@@ -164,7 +164,7 @@ func extractZip(archivePath, destDir string) error {
 	if err != nil {
 		return fmt.Errorf("opening zip: %w", err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	for _, f := range r.File {
 		// Security: prevent directory traversal
@@ -192,13 +192,13 @@ func extractZip(archivePath, destDir string) error {
 
 		out, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, f.Mode())
 		if err != nil {
-			rc.Close()
+			_ = rc.Close()
 			return fmt.Errorf("creating file %s: %w", targetPath, err)
 		}
 
 		_, err = io.Copy(out, rc)
-		rc.Close()
-		out.Close()
+		_ = rc.Close()
+		_ = out.Close()
 		if err != nil {
 			return fmt.Errorf("writing file %s: %w", targetPath, err)
 		}
