@@ -22,14 +22,19 @@ AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into 
 
 ### Quick Start
 
-**Fresh install:**
+**Linux / macOS:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh
 ```
 
-**Already installed? Update in place:**
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
+```
+
+**Already installed? Update:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash -s -- --update
+grimorio update
 ```
 
 Then type in your AI assistant chat:
@@ -47,6 +52,34 @@ Then type in your AI assistant chat:
 - **MCP Server** — Native integration with OpenCode and Claude Code
 - **AI Dungeon Master** — `grimorio-dm` agent runs live D&D 5e sessions with narrative depth, strict information hiding, and canon compliance
 - **100% Local** — No cloud dependencies required
+
+### Install
+
+**Linux / macOS** — One-line install (no Go required):
+```bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh
+```
+
+**Windows** — One-line install in PowerShell (no Go required):
+```powershell
+irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
+```
+
+**Update** — Check and install the latest release:
+```bash
+grimorio update
+```
+Or re-run the installer with the `--update` flag:
+```bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh -s -- --update
+```
+
+**Developers** — Build from source:
+```bash
+git clone https://github.com/pauvalls/grimorio.git
+cd grimorio
+make install
+```
 
 ### Documentation
 
@@ -98,14 +131,19 @@ Generador de campañas y one-shots de D&D 5e potenciado por IA. Convierte una ch
 
 ### Inicio Rápido
 
-**Instalación desde cero:**
+**Linux / macOS:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 ```
 
 **¿Ya lo tenés instalado? Actualizalo:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash -s -- --update
+grimorio update
 ```
 
 Luego escribe en el chat de tu asistente IA:
@@ -123,6 +161,34 @@ Luego escribe en el chat de tu asistente IA:
 - **Servidor MCP** — Integración nativa con OpenCode y Claude Code
 - **Dungeon Master IA** — Agente `grimorio-dm` ejecuta sesiones en vivo de D&D 5e con profundidad narrativa, ocultamiento de información y cumplimiento de canon
 - **100% Local** — Sin dependencias de nube requeridas
+
+### Instalación
+
+**Linux / macOS** — Instalación en una línea (no necesitás Go):
+```bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh
+```
+
+**Windows** — Instalación en una línea en PowerShell (no necesitás Go):
+```powershell
+irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
+```
+
+**Actualizar** — Verificá e instalá la última versión:
+```bash
+grimorio update
+```
+O volvé a ejecutar el instalador con el flag `--update`:
+```bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh -s -- --update
+```
+
+**Developers** — Compilar desde fuente:
+```bash
+git clone https://github.com/pauvalls/grimorio.git
+cd grimorio
+make install
+```
 
 ### Documentación
 
@@ -219,28 +285,72 @@ Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 
 | Dependency / Dependencia | Auto-installed / Auto-instalado | Purpose / Propósito |
 |------------|---------------|---------|
-| Go 1.24+ | ✅ Yes / Sí | Build binary / Compilar binario |
-| wkhtmltopdf | ✅ Yes / Sí | Compile PDF / Compilar PDF |
+| Go 1.24+ | ❌ Only for source build / Solo para compilar desde fuente | Build binary / Compilar binario |
+| wkhtmltopdf | ❌ Must install / Debes instalarlo | Compile PDF / Compilar PDF |
 | Git | ❌ Must have / Debes tener | Clone repo / Clonar repo |
+
+### wkhtmltopdf — Install by Platform / Instalar por Plataforma
+
+**Linux (Debian/Ubuntu):**
+```bash
+sudo apt-get install wkhtmltopdf
+```
+
+**macOS:**
+```bash
+brew install --cask wkhtmltopdf
+```
+
+**Windows:**
+```powershell
+choco install wkhtmltopdf
+# or
+winget install wkhtmltopdf
+```
 
 ## Troubleshooting / Solución de Problemas
 
-**Update fails with "git pull failed" / El update falla con "git pull failed":**
+### grimorio: command not found / grimorio: comando no encontrado
 
-If the incremental update fails, the install directory may be corrupted. The script now auto-detects this and falls back to a full install. If it still fails, manually remove and reinstall:
+The binary is installed to `~/.local/bin/` on Linux/macOS or `%LOCALAPPDATA%\Grimorio\` on Windows. If the command is not found, add the directory to your PATH.
 
+**Linux / macOS:**
 ```bash
-rm -rf ~/.local/share/grimorio
-curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+To make it permanent, add the above line to `~/.bashrc`, `~/.zshrc`, or your shell's config file.
+
+**Windows (PowerShell):**
+```powershell
+$env:Path += ";$env:LOCALAPPDATA\Grimorio"
 ```
 
-**El update incremental falla:**
+### Permission denied / Permiso denegado
 
-Si el directorio de instalación está corrupto, el script ahora lo detecta automáticamente y hace una instalación completa. Si aún falla, eliminalo manualmente y reinstalá:
+If you get `Permission denied` when running `grimorio`, ensure the binary is executable:
 
+**Linux / macOS:**
 ```bash
-rm -rf ~/.local/share/grimorio
-curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+chmod +x ~/.local/bin/grimorio
+```
+
+### Windows Execution Policy / Política de Ejecución de Windows
+
+If PowerShell shows an execution policy error, run:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### Update fails / El update falla
+
+If `grimorio update` fails, try re-running the installer:
+```bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh -s -- --update
+```
+
+Or on Windows:
+```powershell
+irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 ```
 
 ---

@@ -27,15 +27,21 @@ lint: ## Run golangci-lint
 build: ## Build the grimorio binary
 	go build -ldflags "$(LDFLAGS)" -v -o grimorio ./cmd/grimorio
 
-install: build ## Build and install grimorio binary to ~/.local/bin and plugin dir
+install: ## Install grimorio via install.sh (binary) or source build fallback
+ifeq ($(wildcard install.sh),install.sh)
+	bash install.sh
+else
+	@echo "install.sh not found, falling back to source build..."
+	go build -ldflags "$(LDFLAGS)" -v -o grimorio ./cmd/grimorio
 	mkdir -p $(HOME)/.local/bin
 	cp grimorio $(HOME)/.local/bin/grimorio
 	mkdir -p $(HOME)/.config/opencode/plugins/grimorio
 	cp grimorio $(HOME)/.config/opencode/plugins/grimorio/grimorio
-	@echo "Installed grimorio to $(HOME)/.local/bin/grimorio and $(HOME)/.config/opencode/plugins/grimorio/grimorio"
+	@echo "Installed grimorio from source to $(HOME)/.local/bin/grimorio"
+endif
 
-update: ## Run install.sh --update to update grimorio
-	bash install.sh --update
+update: ## Update grimorio via grimorio update (fallback to install.sh --update)
+	@which grimorio >/dev/null 2>&1 && grimorio update || bash install.sh --update
 
 build-migrate: ## Build the migrate-v1-to-v2 binary
 	go build -ldflags "$(LDFLAGS)" -v -o migrate-v1-to-v2 ./cmd/migrate-v1-to-v2
