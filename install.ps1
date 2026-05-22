@@ -25,6 +25,7 @@ $RepoOwner = 'pauvalls'
 $RepoName = 'grimorio'
 $InstallDir = Join-Path $env:LOCALAPPDATA 'Grimorio'
 $PluginDir = Join-Path $env:USERPROFILE '.config\opencode\plugins\grimorio'
+$AgentsDir = Join-Path $env:USERPROFILE '.config\opencode\agents'
 $BinaryName = 'grimorio.exe'
 
 # ============================================================================
@@ -282,6 +283,17 @@ function Install-Plugins {
     $mcpPath = Join-Path $PluginDir '.mcp.json'
     $mcpJson | Out-File -FilePath $mcpPath -Encoding utf8 -Force
     Write-Log "Created .mcp.json"
+
+    # Copy agents to OpenCode global agents directory
+    if (Test-Path $agentsSource) {
+        if (-not (Test-Path $AgentsDir)) {
+            New-Item -ItemType Directory -Path $AgentsDir -Force | Out-Null
+        }
+        Get-ChildItem -Path $agentsSource -File | ForEach-Object {
+            Copy-Item -Path $_.FullName -Destination $AgentsDir -Force
+        }
+        Write-Log "Agents copied to $AgentsDir"
+    }
 }
 
 # ============================================================================

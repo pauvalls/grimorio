@@ -96,6 +96,21 @@ if [ ! -d "$HOME/.config/opencode/plugins/grimorio/agents" ]; then
 fi
 echo "PASS: agents/ directory exists in plugin dir"
 
+# 5b. Agents copied to global opencode agents directory
+if [ ! -d "$HOME/.config/opencode/agents" ]; then
+    echo "FAIL: agents/ not found in global opencode agents directory"
+    exit 1
+fi
+if [ ! -f "$HOME/.config/opencode/agents/grimorio-architect.md" ]; then
+    echo "FAIL: grimorio-architect.md not found in global agents directory"
+    exit 1
+fi
+if [ ! -f "$HOME/.config/opencode/agents/grimorio-dm.md" ]; then
+    echo "FAIL: grimorio-dm.md not found in global agents directory"
+    exit 1
+fi
+echo "PASS: agents copied to global opencode agents directory"
+
 # 6. Skills directory exists in plugin dir
 if [ ! -d "$HOME/.config/opencode/plugins/grimorio/skills" ]; then
     echo "FAIL: skills/ not found in plugin directory"

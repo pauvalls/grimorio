@@ -15,6 +15,7 @@ INSTALL_DIR="${HOME}/.grimorio"
 INSTALL_DIR_LEGACY="${HOME}/.local/share/grimorio"
 BINARY_DIR="${HOME}/.local/bin"
 OPENCODE_PLUGIN_DIR="${HOME}/.config/opencode/plugins/grimorio"
+OPENCODE_AGENTS_DIR="${HOME}/.config/opencode/agents"
 CLAUDE_PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
 METADATA_FILE="${HOME}/.config/grimorio/install-meta.json"
 TMP_DIR=""
@@ -305,6 +306,16 @@ setup_plugins() {
 
         success "Plugin installed: $plugin_dir"
     done
+
+    # Copy agents to OpenCode global agents directory
+    if [ -d "${source_dir}/agents" ]; then
+        mkdir -p "$OPENCODE_AGENTS_DIR"
+        for f in "${source_dir}/agents"/*; do
+            [ -f "$f" ] || continue
+            cp -f "$f" "$OPENCODE_AGENTS_DIR/"
+        done
+        log "Agents copied to $OPENCODE_AGENTS_DIR"
+    fi
 }
 
 # ============================================================================

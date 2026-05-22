@@ -325,6 +325,20 @@ func TestInstallSh_PluginDirIsOpencode(t *testing.T) {
 	}
 }
 
+func TestInstallSh_CopiesAgentsToGlobalDir(t *testing.T) {
+	content, err := os.ReadFile(installShPath())
+	if err != nil {
+		t.Fatalf("failed to read install.sh: %v", err)
+	}
+	c := string(content)
+	if !strings.Contains(c, "OPENCODE_AGENTS_DIR") {
+		t.Error("install.sh must define OPENCODE_AGENTS_DIR")
+	}
+	if !strings.Contains(c, ".config/opencode/agents") {
+		t.Error("install.sh must reference ~/.config/opencode/agents for agent installation")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // T010: install.ps1 — Windows installer
 // ---------------------------------------------------------------------------
@@ -433,6 +447,20 @@ func TestInstallPs1_HasMCPJson(t *testing.T) {
 	}
 	if !strings.Contains(string(content), ".mcp.json") {
 		t.Error("install.ps1 must create .mcp.json")
+	}
+}
+
+func TestInstallPs1_CopiesAgentsToGlobalDir(t *testing.T) {
+	content, err := os.ReadFile(installPs1Path())
+	if err != nil {
+		t.Fatalf("failed to read install.ps1: %v", err)
+	}
+	c := string(content)
+	if !strings.Contains(c, "AgentsDir") {
+		t.Error("install.ps1 must define AgentsDir")
+	}
+	if !strings.Contains(c, ".config\\opencode\\agents") && !strings.Contains(c, ".config/opencode/agents") {
+		t.Error("install.ps1 must reference ~/.config/opencode/agents for agent installation")
 	}
 }
 
