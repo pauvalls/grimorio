@@ -34,7 +34,7 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     wrap_in_directory: true
     files:
-      - agents/**/*
+      - agents/*
       - skills/**/*
     format_overrides:
       - goos: windows

@@ -38,8 +38,15 @@ func main() {
 					return commands.RunMCPServer(cCtx)
 				},
 			},
-		campaign.NewCampaignCommand(),
-			update.NewUpdateCommand(version),
+	campaign.NewCampaignCommand(),
+		func() *cli.Command {
+			cmd := update.NewUpdateCommand(version)
+			cmd.Subcommands = []*cli.Command{
+				update.NewUpdateSkillsCommand(),
+				update.NewUpdateAgentsCommand(),
+			}
+			return cmd
+		}(),
 		},
 	}
 

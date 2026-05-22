@@ -704,4 +704,58 @@ func createTestZip(t *testing.T, path string, files map[string][]byte) {
 	}
 }
 
+// --- Asset Update Commands ---
+
+func TestNewUpdateSkillsCommand(t *testing.T) {
+	cmd := NewUpdateSkillsCommand()
+	if cmd == nil {
+		t.Fatal("NewUpdateSkillsCommand() returned nil")
+	}
+	if cmd.Name != "skills" {
+		t.Errorf("command name = %q, want %q", cmd.Name, "skills")
+	}
+	if cmd.Usage == "" {
+		t.Error("command usage should not be empty")
+	}
+	if cmd.Action == nil {
+		t.Error("command action should not be nil")
+	}
+}
+
+func TestNewUpdateAgentsCommand(t *testing.T) {
+	cmd := NewUpdateAgentsCommand()
+	if cmd == nil {
+		t.Fatal("NewUpdateAgentsCommand() returned nil")
+	}
+	if cmd.Name != "agents" {
+		t.Errorf("command name = %q, want %q", cmd.Name, "agents")
+	}
+	if cmd.Usage == "" {
+		t.Error("command usage should not be empty")
+	}
+	if cmd.Action == nil {
+		t.Error("command action should not be nil")
+	}
+}
+
+func TestCopyDir(t *testing.T) {
+	src := t.TempDir()
+	dst := t.TempDir()
+
+	// Create a test file structure
+	os.WriteFile(filepath.Join(src, "test.md"), []byte("test content"), 0644)
+
+	if err := copyDir(src, dst); err != nil {
+		t.Fatalf("copyDir() error = %v", err)
+	}
+
+	// Verify copied file exists
+	content, err := os.ReadFile(filepath.Join(dst, "test.md"))
+	if err != nil {
+		t.Fatalf("copied file not found: %v", err)
+	}
+	if string(content) != "test content" {
+		t.Errorf("copied content = %q, want %q", string(content), "test content")
+	}
+}
 
