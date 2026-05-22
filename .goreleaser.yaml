@@ -32,6 +32,10 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
+    wrap_in_directory: true
+    files:
+      - agents/**/*
+      - skills/**/*
     format_overrides:
       - goos: windows
         format: zip
