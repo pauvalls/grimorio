@@ -22,10 +22,10 @@ TMP_DIR=""
 # ============================================================================
 # LOGGING
 # ============================================================================
-log()   { printf "[Grimorio] %s\n" "$1"; }
-warn()  { printf "[WARNING] %s\n" "$1"; }
+log()   { printf "[Grimorio] %s\n" "$1" >&2; }
+warn()  { printf "[WARNING] %s\n" "$1" >&2; }
 error() { printf "[ERROR] %s\n" "$1" >&2; exit 1; }
-success() { printf "[SUCCESS] %s\n" "$1"; }
+success() { printf "[SUCCESS] %s\n" "$1" >&2; }
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
