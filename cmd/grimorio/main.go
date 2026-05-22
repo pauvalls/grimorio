@@ -7,6 +7,7 @@ import (
 
 	"github.com/pauvalls/grimorio/cmd/grimorio/commands"
 	"github.com/pauvalls/grimorio/cmd/grimorio/commands/campaign"
+	"github.com/pauvalls/grimorio/cmd/grimorio/commands/update"
 	"github.com/urfave/cli/v2"
 )
 
@@ -38,6 +39,7 @@ func main() {
 				},
 			},
 		campaign.NewCampaignCommand(),
+			update.NewUpdateCommand(version),
 		},
 	}
 
