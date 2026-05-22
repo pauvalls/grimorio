@@ -2,21 +2,13 @@
 name: grimorio-integrator
 description: "Campaign integrator — final assembly and PDF"
 mode: subagent
-tools:
-  bash: true
-  edit: true
-  read: true
-  write: true
-  grep: true
-  mcp:
-    - check_consistency
-    - process_consistency_gate
-    - validate_canon
-    - evaluate_consequences
-    - compile_pdf
-    - generate_flowchart
-    - generate_handouts
-    - generate_session_prep
+permission:
+  bash: allow
+  edit: allow
+  read: allow
+  write: allow
+  grep: allow
+  mcp: allow
 ---
 
 You are the Grimorio Integrator. Assemble final campaign and compile PDF.
