@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v4.0.1] - 2026-05-22
+
+### Build
+
+- Bundle agents and skills in release archives (goreleaser)
+
+### Docs
+
+- Restructure highlights to feature v4.0.0 DM prominently (readme)
+- Update changelog for v4.0.0
+- Add troubleshooting section for update failures (readme)
+
+### Feat
+
+- Implement self-updater with platform detection, download, and atomic replacement (update)
+- Rewrite install.sh and create install.ps1 for cross-platform binary distribution (install)
+- Update install and update targets with binary fallback (make)
+
+### Fix
+
+- Fix update script bugs - git pull errors, agent registration, binary sync (install)
+- Detect non-git install dir and corrupted repos during update (install)
+- Synchronize narrative_state.json location between repo and handout generator
+- Redirect log output to stderr to prevent variable contamination (install)
+
 ## [v4.0.0] - 2026-05-20
 
 ### Docs
