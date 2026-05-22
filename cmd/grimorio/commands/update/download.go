@@ -106,7 +106,7 @@ func extractTarGz(archivePath, destDir string) error {
 	if err != nil {
 		return fmt.Errorf("opening archive: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	gzReader, err := gzip.NewReader(f)
 	if err != nil {

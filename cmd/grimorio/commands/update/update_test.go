@@ -591,7 +591,7 @@ func TestUpdater_CheckForUpdate(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{
+		_, _ = fmt.Fprint(w, `{
 			"tag_name": "v1.3.0",
 			"assets": [
 				{"name": "grimorio_Linux_x86_64.tar.gz", "browser_download_url": "http://example.com/download"},
