@@ -1,197 +1,44 @@
-#!/bin/bash
-# Grimorio - Clean Installer v2
-# Complete MCP installation - removes old, installs fresh
-# Usage: curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+#!/bin/sh
+# Grimorio - Cross-Platform Installer v3
+# POSIX-compliant download-extract-configure script
+# Usage: curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh
+#
+# Supports: Linux (amd64, arm64), macOS (amd64, arm64)
+# Requires: curl, tar, shasum or sha256sum
+# Optional: python3 (for opencode.json merge), wkhtmltopdf (for PDF generation)
 
-REPO_URL="https://github.com/pauvalls/grimorio"
-INSTALL_DIR="${HOME}/.local/share/grimorio"
-CLAUDE_PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
-OPENCODE_PLUGIN_DIR="${HOME}/.config/opencode/plugins/grimorio"
+set -e
+
+REPO_OWNER="pauvalls"
+REPO_NAME="grimorio"
+INSTALL_DIR="${HOME}/.grimorio"
+INSTALL_DIR_LEGACY="${HOME}/.local/share/grimorio"
 BINARY_DIR="${HOME}/.local/bin"
-GLOBAL_SKILLS_DIR="${HOME}/.config/opencode/skills"
+OPENCODE_PLUGIN_DIR="${HOME}/.config/opencode/plugins/grimorio"
+CLAUDE_PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
 METADATA_FILE="${HOME}/.config/grimorio/install-meta.json"
+TMP_DIR=""
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log() { echo -e "${BLUE}[Grimorio]${NC} $1"; }
-warn() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
-error() { echo -e "${RED}[ERROR]${NC} $1" >&2; exit 1; }
-success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+# ============================================================================
+# LOGGING
+# ============================================================================
+log()   { printf "[Grimorio] %s\n" "$1"; }
+warn()  { printf "[WARNING] %s\n" "$1"; }
+error() { printf "[ERROR] %s\n" "$1" >&2; exit 1; }
+success() { printf "[SUCCESS] %s\n" "$1"; }
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
 # ============================================================================
-# SHA256 HELPERS
+# CLEANUP
 # ============================================================================
-sha256_file() {
-    sha256sum "$1" | cut -d' ' -f1
+cleanup() {
+    if [ -n "$TMP_DIR" ] && [ -d "$TMP_DIR" ]; then
+        rm -rf "$TMP_DIR"
+    fi
 }
 
-copy_if_changed() {
-    local src="$1" dst="$2" current_hash="$3"
-    # Always copy if destination does not exist
-    if [ ! -f "$dst" ]; then
-        mkdir -p "$(dirname "$dst")"
-        cp "$src" "$dst"
-        log "Copied: $src -> $dst"
-        return 1
-    fi
-    local file_hash
-    file_hash=$(sha256_file "$src" 2>/dev/null || echo "")
-    [ -n "$current_hash" ] && [ "$file_hash" = "$current_hash" ] && return 0
-    mkdir -p "$(dirname "$dst")"
-    cp "$src" "$dst"
-    log "Copied: $src -> $dst"
-    return 1
-}
-
-# ============================================================================
-# METADATA MANAGEMENT
-# ============================================================================
-read_meta() {
-    cat "$METADATA_FILE" 2>/dev/null || echo "{}"
-}
-
-write_meta() {
-    mkdir -p "$(dirname "$METADATA_FILE")"
-    command_exists jq || return 1
-
-    local binary_hash
-    binary_hash=$(sha256_file "$BINARY_DIR/grimorio" 2>/dev/null || echo "unknown")
-
-    local version commit build_date installed_at
-    version=$(git -C "$INSTALL_DIR" describe --tags --always --dirty 2>/dev/null || echo "v3.5.0")
-    commit=$(git -C "$INSTALL_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-    # Hash agents
-    local agents_json="{}"
-    if [ -d "$INSTALL_DIR/agents" ]; then
-        for f in "$INSTALL_DIR/agents"/grimorio-*.md; do
-            [ -f "$f" ] || continue
-            local name hash
-            name=$(basename "$f")
-            hash=$(sha256_file "$f")
-            agents_json=$(jq --arg name "$name" --arg hash "sha256-$hash" '.[$name] = $hash' <<< "$agents_json" 2>/dev/null)
-        done
-    fi
-
-    # Hash skills
-    local skills_json="{}"
-    if [ -d "$INSTALL_DIR/skills" ]; then
-        for skill_dir in "$INSTALL_DIR/skills"/*/; do
-            [ -d "$skill_dir" ] || continue
-            local skill_name="${skill_dir%/}"; skill_name="${skill_name##*/}"
-            local skill_file="$skill_dir/SKILL.md"
-            if [ -f "$skill_file" ]; then
-                local hash
-                hash=$(sha256_file "$skill_file")
-                skills_json=$(jq --arg name "$skill_name" --arg hash "sha256-$hash" '.[$name] = $hash' <<< "$skills_json" 2>/dev/null)
-            fi
-        done
-    fi
-
-    # Hash templates
-    local templates_json="{}"
-    local tmpl_dir="$INSTALL_DIR/internal/compiler/templates"
-    if [ -d "$tmpl_dir" ]; then
-        for f in "$tmpl_dir"/*.tmpl; do
-            [ -f "$f" ] || continue
-            local tmpl_name hash
-            tmpl_name=$(basename "$f")
-            hash=$(sha256_file "$f")
-            templates_json=$(jq --arg name "$tmpl_name" --arg hash "sha256-$hash" '.[$name] = $hash' <<< "$templates_json" 2>/dev/null)
-        done
-    fi
-
-    jq -n \
-      --arg version "$version" \
-      --arg commit "$commit" \
-      --arg buildDate "$build_date" \
-      --arg installedAt "$installed_at" \
-      --argjson agents "$agents_json" \
-      --argjson skills "$skills_json" \
-      --argjson templates "$templates_json" \
-      --arg binaryHash "sha256-$binary_hash" \
-      '{
-        "version": $version,
-        "commit": $commit,
-        "buildDate": $buildDate,
-        "installedAt": $installedAt,
-        "agents": $agents,
-        "skills": $skills,
-        "templates": $templates,
-        "binaryHash": $binaryHash
-      }' > "$METADATA_FILE"
-
-    success "Install metadata written to $METADATA_FILE"
-}
-
-# ============================================================================
-# CLEAN INSTALLATION - Remove EVERYTHING from previous installs
-# ============================================================================
-clean_installation() {
-    log "Cleaning previous Grimorio installation..."
-    local cleaned=false
-
-    # Clean plugin directories
-    for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
-        if [ -d "$plugin_dir" ]; then
-            rm -f "$plugin_dir/grimorio" "$plugin_dir/migrate-v1-to-v2"
-            rm -f "$plugin_dir/.mcp.json"
-            rm -rf "$plugin_dir/agents" "$plugin_dir/skills" "$plugin_dir/internal"
-            rm -rf "$plugin_dir/.claude-plugin" "$plugin_dir/commands"
-            log "Cleaned: $plugin_dir"
-            cleaned=true
-        fi
-    done
-
-    # Clean binaries
-    for bin in grimorio migrate-v1-to-v2; do
-        if [ -f "$BINARY_DIR/$bin" ]; then
-            rm -f "$BINARY_DIR/$bin"
-            log "Removed: $BINARY_DIR/$bin"
-            cleaned=true
-        fi
-    done
-
-    # Clean install directory
-    if [ -d "$INSTALL_DIR" ]; then
-        rm -rf "$INSTALL_DIR"
-        log "Removed: $INSTALL_DIR"
-        cleaned=true
-    fi
-
-    # Clean opencode.json
-    local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
-    if [ -f "$OPENCODE_CONFIG" ] && command_exists jq; then
-        jq 'del(.mcp.grimorio) | del(.command.grimorio) | 
-            del(.agent | with_entries(select(.key | startswith("grimorio"))))' \
-            "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" 2>/dev/null && \
-            mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-        log "Cleaned opencode.json"
-        cleaned=true
-    fi
-
-    # Clean shell configs
-    local shell_rcs=("${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.config/fish/config.fish" "${HOME}/.profile")
-    for rc in "${shell_rcs[@]}"; do
-        if [ -f "$rc" ]; then
-            awk '/^# === GRIMORIO CONFIG BEGIN ===$/{skip=1} /^# === GRIMORIO CONFIG END ===$/{skip=0} !skip' \
-                "$rc" > "${rc}.tmp" && mv "${rc}.tmp" "$rc"
-            grep -v "^export PATH.*\.local.*bin.*PATH" "$rc" > "${rc}.tmp" 2>/dev/null && mv "${rc}.tmp" "$rc" || true
-        fi
-    done
-    log "Cleaned shell configs"
-
-    [ "$cleaned" = true ] && success "Previous installation cleaned" || log "No previous installation found"
-}
+trap cleanup EXIT INT TERM
 
 # ============================================================================
 # PLATFORM DETECTION
@@ -207,744 +54,663 @@ detect_platform() {
     esac
 
     case "$OS" in
-        linux) WKHTMLTOPDF_URL="https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltopdf_0.12.6.1-3.linux-${ARCH}.deb" ;;
-        darwin) WKHTMLTOPDF_URL="https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltopdf-0.12.6.1-3.macos-cocoa.pkg" ;;
-        *) warn "Manual wkhtmltopdf install required for $OS"; WKHTMLTOPDF_URL="" ;;
+        linux|darwin) ;;
+        *) error "Unsupported operating system: $OS" ;;
     esac
 }
 
 # ============================================================================
-# INSTALL GO
+# ARCHIVE NAME CONSTRUCTION (matches GoReleaser template)
 # ============================================================================
-install_go() {
-    if command_exists go; then
-        log "Go found: $(go version | awk '{print $3}')"
-        return 0
+archive_name() {
+    local title_os
+    title_os=$(printf '%s' "$OS" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
+    local arch_label
+    if [ "$ARCH" = "amd64" ]; then
+        arch_label="x86_64"
+    else
+        arch_label="$ARCH"
     fi
+    printf "grimorio_%s_%s" "$title_os" "$arch_label"
+}
 
-    log "Installing Go 1.23.4..."
-    GO_VERSION="1.23.4"
-    curl -L "https://go.dev/dl/go${GO_VERSION}.${OS}-${ARCH}.tar.gz" -o "/tmp/go.tar.gz"
-    tar -C "${HOME}/.local" -xzf "/tmp/go.tar.gz"
-    export PATH="${HOME}/.local/go/bin:$PATH"
-    command_exists go || error "Go installation failed"
-    success "Go installed"
+archive_ext() {
+    if [ "$OS" = "darwin" ] || [ "$OS" = "linux" ]; then
+        printf "tar.gz"
+    else
+        printf "zip"
+    fi
 }
 
 # ============================================================================
-# INSTALL WKHTMLTOPDF
+# GITHUB API — fetch latest release tag
 # ============================================================================
-install_wkhtmltopdf() {
-    if command_exists wkhtmltopdf; then
-        log "wkhtmltopdf found: $(wkhtmltopdf --version | head -n1)"
+fetch_latest_tag() {
+    local api_url="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest"
+    local response
+    response=$(curl -sSL -H "Accept: application/vnd.github.v3+json" "$api_url" 2>/dev/null) || true
+
+    if [ -z "$response" ]; then
+        return 1
+    fi
+
+    # Extract tag_name using sed (no jq)
+    local tag
+    tag=$(printf '%s' "$response" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+
+    if [ -z "$tag" ]; then
+        return 1
+    fi
+
+    printf '%s' "$tag"
+}
+
+# ============================================================================
+# DOWNLOAD RELEASE
+# ============================================================================
+download_release() {
+    local tag="$1"
+    local name
+    name=$(archive_name)
+    local ext
+    ext=$(archive_ext)
+    local archive="${name}.${ext}"
+
+    local base_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${tag}"
+    local archive_url="${base_url}/${archive}"
+    local checksum_url="${base_url}/checksums.txt"
+
+    log "Downloading ${archive}..."
+    curl -sSL -o "${TMP_DIR}/${archive}" "$archive_url" || error "Failed to download ${archive}"
+
+    log "Downloading checksums.txt..."
+    curl -sSL -o "${TMP_DIR}/checksums.txt" "$checksum_url" || warn "Failed to download checksums.txt"
+
+    printf '%s' "${TMP_DIR}/${archive}"
+}
+
+# ============================================================================
+# VERIFY CHECKSUM
+# ============================================================================
+verify_checksum() {
+    local archive_path="$1"
+    local checksums_file="${TMP_DIR}/checksums.txt"
+
+    if [ ! -f "$checksums_file" ]; then
+        warn "No checksums.txt available, skipping verification"
         return 0
     fi
 
-    [ -z "$WKHTMLTOPDF_URL" ] && { warn "Install wkhtmltopdf manually"; return 0; }
+    local archive_name
+    archive_name=$(basename "$archive_path")
 
-    log "Installing wkhtmltopdf..."
+    local expected_hash
+    expected_hash=$(grep "^[[:space:]]*[a-f0-9]\{64\}[[:space:]]\+${archive_name}\$" "$checksums_file" 2>/dev/null | awk '{print $1}' | head -n1)
+
+    if [ -z "$expected_hash" ]; then
+        warn "No checksum found for ${archive_name}, skipping verification"
+        return 0
+    fi
+
+    local actual_hash
+    if command_exists sha256sum; then
+        actual_hash=$(sha256sum "$archive_path" | awk '{print $1}')
+    elif command_exists shasum; then
+        actual_hash=$(shasum -a 256 "$archive_path" | awk '{print $1}')
+    else
+        warn "No SHA256 tool found, skipping verification"
+        return 0
+    fi
+
+    if [ "$actual_hash" != "$expected_hash" ]; then
+        error "Checksum mismatch for ${archive_name}!\nExpected: ${expected_hash}\nActual:   ${actual_hash}"
+    fi
+
+    log "Checksum verified: ${archive_name}"
+}
+
+# ============================================================================
+# EXTRACT ARCHIVE
+# ============================================================================
+extract_archive() {
+    local archive_path="$1"
+    local extract_dir="${TMP_DIR}/extracted"
+
+    mkdir -p "$extract_dir"
+
+    case "$archive_path" in
+        *.tar.gz)
+            tar -xzf "$archive_path" -C "$extract_dir" ;;
+        *.zip)
+            if command_exists unzip; then
+                unzip -q "$archive_path" -d "$extract_dir"
+            else
+                error "unzip is required to extract .zip archives"
+            fi
+            ;;
+        *)
+            error "Unknown archive format: $archive_path" ;;
+    esac
+
+    # With wrap_in_directory, GoReleaser creates a subdirectory
+    local inner_dir
+    inner_dir=$(find "$extract_dir" -maxdepth 1 -mindepth 1 -type d | head -n1)
+
+    if [ -n "$inner_dir" ] && [ -f "${inner_dir}/grimorio" ]; then
+        printf '%s' "$inner_dir"
+    elif [ -f "${extract_dir}/grimorio" ]; then
+        printf '%s' "$extract_dir"
+    else
+        error "Archive extraction failed: grimorio binary not found"
+    fi
+}
+
+# ============================================================================
+# INSTALL BINARY
+# ============================================================================
+install_binary() {
+    local source_dir="$1"
+    local binary_name="grimorio"
+    [ "$OS" = "windows" ] && binary_name="grimorio.exe"
+
+    # Migrate legacy install dir if present
+    if [ -d "$INSTALL_DIR_LEGACY" ] && [ ! -d "$INSTALL_DIR" ]; then
+        log "Migrating legacy install directory..."
+        mv "$INSTALL_DIR_LEGACY" "$INSTALL_DIR"
+    fi
+
+    # Create install directory
+    mkdir -p "$INSTALL_DIR"
+
+    # Remove old binary to avoid conflicts
+    rm -f "${INSTALL_DIR}/${binary_name}"
+
+    # Copy binary
+    cp "${source_dir}/${binary_name}" "${INSTALL_DIR}/${binary_name}"
+    chmod +x "${INSTALL_DIR}/${binary_name}"
+
+    # Create symlink or copy to ~/.local/bin
+    mkdir -p "$BINARY_DIR"
+    rm -f "${BINARY_DIR}/${binary_name}"
+
+    if [ -w "$BINARY_DIR" ]; then
+        ln -s "${INSTALL_DIR}/${binary_name}" "${BINARY_DIR}/${binary_name}" 2>/dev/null || \
+            cp "${INSTALL_DIR}/${binary_name}" "${BINARY_DIR}/${binary_name}"
+    else
+        cp "${INSTALL_DIR}/${binary_name}" "${BINARY_DIR}/${binary_name}"
+    fi
+
+    success "Binary installed: ${BINARY_DIR}/${binary_name}"
+}
+
+# ============================================================================
+# CHECK WKHTMLTOPDF
+# ============================================================================
+check_wkhtmltopdf() {
+    if command_exists wkhtmltopdf; then
+        log "wkhtmltopdf found: $(wkhtmltopdf --version 2>/dev/null | head -n1 || echo 'unknown version')"
+        return 0
+    fi
+
+    warn "wkhtmltopdf not found. PDF generation will not work."
     case "$OS" in
         linux)
-            if command_exists dpkg; then
-                curl -L "$WKHTMLTOPDF_URL" -o /tmp/wkhtmltopdf.deb
-                dpkg -x /tmp/wkhtmltopdf.deb /tmp/wkhtmltopdf
-                mkdir -p "$BINARY_DIR"
-                cp /tmp/wkhtmltopdf/usr/local/bin/wkhtmltopdf "$BINARY_DIR/"
-                chmod +x "$BINARY_DIR/wkhtmltopdf"
-            fi ;;
+            warn "Install with: sudo apt-get install wkhtmltopdf"
+            warn "    or:      sudo dnf install wkhtmltopdf"
+            warn "    or:      sudo pacman -S wkhtmltopdf"
+            ;;
         darwin)
-            curl -L "$WKHTMLTOPDF_URL" -o /tmp/wkhtmltopdf.pkg
-            log "Run: sudo installer -pkg /tmp/wkhtmltopdf.pkg -target /" ;;
+            warn "Install with: brew install --cask wkhtmltopdf"
+            ;;
     esac
-
-    command_exists wkhtmltopdf && success "wkhtmltopdf installed" || warn "Manual install may be required"
 }
 
 # ============================================================================
-# SETUP REPOSITORY
+# SETUP PLUGINS — Copy agents and skills to plugin directories
 # ============================================================================
-setup_repo() {
-    log "Setting up repository..."
-    [ -d "$INSTALL_DIR" ] && rm -rf "$INSTALL_DIR"
-    mkdir -p "$INSTALL_DIR"
-    git clone --depth 200 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null || \
-        (curl -sSL "${REPO_URL}/archive/refs/heads/main.tar.gz" | tar -xzf - -C "$INSTALL_DIR" --strip-components=1)
-    # Fetch tags for proper version detection
-    git -C "$INSTALL_DIR" fetch --tags 2>/dev/null || true
-    success "Repository ready at $INSTALL_DIR"
-}
+setup_plugins() {
+    local source_dir="$1"
 
-# ============================================================================
-# BUILD BINARIES
-# ============================================================================
-build_binary() {
-    log "Building Grimorio binaries..."
-    cd "$INSTALL_DIR"
-    export PATH="${HOME}/.local/go/bin:$PATH"
-
-    # Get version info from git
-    VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "v3.0.0-dev")
-    COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}"
-
-    go build -ldflags "$LDFLAGS" -o grimorio ./cmd/grimorio
-    go build -ldflags "$LDFLAGS" -o migrate-v1-to-v2 ./cmd/migrate-v1-to-v2
-
-    mkdir -p "$BINARY_DIR"
-    cp grimorio migrate-v1-to-v2 "$BINARY_DIR/"
-    chmod +x "$BINARY_DIR/grimorio" "$BINARY_DIR/migrate-v1-to-v2"
-
-    success "Binaries installed to $BINARY_DIR"
-}
-
-# ============================================================================
-# MIGRATE CAMPAIGNS
-# ============================================================================
-migrate_existing_campaigns() {
-    local CAMPAIGNS_DIR="${HOME}/campaigns"
-    [ ! -d "$CAMPAIGNS_DIR" ] && return 0
-
-    local needs_migration=false
-    for campaign_dir in "$CAMPAIGNS_DIR"/*/; do
-        [ -d "$campaign_dir" ] && [ ! -f "$campaign_dir/canon.json" ] && needs_migration=true && break
-    done
-
-    [ "$needs_migration" = false ] && return 0
-
-    log "Migrating v1 campaigns..."
-    "$BINARY_DIR/migrate-v1-to-v2" "$CAMPAIGNS_DIR" 2>/dev/null && \
-        success "Migration complete. Backups in .v1-backup/" || \
-        warn "Migration had issues"
-}
-
-# ============================================================================
-# SETUP PLUGIN - Copy ALL files
-# ============================================================================
-setup_plugin() {
-    for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
+    for plugin_dir in "$OPENCODE_PLUGIN_DIR" "$CLAUDE_PLUGIN_DIR"; do
         log "Setting up plugin: $plugin_dir"
-        mkdir -p "$plugin_dir"/{agents,skills,internal/compiler/templates}
+        mkdir -p "$plugin_dir"
 
-        # Copy binaries
-        # Copy binaries (use temp+mv to avoid "text file busy")
-        for bin in grimorio migrate-v1-to-v2; do
-            if [ -f "$BINARY_DIR/$bin" ]; then
-                cp -f "$BINARY_DIR/$bin" "$plugin_dir/$bin.tmp"
-                chmod +x "$plugin_dir/$bin.tmp"
-                mv -f "$plugin_dir/$bin.tmp" "$plugin_dir/$bin"
-            fi
-        done
-
-        # Copy agents (if exist)
-        if [ -d "$INSTALL_DIR/agents" ]; then
-            for f in "$INSTALL_DIR/agents"/grimorio-*.md; do
-                [ -f "$f" ] && cp -f "$f" "$plugin_dir/agents/"
+        # Copy agents
+        if [ -d "${source_dir}/agents" ]; then
+            mkdir -p "${plugin_dir}/agents"
+            for f in "${source_dir}/agents"/*; do
+                [ -f "$f" ] || continue
+                cp -f "$f" "${plugin_dir}/agents/"
             done
+            log "Agents copied to ${plugin_dir}/agents"
         fi
 
-        # Copy skills (if exist) — subdirectories with SKILL.md
-        if [ -d "$INSTALL_DIR/skills" ]; then
-            mkdir -p "$plugin_dir/skills"
-            for skill_dir_entry in "$INSTALL_DIR/skills"/*/; do
-                [ -d "$skill_dir_entry" ] || continue
-                local sname="${skill_dir_entry%/}"; sname="${sname##*/}"
-                local sfile="$skill_dir_entry/SKILL.md"
-                [ -f "$sfile" ] || continue
-                mkdir -p "$plugin_dir/skills/$sname"
-                cp -f "$sfile" "$plugin_dir/skills/$sname/SKILL.md"
-                # Also copy to global skills directory
-                mkdir -p "$GLOBAL_SKILLS_DIR/$sname"
-                cp -f "$sfile" "$GLOBAL_SKILLS_DIR/$sname/SKILL.md"
+        # Copy skills
+        if [ -d "${source_dir}/skills" ]; then
+            mkdir -p "${plugin_dir}/skills"
+            for skill_dir in "${source_dir}/skills"/*/; do
+                [ -d "$skill_dir" ] || continue
+                local sname
+                sname=$(basename "$skill_dir")
+                mkdir -p "${plugin_dir}/skills/${sname}"
+                if [ -f "${skill_dir}/SKILL.md" ]; then
+                    cp -f "${skill_dir}/SKILL.md" "${plugin_dir}/skills/${sname}/SKILL.md"
+                fi
             done
-        fi
-
-        # Copy templates (if exist)
-        if [ -d "$INSTALL_DIR/internal/compiler/templates" ]; then
-            cp -r "$INSTALL_DIR/internal/compiler/templates"/* "$plugin_dir/internal/compiler/templates/" 2>/dev/null || true
+            log "Skills copied to ${plugin_dir}/skills"
         fi
 
         # Create .mcp.json
-        cat > "$plugin_dir/.mcp.json" << EOF
-{
-  "grimorio": {
-    "command": "$plugin_dir/grimorio",
-    "args": [],
-    "env": {}
-  }
-}
-EOF
+        create_mcp_json "$plugin_dir"
+
         success "Plugin installed: $plugin_dir"
     done
 }
 
 # ============================================================================
-# COPY COMMANDS DIRECTORY (for OpenCode/Claude Code)
+# CREATE .MCP.JSON
 # ============================================================================
-copy_commands() {
-    local src_commands="${INSTALL_DIR}/commands"
-    
-    # Copy commands to plugin directories
-    for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
-        if [ -d "$src_commands" ]; then
-            mkdir -p "$plugin_dir/commands"
-            cp -r "$src_commands/"* "$plugin_dir/commands/" 2>/dev/null || true
-            log "Commands copied to: $plugin_dir/commands"
-        fi
-    done
+create_mcp_json() {
+    local plugin_dir="$1"
+    local binary_path="${plugin_dir}/grimorio"
+    if [ "$OS" = "windows" ]; then
+        binary_path="${plugin_dir}/grimorio.exe"
+    fi
+
+    cat > "${plugin_dir}/.mcp.json" << EOF
+{
+  "grimorio": {
+    "command": "${binary_path}",
+    "args": [],
+    "env": {}
+  }
 }
-
-# ============================================================================
-# PARSE FRONTMATTER TOOLS - Parse YAML tools block from agent frontmatter
-# ============================================================================
-parse_frontmatter_tools() {
-    local file="$1"
-    local frontmatter
-    frontmatter=$(sed -n '/^---$/,/^---$/p' "$file" 2>/dev/null)
-
-    # Fallback: return default tools JSON if no tools block found
-    echo "$frontmatter" | grep -q "^tools:" || {
-        echo '{"bash": true, "edit": true, "read": true, "write": true}'
-        return
-    }
-
-    # Extract tools block content (indented lines under "tools:")
-    local tools_yaml
-    tools_yaml=$(echo "$frontmatter" | awk '
-        /^tools:/ { found=1; next }
-        found && /^  [a-z]/ { print; next }
-        found && /^    [ -]/ { print; next }
-        found && /^[a-z]/ { exit }
-        found && /^---/ { exit }
-    ')
-
-    # Build JSON from YAML key: value pairs
-    local tools_json="{"
-    local first=true
-    while IFS= read -r line; do
-        # Skip "mcp:" header
-        [[ "$line" =~ ^[[:space:]]*mcp: ]] && continue
-
-        # Parse "  key: value" (bool tools)
-        if [[ "$line" =~ ^[[:space:]]+([a-zA-Z_]+):[[:space:]]*(true|false) ]]; then
-            local key="${BASH_REMATCH[1]}"
-            local val="${BASH_REMATCH[2]}"
-            [ "$first" = true ] || tools_json+=", "
-            first=false
-            tools_json+="\"$key\": $val"
-        fi
-    done <<< "$tools_yaml"
-
-    tools_json+="}"
-
-    # Check if there is an mcp array
-    if echo "$tools_yaml" | grep -q "^[[:space:]]*mcp:"; then
-        # Build mcp array
-        local mcp_items="["
-        local mcp_first=true
-        while IFS= read -r line; do
-            if [[ "$line" =~ ^[[:space:]]+-[[:space:]]+\"?(.*[^\"])?\"?$ ]]; then
-                local item="${BASH_REMATCH[1]}"
-                [ "$mcp_first" = true ] || mcp_items+=", "
-                mcp_first=false
-                mcp_items+="\"$item\""
-            fi
-        done < <(echo "$tools_yaml" | awk '/^  mcp:/,/^$/' | grep "^-")
-
-        mcp_items+="]"
-        # Remove trailing comma/space and close, then add mcp
-        tools_json="${tools_json%, }"
-        tools_json="${tools_json%,}"
-        tools_json="${tools_json%}}"
-        [ -z "$tools_json" ] && tools_json="{"
-        [ "$tools_json" = "{" ] || tools_json+=", "
-        tools_json+="\"mcp\": $mcp_items}"
-    fi
-
-    # If tools_json is empty or just "{}", use default
-    [ "$tools_json" = "{}" ] || [ "$tools_json" = "{" ] || [ -z "$tools_json" ] && tools_json='{"bash": true, "edit": true, "read": true, "write": true}'
-
-    echo "$tools_json"
-}
-
-# ============================================================================
-# CONFIGURE OPENCODE.JSON — Non-destructive merge with grimorio_auto_generated flag
-# ============================================================================
-configure_opencode_merge() {
-    local OPENCODE_CONFIG="${HOME}/.config/opencode/opencode.json"
-
-    # Create default if missing
-    if [ ! -f "$OPENCODE_CONFIG" ]; then
-        log "No opencode.json found, creating default..."
-        mkdir -p "$(dirname "$OPENCODE_CONFIG")"
-        echo '{}' > "$OPENCODE_CONFIG"
-    fi
-
-    command_exists jq || { warn "jq not found, opencode.json merge skipped"; return 1; }
-
-    # Validate JSON
-    if ! jq empty "$OPENCODE_CONFIG" 2>/dev/null; then
-        warn "opencode.json is not valid JSON, backing up and recreating"
-        cp "$OPENCODE_CONFIG" "${OPENCODE_CONFIG}.backup.$(date +%Y%m%d%H%M%S)"
-        echo '{}' > "$OPENCODE_CONFIG"
-    fi
-
-    # Backup before modifying
-    cp "$OPENCODE_CONFIG" "${OPENCODE_CONFIG}.backup.$(date +%Y%m%d%H%M%S)"
-
-    log "Merging grimorio configuration into opencode.json..."
-
-    # ------------------------------------------------------------------
-    # Build agent entries from agents/ directory
-    # ------------------------------------------------------------------
-    local new_agents="{}"
-    if [ -d "$INSTALL_DIR/agents" ]; then
-        for f in "$INSTALL_DIR/agents"/grimorio-*.md; do
-            [ -f "$f" ] || continue
-            local name
-            name=$(basename "$f" .md)
-            local desc
-            desc=$(sed -n '/^---$/,/^---$/p' "$f" | grep "^description:" | sed 's/^description: "\(.*\)"$/\1/')
-            local mode
-            mode=$(sed -n '/^---$/,/^---$/p' "$f" | grep "^mode:" | awk '{print $2}')
-            local prompt
-            prompt=$(awk 'BEGIN{n=0} /^---$/{n++; next} n>=2' "$f")
-
-            local agent_json
-            local agent_tools
-            agent_tools=$(parse_frontmatter_tools "$f")
-            # Validate tools JSON before using it
-            if ! echo "$agent_tools" | jq empty 2>/dev/null; then
-                warn "  Invalid tools JSON for agent '$name', using defaults"
-                agent_tools='{"bash": true, "edit": true, "read": true, "write": true}'
-            fi
-
-            agent_json=$(jq -n \
-              --arg desc "$desc" \
-              --arg mode "$mode" \
-              --arg prompt "$prompt" \
-              --argjson tools "$agent_tools" \
-              '{
-                "grimorio_auto_generated": true,
-                "description": $desc,
-                "mode": $mode,
-                "prompt": $prompt,
-                "tools": $tools,
-                "options": {}
-              }')
-
-            if [ $? -ne 0 ] || [ -z "$agent_json" ]; then
-                warn "  Failed to build agent '$name' (invalid frontmatter)"
-                continue
-            fi
-
-            new_agents=$(jq --arg name "$name" --argjson agent "$agent_json" \
-              '.[$name] = $agent' <<< "$new_agents" 2>/dev/null)
-
-            if [ $? -eq 0 ]; then
-                log "  Agent built: $name"
-            else
-                warn "  Failed to register agent: $name"
-            fi
-        done
-    fi
-
-    # ------------------------------------------------------------------
-    # Build command entry from grimorio-architect prompt
-    # ------------------------------------------------------------------
-    local command_json="{}"
-    if [ -f "$INSTALL_DIR/agents/grimorio-architect.md" ]; then
-        local architect_prompt
-        architect_prompt=$(awk 'BEGIN{n=0} /^---$/{n++; next} n>=2' "$INSTALL_DIR/agents/grimorio-architect.md")
-        command_json=$(jq -n \
-          --arg template "$architect_prompt" \
-          '{
-            "grimorio_auto_generated": true,
-            "description": "Generate a complete D&D 5e campaign or one-shot from an idea (executes in main thread)",
-            "subtask": false,
-            "template": $template
-          }')
-    fi
-
-    # ------------------------------------------------------------------
-    # Build MCP entry
-    # ------------------------------------------------------------------
-    local mcp_json
-    mcp_json=$(jq -n \
-      --arg path "$OPENCODE_PLUGIN_DIR/grimorio" \
-      '{
-        "grimorio_auto_generated": true,
-        "command": [$path],
-        "type": "local",
-        "enabled": true
-      }')
-
-    # ------------------------------------------------------------------
-    # Merge into opencode.json
-    # Strategy: for each grimorio-owned key, if it exists WITHOUT the
-    # grimorio_auto_generated flag, preserve it (user customized).
-    # Otherwise, replace with our value.
-    # ------------------------------------------------------------------
-    jq \
-      --argjson new_agents "$new_agents" \
-      --argjson new_command "$command_json" \
-      --argjson new_mcp "$mcp_json" \
-      '
-      # Merge agents: for each grimorio agent, check ownership
-      .agent = (.agent // {})
-      | .agent = (
-          reduce ($new_agents | to_entries[]) as $entry (.agent;
-            if .[$entry.key] and (.[$entry.key].grimorio_auto_generated != true) then
-              .
-            else
-              .[$entry.key] = $entry.value
-            end
-          )
-        )
-      # Merge command.grimorio
-      | .command = (.command // {})
-      | if .command.grimorio and (.command.grimorio.grimorio_auto_generated != true) then
-          .
-        else
-          .command.grimorio = $new_command
-        end
-      # Merge mcp.grimorio
-      | .mcp = (.mcp // {})
-      | if .mcp.grimorio and (.mcp.grimorio.grimorio_auto_generated != true) then
-          .
-        else
-          .mcp.grimorio = $new_mcp
-        end
-      ' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp" && \
-        mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
-
-    success "OpenCode configuration merged (user-customized grimorio keys preserved)"
-}
-
-# ============================================================================
-# CONFIGURE SHELL
-# ============================================================================
-configure_shell() {
-    log "Configuring shell..."
-    local SHELL_RC=""
-    case "$(basename "$SHELL")" in
-        bash) SHELL_RC="${HOME}/.bashrc" ;;
-        zsh)  SHELL_RC="${HOME}/.zshrc" ;;
-        fish) SHELL_RC="${HOME}/.config/fish/config.fish" ;;
-        *)    SHELL_RC="${HOME}/.profile" ;;
-    esac
-
-    [ ! -f "$SHELL_RC" ] && return 0
-
-    # Remove old config
-    awk '/^# === GRIMORIO CONFIG BEGIN ===$/{skip=1} /^# === GRIMORIO CONFIG END ===$/{skip=0} !skip' \
-        "$SHELL_RC" > "${SHELL_RC}.tmp" && mv "${SHELL_RC}.tmp" "$SHELL_RC"
-
-    # Add new config
-    cat >> "$SHELL_RC" << 'EOF'
-
-# === GRIMORIO CONFIG BEGIN ===
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="$HOME/.local/go/bin:$PATH"
-# === GRIMORIO CONFIG END ===
 EOF
-
-    log "Shell configured: $SHELL_RC"
 }
 
 # ============================================================================
-# UPDATE MODE — Incremental update via git pull + conditional rebuild
+# MERGE OPENCODE.JSON — Python/awk fallback, no jq required
 # ============================================================================
-do_update() {
-    log "Starting incremental update..."
-
-    # Check for prior install — fall back to full install if no meta
-    [ -f "$METADATA_FILE" ] || { warn "No prior install found, running full install"; do_install; return; }
-
-    log "Reading install metadata from $METADATA_FILE..."
-
-    # Ensure we're in the install dir
-    if [ ! -d "$INSTALL_DIR" ]; then
-        warn "Install directory not found, running full install"
-        do_install
-        return
+merge_opencode_config() {
+    local config_file="${HOME}/.config/opencode/opencode.json"
+    local plugin_dir="$OPENCODE_PLUGIN_DIR"
+    local binary_path="${plugin_dir}/grimorio"
+    if [ "$OS" = "windows" ]; then
+        binary_path="${plugin_dir}/grimorio.exe"
     fi
 
-    # Check if it's actually a git repo
-    if [ ! -d "$INSTALL_DIR/.git" ]; then
-        warn "Install directory is not a git repository, running full install"
-        do_install
-        return
-    fi
+    mkdir -p "$(dirname "$config_file")"
 
-    # git pull
-    log "Pulling latest changes..."
-    cd "$INSTALL_DIR"
-    if ! git remote get-url origin &>/dev/null; then
-        warn "No git remote configured, running full install"
-        do_install
-        return
-    fi
+    # Build grimorio config fragment
+    local grimorio_config
+    grimorio_config=$(cat << GRIMJSON
+{
+  "mcp": {
+    "grimorio": {
+      "command": ["${binary_path}"],
+      "type": "local",
+      "enabled": true
+    }
+  },
+  "command": {
+    "grimorio": {
+      "description": "Generate a complete D&D 5e campaign or one-shot from an idea (executes in main thread)",
+      "subtask": false,
+      "template": "You are Grimorio, a D&D 5e campaign generator."
+    }
+  }
+}
+GRIMJSON
+)
 
-    local pull_output pull_exit
-    pull_output=$(git pull origin main 2>&1)
-    pull_exit=$?
-    if [ $pull_exit -ne 0 ]; then
-        error "Update failed: git pull failed (exit $pull_exit)"
-        if [ -n "$pull_output" ]; then
-            error "Git output: $pull_output"
-        fi
-        if echo "$pull_output" | grep -q "would be overwritten"; then
-            warn "You have local changes that conflict with the update."
-            warn "Run: cd $INSTALL_DIR && git status"
-            warn "Then either commit/stash changes or run: git reset --hard && git clean -fd"
-        elif echo "$pull_output" | grep -q "not a git repository"; then
-            warn "Repository corrupted. Running full install..."
-            do_install
-            return
-        fi
-        return 1
-    fi
-
-    # Check if anything changed
-    local changed_files
-    changed_files=$(git diff --name-only HEAD@{1} HEAD 2>/dev/null || echo "")
-    if [ -z "$changed_files" ]; then
-        success "Already up to date"
+    if [ ! -f "$config_file" ]; then
+        printf '%s\n' "$grimorio_config" > "$config_file"
+        success "Created opencode.json with Grimorio config"
         return 0
     fi
 
-    log "Changes detected in: $(echo "$changed_files" | wc -l) file(s)"
+    # Backup existing config
+    cp "$config_file" "${config_file}.backup.$(date +%Y%m%d%H%M%S)"
 
-    # Determine if rebuild is needed
-    local needs_build=false
-    if echo "$changed_files" | grep -qE '^(cmd/|go\.mod|go\.sum|internal/|Makefile)'; then
-        needs_build=true
-        log "Source code changes detected, rebuilding binary..."
+    # Try python3 first for reliable JSON merge
+    if command_exists python3; then
+        python3 -c "
+import json, sys, re
+config_path = '${config_file}'
+with open(config_path, 'r') as f:
+    content = f.read()
+try:
+    data = json.loads(content)
+except json.JSONDecodeError as e:
+    print(f'Warning: opencode.json is invalid JSON: {e}', file=sys.stderr)
+    sys.exit(1)
+
+# Load grimorio config
+grimorio = json.loads('''${grimorio_config}''')
+
+# Remove old auto-generated grimorio entries from mcp, command, agent
+for key in ['mcp', 'command', 'agent']:
+    if key in data and isinstance(data[key], dict):
+        data[key] = {k: v for k, v in data[key].items()
+                     if not isinstance(v, dict) or v.get('grimorio_auto_generated') != True}
+
+# Merge grimorio config
+for key in ['mcp', 'command']:
+    if key in grimorio:
+        if key not in data:
+            data[key] = {}
+        data[key].update(grimorio[key])
+
+with open(config_path, 'w') as f:
+    json.dump(data, f, indent=2)
+" 2>/dev/null && {
+            success "Merged Grimorio config into opencode.json (python3)"
+            return 0
+        }
     fi
 
-    if [ "$needs_build" = true ]; then
-        export PATH="${HOME}/.local/go/bin:$PATH"
-        make build || { error "Build failed. Check for compilation errors."; return 1; }
-
-        mkdir -p "$BINARY_DIR"
-        cp grimorio "$BINARY_DIR/grimorio.tmp"
-        chmod +x "$BINARY_DIR/grimorio.tmp"
-        mv -f "$BINARY_DIR/grimorio.tmp" "$BINARY_DIR/grimorio"
-        log "Binary updated: $BINARY_DIR/grimorio"
-
-        # Sync to plugin dirs
-        for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
-            mkdir -p "$plugin_dir"
-            # Use temp file + mv to avoid "text file busy" when binary is running
-            cp grimorio "$plugin_dir/grimorio.tmp"
-            chmod +x "$plugin_dir/grimorio.tmp"
-            mv -f "$plugin_dir/grimorio.tmp" "$plugin_dir/grimorio"
-            log "Plugin binary synced: $plugin_dir/grimorio"
-
-            # Also sync migrate binary if it exists
-            if [ -f migrate-v1-to-v2 ]; then
-                cp migrate-v1-to-v2 "$plugin_dir/migrate-v1-to-v2.tmp"
-                chmod +x "$plugin_dir/migrate-v1-to-v2.tmp"
-                mv -f "$plugin_dir/migrate-v1-to-v2.tmp" "$plugin_dir/migrate-v1-to-v2"
-            fi
-        done
+    # Fallback: try python
+    if command_exists python; then
+        python -c "
+import json, sys
+config_path = '${config_file}'
+with open(config_path, 'r') as f:
+    data = json.load(f) if f.read().strip() else {}
+if not data:
+    data = {}
+grimorio = json.loads('''${grimorio_config}''')
+for key in ['mcp', 'command']:
+    if key in grimorio:
+        if key not in data:
+            data[key] = {}
+        data[key].update(grimorio[key])
+with open(config_path, 'w') as f:
+    json.dump(data, f, indent=2)
+" 2>/dev/null && {
+            success "Merged Grimorio config into opencode.json (python)"
+            return 0
+        }
     fi
 
-    # Copy agents with hash comparison
-    if [ -d "$INSTALL_DIR/agents" ]; then
-        local current_meta
-        current_meta=$(read_meta)
-        for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
-            mkdir -p "$plugin_dir/agents"
-            for f in "$INSTALL_DIR/agents"/grimorio-*.md; do
-                [ -f "$f" ] || continue
-                local fname
-                fname=$(basename "$f")
-                local current_hash
-                current_hash=$(echo "$current_meta" | jq -r ".agents[\"$fname\"] // \"\"" 2>/dev/null)
-                # Strip "sha256-" prefix for comparison
-                current_hash="${current_hash#sha256-}"
-                copy_if_changed "$f" "$plugin_dir/agents/$fname" "$current_hash"
-            done
-        done
+    # Last resort: awk-based merge for simple cases
+    if command_exists awk; then
+        local tmp_file="${config_file}.tmp.$$"
+        awk '
+            BEGIN { in_mcp=0; in_command=0; brace_depth=0 }
+            /"mcp"[[:space:]]*:/ { in_mcp=1 }
+            /"command"[[:space:]]*:/ { in_command=1 }
+            /"grimorio"[[:space:]]*:/ {
+                if (in_mcp || in_command) {
+                    # Skip this entry and its value
+                    getline
+                    while (match($0, /{/) || brace_depth > 0) {
+                        if (match($0, /{/)) brace_depth++
+                        if (match($0, /}/)) brace_depth--
+                        if (brace_depth <= 0) break
+                        getline
+                    }
+                    next
+                }
+            }
+            /}[[:space:]]*,?[[:space:]]*$/ {
+                if (in_mcp) in_mcp=0
+                if (in_command) in_command=0
+            }
+            { print }
+        ' "$config_file" > "$tmp_file" 2>/dev/null || cp "$config_file" "$tmp_file"
+
+        # Append grimorio entries before final closing brace
+        awk -v grimorio_mcp='"grimorio": {"command": ["'"$binary_path"'"], "type": "local", "enabled": true}' \
+            -v grimorio_cmd='"grimorio": {"description": "Generate a complete D&D 5e campaign or one-shot", "subtask": false, "template": "You are Grimorio..."}' \
+            '
+            { print }
+            END {
+                print ","
+                print "  \"mcp\": {"
+                print "    " grimorio_mcp
+                print "  },"
+                print "  \"command\": {"
+                print "    " grimorio_cmd
+                print "  }"
+            }
+        ' "$tmp_file" > "${config_file}.new" 2>/dev/null && mv "${config_file}.new" "$config_file"
+        rm -f "$tmp_file"
+        success "Merged Grimorio config into opencode.json (awk fallback)"
+        return 0
     fi
 
-    # Copy skills with hash comparison
-    if [ -d "$INSTALL_DIR/skills" ]; then
-        local current_meta
-        current_meta=$(read_meta)
-        # Copy to plugin directories
-        for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
-            mkdir -p "$plugin_dir/skills"
-            for skill_dir in "$INSTALL_DIR/skills"/*/; do
-                [ -d "$skill_dir" ] || continue
-                local skill_name="${skill_dir%/}"; skill_name="${skill_name##*/}"
-                local skill_file="$skill_dir/SKILL.md"
-                [ -f "$skill_file" ] || continue
-                local current_hash
-                current_hash=$(echo "$current_meta" | jq -r ".skills[\"$skill_name\"] // \"\"" 2>/dev/null)
-                current_hash="${current_hash#sha256-}"
-                mkdir -p "$plugin_dir/skills/$skill_name"
-                copy_if_changed "$skill_file" "$plugin_dir/skills/$skill_name/SKILL.md" "$current_hash"
-            done
-        done
-        # Also copy to global skills directory (OpenCode loads skills from here)
-        for skill_dir_entry in "$INSTALL_DIR/skills"/*/; do
-            [ -d "$skill_dir_entry" ] || continue
-            local sname="${skill_dir_entry%/}"; sname="${sname##*/}"
-            local sfile="$skill_dir_entry/SKILL.md"
-            [ -f "$sfile" ] || continue
-            local shash
-            shash=$(echo "$current_meta" | jq -r ".skills[\"$sname\"] // \"\"" 2>/dev/null)
-            shash="${shash#sha256-}"
-            mkdir -p "$GLOBAL_SKILLS_DIR/$sname"
-            copy_if_changed "$sfile" "$GLOBAL_SKILLS_DIR/$sname/SKILL.md" "$shash"
-        done
-    fi
+    warn "Could not merge opencode.json — install python3 for automatic merge, or merge manually"
+    return 1
+}
 
-    # Copy templates with hash comparison
-    local tmpl_dir="$INSTALL_DIR/internal/compiler/templates"
-    if [ -d "$tmpl_dir" ]; then
-        local current_meta
-        current_meta=$(read_meta)
-        for plugin_dir in "$CLAUDE_PLUGIN_DIR" "$OPENCODE_PLUGIN_DIR"; do
-            mkdir -p "$plugin_dir/internal/compiler/templates"
-            for f in "$tmpl_dir"/*.tmpl; do
-                [ -f "$f" ] || continue
-                local tmpl_name
-                tmpl_name=$(basename "$f")
-                local current_hash
-                current_hash=$(echo "$current_meta" | jq -r ".templates[\"$tmpl_name\"] // \"\"" 2>/dev/null)
-                current_hash="${current_hash#sha256-}"
-                copy_if_changed "$f" "$plugin_dir/internal/compiler/templates/$tmpl_name" "$current_hash"
-            done
-        done
-    fi
+# ============================================================================
+# UPDATE PATH
+# ============================================================================
+update_path() {
+    case ":${PATH}:" in
+        *:"${BINARY_DIR}":*)
+            log "${BINARY_DIR} is already in PATH"
+            return 0
+            ;;
+    esac
 
-    # Copy commands directory
-    copy_commands
+    warn "${BINARY_DIR} is not in your PATH."
+    warn "Add it by running one of the following:"
+    warn "  echo 'export PATH=\"${BINARY_DIR}:\$PATH\"' >> ~/.bashrc"
+    warn "  echo 'export PATH=\"${BINARY_DIR}:\$PATH\"' >> ~/.zshrc"
+    warn "Then restart your terminal or source your shell config."
+}
 
-    # Merge opencode.json (preserve user customizations)
-    configure_opencode_merge
+# ============================================================================
+# WRITE METADATA
+# ============================================================================
+write_meta() {
+    mkdir -p "$(dirname "$METADATA_FILE")"
+    local binary_path="${INSTALL_DIR}/grimorio"
+    local version
+    version=$("$binary_path" --version 2>/dev/null | head -n1 || echo "unknown")
 
-    # Update metadata
-    write_meta
-
-    success "Update complete!"
+    cat > "$METADATA_FILE" << EOF
+{
+  "version": "${version}",
+  "installedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "installDir": "${INSTALL_DIR}",
+  "os": "${OS}",
+  "arch": "${ARCH}"
+}
+EOF
+    success "Install metadata written to $METADATA_FILE"
 }
 
 # ============================================================================
 # PRINT INSTRUCTIONS
 # ============================================================================
 print_instructions() {
-    echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  Grimorio Installation Complete!${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
-    echo -e "${BLUE}What was installed:${NC}"
-    echo -e "   • Binary: ${GREEN}$BINARY_DIR/grimorio${NC}"
-    echo -e "   • Claude plugin: ${GREEN}$CLAUDE_PLUGIN_DIR${NC}"
-    echo -e "   • OpenCode plugin: ${GREEN}$OPENCODE_PLUGIN_DIR${NC}"
-    echo -e "   • MCP configured in opencode.json"
-    echo -e "   • Command /grimorio configured"
-    echo -e "   • 16 agents configured"
-    echo -e "   • Shell PATH updated"
-    echo ""
-    echo -e "${BLUE}Next steps:${NC}"
-    echo -e "   1. Restart your terminal or run: ${GREEN}source $SHELL_RC${NC}"
-    echo -e "   2. Use: ${GREEN}/grimorio <idea>${NC}"
-    echo -e "   3. Or in opencode: ${GREEN}/grimorio <idea>${NC}"
-    echo ""
-    echo -e "${BLUE}Available MCP tools:${NC}"
-    echo -e "   • create_campaign, generate_adventure_bible"
-    echo -e "   • save_introduction, save_setting_guide, save_areas"
-    echo -e "   • save_npcs, save_bestiary, save_encounters"
-    echo -e "   • save_maps, save_characters, save_appendices"
-    echo -e "   • generate_image, generate_map, generate_divider"
-    echo -e "   • compile_pdf, get_template"
-    echo -e "   • generate_character, get_character, list_characters, save_characters"
-    echo -e "   • generate_character_hooks"
-    echo -e "   • create_personal_quest, update_quest_status, list_quests"
-    echo -e "   • validate_canon, check_consistency, process_consistency_gate"
-    echo -e "   • update_narrative_state, evaluate_consequences"
-    echo -e "   • update_faction_reputation, generate_random_tables, generate_handouts"
-    echo -e "   • generate_session_prep, generate_flowchart"
-    echo -e "   • grimorio_generate_prologue"
-    echo -e "   • grimorio_generate_tactics, grimorio_get_tactics"
-    echo -e "   • grimorio_generate_xp_table, grimorio_track_party_progress"
-    echo -e "   • grimorio_generate_player_map, grimorio_export_handout"
-    echo ""
-    echo -e "${YELLOW}Need help?${NC} Check: ${GREEN}$INSTALL_DIR/README.md${NC}"
-    echo ""
+    printf "\n"
+    printf "========================================\n"
+    printf "  Grimorio Installation Complete!\n"
+    printf "========================================\n"
+    printf "\n"
+    printf "What was installed:\n"
+    printf "   Binary: %s/grimorio\n" "$INSTALL_DIR"
+    printf "   Symlink: %s/grimorio\n" "$BINARY_DIR"
+    printf "   OpenCode plugin: %s\n" "$OPENCODE_PLUGIN_DIR"
+    printf "   Claude plugin: %s\n" "$CLAUDE_PLUGIN_DIR"
+    printf "   MCP configured in opencode.json\n"
+    printf "\n"
+    printf "Next steps:\n"
+    printf "   1. Restart your terminal or add %s to PATH\n" "$BINARY_DIR"
+    printf "   2. Run: grimorio --version\n"
+    printf "   3. Use: grimorio create_campaign <name>\n"
+    printf "\n"
 }
 
 # ============================================================================
-# FULL INSTALL — Fresh installation from scratch
+# VERIFY INSTALLATION
+# ============================================================================
+verify_installation() {
+    local binary_name="grimorio"
+    if [ -f "${INSTALL_DIR}/${binary_name}" ]; then
+        local version
+        version=$("${INSTALL_DIR}/${binary_name}" --version 2>/dev/null | head -n1 || echo "unknown")
+        log "Installed version: $version"
+    else
+        error "Installation verification failed: binary not found at ${INSTALL_DIR}/${binary_name}"
+    fi
+}
+
+# ============================================================================
+# FULL INSTALL
 # ============================================================================
 do_install() {
-    echo -e "${GREEN}"
-    echo "  ____      _                      _"
-    echo " / ___|_ __(_)_ __ ___   ___  _ __(_) ___"
-    echo "| |_| | '__| | '_ \` _ \ / _ \| '__| |/ _ \\"
-    echo "| |_| | |  | | | | | | | (_) | |  | | (_) |"
-    echo " \____|_|  |_|_| |_| |_|\___/|_|  |_|\___/"
-    echo -e "${NC}"
-    echo "       D&D One-shot & Campaign Generator"
-    echo ""
+    log "Starting Grimorio installation..."
 
-    log "Starting full installation..."
+    TMP_DIR=$(mktemp -d)
 
-    # Step 1: Clean everything
-    clean_installation
-
-    # Step 2: Detect platform
+    # Step 1: Detect platform
     detect_platform
+    log "Platform: ${OS}/${ARCH}"
 
-    # Step 3: Install Go
-    install_go
+    # Step 2: Get latest release tag
+    local tag
+    tag=$(fetch_latest_tag) || {
+        warn "Could not fetch latest tag from GitHub API, using 'latest' URL fallback"
+        tag="latest"
+    }
+    log "Release: $tag"
 
-    # Step 4: Install wkhtmltopdf
-    install_wkhtmltopdf
+    # Step 3: Download release
+    local archive_path
+    archive_path=$(download_release "$tag")
 
-    # Step 5: Setup repository
-    setup_repo
+    # Step 4: Verify checksum
+    verify_checksum "$archive_path"
 
-    # Step 6: Build binaries
-    build_binary
+    # Step 5: Extract archive
+    local extracted_dir
+    extracted_dir=$(extract_archive "$archive_path")
+    log "Extracted to: $extracted_dir"
 
-    # Step 7: Migrate campaigns
-    migrate_existing_campaigns
+    # Step 6: Install binary
+    install_binary "$extracted_dir"
 
-    # Step 8: Setup plugin
-    setup_plugin
+    # Step 7: Setup plugins (agents, skills, .mcp.json)
+    setup_plugins "$extracted_dir"
 
-    # Step 9: Copy commands directory
-    copy_commands
+    # Step 8: Merge opencode.json
+    merge_opencode_config
 
-    # Step 10: Merge opencode.json (reads from agents/ + templates)
-    configure_opencode_merge
+    # Step 9: Check wkhtmltopdf
+    check_wkhtmltopdf
 
-    # Step 11: Configure shell
-    configure_shell
+    # Step 10: Update PATH warning
+    update_path
 
-    # Step 12: Write install metadata
+    # Step 11: Write metadata
     write_meta
 
-    success "Installation complete!"
+    # Step 12: Verify
+    verify_installation
+
     print_instructions
+    success "Installation complete!"
 }
 
-main() {
-    # Parse --update flag
-    if [ "$1" = "--update" ]; then
-        shift
-        do_update "$@"
-        return $?
+# ============================================================================
+# UPDATE MODE — Incremental update
+# ============================================================================
+do_update() {
+    log "Starting Grimorio update..."
+
+    if [ ! -f "$METADATA_FILE" ]; then
+        warn "No previous installation found, running full install..."
+        do_install
+        return
     fi
 
-    do_install
+    if [ ! -f "${INSTALL_DIR}/grimorio" ]; then
+        warn "Grimorio binary not found, running full install..."
+        do_install
+        return
+    fi
+
+    # Get current version
+    local current_version
+    current_version=$("${INSTALL_DIR}/grimorio" --version 2>/dev/null | head -n1 || echo "unknown")
+    log "Current version: $current_version"
+
+    TMP_DIR=$(mktemp -d)
+
+    # Detect platform
+    detect_platform
+
+    # Get latest tag
+    local tag
+    tag=$(fetch_latest_tag) || tag="latest"
+
+    # If we can compare versions, skip if already latest
+    if [ "$tag" = "$current_version" ]; then
+        success "Already up to date ($current_version)"
+        return 0
+    fi
+
+    log "Updating to: $tag"
+
+    # Download and extract
+    local archive_path
+    archive_path=$(download_release "$tag")
+    verify_checksum "$archive_path"
+
+    local extracted_dir
+    extracted_dir=$(extract_archive "$archive_path")
+
+    # Backup current binary
+    local backup_path="${INSTALL_DIR}/grimorio.backup"
+    cp -f "${INSTALL_DIR}/grimorio" "$backup_path" 2>/dev/null || true
+
+    # Replace binary using temp file to avoid "text file busy"
+    local tmp_binary="${INSTALL_DIR}/grimorio.new.$$"
+    cp -f "${extracted_dir}/grimorio" "$tmp_binary"
+    chmod +x "$tmp_binary"
+    mv -f "$tmp_binary" "${INSTALL_DIR}/grimorio"
+
+    # Update symlink
+    rm -f "${BINARY_DIR}/grimorio"
+    if [ -w "$BINARY_DIR" ]; then
+        ln -s "${INSTALL_DIR}/grimorio" "${BINARY_DIR}/grimorio" 2>/dev/null || \
+            cp "${INSTALL_DIR}/grimorio" "${BINARY_DIR}/grimorio"
+    else
+        cp "${INSTALL_DIR}/grimorio" "${BINARY_DIR}/grimorio"
+    fi
+
+    # Update plugins (agents/skills only if changed)
+    setup_plugins "$extracted_dir"
+
+    # Update opencode.json
+    merge_opencode_config
+
+    # Update metadata
+    write_meta
+
+    # Clean up backup on success
+    rm -f "$backup_path"
+
+    success "Update complete!"
+    log "Run 'grimorio --version' to verify"
+}
+
+# ============================================================================
+# MAIN
+# ============================================================================
+main() {
+    case "${1:-}" in
+        --update|-u)
+            do_update
+            ;;
+        *)
+            do_install
+            ;;
+    esac
 }
 
 main "$@"
