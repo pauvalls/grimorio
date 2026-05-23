@@ -70,7 +70,7 @@ func TestGoReleaserConfigBundlesRuntimeAssets(t *testing.T) {
 	for _, f := range files {
 		switch v := f.(type) {
 		case string:
-			if v == "agents/**/*" {
+			if v == "agents/*" || v == "agents/**/*" {
 				hasAgents = true
 			}
 			if v == "skills/**/*" {
@@ -78,7 +78,7 @@ func TestGoReleaserConfigBundlesRuntimeAssets(t *testing.T) {
 			}
 		case map[string]interface{}:
 			src, _ := v["src"].(string)
-			if src == "agents/**/*" {
+			if src == "agents/*" || src == "agents/**/*" {
 				hasAgents = true
 			}
 			if src == "skills/**/*" {
