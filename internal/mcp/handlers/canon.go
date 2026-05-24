@@ -149,20 +149,27 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 			SessionNum: sessionNum,
 		}
 
-		// Parse revealed clues
+		// Parse revealed clues (accepts both strings and objects)
 		if cluesVal, ok := args["revealed_clues"]; ok {
 			if clues, ok := cluesVal.([]any); ok {
 				for _, c := range clues {
-					if clueMap, ok := c.(map[string]any); ok {
-						clue := domain.RevealedClue{
-							ID:          getStringArg(clueMap, "id"),
-							Description: getStringArg(clueMap, "description"),
-							SourceAct:   getStringArg(clueMap, "source_act"),
-							SourceArea:  getStringArg(clueMap, "source_area"),
+					switch v := c.(type) {
+					case string:
+						update.RevealedClues = append(update.RevealedClues, domain.RevealedClue{
+							ID:              fmt.Sprintf("clue-%d", len(update.RevealedClues)+1),
+							Description:     v,
+							SourceAct:       "unknown",
 							SessionRevealed: sessionNum,
-							IsCritical:  getBoolArg(clueMap, "is_critical"),
-						}
-						update.RevealedClues = append(update.RevealedClues, clue)
+						})
+					case map[string]any:
+						update.RevealedClues = append(update.RevealedClues, domain.RevealedClue{
+							ID:              getStringArg(v, "id"),
+							Description:     getStringArg(v, "description"),
+							SourceAct:       getStringArg(v, "source_act"),
+							SourceArea:      getStringArg(v, "source_area"),
+							SessionRevealed: sessionNum,
+							IsCritical:      getBoolArg(v, "is_critical"),
+						})
 					}
 				}
 			}
@@ -179,37 +186,95 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 			}
 		}
 
-		// Parse dead NPCs
+		// Parse dead NPCs (accepts both strings and objects)
 		if deadVal, ok := args["dead_npcs"]; ok {
 			if deadNPCs, ok := deadVal.([]any); ok {
 				for _, n := range deadNPCs {
-					if npcMap, ok := n.(map[string]any); ok {
-						npc := domain.NPCDeathRecord{
-							NPCID:    getStringArg(npcMap, "npc_id"),
-							Name:     getStringArg(npcMap, "name"),
+					switch v := n.(type) {
+					case string:
+						update.DeadNPCs = append(update.DeadNPCs, domain.NPCDeathRecord{
+							NPCID:   fmt.Sprintf("npc-%d", len(update.DeadNPCs)+1),
+							Name:    v,
+							Session: sessionNum,
+						})
+					case map[string]any:
+						update.DeadNPCs = append(update.DeadNPCs, domain.NPCDeathRecord{
+							NPCID:    getStringArg(v, "npc_id"),
+							Name:     getStringArg(v, "name"),
 							Session:  sessionNum,
-							Cause:    getStringArg(npcMap, "cause"),
-							KilledBy: getStringArg(npcMap, "killed_by"),
-							Location: getStringArg(npcMap, "location"),
-						}
-						update.DeadNPCs = append(update.DeadNPCs, npc)
+							Cause:    getStringArg(v, "cause"),
+							KilledBy: getStringArg(v, "killed_by"),
+							Location: getStringArg(v, "location"),
+						})
 					}
 				}
 			}
 		}
 
-		// Parse key decisions
+		// Parse key decisions (accepts both strings and objects)
 		if decisionsVal, ok := args["key_decisions"]; ok {
 			if decisions, ok := decisionsVal.([]any); ok {
 				for _, d := range decisions {
-					if decMap, ok := d.(map[string]any); ok {
-						decision := domain.Decision{
-							ID:          getStringArg(decMap, "id"),
-							Description: getStringArg(decMap, "description"),
-							ChoiceMade:  getStringArg(decMap, "choice_made"),
-							ImpactScope: getStringArg(decMap, "impact_scope"),
-						}
-						update.KeyDecisions = append(update.KeyDecisions, decision)
+					switch v := d.(type) {
+					case string:
+						update.KeyDecisions = append(update.KeyDecisions, domain.Decision{
+							ID:          fmt.Sprintf("decision-%d", len(update.KeyDecisions)+1),
+							Description: v,
+						})
+					case map[string]any:
+						update.KeyDecisions = append(update.KeyDecisions, domain.Decision{
+							ID:          getStringArg(v, "id"),
+							Description: getStringArg(v, "description"),
+							ChoiceMade:  getStringArg(v, "choice_made"),
+							ImpactScope: getStringArg(v, "impact_scope"),
+						})
+					}
+				}
+			}
+		}
+
+		// Parse active quests as strings (creates QuestState objects)
+		if activeVal, ok := args["active_quests"]; ok {
+			if active, ok := activeVal.([]any); ok {
+				for _, q := range active {
+					if s, ok := q.(string); ok {
+						update.NewQuests = append(update.NewQuests, domain.QuestState{
+							ID:     fmt.Sprintf("quest-%d", len(update.NewQuests)+1),
+							Name:   s,
+							Status: "active",
+						})
+					}
+				}
+			}
+		}
+
+		// Parse key items as strings (creates KeyItem objects)
+		if itemsVal, ok := args["key_items"]; ok {
+			if items, ok := itemsVal.([]any); ok {
+				for _, item := range items {
+					if s, ok := item.(string); ok {
+						update.KeyItems = append(update.KeyItems, domain.KeyItem{
+							ID:           fmt.Sprintf("item-%d", len(update.KeyItems)+1),
+							Name:         s,
+							Holder:       "party",
+							SessionFound: sessionNum,
+						})
+					}
+				}
+			}
+		}
+
+		// Parse session metadata
+		update.SessionSummary = getStringArg(args, "session_summary")
+		update.XPAwarded = getIntArg(args, "xp_awarded")
+		update.DMNotes = getStringArg(args, "dm_notes")
+
+		// Parse loot acquired
+		if lootVal, ok := args["loot_acquired"]; ok {
+			if loot, ok := lootVal.([]any); ok {
+				for _, l := range loot {
+					if s, ok := l.(string); ok {
+						update.LootAcquired = append(update.LootAcquired, s)
 					}
 				}
 			}

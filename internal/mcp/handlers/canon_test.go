@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"strings"
 	"testing"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
 	"github.com/pauvalls/grimorio/internal/services"
@@ -263,6 +265,48 @@ func TestHandleUpdateNarrativeState_InvalidSession(t *testing.T) {
 	}
 	if result.IsError {
 		t.Fatalf("expected success for session_num=0 (auto-increment), got error: %v", result.Content)
+	}
+}
+
+func TestHandleUpdateNarrativeState_StringArrays(t *testing.T) {
+	handlers, canonSvc, _, _ := setupTestCanonHandlers()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
+
+	handler := handlers.HandleUpdateNarrativeState()
+	args := map[string]any{
+		"campaign_id":      "test-campaign",
+		"session_num":      float64(1),
+		"revealed_clues":   []interface{}{"The well water is poisoned", "The mayor is a werewolf"},
+		"dead_npcs":        []interface{}{"Village Guard", "Wolf"},
+		"key_decisions":    []interface{}{"Players spared the mayor", "Party took the left path"},
+		"active_quests":    []interface{}{"Find the Cure", "Save the Town"},
+		"key_items":        []interface{}{"Silver Sword", "Healing Potion"},
+		"session_summary":  "The party explored the village and fought wolves.",
+		"xp_awarded":       float64(500),
+		"loot_acquired":    []interface{}{"50 gold", "Health Potion"},
+		"dm_notes":         "Players were cautious but effective.",
+	}
+
+	result, err := handler(ctx, newToolRequest("update_narrative_state", args))
+	if err != nil {
+		t.Fatalf("HandleUpdateNarrativeState error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	// Verify the result mentions the counts
+	if len(result.Content) == 0 {
+		t.Fatal("expected result content")
+	}
+	resultText := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(resultText, "2") {
+		t.Error("expected result to mention 2 revealed clues")
 	}
 }
 
