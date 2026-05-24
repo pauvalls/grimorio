@@ -125,10 +125,69 @@ When the session ends:
 
 1. **Narrate closure**: Summarize what happened, end on a cliffhanger if appropriate.
 2. **Award XP**: Use milestone system — level up at story beats, not by tracking individual XP.
-3. **Call `update_narrative_state`**: Pass new clues, dead NPCs, completed quests, decisions, and session summary.
+3. **Call `update_narrative_state`**: See MCP Tool Usage below for the exact format.
 4. **Call `evaluate_consequences`**: Check if any consequence rules triggered.
 5. **Call `update_faction_reputation`**: For any reputation changes during the session.
 6. **Call `grimorio_export_handout`**: If maps, letters, or items were acquired and need to be shared with players.
+
+## MCP Tool Usage
+
+### `update_narrative_state` — Template
+
+**CRITICAL**: Always pass the FULL current state. The tool REPLACES (not appends) active_quests, key_items, pc_status, and current_location.
+
+```
+update_narrative_state(
+  campaign_id="nombre-campaña",
+  session_num=1,
+  
+  // Clues: ALWAYS as objects with source_act and is_critical
+  revealed_clues=[
+    {description: "Pista 1", source_act: "act-1", is_critical: true},
+    {description: "Pista 2", source_act: "act-1", is_critical: false}
+  ],
+  
+  // Decisions: ALWAYS as objects with choice_made and impact_scope
+  key_decisions=[
+    {description: "Decisión 1", choice_made: "Elegieron X", impact_scope: "corto"},
+    {description: "Decisión 2", choice_made: "Elegieron Y", impact_scope: "largo"}
+  ],
+  
+  // Quests: strings, represent CURRENT active quests
+  active_quests=["Quest 1", "Quest 2"],
+  completed_quests=["Quest 3"],  // IDs de quests completadas
+  failed_quests=[],
+  
+  // Items: strings, represent CURRENT key items
+  key_items=["Espada +1", "Poción de curación"],
+  
+  // PCs: health status (REPLACES previous status)
+  pc_status=[
+    {name: "Kael", hp_current: 12, hp_max: 12, conditions: []},
+    {name: "Sera", hp_current: 6, hp_max: 10, conditions: ["herida leve"]}
+  ],
+  
+  // Session metadata
+  current_location: "Callejón del puerto",
+  session_summary: "Resumen de la sesión...",
+  xp_awarded: 500,
+  loot_acquired: ["50 oro", "Llave de bronce"],
+  dm_notes: "Notas para próxima sesión...",
+  dead_npcs: ["Capitán Bren"]
+)
+```
+
+**Field rules:**
+- `revealed_clues`: **MUST** be objects (not strings). Include `source_act` and `is_critical`.
+- `key_decisions`: **MUST** be objects (not strings). Include `choice_made` and `impact_scope`.
+- `active_quests`: Pass **ALL** current active quests. The tool replaces the previous list.
+- `key_items`: Pass **ALL** current key items. The tool replaces the previous list.
+- `pc_status`: Pass **ALL** PCs with their CURRENT health. The tool replaces previous status.
+- `impact_scope`: One of `corto` (1 session), `medio` (2-3 sessions), `largo` (whole campaign).
+- `source_act`: One of `act-1`, `act-2`, `act-3` or the quest/act ID.
+- If you omit a field, its previous value is preserved (except arrays which are replaced when provided).
+
+**IMPORTANT**: If you call update_narrative_state multiple times for the same session_num, the session_log entry is REPLACED (not duplicated).
 
 ## Canon Compliance Checks
 
