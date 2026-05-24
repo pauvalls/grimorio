@@ -4,16 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-## [v4.0.10] - 2026-05-24
+## [v4.0.11] - 2026-05-24
 
-### Docs
+### Fix
 
-- Update changelog for v4.0.9
-
-### Feat
-
-- Add update commands and update all subcommands
-
+- `update_narrative_state` MCP tool now accepts string arrays for `revealed_clues`, `dead_npcs`, and `key_decisions` (not just objects)
+- Added missing MCP parameters: `active_quests`, `key_items`, `session_summary`, `xp_awarded`, `loot_acquired`, `dm_notes`
+- Arrays are no longer silently skipped when agents send simple strings instead of objects
 
 ## [v4.0.10] - 2026-05-24
 
@@ -23,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `grimorio update all` to update skills, agents, and commands in one run
 - Update campaign generation template with detailed batch workflow (sequential areas to avoid timeout, narrative + WotC validation after each batch, final integration checks)
 - Update install.sh instructions to reflect all 4 update subcommands
+
 ## [v4.0.8] - 2026-05-22
 
 ### Docs
