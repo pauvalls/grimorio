@@ -251,3 +251,45 @@ func TestTTSHandlersFallbackWhenDisabled(t *testing.T) {
 		t.Error("expected Available = false when TTS is disabled")
 	}
 }
+
+func TestHandleTTSSpeak(t *testing.T) {
+	svc := setupTTSService(t, true, true)
+	if err := svc.SetMode(dm.ModeTTS); err != nil {
+		t.Fatalf("SetMode error: %v", err)
+	}
+
+	h := NewTTSHandlers(svc)
+	handler := h.HandleTTSSpeak()
+
+	res, err := handler(context.Background(), newToolRequest("tts_speak", map[string]any{
+		"text": "El dragón ruge sobre la montaña",
+	}))
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("unexpected error result: %v", res.Content)
+	}
+
+	// The response should contain the spoken text (displayed on screen)
+	text := res.Content[0].(mcp.TextContent).Text
+	if text != "El dragón ruge sobre la montaña" {
+		t.Errorf("expected text to be returned, got %q", text)
+	}
+}
+
+func TestHandleTTSSpeakEmptyText(t *testing.T) {
+	svc := setupTTSService(t, true, true)
+	h := NewTTSHandlers(svc)
+	handler := h.HandleTTSSpeak()
+
+	res, err := handler(context.Background(), newToolRequest("tts_speak", map[string]any{
+		"text": "",
+	}))
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if !res.IsError {
+		t.Error("expected error when text is empty")
+	}
+}

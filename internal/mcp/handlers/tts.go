@@ -129,6 +129,27 @@ func (h *TTSHandlers) HandleListTTSVoices() server.ToolHandlerFunc {
 	}
 }
 
+// HandleTTSSpeak handles the tts_speak tool.
+func (h *TTSHandlers) HandleTTSSpeak() server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]any)
+		if !ok {
+			return mcp.NewToolResultError("invalid arguments"), nil
+		}
+
+		text := getStringArg(args, "text")
+		if text == "" {
+			return mcp.NewToolResultError("text is required"), nil
+		}
+
+		if err := h.ttsService.DeliverResponse(text); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(text), nil
+	}
+}
+
 // HandleGetTTSStatus handles the get_tts_status tool.
 func (h *TTSHandlers) HandleGetTTSStatus() server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

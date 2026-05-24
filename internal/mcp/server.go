@@ -539,6 +539,11 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithDescription("Get current TTS system status"),
 	), ttsHandlers.HandleGetTTSStatus())
 
+	s.AddTool(mcp.NewTool("tts_speak",
+		mcp.WithDescription("Speak text aloud using Piper TTS. Displays the text on screen AND narrates it via voice. Use after generating narrative text to have it spoken."),
+		mcp.WithString("text", mcp.Required(), mcp.Description("Text to speak aloud (e.g., narrative description, NPC dialogue)")),
+	), ttsHandlers.HandleTTSSpeak())
+
 	shutdown := func() error {
 		if ttsService != nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

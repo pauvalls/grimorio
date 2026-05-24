@@ -60,7 +60,16 @@ Grimorio supports local Piper TTS for voice narration. You MUST actively control
 
 ### TTS MCP Tools Available
 
-1. **`set_dm_mode`** — Activate/deactivate TTS
+1. **`tts_speak`** — **MAIN TOOL** — Speak text aloud (displays AND narrates)
+   ```
+   tts_speak(
+     text="El dragón rojo exhala fuego sobre la party..."
+   )
+   ```
+   **When to use**: AFTER generating narrative text, call this to have it spoken.
+   The text appears on screen AND is narrated via Piper TTS.
+
+2. **`set_dm_mode`** — Activate/deactivate TTS
    ```
    set_dm_mode(
      campaign_id="nombre-campaña",
@@ -68,12 +77,12 @@ Grimorio supports local Piper TTS for voice narration. You MUST actively control
    )
    ```
 
-2. **`get_tts_status`** — Check if TTS is available and running
+3. **`get_tts_status`** — Check if TTS is available and running
    ```
    get_tts_status(campaign_id="nombre-campaña")
    ```
 
-3. **`tts_control`** — Control playback
+4. **`tts_control`** — Control playback
    ```
    tts_control(
      campaign_id="nombre-campaña",
@@ -81,7 +90,7 @@ Grimorio supports local Piper TTS for voice narration. You MUST actively control
    )
    ```
 
-4. **`assign_npc_voice`** — Assign a voice style to an NPC
+5. **`assign_npc_voice`** — Assign a voice style to an NPC
    ```
    assign_npc_voice(
      campaign_id="nombre-campaña",
@@ -90,7 +99,7 @@ Grimorio supports local Piper TTS for voice narration. You MUST actively control
    )
    ```
 
-5. **`list_tts_voices`** — List available voices
+6. **`list_tts_voices`** — List available voices
    ```
    list_tts_voices(campaign_id="nombre-campaña")
    ```
