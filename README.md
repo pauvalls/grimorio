@@ -31,10 +31,15 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 ```powershell
 irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 ```
+> ⚠️ **Windows support is experimental** — tested on macOS and Linux only.
 
 **Already installed? Update:**
 ```bash
-grimorio update
+grimorio update          # Update binary only
+grimorio update skills   # Update skills
+grimorio update agents   # Update agents
+grimorio update commands # Update opencode.json config
+grimorio update all      # Update everything at once
 ```
 
 Then type in your AI assistant chat:
@@ -64,10 +69,15 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 ```powershell
 irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 ```
+> ⚠️ **Windows support is experimental** — tested on macOS and Linux only.
 
 **Update** — Check and install the latest release:
 ```bash
-grimorio update
+grimorio update          # Update binary only
+grimorio update skills   # Update skills
+grimorio update agents   # Update agents  
+grimorio update commands # Update opencode.json config
+grimorio update all      # Update everything at once
 ```
 Or re-run the installer with the `--update` flag:
 ```bash
@@ -100,7 +110,7 @@ make install
 
 See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 
-**v4.0.0 — AI Dungeon Master (Latest)**
+**v4.0.10 — Update Commands & Campaign Template (Latest)**
 - **🤖 AI Dungeon Master** — `grimorio-dm` primary agent runs live D&D 5e sessions with narrative depth, strict information hiding, and canon compliance
 - **📦 Campaign Context Aggregation** — `dm_session_context` MCP tool loads all campaign data (canon, narrative state, areas, NPCs, bestiary, prologue, factions) in a single payload
 - **🎲 Dice Modes** — Auto (DM rolls), Manual (players roll), or Mixed (default) per session
@@ -140,10 +150,15 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 ```powershell
 irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 ```
+> ⚠️ **Soporte de Windows es experimental** — testeado en macOS y Linux únicamente.
 
 **¿Ya lo tenés instalado? Actualizalo:**
 ```bash
-grimorio update
+grimorio update          # Actualizar solo el binario
+grimorio update skills   # Actualizar skills
+grimorio update agents   # Actualizar agents
+grimorio update commands # Actualizar config de opencode.json
+grimorio update all      # Actualizar todo de una
 ```
 
 Luego escribe en el chat de tu asistente IA:
@@ -173,10 +188,15 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 ```powershell
 irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 ```
+> ⚠️ **Soporte de Windows es experimental** — testeado en macOS y Linux únicamente.
 
 **Actualizar** — Verificá e instalá la última versión:
 ```bash
-grimorio update
+grimorio update          # Actualizar solo el binario
+grimorio update skills   # Actualizar skills
+grimorio update agents   # Actualizar agents
+grimorio update commands # Actualizar config de opencode.json
+grimorio update all      # Actualizar todo de una
 ```
 O volvé a ejecutar el instalador con el flag `--update`:
 ```bash
@@ -209,7 +229,7 @@ make install
 
 Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 
-**v4.0.0 — Dungeon Master IA (Último)**
+**v4.0.10 — Update Commands y Template de Campaña (Último)**
 - **🤖 Dungeon Master IA** — Agente `grimorio-dm` ejecuta sesiones en vivo de D&D 5e con profundidad narrativa, ocultamiento de información y cumplimiento de canon
 - **📦 Agregación de Contexto** — Herramienta MCP `dm_session_context` carga todos los datos de la campaña (canon, estado narrativo, áreas, NPCs, bestiario, prólogo, facciones) en un solo payload
 - **🎲 Modos de Dados** — Automático (DM tira), Manual (jugadores tiran), o Mixto (default) por sesión
