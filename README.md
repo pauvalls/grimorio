@@ -78,7 +78,7 @@ All files are saved to `~/campaigns/<campaign-name>/`.
 
 **2. Run a Live Session** (DM assistant)
 
-Navigate to your campaign directory:
+In OpenCode, switch to the `grimorio-dm` agent within your campaign directory:
 ```bash
 cd ~/campaigns/sunken-city
 grimorio-dm
@@ -174,7 +174,7 @@ irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 ```
 > ⚠️ **Soporte de Windows es experimental** — testeado en macOS y Linux únicamente.
 
-**¿Ya lo tenés instalado? Actualizalo:**
+**¿Ya lo tienes instalado? Actualízalo:**
 ```bash
 grimorio update          # Actualizar solo el binario
 grimorio update skills   # Actualizar skills
@@ -203,7 +203,7 @@ Luego escribe en el chat de tu asistente IA:
 
 **1. Crear una Campaña** (one-shot o campaña completa)
 
-En OpenCode, cambiate al agente `grimorio-architect` y ejecutá:
+En OpenCode, cambia al agente `grimorio-architect` y ejecuta:
 ```
 /grimorio Una ciudad hundida donde los nobles son vampiros acuáticos
 ```
@@ -217,7 +217,7 @@ Todos los archivos se guardan en `~/campaigns/<nombre-campaña>/`.
 
 **2. Ejecutar una Sesión en Vivo** (asistente de DM)
 
-Navegá al directorio de tu campaña:
+En OpenCode, cambia al agente `grimorio-dm` dentro del directorio de tu campaña:
 ```bash
 cd ~/campaigns/ciudad-hundida
 grimorio-dm
@@ -230,7 +230,7 @@ El agente `grimorio-dm` carga el contexto completo de la campaña (canon, áreas
 
 **3. Actualizar Contenido** (después de cambios manuales o ediciones)
 
-Si editás archivos markdown manualmente, refrescá el canon:
+Si editas archivos markdown manualmente, refresca el canon:
 ```bash
 grimorio validate_canon --campaign ciudad-hundida
 grimorio check_consistency --campaign ciudad-hundida
