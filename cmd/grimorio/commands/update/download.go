@@ -207,14 +207,39 @@ func extractZip(archivePath, destDir string) error {
 	return nil
 }
 
-// validateExtractedContents checks that the extracted directory contains a grimorio binary
-// and agents/ and skills/ directories.
-func validateExtractedContents(dir string) error {
+// findBinaryInExtractedDir searches for the grimorio binary in the extracted directory,
+// handling GoReleaser's subdirectory wrapping.
+func findBinaryInExtractedDir(dir string) (string, error) {
 	binaryName := "grimorio"
-	if _, err := os.Stat(filepath.Join(dir, binaryName)); err != nil {
-		return fmt.Errorf("binary not found in extracted archive: %w", err)
+
+	// Check root first
+	rootPath := filepath.Join(dir, binaryName)
+	if _, err := os.Stat(rootPath); err == nil {
+		return rootPath, nil
 	}
-	return nil
+
+	// Check subdirectories (GoReleaser wraps in a directory)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return "", fmt.Errorf("reading extract dir: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			subPath := filepath.Join(dir, entry.Name(), binaryName)
+			if _, err := os.Stat(subPath); err == nil {
+				return subPath, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("binary not found in extracted archive")
+}
+
+// validateExtractedContents checks that the extracted directory contains a grimorio binary.
+func validateExtractedContents(dir string) error {
+	_, err := findBinaryInExtractedDir(dir)
+	return err
 }
 
 // cleanupOnError removes temporary files when an error occurs.

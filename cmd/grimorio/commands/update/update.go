@@ -292,10 +292,10 @@ func (u *updater) runUpdate(dryRun bool) error {
 		return fmt.Errorf("backing up binary: %w", err)
 	}
 
-	// Replace binary
-	newBinaryPath := filepath.Join(extractDir, "grimorio")
-	if goos == "windows" {
-		newBinaryPath += ".exe"
+	// Find the actual binary path (GoReleaser wraps in a subdirectory)
+	newBinaryPath, err := findBinaryInExtractedDir(extractDir)
+	if err != nil {
+		return fmt.Errorf("finding binary in extracted archive: %w", err)
 	}
 
 	fmt.Printf("Installing new binary...\n")
