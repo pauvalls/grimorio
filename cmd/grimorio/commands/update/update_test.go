@@ -773,10 +773,10 @@ func TestNewUpdateAllCommand(t *testing.T) {
 func TestUpdateCommands_CreatesConfig(t *testing.T) {
 	// Save original HOME and restore after test
 	origHome := os.Getenv("HOME")
-	t.Cleanup(func() { os.Setenv("HOME", origHome) })
+	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
 
 	tmpHome := t.TempDir()
-	os.Setenv("HOME", tmpHome)
+	_ = os.Setenv("HOME", tmpHome)
 
 	// Create a fake executable path for the test
 	configDir := filepath.Join(tmpHome, ".config", "opencode")
@@ -814,7 +814,7 @@ func TestUpdateCommands_CreatesConfig(t *testing.T) {
 
 func TestUpdateCommands_PreservesExistingConfig(t *testing.T) {
 	origHome := os.Getenv("HOME")
-	t.Cleanup(func() { os.Setenv("HOME", origHome) })
+	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
 
 	tmpHome := t.TempDir()
 	os.Setenv("HOME", tmpHome)
