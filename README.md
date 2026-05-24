@@ -60,28 +60,46 @@ Then type in your AI assistant chat:
 - **AI Dungeon Master** — `grimorio-dm` agent runs live D&D 5e sessions with narrative depth, strict information hiding, and canon compliance
 - **100% Local** — No cloud dependencies required
 
-### Install
+### How to Use
 
-**Linux / macOS** — One-line install (no Go required):
+**1. Create a Campaign** (one-shot or full campaign)
+
+In OpenCode, switch to the `grimorio-architect` agent and run:
+```
+/grimorio A sunken city where the nobles are aquatic vampires
+```
+The architect will ask you 6 questions (name, type, idea, level, tone, duration) and then generate the full campaign in batches:
+- **Batch 1**: Lore, NPCs, bestiary, maps, setting guide, introduction
+- **Batch 2**: Quests, encounters, characters, appendices
+- **Batch 3**: Areas (chapter by chapter to avoid timeout)
+- **Final**: Art, PDF compilation, validations
+
+All files are saved to `~/campaigns/<campaign-name>/`.
+
+**2. Run a Live Session** (DM assistant)
+
+Navigate to your campaign directory:
 ```bash
-curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh
+cd ~/campaigns/sunken-city
+grimorio-dm
 ```
+The `grimorio-dm` agent loads the full campaign context (canon, areas, NPCs, bestiary) and acts as your AI Dungeon Master:
+- Tracks session state (clues revealed, NPCs met, decisions made)
+- Runs combat with descriptive damage states (hides enemy HP/AC)
+- Maintains narrative coherence across sessions
+- Generates session prep, handouts, and random tables
 
-**Windows** — One-line install in PowerShell (no Go required):
-```powershell
-irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
-```
-> ⚠️ **Windows support is experimental** — tested on macOS and Linux only.
+**3. Update Content** (after rule changes or edits)
 
-**Update** — Check and install the latest release:
+If you edit any markdown files manually, refresh the canon:
 ```bash
-grimorio update          # Update binary only
-grimorio update skills   # Update skills
-grimorio update agents   # Update agents  
-grimorio update commands # Update opencode.json config
-grimorio update all      # Update everything at once
+grimorio validate_canon --campaign sunken-city
+grimorio check_consistency --campaign sunken-city
 ```
-Or re-run the installer with the `--update` flag:
+
+### Advanced Install
+
+**Re-run installer** (if `grimorio update` fails):
 ```bash
 curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh -s -- --update
 ```
@@ -181,28 +199,46 @@ Luego escribe en el chat de tu asistente IA:
 - **Dungeon Master IA** — Agente `grimorio-dm` ejecuta sesiones en vivo de D&D 5e con profundidad narrativa, ocultamiento de información y cumplimiento de canon
 - **100% Local** — Sin dependencias de nube requeridas
 
-### Instalación
+### Cómo Usar
 
-**Linux / macOS** — Instalación en una línea (no necesitás Go):
+**1. Crear una Campaña** (one-shot o campaña completa)
+
+En OpenCode, cambiate al agente `grimorio-architect` y ejecutá:
+```
+/grimorio Una ciudad hundida donde los nobles son vampiros acuáticos
+```
+El architect te hará 6 preguntas (nombre, tipo, idea, nivel, tono, duración) y luego generará la campaña completa en batches:
+- **Batch 1**: Trasfondo, NPCs, bestiario, mapas, guía de setting, introducción
+- **Batch 2**: Quests, encuentros, personajes, apéndices
+- **Batch 3**: Áreas (capítulo por capítulo para evitar timeout)
+- **Final**: Arte, compilación de PDF, validaciones
+
+Todos los archivos se guardan en `~/campaigns/<nombre-campaña>/`.
+
+**2. Ejecutar una Sesión en Vivo** (asistente de DM)
+
+Navegá al directorio de tu campaña:
 ```bash
-curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh
+cd ~/campaigns/ciudad-hundida
+grimorio-dm
 ```
+El agente `grimorio-dm` carga el contexto completo de la campaña (canon, áreas, NPCs, bestiario) y actúa como tu Dungeon Master IA:
+- Rastrea el estado de la sesión (pistas reveladas, NPCs conocidos, decisiones tomadas)
+- Ejecuta combate con estados de daño descriptivos (oculta HP/AC de enemigos)
+- Mantiene coherencia narrativa entre sesiones
+- Genera preparación de sesión, handouts y tablas aleatorias
 
-**Windows** — Instalación en una línea en PowerShell (no necesitás Go):
-```powershell
-irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
-```
-> ⚠️ **Soporte de Windows es experimental** — testeado en macOS y Linux únicamente.
+**3. Actualizar Contenido** (después de cambios manuales o ediciones)
 
-**Actualizar** — Verificá e instalá la última versión:
+Si editás archivos markdown manualmente, refrescá el canon:
 ```bash
-grimorio update          # Actualizar solo el binario
-grimorio update skills   # Actualizar skills
-grimorio update agents   # Actualizar agents
-grimorio update commands # Actualizar config de opencode.json
-grimorio update all      # Actualizar todo de una
+grimorio validate_canon --campaign ciudad-hundida
+grimorio check_consistency --campaign ciudad-hundida
 ```
-O volvé a ejecutar el instalador con el flag `--update`:
+
+### Instalación Avanzada
+
+**Re-ejecutar instalador** (si `grimorio update` falla):
 ```bash
 curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh -s -- --update
 ```
