@@ -212,3 +212,74 @@ func TestSplitIntoChunks_NPCIDExtraction(t *testing.T) {
 		t.Error("expected npc_dialogue chunk")
 	}
 }
+
+// mockFilter is a test double that removes lines starting with "|" and
+// <thinking> blocks.
+type mockFilter struct{}
+
+func (m *mockFilter) Filter(text string) string {
+	lines := strings.Split(text, "\n")
+	var out []string
+	inThinking := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "<thinking>") {
+			inThinking = true
+			continue
+		}
+		if strings.Contains(trimmed, "</thinking>") {
+			inThinking = false
+			continue
+		}
+		if inThinking {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "|") {
+			continue
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}
+
+func TestSplitFiltered_WithNilFilter(t *testing.T) {
+	text := "The adventurers enter the dark cave."
+	chunks := SplitFiltered(text, nil, 500)
+
+	if len(chunks) != 1 {
+		t.Fatalf("expected 1 chunk, got %d", len(chunks))
+	}
+	if chunks[0].Text != text {
+		t.Errorf("expected %q, got %q", text, chunks[0].Text)
+	}
+}
+
+func TestSplitFiltered_RemovesMarkdownTables(t *testing.T) {
+	text := "The dragon roars loudly, shaking the mountains.\n| Stat | Value |\n| HP | 250 |\nThe party readies their weapons and prepares for combat."
+	filter := &mockFilter{}
+	chunks := SplitFiltered(text, filter, 500)
+
+	// After filtering the table, the remaining text may be 1 or 2 chunks
+	// depending on how SplitIntoChunks handles it. The key assertion is
+	// that no chunk contains table markup.
+	if len(chunks) == 0 {
+		t.Fatal("expected at least 1 chunk after filtering table")
+	}
+	for i, c := range chunks {
+		if strings.Contains(c.Text, "|") {
+			t.Errorf("chunk %d should not contain table: %q", i, c.Text)
+		}
+	}
+}
+
+func TestSplitFiltered_RemovesThinkingBlocks(t *testing.T) {
+	text := "The wizard casts a spell.\n<thinking>\nI need to check the spell DC.\n</thinking>\nFireball explodes."
+	filter := &mockFilter{}
+	chunks := SplitFiltered(text, filter, 500)
+
+	for _, c := range chunks {
+		if strings.Contains(c.Text, "thinking") {
+			t.Errorf("chunk should not contain thinking block: %q", c.Text)
+		}
+	}
+}

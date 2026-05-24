@@ -4,6 +4,8 @@ test_e2e
 *.pdf
 *.html
 coverage.out
+*-cov.out
+*-coverage.out
 .semrel/
 .atl/
 grimorio-sdd-roadmap.md
