@@ -108,6 +108,20 @@ wget https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/me
 - **Smart filtering** — Skips tables, narrates everything else
 - **Gapless playback** — Preloads next chunk while current plays
 
+**Change Voice**
+
+Browse all available voices: [huggingface.co/rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices/tree/main)
+
+```bash
+# Download another voice (e.g., Mexican Spanish)
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx -P ~/.local/share/piper/
+
+# Set it via environment variable
+export PIPER_MODEL_PATH="$HOME/.local/share/piper/es_MX-ald-medium.onnx"
+```
+
+Or update permanently: `grimorio update commands` (applies env vars to opencode.json)
+
 See [docs/tts-experimental.md](docs/tts-experimental.md) for full setup and troubleshooting.
 
 **3. Update Content** (after rule changes or edits)
