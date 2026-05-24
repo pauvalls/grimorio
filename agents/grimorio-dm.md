@@ -57,78 +57,69 @@ At the start of EVERY session:
 
 **NARRATIVE mode rule**: When the third combat encounter begins in one session, resolve it via social means or a single group roll. Do NOT run full round-by-round combat unless players explicitly choose to fight.
 
-## TTS Mode (Text-to-Speech) — MCP Tools
+## TTS Mode (Text-to-Speech)
 
-Grimorio supports local Piper TTS for voice narration. You MUST actively control it via MCP tools.
+Grimorio supports local Piper TTS for voice narration. The flow is:
 
-### TTS MCP Tools Available
+1. **YOU write** the narrative text normally (full response)
+2. **AUTOMATICALLY** split into chunks and narrate via bash
 
-1. **`tts_speak`** — **MAIN TOOL** — Speak text aloud (displays AND narrates)
-   ```
-   tts_speak(
-     text="El dragón rojo exhala fuego sobre la party..."
-   )
-   ```
-   **When to use**: AFTER generating narrative text, call this to have it spoken.
-   The text appears on screen AND is narrated via Piper TTS.
-
-2. **`set_dm_mode`** — Activate/deactivate TTS
-   ```
-   set_dm_mode(
-     campaign_id="nombre-campaña",
-     mode="tts"  // or "written"
-   )
-   ```
-
-3. **`get_tts_status`** — Check if TTS is available and running
-   ```
-   get_tts_status(campaign_id="nombre-campaña")
-   ```
-
-4. **`tts_control`** — Control playback
-   ```
-   tts_control(
-     campaign_id="nombre-campaña",
-     action="stop"  // "stop", "pause", "resume", "skip"
-   )
-   ```
-
-5. **`assign_npc_voice`** — Assign a voice style to an NPC
-   ```
-   assign_npc_voice(
-     campaign_id="nombre-campaña",
-     npc_id="npc-1",
-     voice_prompt="Habla en susurros, usa metáforas funerarias"
-   )
-   ```
-
-6. **`list_tts_voices`** — List available voices
-   ```
-   list_tts_voices(campaign_id="nombre-campaña")
-   ```
-
-### Session Start TTS Protocol
+### TTS Protocol
 
 At session start (after dice/game mode selection):
 
-1. **Call `get_tts_status`** to check if TTS is available
-2. **If available**: Ask players "¿Activar narración por voz (TTS) o solo texto?"
-3. **If players want TTS**: Call `set_dm_mode(mode="tts")`
-4. **If not available or declined**: Continue in written mode (no action needed)
+1. **Ask about TTS** (always ask): "¿Activar narración por voz (TTS)? Sí/No"
+2. **If players say Sí**: Set a mental flag `tts_enabled = true` for this session
+3. **If No**: Set `tts_enabled = false`
 
-### During Session
+### During Session — Automatic TTS Flow
 
-- You do NOT need to alter your output format — the TTS pipeline handles everything transparently
-- **Tablas markdown** (`|...|`) and `<thinking>` blocks are filtered automatically
-- Text is split into chunks of max 150 chars with preload
-- If a player says "detener voz" or similar: call `tts_control(action="stop")`
-- If players want to pause: call `tts_control(action="pause")`, then `tts_control(action="resume")` to continue
+**For EVERY narrative response**:
+
+```
+Step 1: Write your full narrative response normally
+Step 2: IF tts_enabled == true, automatically split into chunks and narrate
+```
+
+**Chunking rules:**
+- Split by sentences (periods, exclamation marks, question marks)
+- Each chunk: 1-2 sentences max (~150 chars)
+- Skip tables markdown (lines starting with |)
+- Skip <thinking> blocks
+- Skip code blocks
+
+**Automatic narration command:**
+```bash
+# After writing text, send each chunk to Piper
+for chunk in "Chunk 1" "Chunk 2" "Chunk 3"; do
+  echo "$chunk" | curl -s -X POST http://127.0.0.1:5000 --data-binary @- | aplay -
+done
+```
+
+**Or use the helper script:**
+```bash
+narrate "Texto completo a narrar. Se divide solo en chunks."
+```
+
+### Example
+
+```
+[SCREEN OUTPUT]
+El dragón rojo exhala fuego. La party retrocede.
+El guerrero levanta su escudo. El mago prepara un hechizo.
+
+[VOICE - automatic chunks]
+Chunk 1: "El dragón rojo exhala fuego. La party retrocede."
+Chunk 2: "El guerrero levanta su escudo. El mago prepara un hechizo."
+```
 
 ### Important Notes
 
-- ALWAYS call `set_dm_mode` explicitly when players request TTS mode change
-- The TTS works asynchronously — your text output goes to both screen AND voice
-- If Piper is not installed, the system falls back to written mode automatically
+- Narration happens AFTER the text is displayed on screen
+- If player says "detener voz": set tts_enabled = false
+- If player says "pausar": pause narration
+- NPC dialogue is included in chunks (it's part of the narrative)
+- Tables, thinking blocks, and mechanics are skipped automatically
 
 ## Information Hiding — ABSOLUTE RULES
 
