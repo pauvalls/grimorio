@@ -167,10 +167,18 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 						SessionRevealed: sessionNum,
 					})
 				case map[string]any:
+					clueID := getStringArg(v, "id")
+					if clueID == "" {
+						clueID = fmt.Sprintf("clue-%d", len(update.RevealedClues)+1)
+					}
+					sourceAct := getStringArg(v, "source_act")
+					if sourceAct == "" {
+						sourceAct = defaultSourceAct
+					}
 					update.RevealedClues = append(update.RevealedClues, domain.RevealedClue{
-						ID:              getStringArg(v, "id"),
+						ID:              clueID,
 						Description:     getStringArg(v, "description"),
-						SourceAct:       getStringArg(v, "source_act"),
+						SourceAct:       sourceAct,
 						SourceArea:      getStringArg(v, "source_area"),
 						SessionRevealed: sessionNum,
 						IsCritical:      getBoolArg(v, "is_critical"),
@@ -319,6 +327,46 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		// Build warnings for common issues
+		warnings := []string{}
+
+		// Check for empty clue IDs (would cause dedup issues)
+		emptyIDCount := 0
+		for _, clue := range state.RevealedClues {
+			if clue.ID == "" {
+				emptyIDCount++
+			}
+		}
+		if emptyIDCount > 0 {
+			warnings = append(warnings, fmt.Sprintf("%d clues have empty IDs (dedup will fail)", emptyIDCount))
+		}
+
+		// Check for duplicate clue descriptions
+		descSet := make(map[string]int)
+		for _, clue := range state.RevealedClues {
+			descSet[clue.Description]++
+		}
+		duplicateCount := 0
+		for _, count := range descSet {
+			if count > 1 {
+				duplicateCount += count - 1
+			}
+		}
+		if duplicateCount > 0 {
+			warnings = append(warnings, fmt.Sprintf("%d duplicate clue descriptions detected", duplicateCount))
+		}
+
+		// Check for clues without source_act
+		noSourceActCount := 0
+		for _, clue := range state.RevealedClues {
+			if clue.SourceAct == "" || clue.SourceAct == "unknown" {
+				noSourceActCount++
+			}
+		}
+		if noSourceActCount > 0 {
+			warnings = append(warnings, fmt.Sprintf("%d clues have no source_act", noSourceActCount))
+		}
+
 		result := map[string]any{
 			"updated":           true,
 			"campaign_id":       campaignID,
@@ -326,6 +374,7 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 			"active_quests":     len(state.ActiveQuests),
 			"revealed_clues":    len(state.RevealedClues),
 			"dead_npcs":         len(state.DeadNPCs),
+			"warnings":          warnings,
 		}
 
 		jsonBytes, err := json.MarshalIndent(result, "", "  ")

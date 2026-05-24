@@ -43,18 +43,23 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 	if err != nil {
 		// If no state exists, create an initial one
 		state = &domain.NarrativeState{
-			SchemaVersion:  domain.SchemaVersionV2,
-			CampaignID:     campaignID,
-			CurrentSession: 0,
-			RevealedClues:  []domain.RevealedClue{},
-			ActiveQuests:   []domain.QuestState{},
-			CompletedQuests: []domain.QuestState{},
-			FailedQuests:   []domain.QuestState{},
-			DeadNPCs:       []domain.NPCDeathRecord{},
-			KeyItems:       []domain.KeyItem{},
-			SessionLog:     []domain.SessionRecord{},
-			DMOverrides:    []domain.DMOverride{},
-			LastUpdated:    time.Now(),
+			SchemaVersion:     domain.SchemaVersionV2,
+			CampaignID:        campaignID,
+			CurrentSession:    0,
+			RevealedClues:     []domain.RevealedClue{},
+			ActiveQuests:      []domain.QuestState{},
+			QuestNames:        []string{},
+			CompletedQuests:   []domain.QuestState{},
+			CompletedQuestIDs: []string{},
+			FailedQuests:      []domain.QuestState{},
+			FailedQuestIDs:    []string{},
+			DeadNPCs:          []domain.NPCDeathRecord{},
+			KeyItems:          []domain.KeyItem{},
+			ItemNames:         []string{},
+			LootAcquired:      []string{},
+			SessionLog:        []domain.SessionRecord{},
+			DMOverrides:       []domain.DMOverride{},
+			LastUpdated:       time.Now(),
 		}
 		// Save the initial state
 		if saveErr := s.stateRepo.Save(campaignID, state); saveErr != nil {
@@ -157,6 +162,38 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 			state.SessionLog = append(state.SessionLog, record)
 		}
 		state.CurrentSession = sessionNum
+	}
+
+	// Normalize nil arrays to empty arrays for clean JSON serialization
+	if state.RevealedClues == nil {
+		state.RevealedClues = []domain.RevealedClue{}
+	}
+	if state.QuestNames == nil {
+		state.QuestNames = []string{}
+	}
+	if state.CompletedQuestIDs == nil {
+		state.CompletedQuestIDs = []string{}
+	}
+	if state.FailedQuestIDs == nil {
+		state.FailedQuestIDs = []string{}
+	}
+	if state.DeadNPCs == nil {
+		state.DeadNPCs = []domain.NPCDeathRecord{}
+	}
+	if state.ItemNames == nil {
+		state.ItemNames = []string{}
+	}
+	if state.LootAcquired == nil {
+		state.LootAcquired = []string{}
+	}
+	if state.SessionLog == nil {
+		state.SessionLog = []domain.SessionRecord{}
+	}
+	if state.DMOverrides == nil {
+		state.DMOverrides = []domain.DMOverride{}
+	}
+	if state.PCStatuses == nil {
+		state.PCStatuses = []domain.PCStatus{}
 	}
 
 	state.LastUpdated = time.Now()
