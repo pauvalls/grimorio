@@ -84,32 +84,28 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 		state.ActiveQuests = remainingActive
 	}
 
-	// Append new quests and update quest names
-	state.ActiveQuests = append(state.ActiveQuests, update.NewQuests...)
-	for _, q := range update.NewQuests {
-		if q.Name != "" {
-			state.QuestNames = append(state.QuestNames, q.Name)
+	// Replace quest state (active_quests represents current state, not delta)
+	if len(update.NewQuests) > 0 {
+		state.ActiveQuests = update.NewQuests
+		state.QuestNames = nil
+		for _, q := range update.NewQuests {
+			if q.Name != "" {
+				state.QuestNames = append(state.QuestNames, q.Name)
+			}
 		}
 	}
 
 	// Append dead NPCs
 	state.DeadNPCs = append(state.DeadNPCs, update.DeadNPCs...)
 
-	// Append/update key items and item names
-	for _, newItem := range update.KeyItems {
-		found := false
-		for i := range state.KeyItems {
-			if state.KeyItems[i].ID == newItem.ID {
-				state.KeyItems[i] = newItem
-				found = true
-				break
+	// Replace key items state (key_items represents current state, not delta)
+	if len(update.KeyItems) > 0 {
+		state.KeyItems = update.KeyItems
+		state.ItemNames = nil
+		for _, item := range update.KeyItems {
+			if item.Name != "" {
+				state.ItemNames = append(state.ItemNames, item.Name)
 			}
-		}
-		if !found {
-			state.KeyItems = append(state.KeyItems, newItem)
-		}
-		if newItem.Name != "" {
-			state.ItemNames = append(state.ItemNames, newItem.Name)
 		}
 	}
 

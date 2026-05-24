@@ -4,24 +4,25 @@ import "time"
 
 // NarrativeState tracks the mutable session state of a campaign
 type NarrativeState struct {
-	SchemaVersion   string           `json:"schema_version"`
-	CampaignID      string           `json:"campaign_id"`
-	CurrentSession  int              `json:"current_session"`
-	LastUpdated     time.Time        `json:"last_updated"`
+	// Core metadata
+	SchemaVersion  string    `json:"schema_version"`
+	CampaignID     string    `json:"campaign_id"`
+	CurrentSession int       `json:"current_session"`
+	LastUpdated    time.Time `json:"last_updated"`
+
+	// Mutable state (serialized in logical order)
 	RevealedClues   []RevealedClue   `json:"revealed_clues"`
-	ActiveQuests    []QuestState     `json:"-"` // Internal objects, use QuestNames for serialization
+	ActiveQuests    []QuestState     `json:"-"` // Internal objects
+	QuestNames      []string         `json:"active_quests,omitempty"`
 	CompletedQuests []QuestState     `json:"-"` // Internal objects
 	FailedQuests    []QuestState     `json:"-"` // Internal objects
 	DeadNPCs        []NPCDeathRecord `json:"dead_npcs"`
-	KeyItems        []KeyItem        `json:"-"` // Internal objects, use ItemNames for serialization
+	KeyItems        []KeyItem        `json:"-"` // Internal objects
+	ItemNames       []string         `json:"key_items,omitempty"`
+	LootAcquired    []string         `json:"loot_acquired,omitempty"`
+	DMNotes         string           `json:"dm_notes,omitempty"`
 	SessionLog      []SessionRecord  `json:"session_log"`
 	DMOverrides     []DMOverride     `json:"dm_overrides"`
-
-	// Simple string fields for serialization (what agents expect)
-	QuestNames     []string `json:"active_quests,omitempty"`
-	ItemNames      []string `json:"key_items,omitempty"`
-	DMNotes        string   `json:"dm_notes,omitempty"`
-	LootAcquired   []string `json:"loot_acquired,omitempty"`
 }
 
 // Validate checks if the narrative state is valid
