@@ -817,7 +817,7 @@ func TestUpdateCommands_PreservesExistingConfig(t *testing.T) {
 	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
 
 	tmpHome := t.TempDir()
-	os.Setenv("HOME", tmpHome)
+	_ = os.Setenv("HOME", tmpHome)
 
 	configDir := filepath.Join(tmpHome, ".config", "opencode")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
