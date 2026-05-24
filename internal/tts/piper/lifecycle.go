@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -69,8 +70,11 @@ func NewLifecycleManager(config Config) *lifecycleManager {
 	}
 }
 
-// IsInstalled returns true if the `piper` binary is found in PATH.
+// IsInstalled returns true if the piper binary or HTTP wrapper is found in PATH.
 func (lm *lifecycleManager) IsInstalled() bool {
+	if _, err := lm.lookPath("piper-http-server"); err == nil {
+		return true
+	}
 	_, err := lm.lookPath("piper")
 	return err == nil
 }
@@ -101,18 +105,38 @@ func (lm *lifecycleManager) Start(ctx context.Context) error {
 }
 
 func (lm *lifecycleManager) startProcessLocked(ctx context.Context) error {
-	piperPath, err := lm.lookPath("piper")
+	// Try piper-http-server wrapper first (handles standalone piper binary)
+	piperPath, err := lm.lookPath("piper-http-server")
 	if err != nil {
-		return fmt.Errorf("piper: lookup failed: %w", err)
+		// Fall back to native piper (if it has HTTP server built-in)
+		piperPath, err = lm.lookPath("piper")
+		if err != nil {
+			return fmt.Errorf("piper: lookup failed: %w", err)
+		}
 	}
 
-	args := []string{
-		"--model", lm.config.ModelPath,
-		"--port", fmt.Sprintf("%d", lm.config.Port),
-		"--host", lm.config.Host,
-	}
-	if lm.config.ConfigPath != "" {
-		args = append(args, "--config", lm.config.ConfigPath)
+	var args []string
+	if isHTTPServerWrapper(piperPath) {
+		// piper-http-server wrapper
+		args = []string{
+			"--model", lm.config.ModelPath,
+			"--port", fmt.Sprintf("%d", lm.config.Port),
+			"--host", lm.config.Host,
+			"--length-scale", fmt.Sprintf("%f", lm.config.LengthScale),
+		}
+		if lm.config.ConfigPath != "" {
+			args = append(args, "--config", lm.config.ConfigPath)
+		}
+	} else {
+		// Native piper with HTTP support
+		args = []string{
+			"--model", lm.config.ModelPath,
+			"--port", fmt.Sprintf("%d", lm.config.Port),
+			"--host", lm.config.Host,
+		}
+		if lm.config.ConfigPath != "" {
+			args = append(args, "--config", lm.config.ConfigPath)
+		}
 	}
 
 	lm.cmd = lm.startCmd(piperPath, args...)
@@ -126,6 +150,11 @@ func (lm *lifecycleManager) startProcessLocked(ctx context.Context) error {
 
 	lm.process = proc
 	return nil
+}
+
+// isHTTPServerWrapper checks if the binary is our Python HTTP wrapper.
+func isHTTPServerWrapper(path string) bool {
+	return filepath.Base(path) == "piper-http-server"
 }
 
 // Stop performs a graceful shutdown of the Piper server.
