@@ -27,8 +27,17 @@ func (op *osProcess) Pid() int                { return op.p.Pid }
 func (op *osProcess) Signal(sig os.Signal) error { return op.p.Signal(sig) }
 func (op *osProcess) Wait() (*os.ProcessState, error) { return op.p.Wait() }
 
-// LifecycleManager manages the Piper server process lifecycle.
-type LifecycleManager struct {
+// LifecycleManager defines the interface for managing the Piper server lifecycle.
+type LifecycleManager interface {
+	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
+	Restart(ctx context.Context) error
+	IsRunning() bool
+	IsInstalled() bool
+}
+
+// lifecycleManager manages the Piper server process lifecycle.
+type lifecycleManager struct {
 	config Config
 
 	// Injectable dependencies for testing
@@ -45,8 +54,8 @@ type LifecycleManager struct {
 }
 
 // NewLifecycleManager creates a new LifecycleManager with the given config.
-func NewLifecycleManager(config Config) *LifecycleManager {
-	return &LifecycleManager{
+func NewLifecycleManager(config Config) *lifecycleManager {
+	return &lifecycleManager{
 		config:   config,
 		lookPath: exec.LookPath,
 		startCmd: exec.Command,
@@ -61,13 +70,13 @@ func NewLifecycleManager(config Config) *LifecycleManager {
 }
 
 // IsInstalled returns true if the `piper` binary is found in PATH.
-func (lm *LifecycleManager) IsInstalled() bool {
+func (lm *lifecycleManager) IsInstalled() bool {
 	_, err := lm.lookPath("piper")
 	return err == nil
 }
 
 // Start launches the Piper server process and begins healthcheck monitoring.
-func (lm *LifecycleManager) Start(ctx context.Context) error {
+func (lm *lifecycleManager) Start(ctx context.Context) error {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 
@@ -91,7 +100,7 @@ func (lm *LifecycleManager) Start(ctx context.Context) error {
 	return nil
 }
 
-func (lm *LifecycleManager) startProcessLocked(ctx context.Context) error {
+func (lm *lifecycleManager) startProcessLocked(ctx context.Context) error {
 	piperPath, err := lm.lookPath("piper")
 	if err != nil {
 		return fmt.Errorf("piper: lookup failed: %w", err)
@@ -120,7 +129,7 @@ func (lm *LifecycleManager) startProcessLocked(ctx context.Context) error {
 }
 
 // Stop performs a graceful shutdown of the Piper server.
-func (lm *LifecycleManager) Stop(ctx context.Context) error {
+func (lm *lifecycleManager) Stop(ctx context.Context) error {
 	lm.mu.Lock()
 	if !lm.running {
 		lm.mu.Unlock()
@@ -166,14 +175,14 @@ func (lm *LifecycleManager) Stop(ctx context.Context) error {
 }
 
 // IsRunning returns true if the Piper server is currently running.
-func (lm *LifecycleManager) IsRunning() bool {
+func (lm *lifecycleManager) IsRunning() bool {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
 	return lm.running
 }
 
 // Restart stops and starts the Piper server with auto-retry backoff.
-func (lm *LifecycleManager) Restart(ctx context.Context) error {
+func (lm *lifecycleManager) Restart(ctx context.Context) error {
 	if err := lm.Stop(ctx); err != nil {
 		return err
 	}
@@ -203,7 +212,7 @@ func (lm *LifecycleManager) Restart(ctx context.Context) error {
 	return errors.New("piper: restart failed after all attempts")
 }
 
-func (lm *LifecycleManager) healthcheckLoop() {
+func (lm *lifecycleManager) healthcheckLoop() {
 	defer lm.wg.Done()
 
 	ticker := time.NewTicker(2 * time.Second)
