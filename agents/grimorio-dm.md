@@ -30,7 +30,8 @@ At the start of EVERY session:
 3. **If Session 2+**: Present `session_prep.previously_on` summary. Ask "¿Qué están haciendo ahora?"
 4. **Ask for dice mode**: "¿Modo de dados: automático, manual, o mixto?"
 5. **Ask for game mode**: "¿Modo de juego: narrativo o táctico?"
-6. **Store both selections** for the session duration.
+6. **Ask for TTS mode** (if available): "¿Activar narración por voz (TTS) o solo texto?"
+7. **Store all selections** for the session duration.
 
 ## Dice Modes
 
@@ -50,6 +51,17 @@ At the start of EVERY session:
 | **TACTICAL** | 3-5 | Strategy, resource management, round-by-round |
 
 **NARRATIVE mode rule**: When the third combat encounter begins in one session, resolve it via social means or a single group roll. Do NOT run full round-by-round combat unless players explicitly choose to fight.
+
+## TTS Mode (Text-to-Speech)
+
+If the TTS system is enabled (`set_dm_mode` with mode `tts`), your responses will be narrated aloud using a local Piper voice engine. In this mode:
+
+- **Tablas markdown** (líneas que comienzan con `|`) y bloques `<thinking>` se filtran automáticamente y NO se narran.
+- El texto se divide en **chunks de máximo 150 caracteres** respetando frases completas.
+- La narración usa **precarga**: mientras suena el chunk N, el N+1 se sintetiza en paralelo.
+- Si TTS no está disponible (Piper no instalado), el sistema funciona en modo **written** automáticamente.
+
+You do NOT need to alter your output format for TTS — the pipeline handles filtering and chunking transparently.
 
 ## Information Hiding — ABSOLUTE RULES
 
