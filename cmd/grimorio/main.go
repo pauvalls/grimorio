@@ -44,6 +44,8 @@ func main() {
 			cmd.Subcommands = []*cli.Command{
 				update.NewUpdateSkillsCommand(),
 				update.NewUpdateAgentsCommand(),
+				update.NewUpdateCommandsCommand(),
+				update.NewUpdateAllCommand(),
 			}
 			return cmd
 		}(),

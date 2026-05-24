@@ -738,6 +738,135 @@ func TestNewUpdateAgentsCommand(t *testing.T) {
 	}
 }
 
+func TestNewUpdateCommandsCommand(t *testing.T) {
+	cmd := NewUpdateCommandsCommand()
+	if cmd == nil {
+		t.Fatal("NewUpdateCommandsCommand() returned nil")
+	}
+	if cmd.Name != "commands" {
+		t.Errorf("command name = %q, want %q", cmd.Name, "commands")
+	}
+	if cmd.Usage == "" {
+		t.Error("command usage should not be empty")
+	}
+	if cmd.Action == nil {
+		t.Error("command action should not be nil")
+	}
+}
+
+func TestNewUpdateAllCommand(t *testing.T) {
+	cmd := NewUpdateAllCommand()
+	if cmd == nil {
+		t.Fatal("NewUpdateAllCommand() returned nil")
+	}
+	if cmd.Name != "all" {
+		t.Errorf("command name = %q, want %q", cmd.Name, "all")
+	}
+	if cmd.Usage == "" {
+		t.Error("command usage should not be empty")
+	}
+	if cmd.Action == nil {
+		t.Error("command action should not be nil")
+	}
+}
+
+func TestUpdateCommands_CreatesConfig(t *testing.T) {
+	// Save original HOME and restore after test
+	origHome := os.Getenv("HOME")
+	t.Cleanup(func() { os.Setenv("HOME", origHome) })
+
+	tmpHome := t.TempDir()
+	os.Setenv("HOME", tmpHome)
+
+	// Create a fake executable path for the test
+	configDir := filepath.Join(tmpHome, ".config", "opencode")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := updateCommands()
+	if err != nil {
+		t.Fatalf("updateCommands() error = %v", err)
+	}
+
+	// Verify opencode.json was created
+	configPath := filepath.Join(configDir, "opencode.json")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Fatal("opencode.json was not created")
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("reading opencode.json: %v", err)
+	}
+
+	// Should contain grimorio MCP and command entries
+	if !strings.Contains(string(content), `"grimorio"`) {
+		t.Error("opencode.json should contain grimorio entry")
+	}
+	if !strings.Contains(string(content), `"mcp"`) {
+		t.Error("opencode.json should contain mcp section")
+	}
+	if !strings.Contains(string(content), `"command"`) {
+		t.Error("opencode.json should contain command section")
+	}
+}
+
+func TestUpdateCommands_PreservesExistingConfig(t *testing.T) {
+	origHome := os.Getenv("HOME")
+	t.Cleanup(func() { os.Setenv("HOME", origHome) })
+
+	tmpHome := t.TempDir()
+	os.Setenv("HOME", tmpHome)
+
+	configDir := filepath.Join(tmpHome, ".config", "opencode")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write existing config with other entries
+	existing := `{
+  "agent": {
+    "test-agent": {
+      "description": "test"
+    }
+  },
+  "mcp": {
+    "other": {
+      "command": ["other"],
+      "type": "local"
+    }
+  }
+}`
+	configPath := filepath.Join(configDir, "opencode.json")
+	if err := os.WriteFile(configPath, []byte(existing), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := updateCommands()
+	if err != nil {
+		t.Fatalf("updateCommands() error = %v", err)
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("reading opencode.json: %v", err)
+	}
+
+	// Existing entries should be preserved
+	if !strings.Contains(string(content), `"test-agent"`) {
+		t.Error("existing agent entries should be preserved")
+	}
+	if !strings.Contains(string(content), `"other"`) {
+		t.Error("existing MCP entries should be preserved")
+	}
+
+	// Grimorio entries should be added
+	if !strings.Contains(string(content), `"grimorio"`) {
+		t.Error("grimorio entry should be added")
+	}
+}
+
 func TestCopyDir(t *testing.T) {
 	src := t.TempDir()
 	dst := t.TempDir()

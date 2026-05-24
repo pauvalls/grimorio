@@ -1,6 +1,7 @@
 package update
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -164,6 +165,184 @@ func NewUpdateAgentsCommand() *cli.Command {
 		Usage: "Update Grimorio agents to the latest version",
 		Action: func(cCtx *cli.Context) error {
 			return updateAssets("agents")
+		},
+	}
+}
+
+// updateCommands updates the opencode.json configuration with grimorio MCP and command entries.
+func updateCommands() error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("finding executable: %w", err)
+	}
+	exePath, err = filepath.EvalSymlinks(exePath)
+	if err != nil {
+		return fmt.Errorf("resolving executable path: %w", err)
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("finding home directory: %w", err)
+	}
+
+	configPath := filepath.Join(home, ".config", "opencode", "opencode.json")
+	fmt.Printf("Updating commands in %s...\n", configPath)
+
+	// Read existing config
+	data := map[string]interface{}{}
+	if _, err := os.Stat(configPath); err == nil {
+		content, err := os.ReadFile(configPath)
+		if err != nil {
+			return fmt.Errorf("reading opencode.json: %w", err)
+		}
+		if len(content) > 0 {
+			if err := json.Unmarshal(content, &data); err != nil {
+				return fmt.Errorf("parsing opencode.json: %w", err)
+			}
+		}
+	}
+
+	// Backup existing config
+	backupPath := configPath + ".backup." + time.Now().Format("20060102150405")
+	if _, err := os.Stat(configPath); err == nil {
+		if err := copyFile(configPath, backupPath); err != nil {
+			return fmt.Errorf("backing up opencode.json: %w", err)
+		}
+		fmt.Printf("Backup created: %s\n", backupPath)
+	}
+
+	// Build grimorio MCP entry
+	grimorioMCP := map[string]interface{}{
+		"command": []string{exePath},
+		"type":    "local",
+		"enabled": true,
+	}
+
+	// Build grimorio command entry
+	grimorioCmd := map[string]interface{}{
+		"description": "Generate a complete D&D 5e campaign or one-shot from an idea (executes in main thread)",
+		"subtask":     false,
+		"template": `Generate a D&D 5e campaign or one-shot from the user's idea.
+
+## IMPORTANT: Use the grimorio-architect agent. It handles everything end-to-end.
+
+## Workflow (followed by grimorio-architect)
+
+### Phase 1: Gather Requirements
+Ask the user these questions (one at a time, interactively):
+1. What's the campaign name? (kebab-case, e.g. "sunken-city")
+2. One-shot or full campaign?
+3. Campaign idea / brief description? (What story do you want to tell? 2-3 sentences)
+4. Player level? (1-3, 4-6, 7-10, 11-15, 16-20)
+5. Desired tone? (heroic, dark, humorous, political intrigue)
+6. Duration? (one-shot, 3-5 sessions, long campaign)
+
+### Phase 2: Create Campaign Structure
+Use the grimorio MCP tool create_campaign to create the structure.
+
+### Phase 3-13: End-to-End Orchestration (sequential batches)
+The architect follows strict batch ordering — each batch waits for the previous:
+
+- **Batch 1** (parallel): lore, NPCs, bestiary, maps, setting guide, introduction
+  → Narrative validation (narrative-custodian)
+  → WotC validation
+- **Batch 2** (parallel): quests, encounters, characters, appendices
+  → Narrative validation (narrative-custodian)
+  → WotC validation
+  → Update Narrative State
+- **Batch 3** (sequential, 1 area at a time to avoid timeout):
+  - Chapter 1 areas → Narrative validation → WotC validation
+  - Chapter 2 areas → Narrative validation → WotC validation
+  - Chapter 3 areas → Narrative validation → WotC validation
+- **Phase 6**: Art generation — cover, NPC portraits, monster illustrations, scene artwork (batch-spec then generate)
+- **Phase 7**: Update ALL markdown references with generated images
+- **Phase 8**: Living World tools (factions, random tables, handouts, consequences) → Consistency Gate
+- **Phase 9**: Final validations — integration check, narrative coherence, macguffin consistency, random tables, character sheets
+- **Phase 10**: DM Experience tools (session prep, flowchart)
+- **Phase 11**: Compile PDF (embeds all images + flowchart + CSS styling)
+- **Phase 12**: Final report
+
+The architect reports progress to the user after each phase.
+
+### Final: Report
+After completion, report to the user:
+- Where the PDF was saved
+- What content was generated
+- Any issues encountered
+
+**DO NOT launch subagents from the command thread — the architect manages all delegation internally.**`,
+	}
+
+	// Ensure mcp section exists
+	mcpSection, ok := data["mcp"].(map[string]interface{})
+	if !ok {
+		mcpSection = make(map[string]interface{})
+		data["mcp"] = mcpSection
+	}
+	mcpSection["grimorio"] = grimorioMCP
+
+	// Ensure command section exists
+	cmdSection, ok := data["command"].(map[string]interface{})
+	if !ok {
+		cmdSection = make(map[string]interface{})
+		data["command"] = cmdSection
+	}
+	cmdSection["grimorio"] = grimorioCmd
+
+	// Write back
+	out, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling config: %w", err)
+	}
+	if err := os.WriteFile(configPath, out, 0644); err != nil {
+		return fmt.Errorf("writing opencode.json: %w", err)
+	}
+
+	fmt.Printf("Successfully updated commands in opencode.json\n")
+	return nil
+}
+
+// updateAll runs all three asset updates sequentially: skills, agents, commands.
+func updateAll() error {
+	fmt.Println("=== Grimorio Full Update ===")
+
+	fmt.Println("\n--- Updating skills ---")
+	if err := updateAssets("skills"); err != nil {
+		return fmt.Errorf("skills update failed: %w", err)
+	}
+
+	fmt.Println("\n--- Updating agents ---")
+	if err := updateAssets("agents"); err != nil {
+		return fmt.Errorf("agents update failed: %w", err)
+	}
+
+	fmt.Println("\n--- Updating commands ---")
+	if err := updateCommands(); err != nil {
+		return fmt.Errorf("commands update failed: %w", err)
+	}
+
+	fmt.Println("\n=== All updates completed successfully! ===")
+	return nil
+}
+
+// NewUpdateCommandsCommand returns the "update commands" CLI command.
+func NewUpdateCommandsCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "commands",
+		Usage: "Update Grimorio MCP and command entries in opencode.json",
+		Action: func(cCtx *cli.Context) error {
+			return updateCommands()
+		},
+	}
+}
+
+// NewUpdateAllCommand returns the "update all" CLI command.
+func NewUpdateAllCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "all",
+		Usage: "Update all Grimorio assets: skills, agents, and commands",
+		Action: func(cCtx *cli.Context) error {
+			return updateAll()
 		},
 	}
 }
