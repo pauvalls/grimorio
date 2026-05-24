@@ -211,11 +211,22 @@ func updateCommands() error {
 		fmt.Printf("Backup created: %s\n", backupPath)
 	}
 
-	// Build grimorio MCP entry
+	// Build grimorio MCP entry with TTS environment variables
 	grimorioMCP := map[string]interface{}{
 		"command": []string{exePath},
 		"type":    "local",
 		"enabled": true,
+		"env": map[string]string{
+			"PATH":                       "/home/pau/.local/bin:/home/pau/.local/bin/piper:/usr/local/bin:/usr/bin:/bin",
+			"PIPER_MODEL_PATH":            "/home/pau/.local/share/piper/es_ES-davefx-medium.onnx",
+			"PIPER_CONFIG_PATH":           "/home/pau/.local/share/piper/es_ES-davefx-medium.onnx.json",
+			"PIPER_PORT":                  "5000",
+			"PIPER_HOST":                  "127.0.0.1",
+			"PIPER_LENGTH_SCALE":          "1.0",
+			"PIPER_VOLUME":                "0.8",
+			"GRIMORIO_TTS_ENABLED":        "true",
+			"AUDIO_PLAYER":                "auto",
+		},
 	}
 
 	// Build grimorio command entry
