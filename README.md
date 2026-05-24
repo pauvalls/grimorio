@@ -100,13 +100,12 @@ wget https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/me
 
 # 2. Enable TTS in your session
 # The DM agent will ask "¿Activar narración por voz?" at session start
-# Or manually: set_dm_mode(mode="tts")
 ```
 
 - **Local & Free** — Runs on your machine, no API keys
 - **Spanish voice** — `es_ES-davefx-medium` included
-- **Smart filtering** — Skips tables, narrates everything else
-- **Gapless playback** — Preloads next chunk while current plays
+- **Auto-chunking** — Splits long text into sentence chunks automatically
+- **Sequential narration** — Speaks chunk by chunk without gaps
 
 **Change Voice**
 
