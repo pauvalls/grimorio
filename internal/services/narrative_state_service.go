@@ -84,13 +84,18 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 		state.ActiveQuests = remainingActive
 	}
 
-	// Append new quests
+	// Append new quests and update quest names
 	state.ActiveQuests = append(state.ActiveQuests, update.NewQuests...)
+	for _, q := range update.NewQuests {
+		if q.Name != "" {
+			state.QuestNames = append(state.QuestNames, q.Name)
+		}
+	}
 
 	// Append dead NPCs
 	state.DeadNPCs = append(state.DeadNPCs, update.DeadNPCs...)
 
-	// Append/update key items
+	// Append/update key items and item names
 	for _, newItem := range update.KeyItems {
 		found := false
 		for i := range state.KeyItems {
@@ -103,6 +108,9 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 		if !found {
 			state.KeyItems = append(state.KeyItems, newItem)
 		}
+		if newItem.Name != "" {
+			state.ItemNames = append(state.ItemNames, newItem.Name)
+		}
 	}
 
 	// Append session log
@@ -113,6 +121,10 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 	if sessionNum == 0 {
 		sessionNum = state.CurrentSession + 1
 	}
+	// Save session metadata to root state for easy access
+	state.DMNotes = update.DMNotes
+	state.LootAcquired = update.LootAcquired
+
 	if sessionNum > 0 || update.SessionSummary != "" {
 		record := domain.SessionRecord{
 			SessionNum:   sessionNum,

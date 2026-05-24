@@ -144,6 +144,12 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 		}
 
 		sessionNum := getIntArg(args, "session_num")
+		defaultSourceAct := getStringArg(args, "default_source_act")
+		if defaultSourceAct == "" {
+			defaultSourceAct = "unknown"
+		}
+		defaultChoiceMade := getStringArg(args, "default_choice_made")
+		defaultImpactScope := getStringArg(args, "default_impact_scope")
 
 		update := domain.StateUpdate{
 			SessionNum: sessionNum,
@@ -157,7 +163,7 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 					update.RevealedClues = append(update.RevealedClues, domain.RevealedClue{
 						ID:              fmt.Sprintf("clue-%d", len(update.RevealedClues)+1),
 						Description:     v,
-						SourceAct:       "unknown",
+						SourceAct:       defaultSourceAct,
 						SessionRevealed: sessionNum,
 					})
 				case map[string]any:
@@ -213,6 +219,8 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 					update.KeyDecisions = append(update.KeyDecisions, domain.Decision{
 						ID:          fmt.Sprintf("decision-%d", len(update.KeyDecisions)+1),
 						Description: v,
+						ChoiceMade:  defaultChoiceMade,
+						ImpactScope: defaultImpactScope,
 					})
 				case map[string]any:
 					update.KeyDecisions = append(update.KeyDecisions, domain.Decision{

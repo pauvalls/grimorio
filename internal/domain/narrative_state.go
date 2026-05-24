@@ -9,13 +9,19 @@ type NarrativeState struct {
 	CurrentSession  int              `json:"current_session"`
 	LastUpdated     time.Time        `json:"last_updated"`
 	RevealedClues   []RevealedClue   `json:"revealed_clues"`
-	ActiveQuests    []QuestState     `json:"active_quests"`
-	CompletedQuests []QuestState     `json:"completed_quests"`
-	FailedQuests    []QuestState     `json:"failed_quests"`
+	ActiveQuests    []QuestState     `json:"-"` // Internal objects, use QuestNames for serialization
+	CompletedQuests []QuestState     `json:"-"` // Internal objects
+	FailedQuests    []QuestState     `json:"-"` // Internal objects
 	DeadNPCs        []NPCDeathRecord `json:"dead_npcs"`
-	KeyItems        []KeyItem        `json:"key_items"`
+	KeyItems        []KeyItem        `json:"-"` // Internal objects, use ItemNames for serialization
 	SessionLog      []SessionRecord  `json:"session_log"`
 	DMOverrides     []DMOverride     `json:"dm_overrides"`
+
+	// Simple string fields for serialization (what agents expect)
+	QuestNames     []string `json:"active_quests,omitempty"`
+	ItemNames      []string `json:"key_items,omitempty"`
+	DMNotes        string   `json:"dm_notes,omitempty"`
+	LootAcquired   []string `json:"loot_acquired,omitempty"`
 }
 
 // Validate checks if the narrative state is valid
