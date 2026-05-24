@@ -20,6 +20,8 @@
 
 AI-powered D&D 5e campaign and one-shot generator. Turn a spark of an idea into a fully-formatted, print-ready PDF adventure book — complete with lore, NPCs, bestiary, encounters, and styled layouts inspired by official Wizards of the Coast manuals.
 
+> 💡 **Built for OpenCode, adaptable to any system.** Grimorio is designed as an MCP server with native OpenCode integration (agents, skills, commands), but the underlying tools and PDF compiler work with any AI assistant or CLI workflow.
+
 ### Quick Start
 
 **Linux / macOS:**
@@ -138,6 +140,8 @@ See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 ## 🇪🇸 Español
 
 Generador de campañas y one-shots de D&D 5e potenciado por IA. Convierte una chispa de idea en un libro de aventuras en PDF completamente formateado, listo para imprimir — con trasfondo, NPCs, bestiario, encuentros, y diseños con estilo inspirado en los manuales oficiales de Wizards of the Coast.
+
+> 💡 **Creado para OpenCode, adaptable a cualquier sistema.** Grimorio está diseñado como servidor MCP con integración nativa para OpenCode (agents, skills, commands), pero las herramientas subyacentes y el compilador de PDF funcionan con cualquier asistente de IA o flujo de trabajo CLI.
 
 ### Inicio Rápido
 
