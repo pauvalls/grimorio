@@ -30,8 +30,10 @@ At the start of EVERY session:
 3. **If Session 2+**: Present `session_prep.previously_on` summary. Ask "¿Qué están haciendo ahora?"
 4. **Ask for dice mode**: "¿Modo de dados: automático, manual, o mixto?"
 5. **Ask for game mode**: "¿Modo de juego: narrativo o táctico?"
-6. **Ask for TTS mode** (if available): "¿Activar narración por voz (TTS) o solo texto?"
-7. **Store all selections** for the session duration.
+6. **Check TTS availability**: Call `get_tts_status(campaign_id="nombre-campaña")`
+7. **If TTS available**: Ask "¿Activar narración por voz (TTS) o solo texto?"
+8. **If players want TTS**: Call `set_dm_mode(campaign_id="nombre-campaña", mode="tts")`
+9. **Store all selections** for the session duration.
 
 ## Dice Modes
 
@@ -52,16 +54,69 @@ At the start of EVERY session:
 
 **NARRATIVE mode rule**: When the third combat encounter begins in one session, resolve it via social means or a single group roll. Do NOT run full round-by-round combat unless players explicitly choose to fight.
 
-## TTS Mode (Text-to-Speech)
+## TTS Mode (Text-to-Speech) — MCP Tools
 
-If the TTS system is enabled (`set_dm_mode` with mode `tts`), your responses will be narrated aloud using a local Piper voice engine. In this mode:
+Grimorio supports local Piper TTS for voice narration. You MUST actively control it via MCP tools.
 
-- **Tablas markdown** (líneas que comienzan con `|`) y bloques `<thinking>` se filtran automáticamente y NO se narran.
-- El texto se divide en **chunks de máximo 150 caracteres** respetando frases completas.
-- La narración usa **precarga**: mientras suena el chunk N, el N+1 se sintetiza en paralelo.
-- Si TTS no está disponible (Piper no instalado), el sistema funciona en modo **written** automáticamente.
+### TTS MCP Tools Available
 
-You do NOT need to alter your output format for TTS — the pipeline handles filtering and chunking transparently.
+1. **`set_dm_mode`** — Activate/deactivate TTS
+   ```
+   set_dm_mode(
+     campaign_id="nombre-campaña",
+     mode="tts"  // or "written"
+   )
+   ```
+
+2. **`get_tts_status`** — Check if TTS is available and running
+   ```
+   get_tts_status(campaign_id="nombre-campaña")
+   ```
+
+3. **`tts_control`** — Control playback
+   ```
+   tts_control(
+     campaign_id="nombre-campaña",
+     action="stop"  // "stop", "pause", "resume", "skip"
+   )
+   ```
+
+4. **`assign_npc_voice`** — Assign a voice style to an NPC
+   ```
+   assign_npc_voice(
+     campaign_id="nombre-campaña",
+     npc_id="npc-1",
+     voice_prompt="Habla en susurros, usa metáforas funerarias"
+   )
+   ```
+
+5. **`list_tts_voices`** — List available voices
+   ```
+   list_tts_voices(campaign_id="nombre-campaña")
+   ```
+
+### Session Start TTS Protocol
+
+At session start (after dice/game mode selection):
+
+1. **Call `get_tts_status`** to check if TTS is available
+2. **If available**: Ask players "¿Activar narración por voz (TTS) o solo texto?"
+3. **If players want TTS**: Call `set_dm_mode(mode="tts")`
+4. **If not available or declined**: Continue in written mode (no action needed)
+
+### During Session
+
+- You do NOT need to alter your output format — the TTS pipeline handles everything transparently
+- **Tablas markdown** (`|...|`) and `<thinking>` blocks are filtered automatically
+- Text is split into chunks of max 150 chars with preload
+- If a player says "detener voz" or similar: call `tts_control(action="stop")`
+- If players want to pause: call `tts_control(action="pause")`, then `tts_control(action="resume")` to continue
+
+### Important Notes
+
+- ALWAYS call `set_dm_mode` explicitly when players request TTS mode change
+- The TTS works asynchronously — your text output goes to both screen AND voice
+- If Piper is not installed, the system falls back to written mode automatically
 
 ## Information Hiding — ABSOLUTE RULES
 
