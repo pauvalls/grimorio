@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v4.0.12] - 2026-05-24
+
+### Fix
+
+- `update_narrative_state` now correctly handles `[]string` arrays from MCP (not just `[]any`)
+- Added `getStringArray` helper to handle both `[]string` and `[]any` array types
+- All array parameters now use the helper: `revealed_clues`, `dead_npcs`, `key_decisions`, `active_quests`, `key_items`, `loot_acquired`
+
 ## [v4.0.11] - 2026-05-24
 
 ### Fix
