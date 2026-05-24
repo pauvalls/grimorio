@@ -150,116 +150,104 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 		}
 
 		// Parse revealed clues (accepts both strings and objects)
-		if cluesVal, ok := args["revealed_clues"]; ok {
-			if clues, ok := cluesVal.([]any); ok {
-				for _, c := range clues {
-					switch v := c.(type) {
-					case string:
-						update.RevealedClues = append(update.RevealedClues, domain.RevealedClue{
-							ID:              fmt.Sprintf("clue-%d", len(update.RevealedClues)+1),
-							Description:     v,
-							SourceAct:       "unknown",
-							SessionRevealed: sessionNum,
-						})
-					case map[string]any:
-						update.RevealedClues = append(update.RevealedClues, domain.RevealedClue{
-							ID:              getStringArg(v, "id"),
-							Description:     getStringArg(v, "description"),
-							SourceAct:       getStringArg(v, "source_act"),
-							SourceArea:      getStringArg(v, "source_area"),
-							SessionRevealed: sessionNum,
-							IsCritical:      getBoolArg(v, "is_critical"),
-						})
-					}
+		if clues := getStringArray(args, "revealed_clues"); clues != nil {
+			for _, c := range clues {
+				switch v := c.(type) {
+				case string:
+					update.RevealedClues = append(update.RevealedClues, domain.RevealedClue{
+						ID:              fmt.Sprintf("clue-%d", len(update.RevealedClues)+1),
+						Description:     v,
+						SourceAct:       "unknown",
+						SessionRevealed: sessionNum,
+					})
+				case map[string]any:
+					update.RevealedClues = append(update.RevealedClues, domain.RevealedClue{
+						ID:              getStringArg(v, "id"),
+						Description:     getStringArg(v, "description"),
+						SourceAct:       getStringArg(v, "source_act"),
+						SourceArea:      getStringArg(v, "source_area"),
+						SessionRevealed: sessionNum,
+						IsCritical:      getBoolArg(v, "is_critical"),
+					})
 				}
 			}
 		}
 
 		// Parse completed quests
-		if completedVal, ok := args["completed_quests"]; ok {
-			if completed, ok := completedVal.([]any); ok {
-				for _, c := range completed {
-					if s, ok := c.(string); ok {
-						update.CompletedQuests = append(update.CompletedQuests, s)
-					}
+		if completed := getStringArray(args, "completed_quests"); completed != nil {
+			for _, c := range completed {
+				if s, ok := c.(string); ok {
+					update.CompletedQuests = append(update.CompletedQuests, s)
 				}
 			}
 		}
 
 		// Parse dead NPCs (accepts both strings and objects)
-		if deadVal, ok := args["dead_npcs"]; ok {
-			if deadNPCs, ok := deadVal.([]any); ok {
-				for _, n := range deadNPCs {
-					switch v := n.(type) {
-					case string:
-						update.DeadNPCs = append(update.DeadNPCs, domain.NPCDeathRecord{
-							NPCID:   fmt.Sprintf("npc-%d", len(update.DeadNPCs)+1),
-							Name:    v,
-							Session: sessionNum,
-						})
-					case map[string]any:
-						update.DeadNPCs = append(update.DeadNPCs, domain.NPCDeathRecord{
-							NPCID:    getStringArg(v, "npc_id"),
-							Name:     getStringArg(v, "name"),
-							Session:  sessionNum,
-							Cause:    getStringArg(v, "cause"),
-							KilledBy: getStringArg(v, "killed_by"),
-							Location: getStringArg(v, "location"),
-						})
-					}
+		if deadNPCs := getStringArray(args, "dead_npcs"); deadNPCs != nil {
+			for _, n := range deadNPCs {
+				switch v := n.(type) {
+				case string:
+					update.DeadNPCs = append(update.DeadNPCs, domain.NPCDeathRecord{
+						NPCID:   fmt.Sprintf("npc-%d", len(update.DeadNPCs)+1),
+						Name:    v,
+						Session: sessionNum,
+					})
+				case map[string]any:
+					update.DeadNPCs = append(update.DeadNPCs, domain.NPCDeathRecord{
+						NPCID:    getStringArg(v, "npc_id"),
+						Name:     getStringArg(v, "name"),
+						Session:  sessionNum,
+						Cause:    getStringArg(v, "cause"),
+						KilledBy: getStringArg(v, "killed_by"),
+						Location: getStringArg(v, "location"),
+					})
 				}
 			}
 		}
 
 		// Parse key decisions (accepts both strings and objects)
-		if decisionsVal, ok := args["key_decisions"]; ok {
-			if decisions, ok := decisionsVal.([]any); ok {
-				for _, d := range decisions {
-					switch v := d.(type) {
-					case string:
-						update.KeyDecisions = append(update.KeyDecisions, domain.Decision{
-							ID:          fmt.Sprintf("decision-%d", len(update.KeyDecisions)+1),
-							Description: v,
-						})
-					case map[string]any:
-						update.KeyDecisions = append(update.KeyDecisions, domain.Decision{
-							ID:          getStringArg(v, "id"),
-							Description: getStringArg(v, "description"),
-							ChoiceMade:  getStringArg(v, "choice_made"),
-							ImpactScope: getStringArg(v, "impact_scope"),
-						})
-					}
+		if decisions := getStringArray(args, "key_decisions"); decisions != nil {
+			for _, d := range decisions {
+				switch v := d.(type) {
+				case string:
+					update.KeyDecisions = append(update.KeyDecisions, domain.Decision{
+						ID:          fmt.Sprintf("decision-%d", len(update.KeyDecisions)+1),
+						Description: v,
+					})
+				case map[string]any:
+					update.KeyDecisions = append(update.KeyDecisions, domain.Decision{
+						ID:          getStringArg(v, "id"),
+						Description: getStringArg(v, "description"),
+						ChoiceMade:  getStringArg(v, "choice_made"),
+						ImpactScope: getStringArg(v, "impact_scope"),
+					})
 				}
 			}
 		}
 
 		// Parse active quests as strings (creates QuestState objects)
-		if activeVal, ok := args["active_quests"]; ok {
-			if active, ok := activeVal.([]any); ok {
-				for _, q := range active {
-					if s, ok := q.(string); ok {
-						update.NewQuests = append(update.NewQuests, domain.QuestState{
-							ID:     fmt.Sprintf("quest-%d", len(update.NewQuests)+1),
-							Name:   s,
-							Status: "active",
-						})
-					}
+		if active := getStringArray(args, "active_quests"); active != nil {
+			for _, q := range active {
+				if s, ok := q.(string); ok {
+					update.NewQuests = append(update.NewQuests, domain.QuestState{
+						ID:     fmt.Sprintf("quest-%d", len(update.NewQuests)+1),
+						Name:   s,
+						Status: "active",
+					})
 				}
 			}
 		}
 
 		// Parse key items as strings (creates KeyItem objects)
-		if itemsVal, ok := args["key_items"]; ok {
-			if items, ok := itemsVal.([]any); ok {
-				for _, item := range items {
-					if s, ok := item.(string); ok {
-						update.KeyItems = append(update.KeyItems, domain.KeyItem{
-							ID:           fmt.Sprintf("item-%d", len(update.KeyItems)+1),
-							Name:         s,
-							Holder:       "party",
-							SessionFound: sessionNum,
-						})
-					}
+		if items := getStringArray(args, "key_items"); items != nil {
+			for _, item := range items {
+				if s, ok := item.(string); ok {
+					update.KeyItems = append(update.KeyItems, domain.KeyItem{
+						ID:           fmt.Sprintf("item-%d", len(update.KeyItems)+1),
+						Name:         s,
+						Holder:       "party",
+						SessionFound: sessionNum,
+					})
 				}
 			}
 		}
@@ -270,12 +258,10 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 		update.DMNotes = getStringArg(args, "dm_notes")
 
 		// Parse loot acquired
-		if lootVal, ok := args["loot_acquired"]; ok {
-			if loot, ok := lootVal.([]any); ok {
-				for _, l := range loot {
-					if s, ok := l.(string); ok {
-						update.LootAcquired = append(update.LootAcquired, s)
-					}
+		if loot := getStringArray(args, "loot_acquired"); loot != nil {
+			for _, l := range loot {
+				if s, ok := l.(string); ok {
+					update.LootAcquired = append(update.LootAcquired, s)
 				}
 			}
 		}
@@ -418,4 +404,28 @@ func getBoolArg(args map[string]any, key string) bool {
 		}
 	}
 	return false
+}
+
+// getStringArray extracts a string array from the args map, handling both []any and []string
+func getStringArray(args map[string]any, key string) []any {
+	val, ok := args[key]
+	if !ok {
+		return nil
+	}
+
+	// Try []any first
+	if arr, ok := val.([]any); ok {
+		return arr
+	}
+
+	// Try []string
+	if arr, ok := val.([]string); ok {
+		result := make([]any, len(arr))
+		for i, s := range arr {
+			result[i] = s
+		}
+		return result
+	}
+
+	return nil
 }

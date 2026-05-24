@@ -310,6 +310,46 @@ func TestHandleUpdateNarrativeState_StringArrays(t *testing.T) {
 	}
 }
 
+func TestHandleUpdateNarrativeState_StringSlice(t *testing.T) {
+	handlers, canonSvc, _, _ := setupTestCanonHandlers()
+	ctx := context.Background()
+
+	brief := domain.CampaignBrief{Name: "test-campaign", McGuffinType: "artifact"}
+	if _, err := canonSvc.InitializeCanon(ctx, brief); err != nil {
+		t.Fatalf("failed to initialize canon: %v", err)
+	}
+
+	handler := handlers.HandleUpdateNarrativeState()
+	// Use []string instead of []interface{} to simulate real MCP behavior
+	args := map[string]any{
+		"campaign_id":     "test-campaign",
+		"session_num":     float64(1),
+		"revealed_clues":  []string{"The well water is poisoned", "The mayor is a werewolf"},
+		"dead_npcs":       []string{"Village Guard"},
+		"key_decisions":   []string{"Players spared the mayor"},
+		"active_quests":   []string{"Find the Cure"},
+		"key_items":       []string{"Silver Sword"},
+		"loot_acquired":   []string{"50 gold"},
+	}
+
+	result, err := handler(ctx, newToolRequest("update_narrative_state", args))
+	if err != nil {
+		t.Fatalf("HandleUpdateNarrativeState error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	// Verify the result mentions the counts
+	if len(result.Content) == 0 {
+		t.Fatal("expected result content")
+	}
+	resultText := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(resultText, "2") {
+		t.Error("expected result to mention 2 revealed clues from []string")
+	}
+}
+
 func TestGetBoolArg(t *testing.T) {
 	tests := []struct {
 		name     string
