@@ -38,6 +38,20 @@ var (
 	speakerRegex = regexp.MustCompile(`"[^"]+"\s*(?:dice|dice\s+el|dice\s+la|dice\s+la|dice\s+el|dice|dijo|dijo\s+el|dijo\s+la|says|said|grita|gritó)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)`)
 )
 
+// TextFilter filters text before chunking.
+type TextFilter interface {
+	Filter(text string) string
+}
+
+// SplitFiltered first applies the filter, then splits into chunks.
+// If filter is nil, it behaves identically to SplitIntoChunks.
+func SplitFiltered(text string, filter TextFilter, maxLen int) []NarrativeChunk {
+	if filter != nil {
+		text = filter.Filter(text)
+	}
+	return SplitIntoChunks(text, maxLen)
+}
+
 // SplitIntoChunks parses DM text into typed narrative chunks.
 // It first segments by paragraph, then detects dialogue, action, and dice markers.
 // Long segments are split on sentence boundaries respecting maxLen.
