@@ -20,6 +20,14 @@ type TTSConfig struct {
 	ShowSubtitles bool   `json:"show_subtitles"`
 }
 
+// TTSStatus represents the current state of the TTS system.
+type TTSStatus struct {
+	Enabled   bool   `json:"enabled"`
+	Mode      string `json:"mode"`
+	Available bool   `json:"available"`
+	Playing   bool   `json:"playing"`
+}
+
 // DefaultTTSConfig returns a TTSConfig with sensible defaults.
 func DefaultTTSConfig() *TTSConfig {
 	return &TTSConfig{

@@ -15,6 +15,10 @@ import (
 type NarratorPipeline interface {
 	Narrate(ctx context.Context, text string) error
 	Stop() error
+	Skip() error
+	Pause() error
+	Resume() error
+	IsRunning() bool
 }
 
 // Narrator implements NarratorPipeline.
@@ -148,6 +152,30 @@ func (n *Narrator) Stop() error {
 		_ = n.player.Stop()
 	}
 
+	return nil
+}
+
+// Skip forwards to the next audio chunk.
+func (n *Narrator) Skip() error {
+	if n.player != nil {
+		return n.player.Skip()
+	}
+	return nil
+}
+
+// Pause pauses audio playback.
+func (n *Narrator) Pause() error {
+	if n.player != nil {
+		return n.player.Pause()
+	}
+	return nil
+}
+
+// Resume resumes audio playback.
+func (n *Narrator) Resume() error {
+	if n.player != nil {
+		return n.player.Resume()
+	}
 	return nil
 }
 
