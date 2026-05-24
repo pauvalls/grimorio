@@ -179,6 +179,15 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 			}
 		}
 
+		// Mark critical clues by index (0-based)
+		if criticalIndices := getIntArray(args, "critical_clue_indices"); criticalIndices != nil {
+			for _, idx := range criticalIndices {
+				if idx >= 0 && idx < len(update.RevealedClues) {
+					update.RevealedClues[idx].IsCritical = true
+				}
+			}
+		}
+
 		// Parse completed quests
 		if completed := getStringArray(args, "completed_quests"); completed != nil {
 			for _, c := range completed {
@@ -273,6 +282,37 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 				}
 			}
 		}
+
+		// Parse current location
+		update.CurrentLocation = getStringArg(args, "current_location")
+
+		// Parse PC statuses
+		if pcStatusVal, ok := args["pc_status"]; ok {
+			if pcStatuses, ok := pcStatusVal.([]any); ok {
+				for _, ps := range pcStatuses {
+					if pcMap, ok := ps.(map[string]any); ok {
+						status := domain.PCStatus{
+							Name:      getStringArg(pcMap, "name"),
+							HPCurrent: getIntArg(pcMap, "hp_current"),
+							HPMax:     getIntArg(pcMap, "hp_max"),
+						}
+						if conditionsVal, ok := pcMap["conditions"]; ok {
+							if conditions, ok := conditionsVal.([]any); ok {
+								for _, c := range conditions {
+									if s, ok := c.(string); ok {
+										status.Conditions = append(status.Conditions, s)
+									}
+								}
+							}
+						}
+						update.PCStatuses = append(update.PCStatuses, status)
+					}
+				}
+			}
+		}
+
+		// Parse replace_session flag
+		update.ReplaceSession = getBoolArg(args, "replace_session")
 
 		state, err := h.stateService.Update(ctx, campaignID, update)
 		if err != nil {
@@ -433,6 +473,32 @@ func getStringArray(args map[string]any, key string) []any {
 			result[i] = s
 		}
 		return result
+	}
+
+	return nil
+}
+
+// getIntArray extracts an int array from the args map
+func getIntArray(args map[string]any, key string) []int {
+	val, ok := args[key]
+	if !ok {
+		return nil
+	}
+
+	// Try []any (float64 from JSON)
+	if arr, ok := val.([]any); ok {
+		result := make([]int, 0, len(arr))
+		for _, v := range arr {
+			if f, ok := v.(float64); ok {
+				result = append(result, int(f))
+			}
+		}
+		return result
+	}
+
+	// Try []int
+	if arr, ok := val.([]int); ok {
+		return arr
 	}
 
 	return nil

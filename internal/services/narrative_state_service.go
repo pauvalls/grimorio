@@ -77,6 +77,7 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 			if completedSet[quest.ID] {
 				quest.Status = "completed"
 				state.CompletedQuests = append(state.CompletedQuests, quest)
+				state.CompletedQuestIDs = append(state.CompletedQuestIDs, quest.Name)
 			} else {
 				remainingActive = append(remainingActive, quest)
 			}
@@ -109,7 +110,21 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 		}
 	}
 
-	// Append session log
+	// Update current location
+	if update.CurrentLocation != "" {
+		state.CurrentLocation = update.CurrentLocation
+	}
+
+	// Update PC statuses
+	if len(update.PCStatuses) > 0 {
+		state.PCStatuses = update.PCStatuses
+	}
+
+	// Save session metadata to root state for easy access
+	state.DMNotes = update.DMNotes
+	state.LootAcquired = update.LootAcquired
+
+	// Session log: upsert instead of append
 	sessionNum := update.SessionNum
 	if sessionNum < 0 {
 		return nil, domain.NewValidationError("session_num", "session_num cannot be negative")
@@ -117,9 +132,6 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 	if sessionNum == 0 {
 		sessionNum = state.CurrentSession + 1
 	}
-	// Save session metadata to root state for easy access
-	state.DMNotes = update.DMNotes
-	state.LootAcquired = update.LootAcquired
 
 	if sessionNum > 0 || update.SessionSummary != "" {
 		record := domain.SessionRecord{
@@ -131,7 +143,19 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 			LootAcquired: update.LootAcquired,
 			DMNotes:      update.DMNotes,
 		}
-		state.SessionLog = append(state.SessionLog, record)
+
+		// Upsert: replace existing session log entry if session_num already exists
+		found := false
+		for i := range state.SessionLog {
+			if state.SessionLog[i].SessionNum == sessionNum {
+				state.SessionLog[i] = record
+				found = true
+				break
+			}
+		}
+		if !found {
+			state.SessionLog = append(state.SessionLog, record)
+		}
 		state.CurrentSession = sessionNum
 	}
 

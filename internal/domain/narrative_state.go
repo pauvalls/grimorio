@@ -11,18 +11,22 @@ type NarrativeState struct {
 	LastUpdated    time.Time `json:"last_updated"`
 
 	// Mutable state (serialized in logical order)
-	RevealedClues   []RevealedClue   `json:"revealed_clues"`
-	ActiveQuests    []QuestState     `json:"-"` // Internal objects
-	QuestNames      []string         `json:"active_quests,omitempty"`
-	CompletedQuests []QuestState     `json:"-"` // Internal objects
-	FailedQuests    []QuestState     `json:"-"` // Internal objects
-	DeadNPCs        []NPCDeathRecord `json:"dead_npcs"`
-	KeyItems        []KeyItem        `json:"-"` // Internal objects
-	ItemNames       []string         `json:"key_items,omitempty"`
-	LootAcquired    []string         `json:"loot_acquired,omitempty"`
-	DMNotes         string           `json:"dm_notes,omitempty"`
-	SessionLog      []SessionRecord  `json:"session_log"`
-	DMOverrides     []DMOverride     `json:"dm_overrides"`
+	RevealedClues     []RevealedClue   `json:"revealed_clues"`
+	ActiveQuests      []QuestState     `json:"-"` // Internal objects
+	QuestNames        []string         `json:"active_quests,omitempty"`
+	CompletedQuests   []QuestState     `json:"-"` // Internal objects
+	CompletedQuestIDs []string         `json:"completed_quests"`
+	FailedQuests      []QuestState     `json:"-"` // Internal objects
+	FailedQuestIDs    []string         `json:"failed_quests"`
+	DeadNPCs          []NPCDeathRecord `json:"dead_npcs"`
+	KeyItems          []KeyItem        `json:"-"` // Internal objects
+	ItemNames         []string         `json:"key_items,omitempty"`
+	LootAcquired      []string         `json:"loot_acquired,omitempty"`
+	DMNotes           string           `json:"dm_notes,omitempty"`
+	CurrentLocation   string           `json:"current_location,omitempty"`
+	PCStatuses        []PCStatus       `json:"pc_status,omitempty"`
+	SessionLog        []SessionRecord  `json:"session_log"`
+	DMOverrides       []DMOverride     `json:"dm_overrides"`
 }
 
 // Validate checks if the narrative state is valid
@@ -228,6 +232,9 @@ type StateUpdate struct {
 	LootAcquired     []string         `json:"loot_acquired,omitempty"`
 	SessionSummary   string           `json:"session_summary,omitempty"`
 	DMNotes          string           `json:"dm_notes,omitempty"`
+	CurrentLocation  string           `json:"current_location,omitempty"`
+	PCStatuses       []PCStatus       `json:"pc_status,omitempty"`
+	ReplaceSession   bool             `json:"replace_session,omitempty"` // If true, replace existing session log entry
 }
 
 // SessionPrepContext provides context for preparing the next session
@@ -272,4 +279,12 @@ type WorldEvent struct {
 	Scope       string `json:"scope"`
 	SessionNum  int    `json:"session_num"`
 	TriggerType string `json:"trigger_type"`
+}
+
+// PCStatus tracks the health and conditions of a player character
+type PCStatus struct {
+	Name       string   `json:"name"`
+	HPCurrent  int      `json:"hp_current"`
+	HPMax      int      `json:"hp_max"`
+	Conditions []string `json:"conditions,omitempty"`
 }
