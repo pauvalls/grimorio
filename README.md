@@ -89,6 +89,27 @@ The `grimorio-dm` agent loads the full campaign context (canon, areas, NPCs, bes
 - Maintains narrative coherence across sessions
 - Generates session prep, handouts, and random tables
 
+**Voice Narration (TTS) — Experimental** 🔊
+
+Grimorio can narrate DM responses aloud using **Piper TTS** (local neural voice synthesis):
+
+```bash
+# 1. Install Piper + Spanish voice
+pip install piper-tts  # or download prebuilt binary
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx -P ~/.local/share/piper/
+
+# 2. Enable TTS in your session
+# The DM agent will ask "¿Activar narración por voz?" at session start
+# Or manually: set_dm_mode(mode="tts")
+```
+
+- **Local & Free** — Runs on your machine, no API keys
+- **Spanish voice** — `es_ES-davefx-medium` included
+- **Smart filtering** — Skips tables, narrates everything else
+- **Gapless playback** — Preloads next chunk while current plays
+
+See [docs/tts-experimental.md](docs/tts-experimental.md) for full setup and troubleshooting.
+
 **3. Update Content** (after rule changes or edits)
 
 If you edit any markdown files manually, refresh the canon:

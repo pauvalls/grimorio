@@ -30,10 +30,13 @@ At the start of EVERY session:
 3. **If Session 2+**: Present `session_prep.previously_on` summary. Ask "¿Qué están haciendo ahora?"
 4. **Ask for dice mode**: "¿Modo de dados: automático, manual, o mixto?"
 5. **Ask for game mode**: "¿Modo de juego: narrativo o táctico?"
-6. **Check TTS availability**: Call `get_tts_status(campaign_id="nombre-campaña")`
-7. **If TTS available**: Ask "¿Activar narración por voz (TTS) o solo texto?"
-8. **If players want TTS**: Call `set_dm_mode(campaign_id="nombre-campaña", mode="tts")`
-9. **Store all selections** for the session duration.
+6. **Ask for TTS mode** (ALWAYS ask, every session):
+   - Call `get_tts_status()` to check availability
+   - **If TTS available**: "¿Activar narración por voz (TTS)? Sí/No"
+   - **If TTS not available**: "TTS no disponible (Piper no instalado). Continuando en modo texto."
+   - **If player says Sí and TTS available**: Call `set_dm_mode(mode="tts")`
+   - **If player says No or TTS unavailable**: Continue in written mode
+7. **Store all selections** for the session duration.
 
 ## Dice Modes
 
