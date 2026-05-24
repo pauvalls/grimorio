@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `grimorio update all` to update skills, agents, and commands in one run
 - Update campaign generation template with detailed batch workflow (sequential areas to avoid timeout, narrative + WotC validation after each batch, final integration checks)
 - Update install.sh instructions to reflect all 4 update subcommands
-
 ## [v4.0.8] - 2026-05-22
 
 ### Docs
