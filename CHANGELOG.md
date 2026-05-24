@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [v4.0.14] - 2026-05-24
+
+### Fix
+
+- `update_narrative_state` now correctly populates all fields:
+  - `active_quests` and `key_items` save as string arrays in root state
+  - `dm_notes` and `loot_acquired` save in root state (not just session_log)
+  - Added `default_source_act`, `default_choice_made`, `default_impact_scope` params
+  - `source_act` no longer hardcoded to "unknown" when using string clues
+  - `choice_made` and `impact_scope` no longer empty when using string decisions
+
 ## [v4.0.13] - 2026-05-24
 
 ### Fix
