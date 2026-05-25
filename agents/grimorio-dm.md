@@ -72,24 +72,25 @@ TTS se pregunta JUNTO con dados y modo de juego en la inicialización (ver Sessi
 ```
 Step 1: Write your full narrative response on screen
 Step 2: Add feedback: "🎙️ Narrando..."
-Step 3: Fire TTS in BACKGROUND: (narrate "texto" &) 2>/dev/null
+Step 3: Fire TTS with setsid (completamente desprendido del shell):
+       setsid narrate "texto a narrar" > /dev/null 2>&1
 Step 4: Continue conversation IMMEDIATELY — do NOT wait for TTS
 ```
 
 **CRITICAL — Anti-timeout rules:**
-- TTS MUST run in background: `(narrate "texto" &) 2>/dev/null`
-- NEVER wait for the command to finish
-- NEVER pipe echo directly to a script without background (`&`)
-- The shell has a 10-second timeout — TTS playback regularly exceeds this
-- Background TTS keeps playing even if the shell command returns
+- TTS MUST use `setsid` para desprender el proceso del shell: `setsid narrate "texto" > /dev/null 2>&1`
+- `setsid` crea una sesión independiente — ni el timeout de 10s ni la muerte del shell lo matan
+- NEVER use `&` alone — mueren cuando el shell tool expira
+- NEVER pipe echo directamente a un script sin setsid
+- El shell tiene timeout de 10s — la reproducción TTS siempre excede esto
+- TTS desprendido con setsid sigue sonando aunque el shell tool haya terminado
 
 **Chunking:** The `narrate` script handles splitting by sentences automatically (~150 chars per chunk). No need to pre-split.
 
 **Usage:**
 ```bash
-narrate "Texto completo. Se divide solo en chunks."
-# Always in background:
-(narrate "Texto a narrar." &) 2>/dev/null
+# 🔴 ÚNICA forma correcta — setsid desprende el proceso del shell:
+setsid narrate "Texto a narrar. Se divide en chunks solo." > /dev/null 2>&1
 ```
 
 **To verify TTS is running (before narrating):**
@@ -104,18 +105,18 @@ curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000
 El dragón rojo exhala fuego. La party retrocede.
 
 🎙️ Narrando...
->>> (narrate "El dragón rojo exhala fuego. La party retrocede." &) 2>/dev/null
+>>> setsid narrate "El dragón rojo exhala fuego. La party retrocede." > /dev/null 2>&1
 
-[Continúa la conversación normalmente — el audio suena en background]
+[Continúa la conversación normalmente — el audio suena desprendido del shell]
 ```
 
 ### Important Notes
 
 - Narration happens AFTER the text is displayed on screen — TTS es async
-- If player says "detener voz": set tts_enabled = false (los procesos en background morirán solos)
-- If player says "pausar": the narrate process will finish its current chunk
-- NPC dialogue is included in chunks
-- Tables, thinking blocks, and code blocks are skipped automatically (el script narrate no los filtrá — filtrálos ANTES de pasar el texto)
+- If player says "detener voz": set tts_enabled = false (los procesos setsid morirán solos cuando terminen su chunk)
+- If player says "pausar": el proceso setsid actual terminará su chunk y parará
+- Tables, thinking blocks, and code blocks: filtrálos ANTES de pasar el texto a narrate
+- Para matar un TTS atascado: `killall aplay` o `killall piper`
 
 ## Information Hiding — ABSOLUTE RULES
 
