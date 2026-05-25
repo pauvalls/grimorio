@@ -42,7 +42,9 @@ func RunMCPServer(cCtx *cli.Context) error {
 		}
 	}
 
-	mcpSrv := mcpserver.NewServer(cfg)
+	mcpSrv, shutdown := mcpserver.NewServer(cfg)
+	defer func() { _ = shutdown() }()
+
 	stdioServer := server.NewStdioServer(mcpSrv)
 	if err := stdioServer.Listen(context.Background(), os.Stdin, os.Stdout); err != nil {
 		return fmt.Errorf("server error: %w", err)

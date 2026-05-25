@@ -1,8 +1,11 @@
 package mcp
 
 import (
+	"context"
 	"log"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -11,10 +14,12 @@ import (
 	"github.com/pauvalls/grimorio/internal/repository"
 	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
 	"github.com/pauvalls/grimorio/internal/services"
+	"github.com/pauvalls/grimorio/internal/tts/piper"
 )
 
-// NewServer creates a new MCP server with all tools wired
-func NewServer(cfg *config.Config) *server.MCPServer {
+// NewServer creates a new MCP server with all tools wired.
+// It returns the server and a shutdown function for graceful cleanup.
+func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	s := server.NewMCPServer(
 		"grimorio",
 		"1.0.0",
@@ -86,6 +91,49 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		tacticsRepo,
 	)
 
+	// TTS initialization
+	var ttsService *services.TTSService
+	var ttsHandlers *handlers.TTSHandlers
+
+	if cfg.TTS.Enabled {
+		piperCfg := piper.Config{
+			ModelPath:          cfg.TTS.Piper.ModelPath,
+			ConfigPath:         cfg.TTS.Piper.ConfigPath,
+			Port:               cfg.TTS.Piper.Port,
+			Host:               cfg.TTS.Piper.Host,
+			LengthScale:        cfg.TTS.Piper.LengthScale,
+			Volume:             cfg.TTS.Piper.Volume,
+			MaxRestarts:        cfg.TTS.Piper.MaxRestarts,
+			HealthcheckTimeout: cfg.TTS.Piper.HealthcheckTimeout,
+		}
+
+		lifecycle := piper.NewLifecycleManager(piperCfg)
+		if lifecycle.IsInstalled() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			if err := lifecycle.Start(ctx); err != nil {
+				log.Printf("WARNING: Piper TTS failed to start: %v", err)
+			}
+			cancel()
+		} else {
+			log.Println("INFO: Piper TTS not installed. TTS will be unavailable.")
+		}
+
+		client := piper.NewClient(piperCfg.Host, piperCfg.Port)
+		player := piper.NewPlayer(cfg.TTS.Audio.Player, cfg.TTS.Audio.Device)
+		filter := &piper.DefaultTextFilter{}
+		narrator := piper.NewNarrator(filter, client, player, cfg.TTS.Chunker.MaxChunkSize)
+
+		ttsCacheDir := filepath.Join(cfg.OutputDir, ".tts-cache")
+		voiceStore := services.NewFileCampaignVoiceStore(ttsCacheDir)
+
+		ttsService = services.NewTTSService(narrator, lifecycle, voiceStore, cfg.TTS.Enabled)
+		ttsHandlers = handlers.NewTTSHandlers(ttsService)
+	} else {
+		// TTS disabled: create service with nil dependencies so handlers report unavailable
+		ttsService = services.NewTTSService(nil, nil, nil, false)
+		ttsHandlers = handlers.NewTTSHandlers(ttsService)
+	}
+
 	// Initialize handlers
 	campaignHandlers := handlers.NewCampaignHandlers(campaignService)
 	characterHandlers := handlers.NewCharacterHandlers(characterService)
@@ -154,7 +202,7 @@ func NewServer(cfg *config.Config) *server.MCPServer {
 		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with monster stat blocks")),
 	), campaignHandlers.HandleSaveBestiary())
 
-s.AddTool(mcp.NewTool("save_maps",
+	s.AddTool(mcp.NewTool("save_maps",
 		mcp.WithDescription("Save map descriptions and scene layouts for the campaign"),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with maps and scenes")),
@@ -314,7 +362,7 @@ s.AddTool(mcp.NewTool("save_maps",
 		mcp.WithString("faction_context", mcp.Description("Optional faction context for reputation-aware validation")),
 	), canonHandlers.HandleValidateCanon())
 
-		s.AddTool(mcp.NewTool("update_narrative_state",
+	s.AddTool(mcp.NewTool("update_narrative_state",
 		mcp.WithDescription("Update the narrative state after a session"),
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithNumber("session_num", mcp.Required(), mcp.Description("Session number (1, 2, 3...)")),
@@ -464,5 +512,46 @@ s.AddTool(mcp.NewTool("save_maps",
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 	), timelineHandlers.HandleSessionTimeline())
 
-	return s
+	// TTS tools
+	s.AddTool(mcp.NewTool("set_dm_mode",
+		mcp.WithDescription("Set the DM output mode to written or TTS"),
+		mcp.WithString("mode", mcp.Required(), mcp.Description("Mode: written or tts")),
+	), ttsHandlers.HandleSetDMMode())
+
+	s.AddTool(mcp.NewTool("assign_npc_voice",
+		mcp.WithDescription("Assign a voice prompt to an NPC for consistent TTS dialogue"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name")),
+		mcp.WithString("npc_name", mcp.Required(), mcp.Description("NPC name")),
+		mcp.WithString("voice_prompt", mcp.Required(), mcp.Description("Voice description prompt")),
+	), ttsHandlers.HandleAssignNPCVoice())
+
+	s.AddTool(mcp.NewTool("tts_control",
+		mcp.WithDescription("Control TTS playback (skip, stop, pause, resume)"),
+		mcp.WithString("action", mcp.Required(), mcp.Description("Action: skip, stop, pause, resume")),
+	), ttsHandlers.HandleTTSControl())
+
+	s.AddTool(mcp.NewTool("list_tts_voices",
+		mcp.WithDescription("List assigned NPC voices for a campaign"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name")),
+	), ttsHandlers.HandleListTTSVoices())
+
+	s.AddTool(mcp.NewTool("get_tts_status",
+		mcp.WithDescription("Get current TTS system status"),
+	), ttsHandlers.HandleGetTTSStatus())
+
+	s.AddTool(mcp.NewTool("tts_speak",
+		mcp.WithDescription("Speak text aloud using Piper TTS. Displays the text on screen AND narrates it via voice. Use after generating narrative text to have it spoken."),
+		mcp.WithString("text", mcp.Required(), mcp.Description("Text to speak aloud (e.g., narrative description, NPC dialogue)")),
+	), ttsHandlers.HandleTTSSpeak())
+
+	shutdown := func() error {
+		if ttsService != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			return ttsService.Shutdown(ctx)
+		}
+		return nil
+	}
+
+	return s, shutdown
 }

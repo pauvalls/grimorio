@@ -89,6 +89,51 @@ The `grimorio-dm` agent loads the full campaign context (canon, areas, NPCs, bes
 - Maintains narrative coherence across sessions
 - Generates session prep, handouts, and random tables
 
+**🔊 Voice Narration (TTS) — Experimental**
+
+> ⚠️ **Experimental Feature** — TTS is an optional add-on that requires manual setup. It works great once configured, but is not enabled by default.
+
+Grimorio can narrate DM responses aloud using **Piper TTS** (local neural voice synthesis). The `grimorio-dm` agent will automatically narrate every narrative response when TTS is enabled.
+
+**Quick Setup:**
+```bash
+# 1. Download Piper prebuilt binary
+mkdir -p ~/.local/bin/piper
+wget https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_amd64.tar.gz -O /tmp/piper.tar.gz
+tar -xzf /tmp/piper.tar.gz -C ~/.local/bin/piper
+
+# 2. Download a voice (Spanish example)
+mkdir -p ~/.local/share/piper
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx -P ~/.local/share/piper/
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json -P ~/.local/share/piper/
+
+# 3. Create helper scripts
+ln -s ~/.local/bin/piper/piper ~/.local/bin/piper
+# Create tts-dm.sh and narrate scripts (see docs/tts-setup.md)
+
+# 4. Set environment variables
+export PIPER_MODEL_PATH="$HOME/.local/share/piper/es_ES-davefx-medium.onnx"
+export PIPER_CONFIG_PATH="$HOME/.local/share/piper/es_ES-davefx-medium.onnx.json"
+export PATH="$HOME/.local/bin:$PATH"
+
+# 5. Apply to OpenCode
+grimorio update commands
+```
+
+**How It Works in Sessions:**
+1. Start a session with `grimorio-dm`
+2. The agent asks: "🔊 TTS: Available. Activate? Yes/No"
+3. If Yes, every narrative response is automatically narrated
+4. The agent writes text → shows "🎙️ Narrando..." → executes TTS in background
+
+**Features:**
+- **Local & Free** — Runs on your machine, no API keys, no cloud
+- **Auto-chunking** — Splits long text into ~150 char sentence chunks automatically
+- **Background audio** — Uses `setsid` to detach from shell, survives timeouts
+- **Multiple voices** — Browse [Piper Voices](https://huggingface.co/rhasspy/piper-voices/tree/main)
+
+**See [docs/tts-experimental.md](docs/tts-experimental.md) for full setup, troubleshooting, and voice customization.**
+
 **3. Update Content** (after rule changes or edits)
 
 If you edit any markdown files manually, refresh the canon:
@@ -227,6 +272,51 @@ El agente `grimorio-dm` carga el contexto completo de la campaña (canon, áreas
 - Ejecuta combate con estados de daño descriptivos (oculta HP/AC de enemigos)
 - Mantiene coherencia narrativa entre sesiones
 - Genera preparación de sesión, handouts y tablas aleatorias
+
+**🔊 Narración por Voz (TTS) — Experimental**
+
+> ⚠️ **Característica Experimental** — TTS es un complemento opcional que requiere configuración manual. Funciona muy bien una vez configurado, pero no está habilitado por defecto.
+
+Grimorio puede narrar las respuestas del DM en voz alta usando **Piper TTS** (síntesis de voz neuronal local). El agente `grimorio-dm` narrará automáticamente cada respuesta narrativa cuando TTS está activado.
+
+**Configuración Rápida:**
+```bash
+# 1. Descargar el binario precompilado de Piper
+mkdir -p ~/.local/bin/piper
+wget https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_amd64.tar.gz -O /tmp/piper.tar.gz
+tar -xzf /tmp/piper.tar.gz -C ~/.local/bin/piper
+
+# 2. Descargar una voz (ejemplo en español)
+mkdir -p ~/.local/share/piper
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx -P ~/.local/share/piper/
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json -P ~/.local/share/piper/
+
+# 3. Crear scripts auxiliares
+ln -s ~/.local/bin/piper/piper ~/.local/bin/piper
+# Crear scripts tts-dm.sh y narrate (ver docs/tts-setup.md)
+
+# 4. Configurar variables de entorno
+export PIPER_MODEL_PATH="$HOME/.local/share/piper/es_ES-davefx-medium.onnx"
+export PIPER_CONFIG_PATH="$HOME/.local/share/piper/es_ES-davefx-medium.onnx.json"
+export PATH="$HOME/.local/bin:$PATH"
+
+# 5. Aplicar a OpenCode
+grimorio update commands
+```
+
+**Cómo Funciona en las Sesiones:**
+1. Inicia una sesión con `grimorio-dm`
+2. El agente pregunta: "🔊 TTS: Disponible. ¿Activar? Sí/No"
+3. Si Sí, cada respuesta narrativa se narra automáticamente
+4. El agente escribe texto → muestra "🎙️ Narrando..." → ejecuta TTS en background
+
+**Características:**
+- **Local y Gratis** — Corre en tu máquina, sin API keys, sin nube
+- **División automática** — Divide texto largo en chunks de ~150 caracteres por oración
+- **Audio en background** — Usa `setsid` para desprender del shell, sobrevive timeouts
+- **Múltiples voces** — Explora [Piper Voices](https://huggingface.co/rhasspy/piper-voices/tree/main)
+
+**Ver [docs/tts-experimental.md](docs/tts-experimental.md) para configuración completa, solución de problemas y personalización de voces.**
 
 **3. Actualizar Contenido** (después de cambios manuales o ediciones)
 
