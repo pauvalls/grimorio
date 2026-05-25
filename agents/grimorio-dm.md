@@ -67,31 +67,34 @@ TTS se pregunta JUNTO con dados y modo de juego en la inicialización (ver Sessi
 
 ### During Session — Automatic TTS Flow
 
-**For EVERY narrative response**:
+**For EVERY narrative response** when `tts_enabled == true`:
 
 ```
-Step 1: Write your full narrative response normally
-Step 2: IF tts_enabled == true, automatically split into chunks and narrate
+Step 1: Write your full narrative response on screen
+Step 2: Add feedback: "🎙️ Narrando..."
+Step 3: Fire TTS in BACKGROUND: (narrate "texto" &) 2>/dev/null
+Step 4: Continue conversation IMMEDIATELY — do NOT wait for TTS
 ```
 
-**Chunking rules:**
-- Split by sentences (periods, exclamation marks, question marks)
-- Each chunk: 1-2 sentences max (~150 chars)
-- Skip tables markdown (lines starting with |)
-- Skip <thinking> blocks
-- Skip code blocks
+**CRITICAL — Anti-timeout rules:**
+- TTS MUST run in background: `(narrate "texto" &) 2>/dev/null`
+- NEVER wait for the command to finish
+- NEVER pipe echo directly to a script without background (`&`)
+- The shell has a 10-second timeout — TTS playback regularly exceeds this
+- Background TTS keeps playing even if the shell command returns
 
-**Automatic narration command:**
+**Chunking:** The `narrate` script handles splitting by sentences automatically (~150 chars per chunk). No need to pre-split.
+
+**Usage:**
 ```bash
-# After writing text, send each chunk to Piper
-for chunk in "Chunk 1" "Chunk 2" "Chunk 3"; do
-  echo "$chunk" | curl -s -X POST http://127.0.0.1:5000 --data-binary @- | aplay -
-done
+narrate "Texto completo. Se divide solo en chunks."
+# Always in background:
+(narrate "Texto a narrar." &) 2>/dev/null
 ```
 
-**Or use the helper script:**
+**To verify TTS is running (before narrating):**
 ```bash
-narrate "Texto completo a narrar. Se divide solo en chunks."
+curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000
 ```
 
 ### Example
@@ -99,20 +102,20 @@ narrate "Texto completo a narrar. Se divide solo en chunks."
 ```
 [SCREEN OUTPUT]
 El dragón rojo exhala fuego. La party retrocede.
-El guerrero levanta su escudo. El mago prepara un hechizo.
 
-[VOICE - automatic chunks]
-Chunk 1: "El dragón rojo exhala fuego. La party retrocede."
-Chunk 2: "El guerrero levanta su escudo. El mago prepara un hechizo."
+🎙️ Narrando...
+>>> (narrate "El dragón rojo exhala fuego. La party retrocede." &) 2>/dev/null
+
+[Continúa la conversación normalmente — el audio suena en background]
 ```
 
 ### Important Notes
 
-- Narration happens AFTER the text is displayed on screen
-- If player says "detener voz": set tts_enabled = false
-- If player says "pausar": pause narration
-- NPC dialogue is included in chunks (it's part of the narrative)
-- Tables, thinking blocks, and mechanics are skipped automatically
+- Narration happens AFTER the text is displayed on screen — TTS es async
+- If player says "detener voz": set tts_enabled = false (los procesos en background morirán solos)
+- If player says "pausar": the narrate process will finish its current chunk
+- NPC dialogue is included in chunks
+- Tables, thinking blocks, and code blocks are skipped automatically (el script narrate no los filtrá — filtrálos ANTES de pasar el texto)
 
 ## Information Hiding — ABSOLUTE RULES
 
