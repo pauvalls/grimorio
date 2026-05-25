@@ -59,21 +59,14 @@ func updateAssets(assetType string) error {
 		return fmt.Errorf("extracting archive: %w", err)
 	}
 
-	// Find the actual extracted contents (GoReleaser wraps in a directory)
-	entries, err := os.ReadDir(extractDir)
+	// Find the actual extracted contents.
+	// GoReleaser may wrap files in a directory (wrap_in_directory=true)
+	// or place them directly at the archive root (wrap_in_directory=false).
+	// We search for the asset subdir in extractDir first, then in any
+	// top-level subdirectory.
+	sourceDir, err := findAssetSourceDir(extractDir, assetType)
 	if err != nil {
-		return fmt.Errorf("reading extract dir: %w", err)
-	}
-
-	var sourceDir string
-	for _, entry := range entries {
-		if entry.IsDir() {
-			sourceDir = filepath.Join(extractDir, entry.Name())
-			break
-		}
-	}
-	if sourceDir == "" {
-		sourceDir = extractDir
+		return err
 	}
 
 	// Determine target directories
@@ -345,6 +338,35 @@ func NewUpdateCommandsCommand() *cli.Command {
 			return updateCommands()
 		},
 	}
+}
+
+// findAssetSourceDir searches for the directory containing the requested
+// asset subdirectory (e.g. "skills" or "agents"). It first checks the
+// extract root, then any top-level subdirectory, to handle both
+// wrap_in_directory=true and wrap_in_directory=false archive layouts.
+func findAssetSourceDir(extractDir, assetType string) (string, error) {
+	// Check root first
+	rootPath := filepath.Join(extractDir, assetType)
+	if _, err := os.Stat(rootPath); err == nil {
+		return extractDir, nil
+	}
+
+	// Check top-level subdirectories
+	entries, err := os.ReadDir(extractDir)
+	if err != nil {
+		return "", fmt.Errorf("reading extract dir: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			subPath := filepath.Join(extractDir, entry.Name(), assetType)
+			if _, err := os.Stat(subPath); err == nil {
+				return filepath.Join(extractDir, entry.Name()), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("%s/ not found in release archive — the release may not include %s", assetType, assetType)
 }
 
 // NewUpdateAllCommand returns the "update all" CLI command.
