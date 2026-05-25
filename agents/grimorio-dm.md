@@ -84,6 +84,7 @@ Step 4: Continue conversation IMMEDIATELY — do NOT wait for TTS
 - NEVER pipe echo directamente a un script sin setsid
 - El shell tiene timeout de 10s — la reproducción TTS siempre excede esto
 - TTS desprendido con setsid sigue sonando aunque el shell tool haya terminado
+- **El mensaje de timeout del shell es ESPERADO e INOFENSIVO** — el audio ya se desprendió y sigue sonando
 
 **Chunking:** The `narrate` script handles splitting by sentences automatically (~150 chars per chunk). No need to pre-split.
 
