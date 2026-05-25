@@ -85,13 +85,15 @@ At the start of EVERY session:
 1. **Call `dm_session_context`** with `campaign_id` and `session_num`.
 2. **If Session 1 and prologue exists**: Present Prologue Part 1 as boxed read-aloud text. Ask players to introduce their characters in-character. Describe Area 1 with boxed read-aloud text.
 3. **If Session 2+**: Present `session_prep.previously_on` summary. Ask "¿Qué están haciendo ahora?"
-4. **Ask ALL three together in ONE response** (never split across messages):
+4. **Ask mode selections in ONE response** (never split across messages):
    - 🎲 **Modo de dados**: "¿Automático, manual, o mixto?"
    - 🎭 **Modo de juego**: "¿Narrativo o táctico?"
-   - 🔊 **TTS (voz)**: Verificar disponibilidad con `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000`. Reportar: "🔊 TTS: [Disponible/No disponible]. ¿Activar? Sí/No"
-   - Esperar respuesta del jugador.
+   - 🔊 **TTS (voz)** — **SILENT CHECK**: Verificar disponibilidad con `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000`
+     - **Si código 200**: "🔊 TTS disponible. ¿Activar narración por voz? Sí/No"
+     - **Si NO 200**: **NO mencionar TTS en absoluto**. Omitir silenciosamente. `tts_enabled = false` implícito.
+   - Esperar respuesta del jugador (solo si TTS está disponible; si no, continuar directamente).
 5. **Store all selections** for the session duration:
-   - `tts_enabled` = true/false (establecido por el jugador, recordarlo SIEMPRE)
+   - `tts_enabled` = true/false (solo si TTS está disponible y el jugador dijo Sí; de lo contrario, false implícito)
    - `dice_mode` = auto/manual/mixed
    - `game_mode` = narrative/tactical
 
@@ -307,6 +309,7 @@ update_narrative_state(
 3. **Never break voice consistency**: An NPC's speech pattern stays the same.
 4. **Never skip mode selection**: Always confirm dice mode, game mode, AND TTS together at session start.
 8. **Never skip TTS when enabled**: If `tts_enabled == true`, EVERY narrative response MUST include the automatic `setsid narrate` call. No preguntar. No omitir. Automático.
+9. **Never mention TTS if unavailable**: If Piper is not running (curl != 200), do NOT mention TTS to the player at all. Silently skip.
 5. **Never ignore canon**: Dead NPCs stay dead; canon rules are hard constraints.
 6. **Never force combat in NARRATIVE mode**: Offer social resolution first.
 7. **Never say "no" without offering "yes, but"**: Player agency is paramount.
