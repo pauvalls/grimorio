@@ -22,7 +22,7 @@ func TestClientSynthesize(t *testing.T) {
 			}
 			w.Header().Set("Content-Type", "audio/wav")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("RIFF....WAV"))
+			_, _ = w.Write([]byte("RIFF....WAV"))
 		}))
 		defer server.Close()
 
@@ -33,7 +33,7 @@ func TestClientSynthesize(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Synthesize() error = %v", err)
 		}
-		defer reader.Close()
+		defer func() { _ = reader.Close() }()
 
 		data, _ := io.ReadAll(reader)
 		if string(data) != "RIFF....WAV" {
@@ -44,7 +44,7 @@ func TestClientSynthesize(t *testing.T) {
 	t.Run("server error", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("internal error"))
+			_, _ = w.Write([]byte("internal error"))
 		}))
 		defer server.Close()
 

@@ -102,7 +102,7 @@ func (n *Narrator) Narrate(ctx context.Context, text string) error {
 			select {
 			case audioCh <- wav:
 			case <-narrateCtx.Done():
-				wav.Close()
+				_ = wav.Close()
 				return
 			}
 		}
@@ -116,14 +116,14 @@ func (n *Narrator) Narrate(ctx context.Context, text string) error {
 		for wav := range audioCh {
 			select {
 			case <-narrateCtx.Done():
-				wav.Close()
+				_ = wav.Close()
 				return
 			default:
 			}
 
 			if err := n.player.Enqueue(wav); err != nil {
 				fmt.Fprintf(os.Stderr, "narrator: enqueue error: %v\n", err)
-				wav.Close()
+				_ = wav.Close()
 				continue
 			}
 		}

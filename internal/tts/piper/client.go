@@ -55,7 +55,7 @@ func (c *Client) Synthesize(ctx context.Context, text string) (io.ReadCloser, er
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("piper: synthesize returned %d: %s", resp.StatusCode, string(body))
 	}
 
@@ -73,7 +73,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("piper: health check failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("piper: health check returned %d", resp.StatusCode)

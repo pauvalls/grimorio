@@ -172,7 +172,7 @@ func extractSegments(para string) []segment {
 
 	// Remove overlapping segments (first one wins)
 	var filtered []segment
-	var lastEnd int = -1
+	var lastEnd = -1
 	for _, seg := range segments {
 		if seg.start >= lastEnd {
 			filtered = append(filtered, seg)
