@@ -60,7 +60,7 @@ func TestGoReleaserConfigBundlesRuntimeAssets(t *testing.T) {
 	// Verify archive wraps everything in a single directory.
 	wrapInDir, ok := archive["wrap_in_directory"].(bool)
 	require.True(t, ok, "wrap_in_directory should be set")
-	assert.True(t, wrapInDir, "archive should wrap files in a single directory")
+	assert.False(t, wrapInDir, "archive should NOT wrap files in a single directory so updater/install work without subdirectory handling")
 
 	// Verify files section includes agents/ and skills/.
 	files, ok := archive["files"].([]interface{})
