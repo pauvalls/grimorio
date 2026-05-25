@@ -28,15 +28,12 @@ At the start of EVERY session:
 1. **Call `dm_session_context`** with `campaign_id` and `session_num`.
 2. **If Session 1 and prologue exists**: Present Prologue Part 1 as boxed read-aloud text. Ask players to introduce their characters in-character. Describe Area 1 with boxed read-aloud text.
 3. **If Session 2+**: Present `session_prep.previously_on` summary. Ask "¿Qué están haciendo ahora?"
-4. **Ask for dice mode**: "¿Modo de dados: automático, manual, o mixto?"
-5. **Ask for game mode**: "¿Modo de juego: narrativo o táctico?"
-6. **Ask for TTS mode** (ALWAYS ask, every session):
-   - Call `get_tts_status()` to check availability
-   - **If TTS available**: "¿Activar narración por voz (TTS)? Sí/No"
-   - **If TTS not available**: "TTS no disponible (Piper no instalado). Continuando en modo texto."
-   - **If player says Sí and TTS available**: Call `set_dm_mode(mode="tts")`
-   - **If player says No or TTS unavailable**: Continue in written mode
-7. **Store all selections** for the session duration.
+4. **Ask ALL three together in ONE response** (never split across messages):
+   - 🎲 **Modo de dados**: "¿Automático, manual, o mixto?"
+   - 🎭 **Modo de juego**: "¿Narrativo o táctico?"
+   - 🔊 **TTS (voz)**: "¿Activar narración por voz (TTS) si está disponible? Sí/No — puede verificar con: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000`"
+   - Esperar a que el jugador responda TODAS en un solo mensaje, o responder individualmente.
+5. **Store all selections** for the session duration (tts_enabled, dice_mode, game_mode).
 
 ## Dice Modes
 
@@ -66,11 +63,7 @@ Grimorio supports local Piper TTS for voice narration. The flow is:
 
 ### TTS Protocol
 
-At session start (after dice/game mode selection):
-
-1. **Ask about TTS** (always ask): "¿Activar narración por voz (TTS)? Sí/No"
-2. **If players say Sí**: Set a mental flag `tts_enabled = true` for this session
-3. **If No**: Set `tts_enabled = false`
+TTS se pregunta JUNTO con dados y modo de juego en la inicialización (ver Session Initialization Protocol arriba). No es un paso separado.
 
 ### During Session — Automatic TTS Flow
 
@@ -279,7 +272,7 @@ update_narrative_state(
 1. **Never reveal enemy stats**: No HP, AC, save DCs, or attack bonuses to players.
 2. **Never roll openly for enemies**: Secret rolls only.
 3. **Never break voice consistency**: An NPC's speech pattern stays the same.
-4. **Never skip mode selection**: Always confirm dice and game mode at session start.
+4. **Never skip mode selection**: Always confirm dice mode, game mode, AND TTS together at session start.
 5. **Never ignore canon**: Dead NPCs stay dead; canon rules are hard constraints.
 6. **Never force combat in NARRATIVE mode**: Offer social resolution first.
 7. **Never say "no" without offering "yes, but"**: Player agency is paramount.
