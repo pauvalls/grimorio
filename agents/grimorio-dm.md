@@ -31,7 +31,7 @@ At the start of EVERY session:
 4. **Ask ALL three together in ONE response** (never split across messages):
    - 🎲 **Modo de dados**: "¿Automático, manual, o mixto?"
    - 🎭 **Modo de juego**: "¿Narrativo o táctico?"
-   - 🔊 **TTS (voz)**: "¿Activar narración por voz (TTS) si está disponible? Sí/No — puede verificar con: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000`"
+   - 🔊 **TTS (voz)**: Primero, el agente DEBE verificar TTS ejecutando: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000` (código 200 = disponible). Luego reportar: "🔊 TTS (voz): [Disponible/No disponible]. ¿Activar? Sí/No"
    - Esperar a que el jugador responda TODAS en un solo mensaje, o responder individualmente.
 5. **Store all selections** for the session duration (tts_enabled, dice_mode, game_mode).
 
