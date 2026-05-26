@@ -13,8 +13,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg == nil {
 		t.Fatal("DefaultConfig() returned nil")
 	}
-	if cfg.PDFEngine != "wkhtmltopdf" {
-		t.Errorf("expected PDFEngine 'wkhtmltopdf', got '%s'", cfg.PDFEngine)
+	if cfg.PDFEngine != "" {
+		t.Errorf("expected PDFEngine empty string (auto-detect), got '%s'", cfg.PDFEngine)
 	}
 	if cfg.Provider != "pollinations" {
 		t.Errorf("expected Provider 'pollinations', got '%s'", cfg.Provider)
@@ -41,8 +41,8 @@ func TestLoadConfig_FileNotExists(t *testing.T) {
 	if cfg == nil {
 		t.Fatal("LoadConfig() returned nil for missing file")
 	}
-	if cfg.PDFEngine != "wkhtmltopdf" {
-		t.Errorf("expected default PDFEngine, got '%s'", cfg.PDFEngine)
+	if cfg.PDFEngine != "" {
+		t.Errorf("expected default PDFEngine empty (auto-detect), got '%s'", cfg.PDFEngine)
 	}
 }
 
@@ -103,8 +103,8 @@ func TestLoadConfig_EmptyFields(t *testing.T) {
 	if cfg.OutputDir == "" {
 		t.Error("expected OutputDir to be defaulted")
 	}
-	if cfg.PDFEngine != "wkhtmltopdf" {
-		t.Errorf("expected default PDFEngine, got '%s'", cfg.PDFEngine)
+	if cfg.PDFEngine != "" {
+		t.Errorf("expected default PDFEngine empty (auto-detect), got '%s'", cfg.PDFEngine)
 	}
 	if cfg.Provider != "pollinations" {
 		t.Errorf("expected default Provider, got '%s'", cfg.Provider)
@@ -197,6 +197,28 @@ func TestDefaultConfig_IncludesTTSDefaults(t *testing.T) {
 }
 
 func TestLoadConfig_TTSFields(t *testing.T) {
+	// Isolate from environment variables that would override config file values
+	envVars := []string{
+		"GRIMORIO_TTS_ENABLED",
+		"PIPER_MODEL_PATH", "PIPER_CONFIG_PATH", "PIPER_PORT", "PIPER_HOST",
+		"PIPER_LENGTH_SCALE", "PIPER_VOLUME", "PIPER_CACHE_DIR", "PIPER_MAX_RESTARTS",
+		"CHUNKER_MAX_SIZE", "AUDIO_PLAYER", "AUDIO_DEVICE", "AUDIO_PRELOAD_BUFFER",
+	}
+	oldVals := make(map[string]string)
+	for _, k := range envVars {
+		oldVals[k] = os.Getenv(k)
+		_ = os.Unsetenv(k)
+	}
+	t.Cleanup(func() {
+		for k, v := range oldVals {
+			if v != "" {
+				_ = os.Setenv(k, v)
+			} else {
+				_ = os.Unsetenv(k)
+			}
+		}
+	})
+
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
 

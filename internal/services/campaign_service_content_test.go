@@ -18,7 +18,7 @@ func setupContentTestService(t *testing.T) (*CampaignService, string) {
 	questRepo := repository.NewMemoryQuestRepository()
 	service := NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
-		tmpDir, "wkhtmltopdf",
+		tmpDir, "",
 	)
 
 	// Create a test campaign

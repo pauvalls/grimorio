@@ -19,7 +19,7 @@ func setupPrologueTest(t *testing.T) *PrologueHandlers {
 
 	campaignService := services.NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
-		"/tmp/test-prologue", "wkhtmltopdf",
+		"/tmp/test-prologue", "",
 	)
 	canonRepo := repository.NewMemoryCanonRepository()
 	prologueService := services.NewPrologueService("/tmp/test-prologue", canonRepo)

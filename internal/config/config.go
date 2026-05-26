@@ -86,7 +86,7 @@ func DefaultConfig() *Config {
 	home, _ := os.UserHomeDir()
 	return &Config{
 		OutputDir:       filepath.Join(home, "campaigns"),
-		PDFEngine:       "wkhtmltopdf",
+		PDFEngine:       "", // auto-detect: prefers chromium/chrome, falls back to wkhtmltopdf
 		CompilerVersion: 2,
 		Config:          image.DefaultConfig(),
 		TTS:             DefaultTTSConfig(),
@@ -137,9 +137,8 @@ func LoadConfig(path string) (*Config, error) {
 		home, _ := os.UserHomeDir()
 		cfg.OutputDir = filepath.Join(home, "campaigns")
 	}
-	if cfg.PDFEngine == "" {
-		cfg.PDFEngine = "wkhtmltopdf"
-	}
+	// PDFEngine empty means auto-detect at runtime (compiler.New handles this)
+	// No fallback here to allow the compiler to pick the best available engine
 	if cfg.CompilerVersion == 0 {
 		cfg.CompilerVersion = 2
 	}

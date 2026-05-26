@@ -306,7 +306,7 @@ Some text
 		t.Fatal(err)
 	}
 
-	c := New(tmpDir, "wkhtmltopdf")
+	c := New(tmpDir, "")
 	expected, found, ok, err := c.verifyImages(htmlPath)
 	if err != nil {
 		t.Fatal(err)
@@ -351,7 +351,7 @@ func TestVerifyImages_Mismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c := New(tmpDir, "wkhtmltopdf")
+	c := New(tmpDir, "")
 	expected, found, ok, err := c.verifyImages(htmlPath)
 	if err != nil {
 		t.Fatal(err)
@@ -387,7 +387,7 @@ func TestGenerateFactionTracker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c := New(tmpDir, "wkhtmltopdf")
+	c := New(tmpDir, "")
 	tracker := c.generateFactionTracker()
 
 	if tracker == "" {
@@ -413,7 +413,7 @@ func TestGenerateFactionTracker(t *testing.T) {
 
 func TestGenerateFactionTracker_Empty(t *testing.T) {
 	tmpDir := t.TempDir()
-	c := New(tmpDir, "wkhtmltopdf")
+	c := New(tmpDir, "")
 	tracker := c.generateFactionTracker()
 
 	if tracker != "" {
@@ -475,7 +475,7 @@ La entrada al pueblo es un camino empedrado que atraviesa una verja de hierro ox
 > Este es un buen momento para que los jugadores exploren y hagan preguntas. La información aquí es crucial para el resto de la aventura.
 `), 0644)
 
-	c := New(tmpDir, "wkhtmltopdf")
+	c := New(tmpDir, "")
 	htmlParts, err := c.generateHTML("Test Campaign")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

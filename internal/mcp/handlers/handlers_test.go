@@ -19,7 +19,7 @@ func setupTestHandlers() (*CampaignHandlers, *CharacterHandlers, *QuestHandlers)
 
 	campaignService := services.NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
-		"/tmp/test", "wkhtmltopdf",
+		"/tmp/test", "",
 	)
 	characterService := services.NewCharacterService(charRepo)
 	questService := services.NewQuestService(questRepo)

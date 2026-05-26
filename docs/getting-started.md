@@ -21,7 +21,7 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 
 This installs:
 - Go 1.24+ (if missing)
-- wkhtmltopdf (for PDF compilation)
+- Chrome/Chromium/Edge or wkhtmltopdf (for PDF compilation)
 - Grimorio binary to `~/.local/bin/grimorio`
 - Plugin files to your AI assistant's plugin directory
 
@@ -30,7 +30,8 @@ This installs:
 | Dependency | Auto-installed | Purpose |
 |------------|---------------|---------|
 | Go 1.24+ | ✅ Yes | Build the MCP server binary |
-| wkhtmltopdf | ✅ Yes | Compile HTML to PDF |
+| Chrome/Chromium | ⚠️ Check install | Compile HTML to PDF (preferred) |
+| wkhtmltopdf | ⚠️ Fallback | Compile HTML to PDF (legacy) |
 | Git | ❌ Must have | Clone the repository |
 
 ## Your First Campaign
@@ -114,7 +115,7 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 
 Esto instala:
 - Go 1.24+ (si falta)
-- wkhtmltopdf (para compilar PDFs)
+- Chrome/Chromium/Edge o wkhtmltopdf (para compilar PDFs)
 - Binario de Grimorio en `~/.local/bin/grimorio`
 - Archivos del plugin en el directorio de plugins de tu asistente IA
 
@@ -123,7 +124,8 @@ Esto instala:
 | Dependencia | Auto-instalado | Propósito |
 |------------|---------------|---------|
 | Go 1.24+ | ✅ Sí | Compilar el binario del servidor MCP |
-| wkhtmltopdf | ✅ Sí | Compilar HTML a PDF |
+| Chrome/Chromium | ⚠️ Verificar instalación | Compilar HTML a PDF (preferido) |
+| wkhtmltopdf | ⚠️ Fallback | Compilar HTML a PDF (legacy) |
 | Git | ❌ Debes tenerlo | Clonar el repositorio |
 
 ## Tu Primera Campaña

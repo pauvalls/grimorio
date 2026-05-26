@@ -929,7 +929,7 @@ func DefaultConfig() *Config {
     home, _ := os.UserHomeDir()
     return &Config{
         OutputDir:       filepath.Join(home, "campaigns"),
-        PDFEngine:       "wkhtmltopdf",
+        PDFEngine:       "", // auto-detect: prefers chromium/chrome, falls back to wkhtmltopdf
         CompilerVersion: 2,
         Config:          image.DefaultConfig(),
         TTSConfig:       tts.DefaultConfig(), // Add this
@@ -942,7 +942,7 @@ func DefaultConfig() *Config {
 ```json
 {
   "output_dir": "/home/user/campaigns",
-  "pdf_engine": "wkhtmltopdf",
+  "pdf_engine": "",
   "compiler_version": 2,
   "image_provider": "pollinations",
   "image_width": 1024,

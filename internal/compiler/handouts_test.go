@@ -41,7 +41,7 @@ func TestGenerateHandouts_V2(t *testing.T) {
 	_ = os.MkdirAll(filepath.Join(tmpDir, "maps"), 0755)
 	_ = os.WriteFile(filepath.Join(tmpDir, "maps", "dungeon.md"), []byte("# Dungeon\n\n## Área 1\n- Puerta visible\n"), 0644)
 
-	c := NewWithVersion(tmpDir, "wkhtmltopdf", 2)
+	c := NewWithVersion(tmpDir, "", 2)
 	c.SetHandoutRenderer(&mockHandoutRenderer{})
 
 	html, err := c.generateHandouts()
@@ -68,7 +68,7 @@ func TestGenerateHandouts_V2(t *testing.T) {
 }
 
 func TestGenerateHandouts_V1(t *testing.T) {
-	c := NewWithVersion("/tmp", "wkhtmltopdf", 1)
+	c := NewWithVersion("/tmp", "", 1)
 	html, err := c.generateHandouts()
 	if err != nil {
 		t.Fatalf("generateHandouts() v1 error: %v", err)

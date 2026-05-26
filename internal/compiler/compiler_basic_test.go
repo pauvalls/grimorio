@@ -19,8 +19,9 @@ func TestNew(t *testing.T) {
 
 func TestNew_DefaultEngine(t *testing.T) {
 	c := New("/tmp/campaign", "")
-	if c.PDFEngine != "wkhtmltopdf" {
-		t.Errorf("Default PDFEngine = %s, want wkhtmltopdf", c.PDFEngine)
+	// Should auto-detect an available engine, not hardcode to wkhtmltopdf
+	if c.PDFEngine == "" {
+		t.Error("Default PDFEngine should not be empty")
 	}
 	if c.CompilerVersion != 2 {
 		t.Errorf("Default CompilerVersion = %d, want 2", c.CompilerVersion)

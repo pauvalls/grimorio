@@ -436,26 +436,44 @@ Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 | Dependency / Dependencia | Auto-installed / Auto-instalado | Purpose / Propósito |
 |------------|---------------|---------|
 | Go 1.24+ | ❌ Only for source build / Solo para compilar desde fuente | Build binary / Compilar binario |
-| wkhtmltopdf | ❌ Must install / Debes instalarlo | Compile PDF / Compilar PDF |
+| Chrome/Chromium/Edge | ⚠️ Must install / Debes instalarlo | Compile PDF (headless) / Compilar PDF |
 | Git | ❌ Must have / Debes tener | Clone repo / Clonar repo |
 
-### wkhtmltopdf — Install by Platform / Instalar por Plataforma
+> 💡 Grimorio auto-detects your PDF engine. It prefers **Chromium/Chrome headless** (modern, maintained) and falls back to **wkhtmltopdf** (legacy) if needed.
+
+### PDF Engine — Install by Platform / Instalar por Plataforma
+
+**Linux (Arch / CachyOS / Manjaro):**
+```bash
+sudo pacman -S chromium
+# or google-chrome-stable from AUR
+```
 
 **Linux (Debian/Ubuntu):**
 ```bash
-sudo apt-get install wkhtmltopdf
+sudo apt-get install chromium-browser
+# or download Google Chrome from google.com/chrome
 ```
 
 **macOS:**
 ```bash
-brew install --cask wkhtmltopdf
+brew install --cask google-chrome
+# or: brew install --cask chromium
 ```
 
 **Windows:**
 ```powershell
-choco install wkhtmltopdf
-# or
-winget install wkhtmltopdf
+winget install Google.Chrome
+# or: choco install googlechrome
+# Edge is already installed on Windows 10/11 and works too
+```
+
+**Legacy (wkhtmltopdf) — not recommended for new installs:**
+```bash
+# Only if you cannot install Chrome/Chromium
+sudo pacman -S wkhtmltopdf        # Arch
+sudo apt-get install wkhtmltopdf  # Debian/Ubuntu
+brew install --cask wkhtmltopdf   # macOS
 ```
 
 ## Troubleshooting / Solución de Problemas

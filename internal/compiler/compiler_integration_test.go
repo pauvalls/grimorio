@@ -3,7 +3,6 @@ package compiler_test
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,9 +12,9 @@ import (
 
 // TestCompileWithAllFeatures tests PDF compilation with all new features enabled
 func TestCompileWithAllFeatures(t *testing.T) {
-	// Skip if wkhtmltopdf is not available
-	if _, err := exec.LookPath("wkhtmltopdf"); err != nil {
-		t.Skip("wkhtmltopdf not installed, skipping integration test")
+	// Skip if no PDF engine is available
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping integration test")
 	}
 
 	tmpDir := t.TempDir()
@@ -78,7 +77,7 @@ La aventura comienza.
 
 	// Compile
 	ctx := context.Background()
-	c := compiler.New(tmpDir, "wkhtmltopdf")
+	c := compiler.New(tmpDir, "")
 	pdfPath, err := c.Compile(ctx, "Test Campaign")
 
 	if err != nil {
@@ -149,7 +148,7 @@ Contenido normal del área.
 	_ = os.WriteFile(filepath.Join(areasDir, "act1.md"), []byte(areaContent), 0644)
 
 	ctx := context.Background()
-	c := compiler.New(tmpDir, "wkhtmltopdf")
+	c := compiler.New(tmpDir, "")
 	_, err := c.Compile(ctx, "DM Sidebar Test")
 
 	if err != nil {
@@ -198,7 +197,7 @@ func TestCompileWithStatBlockV2(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(bestiaryDir, "goblin.md"), []byte(statBlock), 0644)
 
 	ctx := context.Background()
-	c := compiler.New(tmpDir, "wkhtmltopdf")
+	c := compiler.New(tmpDir, "")
 	_, err := c.Compile(ctx, "Stat Block V2 Test")
 
 	if err != nil {
@@ -228,7 +227,7 @@ func TestCompileBackwardCompatibility(t *testing.T) {
 
 	// Minimal campaign with no new features
 	ctx := context.Background()
-	c := compiler.New(tmpDir, "wkhtmltopdf")
+	c := compiler.New(tmpDir, "")
 	_, err := c.Compile(ctx, "Backward Compatibility Test")
 
 	if err != nil {

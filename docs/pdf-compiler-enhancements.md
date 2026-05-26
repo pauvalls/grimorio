@@ -214,7 +214,7 @@ Los **Stat Blocks v2** son bloques de estadísticas mejorados para NPCs y monstr
 
 ### Requisitos
 
-- `wkhtmltopdf` instalado y en PATH
+- Chrome, Chromium, Edge, o `wkhtmltopdf` instalado y en PATH (Grimorio auto-detecta el motor disponible)
 - Todas las secciones de la campaña en formato markdown
 
 ### Comandos
@@ -242,14 +242,21 @@ grimorio compile --campaign mi-campana --title "Mi Campaña Épica"
 
 ### Solución de Problemas
 
-**Error: "wkhtmltopdf not found"**
+**Error: "No PDF engine found"**
 ```bash
-# Instalar wkhtmltopdf
+# Instalar Chrome/Chromium (preferido)
+# Arch/CachyOS
+sudo pacman -S chromium
+
 # Ubuntu/Debian
-sudo apt-get install wkhtmltopdf
+sudo apt-get install chromium-browser
 
 # macOS
-brew install wkhtmltopdf
+brew install --cask google-chrome
+
+# O wkhtmltopdf como fallback
+sudo pacman -S wkhtmltopdf  # Arch
+brew install wkhtmltopdf     # macOS
 ```
 
 **Error: "images missing"**

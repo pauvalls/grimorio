@@ -27,7 +27,7 @@ Content.
 Content.
 `), 0644)
 
-	c := NewWithVersion(tmpDir, "wkhtmltopdf", 2)
+	c := NewWithVersion(tmpDir, "", 2)
 	htmlParts, err := c.generateHTML("Test Campaign")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -60,7 +60,7 @@ Go to Área 2.
 Go back to Área 1.
 `), 0644)
 
-	c := NewWithVersion(tmpDir, "wkhtmltopdf", 2)
+	c := NewWithVersion(tmpDir, "", 2)
 	htmlParts, err := c.generateHTML("Test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -86,7 +86,7 @@ func TestCompilerV2_AreaNumberHighlighting(t *testing.T) {
 Content.
 `), 0644)
 
-	c := NewWithVersion(tmpDir, "wkhtmltopdf", 2)
+	c := NewWithVersion(tmpDir, "", 2)
 	htmlParts, err := c.generateHTML("Test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -131,7 +131,7 @@ func TestCompilerV2_InlineStatBlock(t *testing.T) {
 Content.
 `), 0644)
 
-	c := NewWithVersion(tmpDir, "wkhtmltopdf", 2)
+	c := NewWithVersion(tmpDir, "", 2)
 	htmlParts, err := c.generateHTML("Test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -153,7 +153,7 @@ func TestCompilerV2_HandoutPages(t *testing.T) {
 	_ = os.MkdirAll(filepath.Join(tmpDir, "areas"), 0755)
 	_ = os.WriteFile(filepath.Join(tmpDir, "areas", "chapter_01_test.md"), []byte("# Capítulo 1\n\nTest."), 0644)
 
-	c := NewWithVersion(tmpDir, "wkhtmltopdf", 2)
+	c := NewWithVersion(tmpDir, "", 2)
 	htmlParts, err := c.generateHTML("Test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -179,7 +179,7 @@ func TestCompilerV1_NoV2Features(t *testing.T) {
 Content.
 `), 0644)
 
-	c := NewWithVersion(tmpDir, "wkhtmltopdf", 1)
+	c := NewWithVersion(tmpDir, "", 1)
 	htmlParts, err := c.generateHTML("Test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

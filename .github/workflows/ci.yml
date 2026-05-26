@@ -32,10 +32,14 @@ jobs:
     - name: Download dependencies
       run: go mod download
 
-    - name: Install wkhtmltopdf (for PDF tests)
+    - name: Install Chrome (for PDF tests)
       run: |
+        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
         sudo apt-get update
-        sudo apt-get install -y wkhtmltopdf
+        sudo apt-get install -y google-chrome-stable
+        # Fallback: install wkhtmltopdf if chrome is not available
+        which google-chrome-stable || sudo apt-get install -y wkhtmltopdf
 
     - name: Run tests
       run: go test -v -race -coverprofile=coverage.out $(go list ./... | grep -v -E '/(cmd|scripts)/')

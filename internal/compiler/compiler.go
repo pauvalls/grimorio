@@ -65,9 +65,44 @@ type Compiler struct {
 	handoutRendererImpl HandoutRenderer
 }
 
+// pdfEnginePriority defines the preferred order of PDF engines.
+var pdfEnginePriority = []string{
+	"chromium",
+	"chrome",
+	"google-chrome",
+	"google-chrome-stable",
+	"wkhtmltopdf",
+}
+
+// detectPDFEngine searches for an available PDF engine in PATH.
+// It prefers Chromium/Chrome headless over legacy wkhtmltopdf.
+func detectPDFEngine() string {
+	for _, engine := range pdfEnginePriority {
+		if _, err := exec.LookPath(engine); err == nil {
+			return engine
+		}
+	}
+	return "chromium" // fallback: will fail gracefully at runtime if truly missing
+}
+
+// IsPDFEngineAvailable reports whether any supported PDF engine is installed.
+func IsPDFEngineAvailable() bool {
+	for _, engine := range pdfEnginePriority {
+		if _, err := exec.LookPath(engine); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// SupportedEngines returns the list of supported PDF engine names.
+func SupportedEngines() []string {
+	return append([]string(nil), pdfEnginePriority...)
+}
+
 func New(campaignDir, pdfEngine string) *Compiler {
 	if pdfEngine == "" {
-		pdfEngine = "wkhtmltopdf"
+		pdfEngine = detectPDFEngine()
 	}
 	return &Compiler{
 		CampaignDir:     campaignDir,
@@ -810,7 +845,58 @@ func sanitizeID(s string) string {
 	return strings.ToLower(string(result))
 }
 
+// isChromiumEngine reports whether the engine is a Chromium/Chrome variant.
+func isChromiumEngine(engine string) bool {
+	switch engine {
+	case "chromium", "chrome", "google-chrome", "google-chrome-stable",
+		"chromium-browser", "msedge":
+		return true
+	default:
+		return false
+	}
+}
+
 func (c *Compiler) htmlToPDF(ctx context.Context, htmlPath, pdfPath string) error {
+	if isChromiumEngine(c.PDFEngine) {
+		return c.htmlToPDFChromium(ctx, htmlPath, pdfPath)
+	}
+	return c.htmlToPDFWkhtmltopdf(ctx, htmlPath, pdfPath)
+}
+
+func (c *Compiler) htmlToPDFChromium(ctx context.Context, htmlPath, pdfPath string) error {
+	absHTML, err := filepath.Abs(htmlPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve HTML path: %w", err)
+	}
+	absPDF, err := filepath.Abs(pdfPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve PDF path: %w", err)
+	}
+
+	// Use file:// URL for local file access
+	fileURL := "file://" + absHTML
+
+	cmd := exec.CommandContext(ctx, c.PDFEngine,
+		"--headless",
+		"--no-sandbox",
+		"--disable-setuid-sandbox",
+		"--disable-gpu",
+		"--disable-web-security",
+		"--allow-file-access-from-files",
+		"--run-all-compositor-stages-before-draw",
+		"--print-to-pdf="+absPDF,
+		"--print-to-pdf-no-header",
+		"--virtual-time-budget=10000",
+		fileURL,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("chromium headless failed: %w\nOutput: %s", err, string(output))
+	}
+	return nil
+}
+
+func (c *Compiler) htmlToPDFWkhtmltopdf(ctx context.Context, htmlPath, pdfPath string) error {
 	cmd := exec.CommandContext(ctx, c.PDFEngine,
 		"--enable-local-file-access",
 		"--page-size", "A4",
@@ -1446,7 +1532,7 @@ func embedImage(imgPath, alt, baseDir string, seenImages map[string]bool) string
 
 	switch ext {
 	case ".svg":
-		// Use SVG directly - wkhtmltopdf can render SVG files with --enable-local-file-access
+		// Use SVG directly - both Chromium and wkhtmltopdf can render SVG files
 		// Return relative path from campaign directory
 		relPath, _ := filepath.Rel(baseDir, imgPath)
 		if relPath == "" {
