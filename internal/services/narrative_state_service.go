@@ -238,6 +238,23 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 		state.PCStatuses = update.PCStatuses
 	}
 
+	// Update chapter tracking
+	if update.CurrentChapterID != "" {
+		state.CurrentChapter = update.CurrentChapterID
+	}
+	if len(update.CompletedChapters) > 0 {
+		// Merge completed chapters (dedup)
+		existingSet := make(map[string]bool)
+		for _, ch := range state.CompletedChapters {
+			existingSet[ch] = true
+		}
+		for _, ch := range update.CompletedChapters {
+			if !existingSet[ch] {
+				state.CompletedChapters = append(state.CompletedChapters, ch)
+			}
+		}
+	}
+
 	// Save session metadata to root state for easy access
 	state.DMNotes = update.DMNotes
 	state.LootAcquired = update.LootAcquired
@@ -249,6 +266,27 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 	}
 	if sessionNum == 0 {
 		sessionNum = state.CurrentSession + 1
+	}
+
+	// Update XP tracking (after sessionNum is defined)
+	if update.XPAwarded > 0 {
+		// Add to total
+		state.XPTotal += update.XPAwarded
+		
+		// Calculate party level from XP
+		state.PartyLevel = CalculatePartyLevel(state.XPTotal)
+		
+		// Add to ledger
+		xpReason := update.XPReason
+		if xpReason == "" {
+			xpReason = "session"
+		}
+		state.XPLedger = append(state.XPLedger, domain.XPEntry{
+			SessionNum: sessionNum,
+			Amount:     update.XPAwarded,
+			Reason:     xpReason,
+			Timestamp:  time.Now(),
+		})
 	}
 
 	if sessionNum > 0 || update.SessionSummary != "" {
@@ -310,6 +348,12 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 	}
 	if state.PendingEffects == nil {
 		state.PendingEffects = []domain.DelayedEffect{}
+	}
+	if state.CompletedChapters == nil {
+		state.CompletedChapters = []string{}
+	}
+	if state.XPLedger == nil {
+		state.XPLedger = []domain.XPEntry{}
 	}
 
 	state.LastUpdated = time.Now()
@@ -402,6 +446,44 @@ func (s *NarrativeStateService) SyncStateToCanon(ctx context.Context, campaignID
 				}
 			}
 		}
+	}
+
+	// Propagate chapter changes to canon timeline
+	if update.CurrentChapterID != "" && state != nil {
+		// Check if this is a chapter transition
+		if state.CurrentChapter != "" && state.CurrentChapter != update.CurrentChapterID {
+			event := domain.CanonTimelineEvent{
+				ID:          fmt.Sprintf("evt-chapter-%s-started", update.CurrentChapterID),
+				Timestamp:   time.Now().Format(time.RFC3339),
+				Description: fmt.Sprintf("Chapter %s started", update.CurrentChapterID),
+				Involved:    []string{update.CurrentChapterID},
+				IsRevealed:  true,
+			}
+			doc.Timeline = append(doc.Timeline, event)
+		}
+	}
+
+	// Propagate XP changes to canon timeline
+	if update.XPAwarded > 0 && state != nil {
+		xpReason := update.XPReason
+		if xpReason == "" {
+			xpReason = "session"
+		}
+		event := domain.CanonTimelineEvent{
+			ID:          fmt.Sprintf("evt-xp-session-%d", update.SessionNum),
+			Timestamp:   time.Now().Format(time.RFC3339),
+			Description: fmt.Sprintf("Party awarded %d XP (%s) - Total: %d, Level: %d", update.XPAwarded, xpReason, state.XPTotal, state.PartyLevel),
+			Involved:    []string{},
+			IsRevealed:  true,
+		}
+		doc.Timeline = append(doc.Timeline, event)
+	}
+
+	// Update party state in canon
+	if state != nil && doc.PartyState != nil {
+		doc.PartyState.CurrentLevel = state.PartyLevel
+		doc.PartyState.XPTotal = state.XPTotal
+		doc.PartyState.XPLedger = state.XPLedger
 	}
 
 	doc.UpdatedAt = time.Now()
