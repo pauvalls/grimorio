@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -13,15 +15,21 @@ import (
 type SessionPrepService struct {
 	canonRepo   repository.CanonRepository
 	stateRepo   repository.NarrativeStateRepository
+	factionRepo repository.FactionReputationRepository
 	generator   *SessionGenerator
 }
 
 // NewSessionPrepService creates a new session prep service
-func NewSessionPrepService(canonRepo repository.CanonRepository, stateRepo repository.NarrativeStateRepository) *SessionPrepService {
+func NewSessionPrepService(
+	canonRepo repository.CanonRepository,
+	stateRepo repository.NarrativeStateRepository,
+	factionRepo repository.FactionReputationRepository,
+) *SessionPrepService {
 	return &SessionPrepService{
-		canonRepo: canonRepo,
-		stateRepo: stateRepo,
-		generator: NewSessionGenerator(canonRepo, stateRepo),
+		canonRepo:   canonRepo,
+		stateRepo:   stateRepo,
+		factionRepo: factionRepo,
+		generator:   NewSessionGenerator(canonRepo, stateRepo),
 	}
 }
 
@@ -57,7 +65,13 @@ func (s *SessionPrepService) GetPrep(ctx context.Context, campaignID string, ses
 		PrepDate:   time.Now(),
 	}
 
-	// PreviouslyOn from last session
+	// Load faction reputation matrix if available
+	var factionMatrix *domain.FactionReputationMatrix
+	if s.factionRepo != nil {
+		factionMatrix, _ = s.factionRepo.Load(campaignID)
+	}
+
+	// PreviouslyOn from last 3 sessions + arc context
 	prep.PreviouslyOn = s.generatePreviouslyOn(state)
 
 	// Active quests
@@ -66,11 +80,17 @@ func (s *SessionPrepService) GetPrep(ctx context.Context, campaignID string, ses
 	// Relevant NPCs (alive, connected to active quests)
 	prep.RelevantNPCs = s.findRelevantNPCs(state, doc)
 
-	// Likely scenarios from active quests + decisions
-	prep.LikelyScenarios = s.generateLikelyScenarios(state)
+	// Likely scenarios from active quests + decisions + pending effects + factions
+	prep.LikelyScenarios = s.generateLikelyScenarios(state, factionMatrix, sessionNum)
 
 	// Reminders
-	prep.Reminders = s.generateReminders(state, doc)
+	prep.Reminders = s.generateReminders(state, doc, sessionNum)
+
+	// Populate new fields
+	prep.PendingEffects = getPendingEffects(state, sessionNum)
+	if factionMatrix != nil {
+		prep.FactionSnapshot = factionMatrix.Entries
+	}
 
 	if len(state.SessionLog) == 0 {
 		warnings = append(warnings, "no previous sessions found")
@@ -82,12 +102,50 @@ func (s *SessionPrepService) GetPrep(ctx context.Context, campaignID string, ses
 	return prep, warnings, nil
 }
 
+func getPendingEffects(state *domain.NarrativeState, sessionNum int) []domain.DelayedEffect {
+	if state == nil {
+		return nil
+	}
+	var result []domain.DelayedEffect
+	for _, de := range state.PendingEffects {
+		if !de.Applied && de.ApplySession <= sessionNum {
+			result = append(result, de)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ApplySession < result[j].ApplySession
+	})
+	return result
+}
+
 func (s *SessionPrepService) generatePreviouslyOn(state *domain.NarrativeState) string {
 	if len(state.SessionLog) == 0 {
 		return "No previous sessions recorded. This is the beginning of the campaign."
 	}
-	last := state.SessionLog[len(state.SessionLog)-1]
-	return fmt.Sprintf("Session %d: %s", last.SessionNum, last.Summary)
+
+	currentSession := state.CurrentSession
+	if currentSession == 0 {
+		currentSession = len(state.SessionLog)
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "Arc context: %d sessions recorded, currently in session %d.\n", len(state.SessionLog), currentSession)
+
+	start := len(state.SessionLog) - 3
+	if start < 0 {
+		start = 0
+	}
+	for i := len(state.SessionLog) - 1; i >= start; i-- {
+		rec := state.SessionLog[i]
+		fmt.Fprintf(&b, "\nSession %d: %s", rec.SessionNum, rec.Summary)
+		if len(rec.KeyDecisions) > 0 {
+			b.WriteString("\n  Key decisions:")
+			for _, d := range rec.KeyDecisions {
+				fmt.Fprintf(&b, "\n    - %s (chose: %s)", d.Description, d.ChoiceMade)
+			}
+		}
+	}
+	return b.String()
 }
 
 func (s *SessionPrepService) extractActiveQuests(state *domain.NarrativeState) []string {
@@ -155,32 +213,62 @@ func (s *SessionPrepService) findRelevantNPCs(state *domain.NarrativeState, doc 
 	return result
 }
 
-func (s *SessionPrepService) generateLikelyScenarios(state *domain.NarrativeState) []string {
-	if len(state.ActiveQuests) == 0 {
-		return []string{}
-	}
+func (s *SessionPrepService) generateLikelyScenarios(state *domain.NarrativeState, factionMatrix *domain.FactionReputationMatrix, targetSession int) []string {
+	const maxScenarios = 7
 
 	var scenarios []string
+
+	// Priority 1: Pending delayed effects due this session
+	var pendingEffects []domain.DelayedEffect
+	for _, de := range state.PendingEffects {
+		if !de.Applied && de.ApplySession <= targetSession {
+			pendingEffects = append(pendingEffects, de)
+		}
+	}
+	sort.Slice(pendingEffects, func(i, j int) bool {
+		return pendingEffects[i].ApplySession < pendingEffects[j].ApplySession
+	})
+	for _, de := range pendingEffects {
+		scenarios = append(scenarios, fmt.Sprintf("Delayed consequence due: %s (target: %s)", de.Description, de.Target))
+	}
+
+	// Priority 2: Unresolved decisions from ALL sessions
+	var unresolvedDecisions []domain.Decision
+	for _, rec := range state.SessionLog {
+		for _, d := range rec.KeyDecisions {
+			if d.ImpactScope != "resolved" {
+				unresolvedDecisions = append(unresolvedDecisions, d)
+			}
+		}
+	}
+	for _, d := range unresolvedDecisions {
+		scenarios = append(scenarios, fmt.Sprintf("Unresolved decision: %s (chose: %s)", d.Description, d.ChoiceMade))
+	}
+
+	// Priority 3: Faction reputation changes since previous session
+	if factionMatrix != nil {
+		for _, entry := range factionMatrix.Entries {
+			for _, evt := range entry.History {
+				if evt.Session == targetSession-1 {
+					scenarios = append(scenarios, fmt.Sprintf("Faction change: %s reputation shifted by %d (%s)", entry.FactionID, evt.Delta, evt.Reason))
+				}
+			}
+		}
+	}
+
+	// Priority 4: Active quest continuations
 	for _, q := range state.ActiveQuests {
 		scenarios = append(scenarios, fmt.Sprintf("Continue quest '%s' from Act %s", q.Name, q.SourceAct))
 	}
 
-	// Add scenario from last session's decisions
-	if len(state.SessionLog) > 0 {
-		last := state.SessionLog[len(state.SessionLog)-1]
-		for _, d := range last.KeyDecisions {
-			scenarios = append(scenarios, fmt.Sprintf("Deal with consequences of decision: %s (chose: %s)", d.Description, d.ChoiceMade))
-		}
-	}
-
-	// Cap at 5
-	if len(scenarios) > 5 {
-		scenarios = scenarios[:5]
+	// Cap at maxScenarios
+	if len(scenarios) > maxScenarios {
+		scenarios = scenarios[:maxScenarios]
 	}
 	return scenarios
 }
 
-func (s *SessionPrepService) generateReminders(state *domain.NarrativeState, doc *domain.CanonDocument) []string {
+func (s *SessionPrepService) generateReminders(state *domain.NarrativeState, doc *domain.CanonDocument, targetSession int) []string {
 	var reminders []string
 
 	// Check for dead NPCs whose canon state is still alive
@@ -203,6 +291,13 @@ func (s *SessionPrepService) generateReminders(state *domain.NarrativeState, doc
 	for _, q := range state.ActiveQuests {
 		for _, c := range q.Consequences {
 			reminders = append(reminders, fmt.Sprintf("Quest '%s' has pending consequence: %s", q.Name, c))
+		}
+	}
+
+	// Pending delayed effects due this session
+	for _, de := range state.PendingEffects {
+		if !de.Applied && de.ApplySession == targetSession {
+			reminders = append(reminders, fmt.Sprintf("Delayed consequence due: %s (target: %s)", de.Description, de.Target))
 		}
 	}
 

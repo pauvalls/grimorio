@@ -165,6 +165,7 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 			LootAcquired:      []string{},
 			SessionLog:        []domain.SessionRecord{},
 			DMOverrides:       []domain.DMOverride{},
+			PendingEffects:    []domain.DelayedEffect{},
 			LastUpdated:       time.Now(),
 		}
 		// Save the initial state
@@ -300,6 +301,9 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 	}
 	if state.PCStatuses == nil {
 		state.PCStatuses = []domain.PCStatus{}
+	}
+	if state.PendingEffects == nil {
+		state.PendingEffects = []domain.DelayedEffect{}
 	}
 
 	state.LastUpdated = time.Now()

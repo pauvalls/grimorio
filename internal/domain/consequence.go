@@ -65,9 +65,14 @@ type ConsequenceEvaluation struct {
 
 // DelayedEffect is an effect queued for a future session
 type DelayedEffect struct {
-	Effect         Effect `json:"effect"`
+	ID             string `json:"id"`
+	Description    string `json:"description"`
+	EffectType     string `json:"effect_type"`
+	Target         string `json:"target"`
+	Effect         Effect `json:"effect"`          // preserved for backward compat
 	TriggerSession int    `json:"trigger_session"`
 	ApplySession   int    `json:"apply_session"`
+	Applied        bool   `json:"applied"`
 }
 
 // WorldReactorFunc is a function that handles a trigger and produces effects

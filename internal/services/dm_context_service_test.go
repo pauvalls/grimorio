@@ -32,7 +32,7 @@ func TestDMContextService_GetContext(t *testing.T) {
 	monsterRepo := fsrepo.NewFilesystemMonsterRepository(tmpDir)
 	areaRepo := fsrepo.NewFilesystemAreaRepositoryV3(tmpDir)
 
-	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo)
+	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo, nil)
 
 	svc := NewDMContextService(
 		canonRepo, stateRepo, charRepo, npcRepo, questRepo,
@@ -261,7 +261,7 @@ func TestDMContextService_GetContext_LargeCampaign(t *testing.T) {
 	monsterRepo := fsrepo.NewFilesystemMonsterRepository(tmpDir)
 	areaRepo := fsrepo.NewFilesystemAreaRepositoryV3(tmpDir)
 
-	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo)
+	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo, nil)
 	svc := NewDMContextService(
 		canonRepo, stateRepo, charRepo, npcRepo, questRepo,
 		monsterRepo, areaRepo, factionRepo, sessionPrepSvc, tmpDir,

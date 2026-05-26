@@ -70,7 +70,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	handoutService := services.NewHandoutService(questRepo, canonRepo)
 	consequenceEngine := services.NewConsequenceEngine(canonRepo)
 	adaptationPatchService := services.NewAdaptationPatchService(actRepo, canonRepo)
-	sessionPrepService := services.NewSessionPrepService(canonRepo, narrativeStateRepo)
+	sessionPrepService := services.NewSessionPrepService(canonRepo, narrativeStateRepo, factionRepo)
 	dmContextService := services.NewDMContextService(
 		canonRepo, narrativeStateRepo, charRepo, npcRepo, questRepo,
 		monsterRepo, areaRepoV3, factionRepo, sessionPrepService, cfg.OutputDir,
@@ -437,6 +437,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithDescription("Generate a DM prep sheet for the next session"),
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithNumber("session_num", mcp.Description("Session number (defaults to current+1)")),
+		mcp.WithBoolean("with_scenarios", mcp.Description("Include encounter, loot, and NPC scenario recommendations"), mcp.DefaultBool(false)),
 	), sessionPrepHandlers.HandleGenerateSessionPrep())
 
 	s.AddTool(mcp.NewTool("generate_flowchart",

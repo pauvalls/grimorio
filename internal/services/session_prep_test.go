@@ -15,7 +15,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 	canonRepo := repository.NewMemoryCanonRepository()
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 
-	svc := NewSessionPrepService(canonRepo, stateRepo)
+	svc := NewSessionPrepService(canonRepo, stateRepo, nil)
 
 	seedFullState := func() {
 		doc := &domain.CanonDocument{
@@ -126,7 +126,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 	t.Run("empty state returns warnings but valid sheet", func(t *testing.T) {
 		emptyCanonRepo := repository.NewMemoryCanonRepository()
 		emptyStateRepo := repository.NewMemoryNarrativeStateRepository()
-		emptySvc := NewSessionPrepService(emptyCanonRepo, emptyStateRepo)
+		emptySvc := NewSessionPrepService(emptyCanonRepo, emptyStateRepo, nil)
 
 		doc := &domain.CanonDocument{
 			SchemaVersion: domain.SchemaVersionV2,
@@ -163,7 +163,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 	t.Run("missing canon returns warning", func(t *testing.T) {
 		canonOnlyRepo := repository.NewMemoryCanonRepository()
 		stateOnlyRepo := repository.NewMemoryNarrativeStateRepository()
-		partialSvc := NewSessionPrepService(canonOnlyRepo, stateOnlyRepo)
+		partialSvc := NewSessionPrepService(canonOnlyRepo, stateOnlyRepo, nil)
 
 		state := &domain.NarrativeState{
 			SchemaVersion:  domain.SchemaVersionV2,
@@ -194,7 +194,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 	t.Run("no sessions returns placeholder", func(t *testing.T) {
 		noSessionCanonRepo := repository.NewMemoryCanonRepository()
 		noSessionStateRepo := repository.NewMemoryNarrativeStateRepository()
-		noSessionSvc := NewSessionPrepService(noSessionCanonRepo, noSessionStateRepo)
+		noSessionSvc := NewSessionPrepService(noSessionCanonRepo, noSessionStateRepo, nil)
 
 		doc := &domain.CanonDocument{
 			SchemaVersion: domain.SchemaVersionV2,
@@ -253,7 +253,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 	t.Run("missing narrative state creates initial state", func(t *testing.T) {
 		missingStateCanonRepo := repository.NewMemoryCanonRepository()
 		missingStateRepo := repository.NewMemoryNarrativeStateRepository()
-		missingSvc := NewSessionPrepService(missingStateCanonRepo, missingStateRepo)
+		missingSvc := NewSessionPrepService(missingStateCanonRepo, missingStateRepo, nil)
 
 		doc := &domain.CanonDocument{
 			SchemaVersion: domain.SchemaVersionV2,
@@ -289,7 +289,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 		// Use a repo that returns nil state without error
 		nilStateRepo := &nilReturningStateRepo{}
 		nilCanonRepo := repository.NewMemoryCanonRepository()
-		nilSvc := NewSessionPrepService(nilCanonRepo, nilStateRepo)
+		nilSvc := NewSessionPrepService(nilCanonRepo, nilStateRepo, nil)
 
 		prep, warnings, err := nilSvc.GetPrep(ctx, "nil-state-campaign", 0)
 		if err != nil {
@@ -320,4 +320,163 @@ func (r *nilReturningStateRepo) Save(campaignID string, state *domain.NarrativeS
 
 func (r *nilReturningStateRepo) Exists(campaignID string) bool {
 	return false
+}
+
+func TestSessionPrepService_generatePreviouslyOn(t *testing.T) {
+	svc := NewSessionPrepService(nil, nil, nil)
+
+	t.Run("no sessions returns placeholder", func(t *testing.T) {
+		state := &domain.NarrativeState{SessionLog: []domain.SessionRecord{}}
+		got := svc.generatePreviouslyOn(state)
+		if !strings.Contains(got, "No previous sessions") {
+			t.Fatalf("expected placeholder, got %q", got)
+		}
+	})
+
+	t.Run("one session", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			SessionLog: []domain.SessionRecord{
+				{SessionNum: 1, Summary: "First session."},
+			},
+		}
+		got := svc.generatePreviouslyOn(state)
+		if !strings.Contains(got, "Arc context") {
+			t.Fatalf("expected arc context line, got %q", got)
+		}
+		if !strings.Contains(got, "First session.") {
+			t.Fatalf("expected first session summary, got %q", got)
+		}
+	})
+
+	t.Run("three sessions shows all", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			SessionLog: []domain.SessionRecord{
+				{SessionNum: 1, Summary: "Session 1."},
+				{SessionNum: 2, Summary: "Session 2."},
+				{SessionNum: 3, Summary: "Session 3."},
+			},
+		}
+		got := svc.generatePreviouslyOn(state)
+		if !strings.Contains(got, "Session 3.") {
+			t.Fatalf("expected session 3, got %q", got)
+		}
+		if !strings.Contains(got, "Session 2.") {
+			t.Fatalf("expected session 2, got %q", got)
+		}
+		if !strings.Contains(got, "Session 1.") {
+			t.Fatalf("expected session 1, got %q", got)
+		}
+	})
+
+	t.Run("four sessions shows last 3", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			SessionLog: []domain.SessionRecord{
+				{SessionNum: 1, Summary: "Session 1."},
+				{SessionNum: 2, Summary: "Session 2."},
+				{SessionNum: 3, Summary: "Session 3."},
+				{SessionNum: 4, Summary: "Session 4."},
+			},
+		}
+		got := svc.generatePreviouslyOn(state)
+		if !strings.Contains(got, "Session 4.") {
+			t.Fatalf("expected session 4, got %q", got)
+		}
+		if !strings.Contains(got, "Session 3.") {
+			t.Fatalf("expected session 3, got %q", got)
+		}
+		if !strings.Contains(got, "Session 2.") {
+			t.Fatalf("expected session 2, got %q", got)
+		}
+		if strings.Contains(got, "Session 1.") {
+			t.Fatalf("expected session 1 to be excluded, got %q", got)
+		}
+	})
+}
+
+func TestSessionPrepService_generateLikelyScenarios(t *testing.T) {
+	svc := NewSessionPrepService(nil, nil, nil)
+
+	t.Run("empty quests returns empty", func(t *testing.T) {
+		state := &domain.NarrativeState{ActiveQuests: []domain.QuestState{}}
+		got := svc.generateLikelyScenarios(state, nil, 4)
+		if len(got) != 0 {
+			t.Fatalf("expected 0 scenarios, got %d", len(got))
+		}
+	})
+
+	t.Run("caps at 7", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			ActiveQuests: []domain.QuestState{
+				{ID: "q1", Name: "Quest 1", Status: "active", SourceAct: "act-1"},
+				{ID: "q2", Name: "Quest 2", Status: "active", SourceAct: "act-1"},
+				{ID: "q3", Name: "Quest 3", Status: "active", SourceAct: "act-1"},
+				{ID: "q4", Name: "Quest 4", Status: "active", SourceAct: "act-1"},
+				{ID: "q5", Name: "Quest 5", Status: "active", SourceAct: "act-1"},
+				{ID: "q6", Name: "Quest 6", Status: "active", SourceAct: "act-1"},
+				{ID: "q7", Name: "Quest 7", Status: "active", SourceAct: "act-1"},
+				{ID: "q8", Name: "Quest 8", Status: "active", SourceAct: "act-1"},
+			},
+		}
+		got := svc.generateLikelyScenarios(state, nil, 4)
+		if len(got) != 7 {
+			t.Fatalf("expected 7 scenarios (capped), got %d", len(got))
+		}
+	})
+
+	t.Run("pending effects first priority", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			PendingEffects: []domain.DelayedEffect{
+				{ID: "e1", Description: "Effect 1", ApplySession: 4},
+			},
+			ActiveQuests: []domain.QuestState{
+				{ID: "q1", Name: "Quest 1", Status: "active", SourceAct: "act-1"},
+			},
+		}
+		got := svc.generateLikelyScenarios(state, nil, 4)
+		if len(got) < 2 {
+			t.Fatalf("expected at least 2 scenarios, got %d", len(got))
+		}
+		if !strings.Contains(got[0], "Effect 1") {
+			t.Fatalf("expected pending effect first, got %q", got[0])
+		}
+	})
+}
+
+func TestSessionPrepService_generateReminders(t *testing.T) {
+	svc := NewSessionPrepService(nil, nil, nil)
+
+	t.Run("due pending effects in reminders", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			PendingEffects: []domain.DelayedEffect{
+				{ID: "e1", Description: "Village burns down", Target: "Village", ApplySession: 4},
+			},
+		}
+		doc := &domain.CanonDocument{}
+		got := svc.generateReminders(state, doc, 4)
+		found := false
+		for _, r := range got {
+			if strings.Contains(r, "Village burns down") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected reminder for due pending effect, got %v", got)
+		}
+	})
+
+	t.Run("non-due effects excluded", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			PendingEffects: []domain.DelayedEffect{
+				{ID: "e1", Description: "Future effect", Target: "Town", ApplySession: 6},
+			},
+		}
+		doc := &domain.CanonDocument{}
+		got := svc.generateReminders(state, doc, 4)
+		for _, r := range got {
+			if strings.Contains(r, "Future effect") {
+				t.Fatalf("expected future effect excluded, got %q", r)
+			}
+		}
+	})
 }

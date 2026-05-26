@@ -27,7 +27,7 @@ func TestDMContextHandler(t *testing.T) {
 	monsterRepo := fsrepo.NewFilesystemMonsterRepository(tmpDir)
 	areaRepo := fsrepo.NewFilesystemAreaRepositoryV3(tmpDir)
 
-	sessionPrepSvc := services.NewSessionPrepService(canonRepo, stateRepo)
+	sessionPrepSvc := services.NewSessionPrepService(canonRepo, stateRepo, nil)
 	dmContextSvc := services.NewDMContextService(
 		canonRepo, stateRepo, charRepo, npcRepo, questRepo,
 		monsterRepo, areaRepo, factionRepo, sessionPrepSvc, tmpDir,

@@ -27,6 +27,7 @@ type NarrativeState struct {
 	PCStatuses        []PCStatus       `json:"pc_status,omitempty"`
 	SessionLog        []SessionRecord  `json:"session_log"`
 	DMOverrides       []DMOverride     `json:"dm_overrides"`
+	PendingEffects    []DelayedEffect  `json:"pending_effects,omitempty"`
 }
 
 // Validate checks if the narrative state is valid

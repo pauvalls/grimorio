@@ -16,6 +16,40 @@ func setupNarrativeStateService() (*NarrativeStateService, *repository.MemoryNar
 	return svc, stateRepo, canonRepo
 }
 
+func TestNarrativeStateService_Update_PendingEffects(t *testing.T) {
+	svc, _, _ := setupNarrativeStateService()
+	ctx := context.Background()
+
+	state := &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "test-campaign",
+		CurrentSession: 1,
+		PendingEffects: []domain.DelayedEffect{
+			{ID: "rule-001-0", Description: "Existing effect"},
+		},
+	}
+	if err := svc.Save(ctx, state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
+
+	update := domain.StateUpdate{
+		SessionNum: 2,
+	}
+
+	updated, err := svc.Update(ctx, "test-campaign", update)
+	if err != nil {
+		t.Fatalf("failed to update state: %v", err)
+	}
+
+	// PendingEffects should be preserved and normalized to non-nil
+	if updated.PendingEffects == nil {
+		t.Fatalf("expected pending effects to be non-nil after update")
+	}
+	if len(updated.PendingEffects) != 1 {
+		t.Fatalf("expected 1 pending effect preserved, got %d", len(updated.PendingEffects))
+	}
+}
+
 func TestNarrativeStateService_LoadSave(t *testing.T) {
 	svc, _, _ := setupNarrativeStateService()
 	ctx := context.Background()
