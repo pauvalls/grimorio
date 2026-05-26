@@ -104,6 +104,11 @@ If `session_num == 1` and prologue exists in the context:
 2. Ask players to introduce their characters **in-character**.
 3. Describe **Area 1** using its `player_read_aloud` text.
 
+If `session_num == 1` and NO prologue exists:
+1. Present `session_prep.previously_on` (will be empty or minimal).
+2. Describe **Area 1** using its `player_read_aloud` text.
+3. Ask "What do you do?"
+
 ### Mode Selection
 
 **Ask ALL options in ONE message:**
@@ -162,7 +167,7 @@ setsid narrate "FULL TEXT WITHOUT EMOJIS OR MARKDOWN" > /dev/null 2>&1
 The dragon exhales fire. The party retreats.
 The warrior raises their shield.
 
-🎙️ Narrando...
+🎙️ Narrating...
 ```
 
 **Agent executes (bash, not visible text):**
@@ -201,9 +206,11 @@ Write narrative only. No bash tool call needed.
 
 1. **Initiative**: Call for initiative (or roll secretly in AUTO mode).
 2. **Battlefield**: Describe briefly — zones, not grids.
-3. **Player turns**: Ask "¿What do you do?" Resolve. Describe outcome narratively.
+3. **Player turns**: Ask "What do you do?" Resolve. Describe outcome narratively.
 4. **Enemy turns**: Describe attack and result. NEVER reveal die results.
 5. **Tactical mode**: Remind available actions (Attack, Dash, Disengage, Dodge, Help, Hide, Ready, Search, Use an Object).
+6. **Conditions**: Track prone, restrained, invisible, etc. Describe narratively ("The goblin is pinned under rubble").
+7. **Concentration**: If a concentrating NPC takes damage, call for CON save (DC 10 or half damage, whichever higher).
 
 ### Information Hiding
 
@@ -317,7 +324,7 @@ update_narrative_state(
   session_num=5,
   sync_to_canon=true,  // RECOMMENDED — propagates dead NPCs + quest completions
   revealed_clues=[{description: "...", source_act: "act-1", is_critical: true}],
-  key_decisions=[{description: "...", choice_made: "...", impact_scope: "corto"}],
+  key_decisions=[{description: "...", choice_made: "...", impact_scope: "short"}],
   active_quests=["Quest 1", "Quest 2"],  // ALL current active quests
   completed_quests=["q3"],
   key_items=["Sword +1", "Healing Potion"],  // ALL current key items
@@ -333,6 +340,7 @@ update_narrative_state(
 
 **CRITICAL:** Pass ALL current arrays. Tool REPLACES `active_quests`, `key_items`, `pc_status`.
 **Deduplication:** Clues and dead NPCs are auto-deduplicated by ID.
+**Impact scope:** Use "short" (1 session), "medium" (2-3 sessions), or "long" (whole campaign).
 
 ### 3. Evaluate Consequences
 ```
@@ -471,7 +479,7 @@ get_audit_log(
 1. Verify Piper model matches desired language:
    - Spanish: `es_ES-davefx-medium.onnx` or similar
    - English: `en_US-lessac-medium.onnx` or similar
-2. Set environment variables:
+2. Set environment variables (add to ~/.bashrc for persistence):
    ```bash
    export PIPER_MODEL_PATH="$HOME/.local/share/piper/es_ES-davefx-medium.onnx"
    export PIPER_CONFIG_PATH="$HOME/.local/share/piper/es_ES-davefx-medium.onnx.json"
@@ -497,6 +505,9 @@ get_audit_log(
 | Armor Class | Clase de Armadura | Armor Class (AC) |
 | Ability check | Tirada de característica | Ability check |
 | Concentration | Concentración | Concentration |
+| Spell slot | Espacio de conjuro | Spell slot |
+| Rest (short/long) | Descanso (corto/largo) | Rest (short/long) |
+| Proficiency bonus | Bono de competencia | Proficiency bonus |
 
 ---
 
