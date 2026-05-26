@@ -207,14 +207,14 @@ func TestLoadConfig_TTSFields(t *testing.T) {
 	oldVals := make(map[string]string)
 	for _, k := range envVars {
 		oldVals[k] = os.Getenv(k)
-		os.Unsetenv(k)
+		_ = os.Unsetenv(k)
 	}
 	t.Cleanup(func() {
 		for k, v := range oldVals {
 			if v != "" {
-				os.Setenv(k, v)
+				_ = os.Setenv(k, v)
 			} else {
-				os.Unsetenv(k)
+				_ = os.Unsetenv(k)
 			}
 		}
 	})
