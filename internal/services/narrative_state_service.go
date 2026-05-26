@@ -11,8 +11,9 @@ import (
 
 // NarrativeStateService handles narrative state business logic
 type NarrativeStateService struct {
-	stateRepo repository.NarrativeStateRepository
-	canonRepo repository.CanonRepository
+	stateRepo   repository.NarrativeStateRepository
+	canonRepo   repository.CanonRepository
+	characterRepo repository.CharacterRepository
 }
 
 // NewNarrativeStateService creates a new narrative state service
@@ -21,6 +22,11 @@ func NewNarrativeStateService(stateRepo repository.NarrativeStateRepository, can
 		stateRepo: stateRepo,
 		canonRepo: canonRepo,
 	}
+}
+
+// SetCharacterRepository sets the character repository for HP persistence
+func (s *NarrativeStateService) SetCharacterRepository(repo repository.CharacterRepository) {
+	s.characterRepo = repo
 }
 
 // Load retrieves the narrative state for a campaign
@@ -375,6 +381,27 @@ func (s *NarrativeStateService) SyncStateToCanon(ctx context.Context, campaignID
 			IsRevealed:  true,
 		}
 		doc.Timeline = append(doc.Timeline, event)
+	}
+
+	// Persist PC HP changes to character files
+	if s.characterRepo != nil && len(update.PCStatuses) > 0 {
+		for _, pcStatus := range update.PCStatuses {
+			character, err := s.characterRepo.Read(campaignID, pcStatus.Name)
+			if err != nil {
+				warnings = append(warnings, fmt.Sprintf("character '%s' not found (HP update skipped)", pcStatus.Name))
+				continue
+			}
+			
+			// Update HP if changed
+			if pcStatus.HPCurrent != character.HP.Current || pcStatus.HPMax != character.HP.Maximum {
+				character.HP.Current = pcStatus.HPCurrent
+				character.HP.Maximum = pcStatus.HPMax
+				character.UpdatedAt = time.Now()
+				if saveErr := s.characterRepo.Save(character); saveErr != nil {
+					warnings = append(warnings, fmt.Sprintf("failed to save HP for '%s': %v", pcStatus.Name, saveErr))
+				}
+			}
+		}
 	}
 
 	doc.UpdatedAt = time.Now()

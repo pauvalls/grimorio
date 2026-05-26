@@ -317,7 +317,26 @@ Check `factions[].reputation` before NPCs from that faction speak:
 ### 1. Narrate Closure
 - Summarize what happened. End on a cliffhanger if appropriate.
 
-### 2. Update State
+### 2. Gather Current State (CRITICAL)
+
+**Before calling `update_narrative_state`, you MUST have the complete current state:**
+
+**Option A — You tracked during session (recommended):**
+- Keep a mental note of: quests accepted/completed, HP changes, items acquired
+- Use your notes to build the full arrays
+
+**Option B — Read from context (if you lost track):**
+- Re-call `dm_session_context` with `session_num` = current session
+- Extract: `payload.narrative_state.active_quests`, `payload.characters[].hp`
+- Apply any changes from THIS session that haven't been saved yet
+
+**Required arrays — ALL must be complete:**
+- `active_quests`: ALL currently active quests (not just new ones)
+- `key_items`: ALL items the party currently holds (not just new ones)
+- `pc_status`: ALL characters with current HP (even if unchanged)
+
+### 3. Update State
+
 ```
 update_narrative_state(
   campaign_id="sunken-city",
@@ -325,10 +344,19 @@ update_narrative_state(
   sync_to_canon=true,  // RECOMMENDED — propagates dead NPCs + quest completions
   revealed_clues=[{description: "...", source_act: "act-1", is_critical: true}],
   key_decisions=[{description: "...", choice_made: "...", impact_scope: "short"}],
-  active_quests=["Quest 1", "Quest 2"],  // ALL current active quests
+  active_quests=[  // ❗ ALL current active quests, not just new ones
+    {id: "q1", name: "Investigate Docks", status: "active"},
+    {id: "q2", name: "Find Traitor", status: "active"}
+  ],
   completed_quests=["q3"],
-  key_items=["Sword +1", "Healing Potion"],  // ALL current key items
-  pc_status=[{name: "Kael", hp_current: 12, hp_max: 12, conditions: []}],
+  key_items=[  // ❗ ALL current items, not just new ones
+    {id: "item1", name: "Rusty Key", holder: "party"},
+    {id: "item2", name: "Letter", holder: "Kael"}
+  ],
+  pc_status=[  // ❗ ALL characters, even if HP unchanged
+    {name: "Kael", hp_current: 12, hp_max: 12, conditions: []},
+    {name: "Sera", hp_current: 8, hp_max: 12, conditions: ["poisoned"]}
+  ],
   current_location="Port Alley",
   session_summary="...",
   xp_awarded=500,
@@ -342,14 +370,14 @@ update_narrative_state(
 **Deduplication:** Clues and dead NPCs are auto-deduplicated by ID.
 **Impact scope:** Use "short" (1 session), "medium" (2-3 sessions), or "long" (whole campaign).
 
-### 3. Evaluate Consequences
+### 4. Evaluate Consequences
 ```
 evaluate_consequences(campaign_id="sunken-city")
 ```
 - Delayed effects auto-persisted to `narrative_state.pending_effects`
 - Non-repeatable rules only fire once
 
-### 4. Update Factions (if reputation changed)
+### 5. Update Factions (if reputation changed)
 ```
 update_faction_reputation(
   campaign_id="sunken-city",
@@ -360,7 +388,7 @@ update_faction_reputation(
 )
 ```
 
-### 5. Export Handouts (if items/maps acquired)
+### 6. Export Handouts (if items/maps acquired)
 ```
 grimorio_export_handout(
   campaign_id="sunken-city",

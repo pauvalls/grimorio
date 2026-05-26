@@ -867,6 +867,124 @@ func TestSyncStateToCanon_MissingEntity(t *testing.T) {
 		t.Fatalf("expected 1 warning for missing entity, got %d", len(warnings))
 	}
 	if !strings.Contains(warnings[0], "npc-missing") {
-		t.Fatalf("expected warning to mention npc-missing, got %s", warnings[0])
+		t.Fatalf("expected warning to mention missing NPC, got %s", warnings[0])
+	}
+}
+
+func TestSyncStateToCanon_PersistsHPChanges(t *testing.T) {
+	svc, stateRepo, canonRepo := setupNarrativeStateService()
+	ctx := context.Background()
+
+	// Setup character repo with a character
+	charRepo := repository.NewMemoryCharacterRepository()
+	svc.SetCharacterRepository(charRepo)
+
+	character := &domain.Character{
+		ID:         "char-sera",
+		CampaignID: "test-campaign",
+		Name:       "Sera",
+		Race:       "humano",
+		Class:      "clerigo",
+		Level:      3,
+		HP: domain.HP{
+			Current: 10,
+			Maximum: 10,
+		},
+		Status: "alive",
+	}
+	if err := charRepo.Save(character); err != nil {
+		t.Fatalf("failed to save character: %v", err)
+	}
+
+	// Setup canon
+	canon := &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "test-campaign",
+		Entities:      []domain.CanonEntity{},
+	}
+	if err := canonRepo.Save("test-campaign", canon); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
+
+	// Setup state
+	state := &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "test-campaign",
+		CurrentSession: 1,
+	}
+	if err := stateRepo.Save("test-campaign", state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
+
+	// Update with HP changes
+	update := domain.StateUpdate{
+		SessionNum: 1,
+		PCStatuses: []domain.PCStatus{
+			{Name: "Sera", HPCurrent: 6, HPMax: 10},
+		},
+		SyncToCanon: true,
+	}
+
+	warnings, err := svc.SyncStateToCanon(ctx, "test-campaign", update)
+	if err != nil {
+		t.Fatalf("SyncStateToCanon error: %v", err)
+	}
+
+	// Verify HP was updated
+	updatedChar, err := charRepo.Read("test-campaign", "Sera")
+	if err != nil {
+		t.Fatalf("failed to read character: %v", err)
+	}
+	if updatedChar.HP.Current != 6 {
+		t.Errorf("expected HP.Current = 6, got %d", updatedChar.HP.Current)
+	}
+	if updatedChar.HP.Maximum != 10 {
+		t.Errorf("expected HP.Maximum = 10, got %d", updatedChar.HP.Maximum)
+	}
+
+	// Verify no warnings for successful update
+	if len(warnings) > 0 {
+		t.Errorf("expected no warnings, got %v", warnings)
+	}
+}
+
+func TestSyncStateToCanon_HPCharacterNotFound(t *testing.T) {
+	svc, _, canonRepo := setupNarrativeStateService()
+	ctx := context.Background()
+
+	// Setup character repo WITHOUT the character
+	charRepo := repository.NewMemoryCharacterRepository()
+	svc.SetCharacterRepository(charRepo)
+
+	// Setup canon
+	canon := &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "test-campaign",
+		Entities:      []domain.CanonEntity{},
+	}
+	if err := canonRepo.Save("test-campaign", canon); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
+
+	// Update with HP changes for non-existent character
+	update := domain.StateUpdate{
+		SessionNum: 1,
+		PCStatuses: []domain.PCStatus{
+			{Name: "NonExistent", HPCurrent: 5, HPMax: 10},
+		},
+		SyncToCanon: true,
+	}
+
+	warnings, err := svc.SyncStateToCanon(ctx, "test-campaign", update)
+	if err != nil {
+		t.Fatalf("SyncStateToCanon error: %v", err)
+	}
+
+	// Verify warning was generated
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d", len(warnings))
+	}
+	if !strings.Contains(warnings[0], "NonExistent") || !strings.Contains(warnings[0], "not found") {
+		t.Errorf("expected warning to mention character not found, got %s", warnings[0])
 	}
 }
