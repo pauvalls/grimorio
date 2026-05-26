@@ -106,13 +106,13 @@ func TestInstallSh_HasInstallBinary(t *testing.T) {
 	}
 }
 
-func TestInstallSh_HasWkhtmltopdfCheck(t *testing.T) {
+func TestInstallSh_HasPDFEngineCheck(t *testing.T) {
 	content, err := os.ReadFile(installShPath())
 	if err != nil {
 		t.Fatalf("failed to read install.sh: %v", err)
 	}
-	if !strings.Contains(string(content), "check_wkhtmltopdf()") {
-		t.Error("install.sh must contain check_wkhtmltopdf() function")
+	if !strings.Contains(string(content), "check_pdf_engine()") {
+		t.Error("install.sh must contain check_pdf_engine() function")
 	}
 }
 
