@@ -66,14 +66,18 @@ func (c *CanonContext) Validate() error {
 
 // NarrativeContext tracks the mutable session state of a campaign.
 type NarrativeContext struct {
-	CurrentSession  int              `json:"current_session"`
-	RevealedClues   []RevealedClue   `json:"revealed_clues"`
-	ActiveQuests    []QuestState     `json:"active_quests"`
-	CompletedQuests []QuestState     `json:"completed_quests"`
-	FailedQuests    []QuestState     `json:"failed_quests"`
-	DeadNPCs        []NPCDeathRecord `json:"dead_npcs"`
-	KeyItems        []KeyItem        `json:"key_items"`
-	SessionLog      []SessionRecord  `json:"session_log"`
+	CurrentSession    int              `json:"current_session"`
+	CurrentChapter    string           `json:"current_chapter,omitempty"`
+	CompletedChapters []string         `json:"completed_chapters,omitempty"`
+	PartyLevel        int              `json:"party_level,omitempty"`
+	XPTotal           int              `json:"xp_total,omitempty"`
+	RevealedClues     []RevealedClue   `json:"revealed_clues"`
+	ActiveQuests      []QuestState     `json:"active_quests"`
+	CompletedQuests   []QuestState     `json:"completed_quests"`
+	FailedQuests      []QuestState     `json:"failed_quests"`
+	DeadNPCs          []NPCDeathRecord `json:"dead_npcs"`
+	KeyItems          []KeyItem        `json:"key_items"`
+	SessionLog        []SessionRecord  `json:"session_log"`
 }
 
 // Validate checks if the narrative context is valid.
@@ -86,11 +90,12 @@ func (n *NarrativeContext) Validate() error {
 
 // DMContextSessionPrep provides context for the upcoming session within the DM context payload.
 type DMContextSessionPrep struct {
-	PreviouslyOn    string   `json:"previously_on"`
-	ActiveQuests    []string `json:"active_quests"`
-	RelevantNPCs    []string `json:"relevant_npcs"`
-	Reminders       []string `json:"reminders"`
-	LikelyScenarios []string `json:"likely_scenarios"`
+	PreviouslyOn       string   `json:"previously_on"`
+	ActiveQuests       []string `json:"active_quests"`
+	RelevantNPCs       []string `json:"relevant_npcs"`
+	Reminders          []string `json:"reminders"`
+	LikelyScenarios    []string `json:"likely_scenarios"`
+	ExpectedPartyLevel int      `json:"expected_party_level,omitempty"` // Recommended level for current chapter
 }
 
 // CharacterContext provides a lightweight view of a player character.

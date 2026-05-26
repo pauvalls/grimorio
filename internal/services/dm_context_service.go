@@ -510,25 +510,29 @@ func buildCanonContext(doc *domain.CanonDocument) *domain.CanonContext {
 func buildNarrativeContext(state *domain.NarrativeState) *domain.NarrativeContext {
 	if state == nil {
 		return &domain.NarrativeContext{
-			CurrentSession:  0,
-			RevealedClues:   []domain.RevealedClue{},
-			ActiveQuests:    []domain.QuestState{},
-			CompletedQuests: []domain.QuestState{},
-			FailedQuests:    []domain.QuestState{},
-			DeadNPCs:        []domain.NPCDeathRecord{},
-			KeyItems:        []domain.KeyItem{},
-			SessionLog:      []domain.SessionRecord{},
+			CurrentSession:    0,
+			RevealedClues:     []domain.RevealedClue{},
+			ActiveQuests:      []domain.QuestState{},
+			CompletedQuests:   []domain.QuestState{},
+			FailedQuests:      []domain.QuestState{},
+			DeadNPCs:          []domain.NPCDeathRecord{},
+			KeyItems:          []domain.KeyItem{},
+			SessionLog:        []domain.SessionRecord{},
 		}
 	}
 	return &domain.NarrativeContext{
-		CurrentSession:  state.CurrentSession,
-		RevealedClues:   orEmptySlice(state.RevealedClues),
-		ActiveQuests:    orEmptySlice(state.ActiveQuests),
-		CompletedQuests: orEmptySlice(state.CompletedQuests),
-		FailedQuests:    orEmptySlice(state.FailedQuests),
-		DeadNPCs:        orEmptySlice(state.DeadNPCs),
-		KeyItems:        orEmptySlice(state.KeyItems),
-		SessionLog:      orEmptySlice(state.SessionLog),
+		CurrentSession:    state.CurrentSession,
+		CurrentChapter:    state.CurrentChapter,
+		CompletedChapters: orEmptySlice(state.CompletedChapters),
+		PartyLevel:        state.PartyLevel,
+		XPTotal:           state.XPTotal,
+		RevealedClues:     orEmptySlice(state.RevealedClues),
+		ActiveQuests:      orEmptySlice(state.ActiveQuests),
+		CompletedQuests:   orEmptySlice(state.CompletedQuests),
+		FailedQuests:      orEmptySlice(state.FailedQuests),
+		DeadNPCs:          orEmptySlice(state.DeadNPCs),
+		KeyItems:          orEmptySlice(state.KeyItems),
+		SessionLog:        orEmptySlice(state.SessionLog),
 	}
 }
 

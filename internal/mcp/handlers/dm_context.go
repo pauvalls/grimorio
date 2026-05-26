@@ -54,6 +54,14 @@ func (h *DMContextHandlers) HandleDMContext() server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		// Add chapter tracking warnings
+		if payload.NarrativeState != nil && payload.NarrativeState.CurrentChapter == "" {
+			warnings = append(warnings, "⚠️ No current chapter set — use current_chapter_id in update_narrative_state")
+		}
+
+		// Add chapter progress warning (simplified - no canon access in handler)
+		// Chapter progress is already shown in session_prep.reminders by SessionContextService
+
 		result := struct {
 			Payload   *domain.DMContextPayload `json:"payload"`
 			Warnings  []string                 `json:"warnings"`
