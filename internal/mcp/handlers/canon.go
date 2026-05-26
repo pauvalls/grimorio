@@ -312,6 +312,20 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 		// Parse current location
 		update.CurrentLocation = getStringArg(args, "current_location")
 
+		// Parse chapter tracking
+		update.CurrentChapterID = getStringArg(args, "current_chapter_id")
+		if completedChapters := getStringArray(args, "completed_chapters"); completedChapters != nil {
+			for _, ch := range completedChapters {
+				if s, ok := ch.(string); ok {
+					update.CompletedChapters = append(update.CompletedChapters, s)
+				}
+			}
+		}
+
+		// Parse XP tracking
+		update.XPAwarded = getIntArg(args, "xp_awarded")
+		update.XPReason = getStringArg(args, "xp_reason")
+
 		// Parse PC statuses
 		if pcStatusVal, ok := args["pc_status"]; ok {
 			if pcStatuses, ok := pcStatusVal.([]any); ok {
