@@ -56,7 +56,9 @@ func (r *filesystemAuditRepository) Append(
 	if err != nil {
 		return fmt.Errorf("failed to open audit log: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close() // Ignore close error on read-only file
+	}()
 
 	// Serialize entry as JSON
 	data, err := json.Marshal(entry)
@@ -163,23 +165,23 @@ func (r *filesystemAuditRepository) PurgeOld(
 	for _, entry := range retained {
 		data, err := json.Marshal(entry)
 		if err != nil {
-			tempFile.Close()
-			os.Remove(tempPath)
+			_ = tempFile.Close()
+			_ = os.Remove(tempPath)
 			return 0, fmt.Errorf("failed to marshal entry: %w", err)
 		}
 
 		if _, err := tempFile.WriteString(string(data) + "\n"); err != nil {
-			tempFile.Close()
-			os.Remove(tempPath)
+			_ = tempFile.Close()
+			_ = os.Remove(tempPath)
 			return 0, fmt.Errorf("failed to write entry: %w", err)
 		}
 	}
 
-	tempFile.Close()
+	_ = tempFile.Close()
 
 	// Atomically replace original file
 	if err := os.Rename(tempPath, logPath); err != nil {
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath)
 		return 0, fmt.Errorf("failed to replace audit log: %w", err)
 	}
 

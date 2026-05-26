@@ -435,8 +435,8 @@ Your journey through this %s location is about to begin.`,
 // generateDevelopmentText generates development text for the area
 func (s *AreaService) generateDevelopmentText(template *areaTemplate, narrativeState *domain.NarrativeState) string {
 	branches := []string{
-		fmt.Sprintf("IF the party alerts the local inhabitants THEN the area becomes hostile: all NPCs are wary, prices increase by 50%%"),
-		fmt.Sprintf("IF the party leaves without causing trouble THEN they gain a safe haven: can rest here without danger"),
+		"IF the party alerts the local inhabitants THEN the area becomes hostile: all NPCs are wary, prices increase by 50%",
+		"IF the party leaves without causing trouble THEN they gain a safe haven: can rest here without danger",
 	}
 
 	// Add narrative-state-aware branch if clues are revealed
