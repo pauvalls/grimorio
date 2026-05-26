@@ -245,23 +245,37 @@ install_binary() {
 }
 
 # ============================================================================
-# CHECK WKHTMLTOPDF
+# CHECK PDF ENGINE
 # ============================================================================
-check_wkhtmltopdf() {
-    if command_exists wkhtmltopdf; then
-        log "wkhtmltopdf found: $(wkhtmltopdf --version 2>/dev/null | head -n1 || echo 'unknown version')"
+check_pdf_engine() {
+    # Prefer Chromium/Chrome headless over legacy wkhtmltopdf
+    local engines="chromium chrome google-chrome google-chrome-stable wkhtmltopdf"
+    local found=""
+
+    for engine in $engines; do
+        if command_exists "$engine"; then
+            found="$engine"
+            break
+        fi
+    done
+
+    if [ -n "$found" ]; then
+        log "PDF engine found: $found"
         return 0
     fi
 
-    warn "wkhtmltopdf not found. PDF generation will not work."
+    warn "No PDF engine found. PDF generation will not work."
+    warn "Install one of the following:"
     case "$OS" in
         linux)
-            warn "Install with: sudo apt-get install wkhtmltopdf"
-            warn "    or:      sudo dnf install wkhtmltopdf"
-            warn "    or:      sudo pacman -S wkhtmltopdf"
+            warn "  Chromium:    sudo pacman -S chromium       # Arch/CachyOS"
+            warn "  Chromium:    sudo apt-get install chromium  # Debian/Ubuntu"
+            warn "  Chrome:      Download from google.com/chrome"
+            warn "  (legacy)     sudo pacman -S wkhtmltopdf     # if you must"
             ;;
         darwin)
-            warn "Install with: brew install --cask wkhtmltopdf"
+            warn "  Chrome:      brew install --cask google-chrome"
+            warn "  Chromium:    brew install --cask chromium"
             ;;
     esac
 }
@@ -618,8 +632,8 @@ do_install() {
     # Step 8: Merge opencode.json
     merge_opencode_config
 
-    # Step 9: Check wkhtmltopdf
-    check_wkhtmltopdf
+    # Step 9: Check PDF engine
+    check_pdf_engine
 
     # Step 10: Update PATH warning
     update_path

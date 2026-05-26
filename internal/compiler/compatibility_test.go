@@ -2,7 +2,6 @@ package compiler_test
 
 import (
 	"context"
-	"os/exec"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -14,16 +13,16 @@ import (
 
 // TestBackwardCompatibility_MinimalCampaign tests compilation with minimal data (no new fields)
 func TestBackwardCompatibility_MinimalCampaign(t *testing.T) {
-	// Skip if wkhtmltopdf is not available (CI environment)
-	if _, err := exec.LookPath("wkhtmltopdf"); err != nil {
-		t.Skip("wkhtmltopdf not installed, skipping test")
+	// Skip if no PDF engine is available (CI environment)
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping test")
 	}
 	
 	tmpDir := t.TempDir()
 	createMinimalCampaign(t, tmpDir)
 
 	ctx := context.Background()
-	c := compiler.New(tmpDir, "wkhtmltopdf")
+	c := compiler.New(tmpDir, "")
 	
 	// Should compile without errors even with minimal data
 	_, err := c.Compile(ctx, "Minimal Campaign")
@@ -40,9 +39,9 @@ func TestBackwardCompatibility_MinimalCampaign(t *testing.T) {
 
 // TestBackwardCompatibility_SessionZeroWithoutShockPoints tests Session Zero without shock points
 func TestBackwardCompatibility_SessionZeroWithoutShockPoints(t *testing.T) {
-	// Skip if wkhtmltopdf is not available (CI environment)
-	if _, err := exec.LookPath("wkhtmltopdf"); err != nil {
-		t.Skip("wkhtmltopdf not installed, skipping test")
+	// Skip if no PDF engine is available (CI environment)
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping test")
 	}
 	
 	tmpDir := t.TempDir()
@@ -63,7 +62,7 @@ Nombre: Test Campaign
 	_ = os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte(sessionZero), 0644)
 
 	ctx := context.Background()
-	c := compiler.New(tmpDir, "wkhtmltopdf")
+	c := compiler.New(tmpDir, "")
 	_, err := c.Compile(ctx, "Test Campaign")
 
 	if err != nil {
@@ -119,9 +118,9 @@ func TestBackwardCompatibility_CharacterWithoutBackstory(t *testing.T) {
 
 // TestBackwardCompatibility_SessionPrepWithoutEncounters tests session prep without new fields
 func TestBackwardCompatibility_SessionPrepWithoutEncounters(t *testing.T) {
-	// Skip if wkhtmltopdf is not available (CI environment)
-	if _, err := exec.LookPath("wkhtmltopdf"); err != nil {
-		t.Skip("wkhtmltopdf not installed, skipping test")
+	// Skip if no PDF engine is available (CI environment)
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping test")
 	}
 	
 	tmpDir := t.TempDir()
@@ -141,7 +140,7 @@ La aventura continúa.
 	_ = os.WriteFile(filepath.Join(tmpDir, "session-prep.md"), []byte(sessionPrep), 0644)
 
 	ctx := context.Background()
-	c := compiler.New(tmpDir, "wkhtmltopdf")
+	c := compiler.New(tmpDir, "")
 	_, err := c.Compile(ctx, "Test Campaign")
 
 	if err != nil {
@@ -189,9 +188,9 @@ func TestBackwardCompatibility_EmptyOptionalFields(t *testing.T) {
 
 // TestBackwardCompatibility_TemplateConditionals tests that templates handle empty data
 func TestBackwardCompatibility_TemplateConditionals(t *testing.T) {
-	// Skip if wkhtmltopdf is not available (CI environment)
-	if _, err := exec.LookPath("wkhtmltopdf"); err != nil {
-		t.Skip("wkhtmltopdf not installed, skipping test")
+	// Skip if no PDF engine is available (CI environment)
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping test")
 	}
 	
 	tmpDir := t.TempDir()
@@ -215,7 +214,7 @@ func TestBackwardCompatibility_TemplateConditionals(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(charactersDir, "minimal.md"), []byte(charSheet), 0644)
 
 	ctx := context.Background()
-	c := compiler.New(tmpDir, "wkhtmltopdf")
+	c := compiler.New(tmpDir, "")
 	_, err := c.Compile(ctx, "Test Campaign")
 
 	if err != nil {
@@ -263,9 +262,9 @@ func TestBackwardCompatibility_JSONSerialization(t *testing.T) {
 
 // TestBackwardCompatibility_CSSNewClassesNotRequired tests that new CSS classes are optional
 func TestBackwardCompatibility_CSSNewClassesNotRequired(t *testing.T) {
-	// Skip if wkhtmltopdf is not available (CI environment)
-	if _, err := exec.LookPath("wkhtmltopdf"); err != nil {
-		t.Skip("wkhtmltopdf not installed, skipping test")
+	// Skip if no PDF engine is available (CI environment)
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping test")
 	}
 	
 	tmpDir := t.TempDir()
@@ -281,7 +280,7 @@ Contenido normal sin clases CSS nuevas.
 	_ = os.WriteFile(filepath.Join(areasDir, "act1.md"), []byte(areaContent), 0644)
 
 	ctx := context.Background()
-	c := compiler.New(tmpDir, "wkhtmltopdf")
+	c := compiler.New(tmpDir, "")
 	_, err := c.Compile(ctx, "Test Campaign")
 
 	if err != nil {

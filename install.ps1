@@ -393,19 +393,31 @@ function Update-Path {
 }
 
 # ============================================================================
-# CHECK WKHTMLTOPDF
+# CHECK PDF ENGINE
 # ============================================================================
-function Test-Wkhtmltopdf {
-    $wkhtml = Get-Command wkhtmltopdf -ErrorAction SilentlyContinue
-    if ($wkhtml) {
-        Write-Log "wkhtmltopdf found: $($wkhtml.Source)"
+function Test-PDFEngine {
+    $engines = @('chrome', 'chromium', 'msedge', 'wkhtmltopdf')
+    $found = $null
+
+    foreach ($engine in $engines) {
+        $cmd = Get-Command $engine -ErrorAction SilentlyContinue
+        if ($cmd) {
+            $found = $cmd.Source
+            break
+        }
+    }
+
+    if ($found) {
+        Write-Log "PDF engine found: $found"
         return
     }
 
-    Write-Warn "wkhtmltopdf not found. PDF generation will not work."
-    Write-Warn "Install with: choco install wkhtmltopdf"
-    Write-Warn "    or:      winget install wkhtmltopdf"
-    Write-Warn "    or:      scoop install wkhtmltopdf"
+    Write-Warn "No PDF engine found. PDF generation will not work."
+    Write-Warn "Install one of the following:"
+    Write-Warn "  Chrome:      winget install Google.Chrome"
+    Write-Warn "  Chrome:      choco install googlechrome"
+    Write-Warn "  Edge:        Already installed on Windows 10/11"
+    Write-Warn "  (legacy)     winget install wkhtmltopdf"
 }
 
 # ============================================================================
@@ -522,8 +534,8 @@ function Install-Grimorio {
     # PATH
     Update-Path
 
-    # wkhtmltopdf
-    Test-Wkhtmltopdf
+    # PDF engine
+    Test-PDFEngine
 
     # Metadata
     Write-Metadata

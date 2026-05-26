@@ -31,7 +31,7 @@ func TestHandleCompilePDF(t *testing.T) {
 		t.Fatalf("HandleCompilePDF() error: %v", err)
 	}
 
-	// May fail due to missing wkhtmltopdf, but should not panic
+	// May fail due to missing PDF engine, but should not panic
 	_ = result
 }
 

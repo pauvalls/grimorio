@@ -13,8 +13,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg == nil {
 		t.Fatal("DefaultConfig() returned nil")
 	}
-	if cfg.PDFEngine != "wkhtmltopdf" {
-		t.Errorf("expected PDFEngine 'wkhtmltopdf', got '%s'", cfg.PDFEngine)
+	if cfg.PDFEngine != "" {
+		t.Errorf("expected PDFEngine empty string (auto-detect), got '%s'", cfg.PDFEngine)
 	}
 	if cfg.Provider != "pollinations" {
 		t.Errorf("expected Provider 'pollinations', got '%s'", cfg.Provider)
@@ -41,8 +41,8 @@ func TestLoadConfig_FileNotExists(t *testing.T) {
 	if cfg == nil {
 		t.Fatal("LoadConfig() returned nil for missing file")
 	}
-	if cfg.PDFEngine != "wkhtmltopdf" {
-		t.Errorf("expected default PDFEngine, got '%s'", cfg.PDFEngine)
+	if cfg.PDFEngine != "" {
+		t.Errorf("expected default PDFEngine empty (auto-detect), got '%s'", cfg.PDFEngine)
 	}
 }
 
@@ -103,8 +103,8 @@ func TestLoadConfig_EmptyFields(t *testing.T) {
 	if cfg.OutputDir == "" {
 		t.Error("expected OutputDir to be defaulted")
 	}
-	if cfg.PDFEngine != "wkhtmltopdf" {
-		t.Errorf("expected default PDFEngine, got '%s'", cfg.PDFEngine)
+	if cfg.PDFEngine != "" {
+		t.Errorf("expected default PDFEngine empty (auto-detect), got '%s'", cfg.PDFEngine)
 	}
 	if cfg.Provider != "pollinations" {
 		t.Errorf("expected default Provider, got '%s'", cfg.Provider)

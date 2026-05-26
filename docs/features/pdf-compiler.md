@@ -243,13 +243,14 @@ Main color variables / Variables de color principales:
 
 ### "Images not appearing in PDF" / "Las imágenes no aparecen en el PDF"
 
-**Cause / Causa:** wkhtmltopdf can't access local files / wkhtmltopdf no puede acceder a archivos locales
+**Cause / Causa:** The legacy wkhtmltopdf engine can't access local files / El motor legacy wkhtmltopdf no puede acceder a archivos locales
 
 **Solution / Solución:**
+If using wkhtmltopdf (legacy), recompile with:
 ```bash
-# Recompile with --enable-local-file-access
 /grimorio compile_pdf campaign="sunken-city" --enable-local-file-access
 ```
+> 💡 This issue does not occur with Chromium/Chrome headless, which is the recommended engine.
 
 ### "PDF too large" / "PDF muy grande"
 

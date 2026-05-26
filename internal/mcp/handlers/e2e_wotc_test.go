@@ -20,7 +20,7 @@ func setupE2ETestHandlers(tmpDir string) (*CampaignHandlers, func()) {
 
 	campaignService := services.NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
-		tmpDir, "wkhtmltopdf",
+		tmpDir, "",
 	)
 
 	handlers := NewCampaignHandlers(campaignService)
@@ -386,7 +386,7 @@ Una llave de plata que brilla con luz propia. Abre cualquier cerradura de plata 
 		t.Fatalf("compile_pdf error: %v", err)
 	}
 
-	// Note: PDF compilation may fail if wkhtmltopdf is not available
+	// Note: PDF compilation may fail if no PDF engine is available
 	// but the handler should not panic
 	if result.IsError {
 		t.Logf("PDF compilation note: %v", result.Content)
@@ -429,7 +429,7 @@ Una llave de plata que brilla con luz propia. Abre cualquier cerradura de plata 
 				}
 			}
 		} else {
-			t.Log("  Note: campaign.html not found (wkhtmltopdf may not be available)")
+			t.Log("  Note: campaign.html not found (no PDF engine may be available)")
 		}
 	}
 

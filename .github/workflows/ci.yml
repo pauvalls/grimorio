@@ -32,10 +32,12 @@ jobs:
     - name: Download dependencies
       run: go mod download
 
-    - name: Install wkhtmltopdf (for PDF tests)
+    - name: Install Chromium (for PDF tests)
       run: |
         sudo apt-get update
-        sudo apt-get install -y wkhtmltopdf
+        sudo apt-get install -y chromium-browser
+        # Fallback: install wkhtmltopdf if chromium is not available
+        which chromium-browser || sudo apt-get install -y wkhtmltopdf
 
     - name: Run tests
       run: go test -v -race -coverprofile=coverage.out $(go list ./... | grep -v -E '/(cmd|scripts)/')
