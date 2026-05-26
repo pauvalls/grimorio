@@ -92,6 +92,20 @@ func (s *SessionPrepService) GetPrep(ctx context.Context, campaignID string, ses
 		prep.FactionSnapshot = factionMatrix.Entries
 	}
 
+	// Chapter objectives (NEW)
+	if state.CurrentChapter != "" {
+		objectives := GetChapterObjectives(doc, state.CurrentChapter)
+		if len(objectives) > 0 {
+			completedIDs := make([]string, len(state.CompletedQuests))
+			for i, q := range state.CompletedQuests {
+				completedIDs[i] = q.ID
+			}
+			completed := CountCompletedObjectives(completedIDs, objectives)
+			prep.Reminders = append(prep.Reminders,
+				fmt.Sprintf("📊 Chapter %s progress: %d/%d objectives", state.CurrentChapter, completed, len(objectives)))
+		}
+	}
+
 	if len(state.SessionLog) == 0 {
 		warnings = append(warnings, "no previous sessions found")
 	}

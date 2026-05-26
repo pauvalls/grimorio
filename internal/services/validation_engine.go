@@ -507,6 +507,33 @@ func (e *ValidationEngine) validate(ctx context.Context, campaignID string, prop
 		}
 	}
 
+	// Rule 4.5: chapter_area_validation — areas in chapter must have required NPCs/locations in canon
+	if proposal.Type == "chapter" || proposal.Type == "act" {
+		// Extract area references from content (simplified: look for "Area X" patterns)
+		areaRefs := e.extractAreaReferences(proposal.Content)
+		for _, areaRef := range areaRefs {
+			// Check if referenced NPCs exist in canon
+			for _, npcRef := range areaRef.NPCs {
+				found := false
+				for _, entity := range doc.Entities {
+					if entity.Type == domain.EntityTypeNPC && strings.Contains(strings.ToLower(entity.Name), strings.ToLower(npcRef)) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					report.AddCheck("chapter_area_validation", false, "warning",
+						fmt.Sprintf("NPC '%s' in area %s not found in canon", npcRef, areaRef.AreaNumber),
+						"")
+					report.AddSuggestion(
+						fmt.Sprintf("NPC '%s' referenced but not in canon", npcRef),
+						"Add NPC to canon or correct the reference",
+						"All NPCs in areas must exist in canon")
+				}
+			}
+		}
+	}
+
 	// Rule 5: quest_reward_existence
 	if proposal.Type == "quest" {
 		rewards := e.extractRewardNames(proposal.Content)
@@ -978,6 +1005,40 @@ func (e *ValidationEngine) extractFactionReferences(content string) []FactionRef
 				FactionID: factionName,
 				Reaction:  strings.ToLower(strings.TrimSpace(match[2])),
 			})
+		}
+	}
+	return refs
+}
+
+// AreaReference represents an area reference in chapter content
+type AreaReference struct {
+	AreaNumber string
+	NPCs       []string
+	Locations  []string
+}
+
+// extractAreaReferences extracts area references from chapter content
+func (e *ValidationEngine) extractAreaReferences(content string) []AreaReference {
+	var refs []AreaReference
+	// Match "Area X" or "Area X: Title" patterns
+	re := regexp.MustCompile(`(?i)area\s+(\d+)(?::\s*([^\n]+))?`)
+	matches := re.FindAllStringSubmatch(content, -1)
+	for _, match := range matches {
+		if len(match) > 1 {
+			areaNum := strings.TrimSpace(match[1])
+			ref := AreaReference{AreaNumber: areaNum}
+			
+			// Try to extract NPCs mentioned in this area section (simplified)
+			// In a full implementation, would parse the area section content
+			npcRe := regexp.MustCompile(`(?i)\b(?:NPC|character|person)\s+named\s+([A-Z][\w]+)`)
+			npcMatches := npcRe.FindAllStringSubmatch(content, -1)
+			for _, npcMatch := range npcMatches {
+				if len(npcMatch) > 1 {
+					ref.NPCs = append(ref.NPCs, npcMatch[1])
+				}
+			}
+			
+			refs = append(refs, ref)
 		}
 	}
 	return refs
