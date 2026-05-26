@@ -14,7 +14,7 @@ import (
 func setupVizTest() (*VizHandlers, *services.CanonService) {
 	canonRepo := repository.NewMemoryCanonRepository()
 	narrativeStateRepo := repository.NewMemoryNarrativeStateRepository()
-	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
+	canonService := services.NewCanonService(canonRepo, narrativeStateRepo, repository.NewMemoryCheckpointRepository())
 	vizHandlers := NewVizHandlers(canonService)
 	return vizHandlers, canonService
 }

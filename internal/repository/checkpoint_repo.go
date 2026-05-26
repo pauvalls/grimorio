@@ -247,3 +247,68 @@ func hasSuffix(s, suffix string) bool {
 	}
 	return s[len(s)-len(suffix):] == suffix
 }
+
+// MemoryCheckpointRepository is an in-memory implementation for tests
+type MemoryCheckpointRepository struct {
+	checkpoints map[string]map[string]*domain.PipelineCheckpoint // campaignID -> batchID -> checkpoint
+}
+
+// NewMemoryCheckpointRepository creates a new in-memory checkpoint repository
+func NewMemoryCheckpointRepository() CheckpointRepository {
+	return &MemoryCheckpointRepository{
+		checkpoints: make(map[string]map[string]*domain.PipelineCheckpoint),
+	}
+}
+
+func (r *MemoryCheckpointRepository) Save(ctx context.Context, campaignID string, checkpoint *domain.PipelineCheckpoint) error {
+	if r.checkpoints[campaignID] == nil {
+		r.checkpoints[campaignID] = make(map[string]*domain.PipelineCheckpoint)
+	}
+	r.checkpoints[campaignID][checkpoint.BatchID] = checkpoint
+	return nil
+}
+
+func (r *MemoryCheckpointRepository) Load(ctx context.Context, campaignID string, batchID string) (*domain.PipelineCheckpoint, error) {
+	if r.checkpoints[campaignID] == nil {
+		return nil, fmt.Errorf("checkpoint not found: %s", batchID)
+	}
+	cp, ok := r.checkpoints[campaignID][batchID]
+	if !ok {
+		return nil, fmt.Errorf("checkpoint not found: %s", batchID)
+	}
+	return cp, nil
+}
+
+func (r *MemoryCheckpointRepository) List(ctx context.Context, campaignID string) ([]*domain.PipelineCheckpoint, error) {
+	if r.checkpoints[campaignID] == nil {
+		return []*domain.PipelineCheckpoint{}, nil
+	}
+	result := make([]*domain.PipelineCheckpoint, 0, len(r.checkpoints[campaignID]))
+	for _, cp := range r.checkpoints[campaignID] {
+		result = append(result, cp)
+	}
+	// Sort by CreatedAt descending
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].CreatedAt.After(result[j].CreatedAt)
+	})
+	return result, nil
+}
+
+func (r *MemoryCheckpointRepository) Delete(ctx context.Context, campaignID string, batchID string) error {
+	if r.checkpoints[campaignID] != nil {
+		delete(r.checkpoints[campaignID], batchID)
+	}
+	return nil
+}
+
+func (r *MemoryCheckpointRepository) FindBySessionNum(ctx context.Context, campaignID string, sessionNum int) (*domain.PipelineCheckpoint, error) {
+	if r.checkpoints[campaignID] == nil {
+		return nil, fmt.Errorf("checkpoint not found for session %d", sessionNum)
+	}
+	for _, cp := range r.checkpoints[campaignID] {
+		if cp.SessionNum == sessionNum {
+			return cp, nil
+		}
+	}
+	return nil, fmt.Errorf("checkpoint not found for session %d", sessionNum)
+}

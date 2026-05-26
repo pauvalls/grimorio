@@ -185,3 +185,60 @@ func (r *filesystemAuditRepository) PurgeOld(
 
 	return deletedCount, nil
 }
+
+// MemoryAuditLogRepository is an in-memory implementation for tests
+type MemoryAuditLogRepository struct {
+	entries map[string][]*domain.AuditLogEntry // campaignID -> entries
+}
+
+// NewMemoryAuditLogRepository creates a new in-memory audit log repository
+func NewMemoryAuditLogRepository() AuditLogRepository {
+	return &MemoryAuditLogRepository{
+		entries: make(map[string][]*domain.AuditLogEntry),
+	}
+}
+
+func (r *MemoryAuditLogRepository) Append(ctx context.Context, entry *domain.AuditLogEntry) error {
+	if err := entry.Validate(); err != nil {
+		return fmt.Errorf("invalid audit entry: %w", err)
+	}
+	r.entries[entry.CampaignID] = append(r.entries[entry.CampaignID], entry)
+	return nil
+}
+
+func (r *MemoryAuditLogRepository) GetLog(ctx context.Context, campaignID string, daysBack int) ([]*domain.AuditLogEntry, error) {
+	entries, ok := r.entries[campaignID]
+	if !ok {
+		return []*domain.AuditLogEntry{}, nil
+	}
+	if daysBack <= 0 {
+		return entries, nil
+	}
+	cutoff := time.Now().AddDate(0, 0, -daysBack)
+	result := make([]*domain.AuditLogEntry, 0)
+	for _, e := range entries {
+		if e.Timestamp.After(cutoff) {
+			result = append(result, e)
+		}
+	}
+	return result, nil
+}
+
+func (r *MemoryAuditLogRepository) PurgeOld(ctx context.Context, campaignID string, olderThan time.Duration) (int, error) {
+	entries, ok := r.entries[campaignID]
+	if !ok {
+		return 0, nil
+	}
+	cutoff := time.Now().Add(-olderThan)
+	result := make([]*domain.AuditLogEntry, 0)
+	deletedCount := 0
+	for _, e := range entries {
+		if e.Timestamp.After(cutoff) {
+			result = append(result, e)
+		} else {
+			deletedCount++
+		}
+	}
+	r.entries[campaignID] = result
+	return deletedCount, nil
+}
