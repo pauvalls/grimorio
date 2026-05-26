@@ -77,6 +77,7 @@ func (r *filesystemCheckpointRepository) Save(
 	if err := r.enforceRetention(campaignID, 3); err != nil {
 		// Non-fatal: log warning but don't fail the save operation
 		// In production, this would be logged to a monitoring system
+		// Intentionally empty - retention failure should not block checkpoint save
 	}
 
 	return nil

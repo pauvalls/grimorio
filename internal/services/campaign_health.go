@@ -116,6 +116,7 @@ func (s *CampaignHealthCheck) RunHealthCheck(ctx context.Context, campaignID str
 	if err := s.saveReport(campaignID, report); err != nil {
 		// Non-fatal: log warning but don't fail the health check
 		// In production, this would be logged to a monitoring system
+		// Intentionally empty - save failure should not block health check
 	}
 
 	return report, nil

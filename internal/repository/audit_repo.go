@@ -90,7 +90,9 @@ func (r *filesystemAuditRepository) GetLog(
 	if err != nil {
 		return nil, fmt.Errorf("failed to open audit log: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close() // Ignore close error on read-only file
+	}()
 
 	entries := []*domain.AuditLogEntry{}
 	cutoff := time.Now().AddDate(0, 0, -daysBack)
