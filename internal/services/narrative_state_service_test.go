@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -452,5 +453,386 @@ func TestNarrativeStateService_GetSessionPrepContext_MissingCanon(t *testing.T) 
 	}
 	if len(prep.RelevantNPCs) != 0 {
 		t.Fatalf("expected 0 relevant NPCs when canon missing, got %d", len(prep.RelevantNPCs))
+	}
+}
+
+func TestDedupClues(t *testing.T) {
+	tests := []struct {
+		name     string
+		existing []domain.RevealedClue
+		incoming []domain.RevealedClue
+		want     []domain.RevealedClue
+		wantLen  int
+	}{
+		{
+			name:     "no duplicates",
+			existing: []domain.RevealedClue{{ID: "c1", Description: "existing"}},
+			incoming: []domain.RevealedClue{{ID: "c2", Description: "new"}},
+			wantLen:  2,
+		},
+		{
+			name:     "duplicate incoming skipped",
+			existing: []domain.RevealedClue{{ID: "c1", Description: "existing"}},
+			incoming: []domain.RevealedClue{{ID: "c1", Description: "dup"}, {ID: "c2", Description: "new"}},
+			want:     []domain.RevealedClue{{ID: "c1", Description: "existing"}, {ID: "c2", Description: "new"}},
+			wantLen:  2,
+		},
+		{
+			name:     "duplicate within incoming keeps first",
+			existing: []domain.RevealedClue{},
+			incoming: []domain.RevealedClue{{ID: "c1", Description: "first"}, {ID: "c1", Description: "second"}},
+			want:     []domain.RevealedClue{{ID: "c1", Description: "first"}},
+			wantLen:  1,
+		},
+		{
+			name:     "empty incoming",
+			existing: []domain.RevealedClue{{ID: "c1", Description: "existing"}},
+			incoming: []domain.RevealedClue{},
+			wantLen:  1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := dedupClues(tt.existing, tt.incoming)
+			if len(got) != tt.wantLen {
+				t.Fatalf("expected %d clues, got %d", tt.wantLen, len(got))
+			}
+			if tt.want != nil {
+				for i := range tt.want {
+					if got[i].ID != tt.want[i].ID || got[i].Description != tt.want[i].Description {
+						t.Fatalf("expected clue %v at index %d, got %v", tt.want[i], i, got[i])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestDedupDeadNPCs(t *testing.T) {
+	tests := []struct {
+		name     string
+		existing []domain.NPCDeathRecord
+		incoming []domain.NPCDeathRecord
+		wantLen  int
+		wantID   string
+	}{
+		{
+			name:     "no duplicates",
+			existing: []domain.NPCDeathRecord{{NPCID: "npc1", Name: "Alice"}},
+			incoming: []domain.NPCDeathRecord{{NPCID: "npc2", Name: "Bob"}},
+			wantLen:  2,
+		},
+		{
+			name:     "duplicate skipped preserves existing",
+			existing: []domain.NPCDeathRecord{{NPCID: "npc1", Name: "Alice"}},
+			incoming: []domain.NPCDeathRecord{{NPCID: "npc1", Name: "Alice2"}},
+			wantLen:  1,
+			wantID:   "npc1",
+		},
+		{
+			name:     "duplicate within incoming keeps first",
+			existing: []domain.NPCDeathRecord{},
+			incoming: []domain.NPCDeathRecord{{NPCID: "npc1", Name: "First"}, {NPCID: "npc1", Name: "Second"}},
+			wantLen:  1,
+			wantID:   "npc1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := dedupDeadNPCs(tt.existing, tt.incoming)
+			if len(got) != tt.wantLen {
+				t.Fatalf("expected %d dead NPCs, got %d", tt.wantLen, len(got))
+			}
+			if tt.wantID != "" && len(got) > 0 {
+				if got[0].NPCID != tt.wantID {
+					t.Fatalf("expected NPCID %s, got %s", tt.wantID, got[0].NPCID)
+				}
+			}
+		})
+	}
+}
+
+func TestMergeQuests(t *testing.T) {
+	tests := []struct {
+		name     string
+		existing []domain.QuestState
+		incoming []domain.QuestState
+		wantLen  int
+		wantVals map[string]string // id -> status
+	}{
+		{
+			name:     "append new quests",
+			existing: []domain.QuestState{{ID: "q1", Name: "Quest 1", Status: "active"}},
+			incoming: []domain.QuestState{{ID: "q2", Name: "Quest 2", Status: "active"}},
+			wantLen:  2,
+			wantVals: map[string]string{"q1": "active", "q2": "active"},
+		},
+		{
+			name:     "update existing quest in place",
+			existing: []domain.QuestState{{ID: "q1", Name: "Quest 1", Status: "active"}},
+			incoming: []domain.QuestState{{ID: "q1", Name: "Quest 1 Updated", Status: "completed"}},
+			wantLen:  1,
+			wantVals: map[string]string{"q1": "completed"},
+		},
+		{
+			name:     "update and append mixed",
+			existing: []domain.QuestState{{ID: "q1", Name: "Quest 1", Status: "active"}},
+			incoming: []domain.QuestState{{ID: "q1", Name: "Quest 1", Status: "completed"}, {ID: "q2", Name: "Quest 2", Status: "active"}},
+			wantLen:  2,
+			wantVals: map[string]string{"q1": "completed", "q2": "active"},
+		},
+		{
+			name:     "order preserved for existing",
+			existing: []domain.QuestState{{ID: "q1", Name: "A", Status: "active"}, {ID: "q2", Name: "B", Status: "active"}},
+			incoming: []domain.QuestState{{ID: "q3", Name: "C", Status: "active"}},
+			wantLen:  3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := mergeQuests(tt.existing, tt.incoming)
+			if len(got) != tt.wantLen {
+				t.Fatalf("expected %d quests, got %d", tt.wantLen, len(got))
+			}
+			for _, q := range got {
+				if wantStatus, ok := tt.wantVals[q.ID]; ok && q.Status != wantStatus {
+					t.Fatalf("expected quest %s status %s, got %s", q.ID, wantStatus, q.Status)
+				}
+			}
+		})
+	}
+}
+
+func TestMergeKeyItems(t *testing.T) {
+	tests := []struct {
+		name     string
+		existing []domain.KeyItem
+		incoming []domain.KeyItem
+		wantLen  int
+		wantVals map[string]string // id -> holder
+	}{
+		{
+			name:     "append new items",
+			existing: []domain.KeyItem{{ID: "i1", Name: "Item 1", Holder: "party"}},
+			incoming: []domain.KeyItem{{ID: "i2", Name: "Item 2", Holder: "npc"}},
+			wantLen:  2,
+			wantVals: map[string]string{"i1": "party", "i2": "npc"},
+		},
+		{
+			name:     "update existing item in place",
+			existing: []domain.KeyItem{{ID: "i1", Name: "Item 1", Holder: "party"}},
+			incoming: []domain.KeyItem{{ID: "i1", Name: "Item 1", Holder: "npc"}},
+			wantLen:  1,
+			wantVals: map[string]string{"i1": "npc"},
+		},
+		{
+			name:     "update and append mixed",
+			existing: []domain.KeyItem{{ID: "i1", Name: "Item 1", Holder: "party"}},
+			incoming: []domain.KeyItem{{ID: "i1", Name: "Item 1", Holder: "npc"}, {ID: "i2", Name: "Item 2", Holder: "party"}},
+			wantLen:  2,
+			wantVals: map[string]string{"i1": "npc", "i2": "party"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := mergeKeyItems(tt.existing, tt.incoming)
+			if len(got) != tt.wantLen {
+				t.Fatalf("expected %d items, got %d", tt.wantLen, len(got))
+			}
+			for _, item := range got {
+				if wantHolder, ok := tt.wantVals[item.ID]; ok && item.Holder != wantHolder {
+					t.Fatalf("expected item %s holder %s, got %s", item.ID, wantHolder, item.Holder)
+				}
+			}
+		})
+	}
+}
+
+func TestSyncStateToCanon_DeadNPC(t *testing.T) {
+	svc, stateRepo, canonRepo := setupNarrativeStateService()
+	ctx := context.Background()
+
+	// Set up canon with alive NPC
+	canon := &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "test-campaign",
+		Entities: []domain.CanonEntity{
+			{ID: "npc-villain", Name: "Lord Dark", Type: domain.EntityTypeNPC, CanonState: domain.EntityStateAlive},
+			{ID: "npc-ally", Name: "Good Guy", Type: domain.EntityTypeNPC, CanonState: domain.EntityStateAlive},
+		},
+	}
+	if err := canonRepo.Save("test-campaign", canon); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
+
+	// Set up narrative state with completed quest and dead NPC
+	state := &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "test-campaign",
+		CurrentSession: 2,
+		CompletedQuests: []domain.QuestState{
+			{ID: "q-001", Name: "Find the Sword", Status: "completed"},
+		},
+		DeadNPCs: []domain.NPCDeathRecord{
+			{NPCID: "npc-villain", Name: "Lord Dark", Session: 2},
+		},
+	}
+	if err := stateRepo.Save("test-campaign", state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
+
+	update := domain.StateUpdate{
+		SessionNum:      2,
+		CompletedQuests: []string{"q-001"},
+		DeadNPCs: []domain.NPCDeathRecord{
+			{NPCID: "npc-villain", Name: "Lord Dark", Session: 2},
+		},
+	}
+
+	warnings, err := svc.SyncStateToCanon(ctx, "test-campaign", update)
+	if err != nil {
+		t.Fatalf("SyncStateToCanon error: %v", err)
+	}
+
+	// Should have no warnings
+	if len(warnings) != 0 {
+		t.Fatalf("expected 0 warnings, got %v", warnings)
+	}
+
+	// Verify canon entity is now dead
+	updatedCanon, err := canonRepo.Load("test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
+	found := false
+	for _, e := range updatedCanon.Entities {
+		if e.ID == "npc-villain" {
+			found = true
+			if e.CanonState != domain.EntityStateDead {
+				t.Fatalf("expected npc-villain to be dead, got %s", e.CanonState)
+			}
+		}
+		if e.ID == "npc-ally" {
+			if e.CanonState != domain.EntityStateAlive {
+				t.Fatalf("expected npc-ally to remain alive, got %s", e.CanonState)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("npc-villain not found in canon")
+	}
+
+	// Verify timeline event appended
+	if len(updatedCanon.Timeline) != 1 {
+		t.Fatalf("expected 1 timeline event, got %d", len(updatedCanon.Timeline))
+	}
+	if !strings.Contains(updatedCanon.Timeline[0].Description, "Find the Sword") {
+		t.Fatalf("expected timeline event to mention 'Find the Sword', got %s", updatedCanon.Timeline[0].Description)
+	}
+}
+
+func TestSyncStateToCanon_AlreadyDead(t *testing.T) {
+	svc, stateRepo, canonRepo := setupNarrativeStateService()
+	ctx := context.Background()
+
+	// Set up canon with already-dead NPC
+	canon := &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "test-campaign",
+		Entities: []domain.CanonEntity{
+			{ID: "npc-villain", Name: "Lord Dark", Type: domain.EntityTypeNPC, CanonState: domain.EntityStateDead},
+		},
+	}
+	if err := canonRepo.Save("test-campaign", canon); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
+
+	state := &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "test-campaign",
+		CurrentSession: 2,
+		DeadNPCs: []domain.NPCDeathRecord{
+			{NPCID: "npc-villain", Name: "Lord Dark", Session: 2},
+		},
+	}
+	if err := stateRepo.Save("test-campaign", state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
+
+	update := domain.StateUpdate{
+		SessionNum: 2,
+		DeadNPCs: []domain.NPCDeathRecord{
+			{NPCID: "npc-villain", Name: "Lord Dark", Session: 2},
+		},
+	}
+
+	warnings, err := svc.SyncStateToCanon(ctx, "test-campaign", update)
+	if err != nil {
+		t.Fatalf("SyncStateToCanon error: %v", err)
+	}
+
+	// Should have 0 warnings (already dead is a no-op, not a warning)
+	if len(warnings) != 0 {
+		t.Fatalf("expected 0 warnings for already-dead NPC, got %v", warnings)
+	}
+
+	// Verify still dead
+	updatedCanon, err := canonRepo.Load("test-campaign")
+	if err != nil {
+		t.Fatalf("failed to load canon: %v", err)
+	}
+	for _, e := range updatedCanon.Entities {
+		if e.ID == "npc-villain" && e.CanonState != domain.EntityStateDead {
+			t.Fatalf("expected npc-villain to remain dead, got %s", e.CanonState)
+		}
+	}
+}
+
+func TestSyncStateToCanon_MissingEntity(t *testing.T) {
+	svc, stateRepo, canonRepo := setupNarrativeStateService()
+	ctx := context.Background()
+
+	canon := &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "test-campaign",
+		Entities:      []domain.CanonEntity{},
+	}
+	if err := canonRepo.Save("test-campaign", canon); err != nil {
+		t.Fatalf("failed to save canon: %v", err)
+	}
+
+	state := &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "test-campaign",
+		CurrentSession: 2,
+		DeadNPCs: []domain.NPCDeathRecord{
+			{NPCID: "npc-missing", Name: "Missing NPC", Session: 2},
+		},
+	}
+	if err := stateRepo.Save("test-campaign", state); err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
+
+	update := domain.StateUpdate{
+		SessionNum: 2,
+		DeadNPCs: []domain.NPCDeathRecord{
+			{NPCID: "npc-missing", Name: "Missing NPC", Session: 2},
+		},
+	}
+
+	warnings, err := svc.SyncStateToCanon(ctx, "test-campaign", update)
+	if err != nil {
+		t.Fatalf("SyncStateToCanon error: %v", err)
+	}
+
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning for missing entity, got %d", len(warnings))
+	}
+	if !strings.Contains(warnings[0], "npc-missing") {
+		t.Fatalf("expected warning to mention npc-missing, got %s", warnings[0])
 	}
 }

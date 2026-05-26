@@ -235,6 +235,7 @@ type StateUpdate struct {
 	CurrentLocation  string           `json:"current_location,omitempty"`
 	PCStatuses       []PCStatus       `json:"pc_status,omitempty"`
 	ReplaceSession   bool             `json:"replace_session,omitempty"` // If true, replace existing session log entry
+	SyncToCanon      bool             `json:"sync_to_canon,omitempty"`   // If true, propagate state changes to canon
 }
 
 // SessionPrepContext provides context for preparing the next session
