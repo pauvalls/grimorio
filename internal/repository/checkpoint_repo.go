@@ -29,6 +29,12 @@ type CheckpointRepository interface {
 
 	// FindBySessionNum finds checkpoint for a specific session
 	FindBySessionNum(ctx context.Context, campaignID string, sessionNum int) (*domain.PipelineCheckpoint, error)
+
+	// FindByChapterID finds checkpoint for a specific chapter
+	FindByChapterID(ctx context.Context, campaignID string, chapterID string) (*domain.PipelineCheckpoint, error)
+
+	// FindLatestByType finds the latest checkpoint of a specific type (session or chapter)
+	FindLatestByType(ctx context.Context, campaignID string, checkpointType string) (*domain.PipelineCheckpoint, error)
 }
 
 // filesystemCheckpointRepository implements CheckpointRepository using filesystem
@@ -312,4 +318,62 @@ func (r *MemoryCheckpointRepository) FindBySessionNum(ctx context.Context, campa
 		}
 	}
 	return nil, fmt.Errorf("checkpoint not found for session %d", sessionNum)
+}
+
+// FindByChapterID finds checkpoint for a specific chapter
+func (r *filesystemCheckpointRepository) FindByChapterID(ctx context.Context, campaignID string, chapterID string) (*domain.PipelineCheckpoint, error) {
+	checkpoints, err := r.List(ctx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, checkpoint := range checkpoints {
+		if checkpoint.ChapterID == chapterID {
+			return checkpoint, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no checkpoint found for chapter %s", chapterID)
+}
+
+// FindLatestByType finds the latest checkpoint of a specific type (session or chapter)
+func (r *filesystemCheckpointRepository) FindLatestByType(ctx context.Context, campaignID string, checkpointType string) (*domain.PipelineCheckpoint, error) {
+	checkpoints, err := r.List(ctx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, checkpoint := range checkpoints {
+		if checkpoint.CheckpointType == checkpointType {
+			return checkpoint, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no checkpoint found of type %s", checkpointType)
+}
+
+// FindByChapterID finds checkpoint for a specific chapter (memory implementation)
+func (r *MemoryCheckpointRepository) FindByChapterID(ctx context.Context, campaignID string, chapterID string) (*domain.PipelineCheckpoint, error) {
+	if r.checkpoints[campaignID] == nil {
+		return nil, fmt.Errorf("checkpoint not found for chapter %s", chapterID)
+	}
+	for _, cp := range r.checkpoints[campaignID] {
+		if cp.ChapterID == chapterID {
+			return cp, nil
+		}
+	}
+	return nil, fmt.Errorf("checkpoint not found for chapter %s", chapterID)
+}
+
+// FindLatestByType finds the latest checkpoint of a specific type (memory implementation)
+func (r *MemoryCheckpointRepository) FindLatestByType(ctx context.Context, campaignID string, checkpointType string) (*domain.PipelineCheckpoint, error) {
+	if r.checkpoints[campaignID] == nil {
+		return nil, fmt.Errorf("no checkpoint found of type %s", checkpointType)
+	}
+	for _, cp := range r.checkpoints[campaignID] {
+		if cp.CheckpointType == checkpointType {
+			return cp, nil
+		}
+	}
+	return nil, fmt.Errorf("no checkpoint found of type %s", checkpointType)
 }

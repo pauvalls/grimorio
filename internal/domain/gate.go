@@ -121,7 +121,9 @@ type PipelineCheckpoint struct {
 	StateSnapshot  *NarrativeState    `json:"state_snapshot"`
 	CreatedAt      time.Time          `json:"created_at"`
 	SessionNum     int                `json:"session_num"`           // Session at checkpoint time
+	ChapterID      string             `json:"chapter_id,omitempty"`  // Chapter at checkpoint time (V3+)
 	CheckpointHash string             `json:"checkpoint_hash"`       // SHA256 of canon+state for integrity
+	CheckpointType string             `json:"checkpoint_type"`       // "session" or "chapter"
 }
 
 // Validate checks if the checkpoint is valid
