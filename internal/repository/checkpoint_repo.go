@@ -9,7 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/pauvalls/grimorio/internal/domain"
 )
 
@@ -35,6 +38,34 @@ type CheckpointRepository interface {
 
 	// FindLatestByType finds the latest checkpoint of a specific type (session or chapter)
 	FindLatestByType(ctx context.Context, campaignID string, checkpointType string) (*domain.PipelineCheckpoint, error)
+
+	// SaveCheckpoint saves a checkpoint with metadata
+	SaveCheckpoint(
+		campaignID string,
+		checkpointType string, // "session_end" or "chapter_complete"
+		sessionNum int,
+		chapterID string,
+		state *domain.NarrativeState,
+		canonHash string,
+		metadata map[string]any,
+	) error
+
+	// LoadCheckpoint loads the latest checkpoint of a type
+	LoadCheckpoint(
+		campaignID string,
+		checkpointType string,
+	) (*domain.Checkpoint, error)
+
+	// ListCheckpoints lists all checkpoints for a campaign
+	ListCheckpoints(
+		campaignID string,
+	) ([]domain.Checkpoint, error)
+
+	// DeleteCheckpoint deletes a checkpoint by ID
+	DeleteCheckpoint(
+		campaignID string,
+		checkpointID string,
+	) error
 }
 
 // filesystemCheckpointRepository implements CheckpointRepository using filesystem
@@ -257,13 +288,15 @@ func hasSuffix(s, suffix string) bool {
 
 // MemoryCheckpointRepository is an in-memory implementation for tests
 type MemoryCheckpointRepository struct {
-	checkpoints map[string]map[string]*domain.PipelineCheckpoint // campaignID -> batchID -> checkpoint
+	checkpoints        map[string]map[string]*domain.PipelineCheckpoint // campaignID -> batchID -> checkpoint
+	sessionCheckpoints map[string][]*domain.Checkpoint                  // campaignID -> checkpoints
 }
 
 // NewMemoryCheckpointRepository creates a new in-memory checkpoint repository
 func NewMemoryCheckpointRepository() CheckpointRepository {
 	return &MemoryCheckpointRepository{
-		checkpoints: make(map[string]map[string]*domain.PipelineCheckpoint),
+		checkpoints:        make(map[string]map[string]*domain.PipelineCheckpoint),
+		sessionCheckpoints: make(map[string][]*domain.Checkpoint),
 	}
 }
 
@@ -352,6 +385,200 @@ func (r *filesystemCheckpointRepository) FindLatestByType(ctx context.Context, c
 	return nil, fmt.Errorf("no checkpoint found of type %s", checkpointType)
 }
 
+// SaveCheckpoint saves a checkpoint with metadata
+func (r *filesystemCheckpointRepository) SaveCheckpoint(
+	campaignID string,
+	checkpointType string, // "session_end" or "chapter_complete"
+	sessionNum int,
+	chapterID string,
+	state *domain.NarrativeState,
+	canonHash string,
+	metadata map[string]any,
+) error {
+	// Ensure checkpoints directory exists
+	checkpointsDir := filepath.Join(r.baseDir, campaignID, "checkpoints")
+	if err := os.MkdirAll(checkpointsDir, 0755); err != nil {
+		return fmt.Errorf("failed to create checkpoints directory: %w", err)
+	}
+
+	// Generate checkpoint ID
+	checkpointID := uuid.New().String()
+
+	// Create checkpoint
+	checkpoint := &domain.Checkpoint{
+		ID:             checkpointID,
+		CampaignID:     campaignID,
+		CheckpointType: checkpointType,
+		SessionNum:     sessionNum,
+		ChapterID:      chapterID,
+		State:          state,
+		CanonHash:      canonHash,
+		Metadata:       metadata,
+		CreatedAt:      time.Now().UTC(),
+	}
+
+	// Validate checkpoint
+	if err := checkpoint.Validate(); err != nil {
+		return fmt.Errorf("invalid checkpoint: %w", err)
+	}
+
+	// Serialize checkpoint
+	data, err := json.MarshalIndent(checkpoint, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal checkpoint: %w", err)
+	}
+
+	// Generate filename: {type}_{sessionNum}_{timestamp}.json
+	timestamp := checkpoint.CreatedAt.Format("20060102_150405")
+	filename := fmt.Sprintf("%s_%d_%s.json", checkpointType, sessionNum, timestamp)
+	filePath := filepath.Join(checkpointsDir, filename)
+
+	// Write to file
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write checkpoint: %w", err)
+	}
+
+	return nil
+}
+
+// LoadCheckpoint loads the latest checkpoint of a type
+func (r *filesystemCheckpointRepository) LoadCheckpoint(
+	campaignID string,
+	checkpointType string,
+) (*domain.Checkpoint, error) {
+	checkpointsDir := filepath.Join(r.baseDir, campaignID, "checkpoints")
+
+	entries, err := os.ReadDir(checkpointsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("no checkpoints found for campaign %s", campaignID)
+		}
+		return nil, fmt.Errorf("failed to read checkpoints directory: %w", err)
+	}
+
+	// Filter checkpoints by type
+	var typeCheckpoints []*domain.Checkpoint
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+
+		// Check if filename matches type pattern: {type}_{sessionNum}_{timestamp}.json
+		if !strings.HasPrefix(entry.Name(), checkpointType+"_") {
+			continue
+		}
+
+		filePath := filepath.Join(checkpointsDir, entry.Name())
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			continue // Skip unreadable files
+		}
+
+		var checkpoint domain.Checkpoint
+		if err := json.Unmarshal(data, &checkpoint); err != nil {
+			continue // Skip invalid files
+		}
+
+		typeCheckpoints = append(typeCheckpoints, &checkpoint)
+	}
+
+	if len(typeCheckpoints) == 0 {
+		return nil, fmt.Errorf("no checkpoints found of type %s", checkpointType)
+	}
+
+	// Sort by CreatedAt descending and return the most recent
+	sort.Slice(typeCheckpoints, func(i, j int) bool {
+		return typeCheckpoints[i].CreatedAt.After(typeCheckpoints[j].CreatedAt)
+	})
+
+	return typeCheckpoints[0], nil
+}
+
+// ListCheckpoints lists all checkpoints for a campaign
+func (r *filesystemCheckpointRepository) ListCheckpoints(
+	campaignID string,
+) ([]domain.Checkpoint, error) {
+	checkpointsDir := filepath.Join(r.baseDir, campaignID, "checkpoints")
+
+	entries, err := os.ReadDir(checkpointsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []domain.Checkpoint{}, nil
+		}
+		return nil, fmt.Errorf("failed to read checkpoints directory: %w", err)
+	}
+
+	checkpoints := make([]domain.Checkpoint, 0, len(entries))
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+
+		filePath := filepath.Join(checkpointsDir, entry.Name())
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			continue // Skip unreadable files
+		}
+
+		var checkpoint domain.Checkpoint
+		if err := json.Unmarshal(data, &checkpoint); err != nil {
+			continue // Skip invalid files
+		}
+
+		checkpoints = append(checkpoints, checkpoint)
+	}
+
+	// Sort by CreatedAt descending
+	sort.Slice(checkpoints, func(i, j int) bool {
+		return checkpoints[i].CreatedAt.After(checkpoints[j].CreatedAt)
+	})
+
+	return checkpoints, nil
+}
+
+// DeleteCheckpoint deletes a checkpoint by ID
+func (r *filesystemCheckpointRepository) DeleteCheckpoint(
+	campaignID string,
+	checkpointID string,
+) error {
+	checkpointsDir := filepath.Join(r.baseDir, campaignID, "checkpoints")
+
+	entries, err := os.ReadDir(checkpointsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("checkpoint not found: %s", checkpointID)
+		}
+		return fmt.Errorf("failed to read checkpoints directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+
+		filePath := filepath.Join(checkpointsDir, entry.Name())
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+
+		var checkpoint domain.Checkpoint
+		if err := json.Unmarshal(data, &checkpoint); err != nil {
+			continue
+		}
+
+		if checkpoint.ID == checkpointID {
+			if err := os.Remove(filePath); err != nil {
+				return fmt.Errorf("failed to delete checkpoint: %w", err)
+			}
+			return nil
+		}
+	}
+
+	return fmt.Errorf("checkpoint not found: %s", checkpointID)
+}
+
 // FindByChapterID finds checkpoint for a specific chapter (memory implementation)
 func (r *MemoryCheckpointRepository) FindByChapterID(ctx context.Context, campaignID string, chapterID string) (*domain.PipelineCheckpoint, error) {
 	if r.checkpoints[campaignID] == nil {
@@ -376,4 +603,113 @@ func (r *MemoryCheckpointRepository) FindLatestByType(ctx context.Context, campa
 		}
 	}
 	return nil, fmt.Errorf("no checkpoint found of type %s", checkpointType)
+}
+
+// SaveCheckpoint saves a checkpoint with metadata (memory implementation)
+func (r *MemoryCheckpointRepository) SaveCheckpoint(
+	campaignID string,
+	checkpointType string,
+	sessionNum int,
+	chapterID string,
+	state *domain.NarrativeState,
+	canonHash string,
+	metadata map[string]any,
+) error {
+	checkpointID := uuid.New().String()
+	checkpoint := &domain.Checkpoint{
+		ID:             checkpointID,
+		CampaignID:     campaignID,
+		CheckpointType: checkpointType,
+		SessionNum:     sessionNum,
+		ChapterID:      chapterID,
+		State:          state,
+		CanonHash:      canonHash,
+		Metadata:       metadata,
+		CreatedAt:      time.Now().UTC(),
+	}
+
+	if err := checkpoint.Validate(); err != nil {
+		return fmt.Errorf("invalid checkpoint: %w", err)
+	}
+
+	if r.sessionCheckpoints[campaignID] == nil {
+		r.sessionCheckpoints[campaignID] = make([]*domain.Checkpoint, 0)
+	}
+
+	r.sessionCheckpoints[campaignID] = append(r.sessionCheckpoints[campaignID], checkpoint)
+	return nil
+}
+
+// LoadCheckpoint loads the latest checkpoint of a type (memory implementation)
+func (r *MemoryCheckpointRepository) LoadCheckpoint(
+	campaignID string,
+	checkpointType string,
+) (*domain.Checkpoint, error) {
+	if r.sessionCheckpoints[campaignID] == nil {
+		return nil, fmt.Errorf("no checkpoints found for campaign %s", campaignID)
+	}
+
+	// Filter by type
+	var typeCheckpoints []*domain.Checkpoint
+	for _, cp := range r.sessionCheckpoints[campaignID] {
+		if cp.CheckpointType == checkpointType {
+			typeCheckpoints = append(typeCheckpoints, cp)
+		}
+	}
+
+	if len(typeCheckpoints) == 0 {
+		return nil, fmt.Errorf("no checkpoints found of type %s", checkpointType)
+	}
+
+	// Sort by CreatedAt descending and return the most recent
+	sort.Slice(typeCheckpoints, func(i, j int) bool {
+		return typeCheckpoints[i].CreatedAt.After(typeCheckpoints[j].CreatedAt)
+	})
+
+	return typeCheckpoints[0], nil
+}
+
+// ListCheckpoints lists all checkpoints for a campaign (memory implementation)
+func (r *MemoryCheckpointRepository) ListCheckpoints(
+	campaignID string,
+) ([]domain.Checkpoint, error) {
+	if r.sessionCheckpoints[campaignID] == nil {
+		return []domain.Checkpoint{}, nil
+	}
+
+	// Return a copy to avoid external modification
+	result := make([]domain.Checkpoint, len(r.sessionCheckpoints[campaignID]))
+	for i, cp := range r.sessionCheckpoints[campaignID] {
+		result[i] = *cp
+	}
+
+	// Sort by CreatedAt descending
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].CreatedAt.After(result[j].CreatedAt)
+	})
+
+	return result, nil
+}
+
+// DeleteCheckpoint deletes a checkpoint by ID (memory implementation)
+func (r *MemoryCheckpointRepository) DeleteCheckpoint(
+	campaignID string,
+	checkpointID string,
+) error {
+	if r.sessionCheckpoints[campaignID] == nil {
+		return fmt.Errorf("checkpoint not found: %s", checkpointID)
+	}
+
+	for i, cp := range r.sessionCheckpoints[campaignID] {
+		if cp.ID == checkpointID {
+			// Remove from slice
+			r.sessionCheckpoints[campaignID] = append(
+				r.sessionCheckpoints[campaignID][:i],
+				r.sessionCheckpoints[campaignID][i+1:]...,
+			)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("checkpoint not found: %s", checkpointID)
 }
