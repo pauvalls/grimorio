@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -65,7 +66,8 @@ func NewDMContextService(
 }
 
 // GetContext aggregates all campaign data into a DMContextPayload.
-func (s *DMContextService) GetContext(ctx context.Context, campaignID string, sessionNum int, includePrologue bool, includePDFText bool) (*domain.DMContextPayload, []string, error) {
+// If compressionEnabled is true, sessions older than compressionThreshold are condensed.
+func (s *DMContextService) GetContext(ctx context.Context, campaignID string, sessionNum int, includePrologue bool, includePDFText bool, compressionEnabled bool, compressionThreshold int) (*domain.DMContextPayload, []string, error) {
 	warnings := []string{}
 	payload := &domain.DMContextPayload{
 		CampaignID:   campaignID,
@@ -103,6 +105,12 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 		}
 	}
 	payload.SessionNum = sessionNum
+	
+	// Apply compression if enabled
+	if compressionEnabled && compressionThreshold > 0 {
+		state.SessionLog = s.compressSessionLog(state.SessionLog, sessionNum, compressionThreshold)
+	}
+	
 	payload.NarrativeState = buildNarrativeContext(state)
 
 	// Load session prep (optional)
@@ -450,6 +458,115 @@ func (s *DMContextService) buildReminders(doc *domain.CanonDocument, state *doma
 	}
 
 	return reminders
+}
+
+// compressSessionLog condenses old sessions into a single summary
+func (s *DMContextService) compressSessionLog(
+	sessionLog []domain.SessionRecord,
+	currentSession int,
+	threshold int,
+) []domain.SessionRecord {
+	if len(sessionLog) <= threshold {
+		return sessionLog
+	}
+
+	compressed := []domain.SessionRecord{}
+	condensedSessions := []domain.SessionRecord{}
+
+	// Separate old vs recent sessions
+	for _, session := range sessionLog {
+		if session.SessionNum <= (currentSession - threshold) {
+			condensedSessions = append(condensedSessions, session)
+		} else {
+			compressed = append(compressed, session)
+		}
+	}
+
+	// Build condensed summary from old sessions
+	if len(condensedSessions) > 0 {
+		condensedText := s.buildCondensedSummary(condensedSessions)
+
+		// Prepend placeholder record
+		compressed = append([]domain.SessionRecord{
+			{
+				SessionNum:       0, // Special value indicating condensed range
+				CondensedSummary: condensedText,
+				Summary:          fmt.Sprintf("Sessions 1-%d condensed", currentSession-threshold),
+			},
+		}, compressed...)
+	}
+
+	return compressed
+}
+
+// buildCondensedSummary extracts key information from old sessions
+func (s *DMContextService) buildCondensedSummary(sessions []domain.SessionRecord) string {
+	var builder strings.Builder
+
+	builder.WriteString("=== SESIONES CONDENSADAS ===\n\n")
+
+	// Collect key decisions from condensed sessions
+	builder.WriteString("Decisiones Mayores:\n")
+	for _, session := range sessions {
+		for _, decision := range session.KeyDecisions {
+			if decision.ImpactScope == "campaign" {
+				builder.WriteString(fmt.Sprintf("- %s (sesión %d)\n", decision.Description, session.SessionNum))
+			}
+		}
+	}
+
+	// Add session summaries
+	builder.WriteString("\nResúmenes de Sesiones:\n")
+	for _, session := range sessions {
+		builder.WriteString(fmt.Sprintf("- Sesión %d: %s\n", session.SessionNum, session.Summary))
+	}
+
+	return builder.String()
+}
+
+// filterNPCsByRelevance filters NPCs based on current location and active quests
+func (s *DMContextService) filterNPCsByRelevance(
+	npcs map[string]domain.NPCContext,
+	currentLocation string,
+	activeQuests []domain.QuestState,
+	canon *domain.CanonDocument,
+) map[string]domain.NPCContext {
+	relevant := make(map[string]domain.NPCContext)
+
+	// Build set of relevant NPC IDs
+	relevantIDs := make(map[string]bool)
+
+	// Add quest givers
+	for _, quest := range activeQuests {
+		if quest.GiverNPC != "" {
+			relevantIDs[quest.GiverNPC] = true
+		}
+	}
+
+	// Add NPCs at current location
+	for _, entity := range canon.Entities {
+		if entity.Type == domain.EntityTypeNPC {
+			if location, ok := entity.Properties["location"].(string); ok {
+				if location == currentLocation {
+					relevantIDs[entity.ID] = true
+				}
+			}
+		}
+	}
+
+	// Filter NPCs
+	for name, npc := range npcs {
+		if relevantIDs[npc.Name] || relevantIDs[name] {
+			relevant[name] = npc
+		}
+	}
+
+	// If no relevant NPCs found, return all (fallback)
+	if len(relevant) == 0 {
+		return npcs
+	}
+
+	return relevant
 }
 
 func orEmptySlice[T any](s []T) []T {

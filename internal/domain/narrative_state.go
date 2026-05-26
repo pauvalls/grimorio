@@ -158,13 +158,14 @@ func (k *KeyItem) Validate() error {
 
 // SessionRecord records what happened in a session
 type SessionRecord struct {
-	SessionNum   int        `json:"session_num"`
-	Date         time.Time  `json:"date"`
-	Summary      string     `json:"summary"`
-	KeyDecisions []Decision `json:"key_decisions"`
-	XPAwarded    int        `json:"xp_awarded"`
-	LootAcquired []string   `json:"loot_acquired"`
-	DMNotes      string     `json:"dm_notes"`
+	SessionNum       int        `json:"session_num"`
+	Date             time.Time  `json:"date"`
+	Summary          string     `json:"summary"`
+	CondensedSummary string     `json:"condensed_summary,omitempty"` // For compressed sessions
+	KeyDecisions     []Decision `json:"key_decisions"`
+	XPAwarded        int        `json:"xp_awarded"`
+	LootAcquired     []string   `json:"loot_acquired"`
+	DMNotes          string     `json:"dm_notes"`
 }
 
 // Validate checks if the session record is valid

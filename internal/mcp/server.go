@@ -45,6 +45,8 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	milestoneXpRepo := fsrepo.NewFilesystemMilestoneXPRepository(cfg.OutputDir)
 	tacticsRepo := fsrepo.NewFilesystemTacticsRepository(cfg.OutputDir)
 	playerMapRepo := fsrepo.NewFilesystemPlayerMapRepository(cfg.OutputDir)
+	checkpointRepo := repository.NewCheckpointRepository(cfg.OutputDir)
+	auditRepo := repository.NewAuditLogRepository(cfg.OutputDir)
 
 	// Initialize services
 	campaignService := services.NewCampaignService(
@@ -54,7 +56,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	characterService := services.NewCharacterService(charRepo)
 	questService := services.NewQuestService(questRepo)
 	assetService := services.NewAssetService(cfg.OutputDir, cfg.Config)
-	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
+	canonService := services.NewCanonService(canonRepo, narrativeStateRepo, checkpointRepo)
 
 	// Degraded mode: if CANON_LEGACY_MODE is set or repo initialization fails
 	if os.Getenv("CANON_LEGACY_MODE") == "1" {
@@ -64,7 +66,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 
 	narrativeStateService := services.NewNarrativeStateService(narrativeStateRepo, canonRepo)
 	validationEngine := services.NewValidationEngine(canonService, narrativeStateService, factionRepo, cfg.OutputDir)
-	consistencyGateService := services.NewConsistencyGateService(canonService, narrativeStateService, validationEngine)
+	consistencyGateService := services.NewConsistencyGateService(canonService, narrativeStateService, validationEngine, checkpointRepo, auditRepo)
 	factionService := services.NewFactionService(canonRepo, factionRepo)
 	tableService := services.NewRandomTableService(canonRepo)
 	handoutService := services.NewHandoutService(questRepo, canonRepo)

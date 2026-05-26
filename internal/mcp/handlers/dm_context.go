@@ -33,6 +33,8 @@ func (h *DMContextHandlers) HandleDMContext() server.ToolHandlerFunc {
 		sessionNum := getIntArg(args, "session_num")
 		includePrologue := getBoolArg(args, "include_prologue")
 		includePDFText := getBoolArg(args, "include_pdf_text")
+		compressionEnabled := getBoolArg(args, "compression_enabled")
+		compressionThreshold := getIntArg(args, "compression_threshold")
 
 		if campaignID == "" {
 			return mcp.NewToolResultError("campaign_id is required"), nil
@@ -42,7 +44,12 @@ func (h *DMContextHandlers) HandleDMContext() server.ToolHandlerFunc {
 			return mcp.NewToolResultError("campaign_id must be kebab-case"), nil
 		}
 
-		payload, warnings, err := h.dmContextService.GetContext(ctx, campaignID, sessionNum, includePrologue, includePDFText)
+		// Default compression threshold to 5 if not specified
+		if compressionThreshold <= 0 {
+			compressionThreshold = 5
+		}
+
+		payload, warnings, err := h.dmContextService.GetContext(ctx, campaignID, sessionNum, includePrologue, includePDFText, compressionEnabled, compressionThreshold)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}

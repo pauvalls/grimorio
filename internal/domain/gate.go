@@ -5,6 +5,26 @@ import (
 	"time"
 )
 
+// Severity represents the severity level of a validation issue or health finding
+type Severity string
+
+const (
+	SeverityCritical Severity = "critical"
+	SeverityWarning  Severity = "warning"
+	SeverityInfo     Severity = "info"
+)
+
+// HealthStatus represents overall campaign health
+type HealthStatus string
+
+const (
+	HealthStatusExcellent HealthStatus = "excellent" // 0 issues
+	HealthStatusGood      HealthStatus = "good"      // info only
+	HealthStatusFair      HealthStatus = "fair"      // warnings only
+	HealthStatusPoor      HealthStatus = "poor"      // errors present
+	HealthStatusCritical  HealthStatus = "critical"  // critical issues present
+)
+
 // GateStatus represents the state of a consistency gate evaluation
 type GateStatus string
 
@@ -95,11 +115,59 @@ type ConsistencyGate struct {
 
 // PipelineCheckpoint represents a saved state for rollback
 type PipelineCheckpoint struct {
-	CampaignID    string             `json:"campaign_id"`
-	BatchID       string             `json:"batch_id"`
-	CanonSnapshot *CanonDocument     `json:"canon_snapshot"`
-	StateSnapshot *NarrativeState    `json:"state_snapshot"`
-	CreatedAt     time.Time          `json:"created_at"`
+	CampaignID     string             `json:"campaign_id"`
+	BatchID        string             `json:"batch_id"`
+	CanonSnapshot  *CanonDocument     `json:"canon_snapshot"`
+	StateSnapshot  *NarrativeState    `json:"state_snapshot"`
+	CreatedAt      time.Time          `json:"created_at"`
+	SessionNum     int                `json:"session_num"`           // Session at checkpoint time
+	CheckpointHash string             `json:"checkpoint_hash"`       // SHA256 of canon+state for integrity
+}
+
+// Validate checks if the checkpoint is valid
+func (p *PipelineCheckpoint) Validate() error {
+	if p.CampaignID == "" {
+		return NewValidationError("campaign_id", "campaign ID is required")
+	}
+	if p.BatchID == "" {
+		return NewValidationError("batch_id", "batch ID is required")
+	}
+	if p.CanonSnapshot == nil {
+		return NewValidationError("canon_snapshot", "canon snapshot is required")
+	}
+	if p.StateSnapshot == nil {
+		return NewValidationError("state_snapshot", "state snapshot is required")
+	}
+	if p.CheckpointHash == "" {
+		return NewValidationError("checkpoint_hash", "checkpoint hash is required")
+	}
+	return nil
+}
+
+// AuditLogEntry represents a single audit log record
+type AuditLogEntry struct {
+	Timestamp   time.Time `json:"timestamp"`
+	CampaignID  string    `json:"campaign_id"`
+	BatchID     string    `json:"batch_id"`
+	ArtifactIDs []string  `json:"artifact_ids"`
+	Decision    string    `json:"decision"` // approved, rejected
+	Reason      string    `json:"reason"`
+	UserID      string    `json:"user_id,omitempty"` // If available from context
+	SessionNum  int       `json:"session_num,omitempty"`
+}
+
+// Validate checks if the audit log entry is valid
+func (a *AuditLogEntry) Validate() error {
+	if a.CampaignID == "" {
+		return NewValidationError("campaign_id", "campaign ID is required")
+	}
+	if a.BatchID == "" {
+		return NewValidationError("batch_id", "batch ID is required")
+	}
+	if a.Decision == "" {
+		return NewValidationError("decision", "decision is required")
+	}
+	return nil
 }
 
 // GateDecision represents a decision made by the gate
