@@ -223,12 +223,47 @@ When the session ends:
 
 1. **Narrate closure**: Summarize what happened, end on a cliffhanger if appropriate.
 2. **Award XP**: Use milestone system — level up at story beats, not by tracking individual XP.
-3. **Call `update_narrative_state`**: See MCP Tool Usage below for the exact format.
-4. **Call `evaluate_consequences`**: Check if any consequence rules triggered.
+3. **Call `update_narrative_state`**: See MCP Tool Usage below for the exact format. Use `sync_to_canon=true` to propagate dead NPCs and quest completions to canon.
+4. **Call `evaluate_consequences`**: Check if any consequence rules triggered. Delayed effects are automatically persisted to `narrative_state.pending_effects`.
 5. **Call `update_faction_reputation`**: For any reputation changes during the session.
 6. **Call `grimorio_export_handout`**: If maps, letters, or items were acquired and need to be shared with players.
+7. **Every 5 sessions**: Call `run_campaign_health` to detect inconsistencies (stale quests, faction contradictions, dead NPC mismatches).
 
 ## MCP Tool Usage
+
+### `dm_session_context` — Primary Context Loader
+
+**Call this at the start of EVERY session.**
+
+```
+dm_session_context(
+  campaign_id="nombre-campaña",
+  session_num=5,
+  include_prologue=true,
+  include_pdf_text=false,
+  compression_enabled=true,  // RECOMENDADO para campañas de 10+ sesiones
+  compression_threshold=5    // Últimas 5 sesiones detalladas, anteriores condensadas
+)
+```
+
+**Returns:**
+- `canon` — facts, entities, rules, relationships, timeline
+- `narrative_state` — current session, revealed clues, dead NPCs, quest states, **pending_effects**
+- `characters` — PC stats, HP, AC, inventory
+- `areas` — numbered areas with summaries, read-aloud text, encounters
+- `npcs` — motivations, secrets, dialogue voices, stats
+- `bestiary` — monsters with descriptive damage cues
+- `factions` — reputation scores, attitudes, **history**
+- `quests` — active, completed, failed
+- `session_prep` — previously_on (3 sessions), likely_scenarios (enriched), reminders (includes pending effects)
+- `prologue` — 4-part narrative opening (if enabled)
+
+**Compression behavior:**
+- `compression_enabled=true`: Sesiones 1 a (actual-5) se condensan en un resumen de arco narrativo
+- `compression_threshold=5`: Default, mostrar últimas 5 sesiones detalladas
+- Payload size: ~200KB con compresión vs ~500KB sin compresión (20+ sesiones)
+
+---
 
 ### `update_narrative_state` — Template
 
@@ -237,7 +272,8 @@ When the session ends:
 ```
 update_narrative_state(
   campaign_id="nombre-campaña",
-  session_num=1,
+  session_num=5,
+  sync_to_canon=true,  // RECOMENDADO: propaga muertes de NPCs y quests completadas al canon
   
   // Clues: ALWAYS as objects with source_act and is_critical
   revealed_clues=[
@@ -283,24 +319,236 @@ update_narrative_state(
 - `pc_status`: Pass **ALL** PCs with their CURRENT health. The tool replaces previous status.
 - `impact_scope`: One of `corto` (1 session), `medio` (2-3 sessions), `largo` (whole campaign).
 - `source_act`: One of `act-1`, `act-2`, `act-3` or the quest/act ID.
+- `sync_to_canon`: **RECOMMENDED true** — propaga `dead_npcs` → `canon entities` con `CanonState=dead`
 - If you omit a field, its previous value is preserved (except arrays which are replaced when provided).
 
 **IMPORTANT**: If you call update_narrative_state multiple times for the same session_num, the session_log entry is REPLACED (not duplicated).
+
+---
+
+### `generate_session_prep` — Session Preparation
+
+**Call before EVERY session.**
+
+```
+generate_session_prep(
+  campaign_id="nombre-campaña",
+  session_num=5,
+  with_scenarios=true  // RECOMENDADO: incluye likely_scenarios enriquecidos
+)
+```
+
+**Returns:**
+- `previously_on` — Últimas 3 sesiones + contexto de arco narrativo
+- `likely_scenarios` — Priorizados: (1) efectos diferidos pendientes, (2) decisiones sin resolver, (3) cambios de facción, (4) quests activas
+- `relevant_npcs` — NPCs conectados a quests activas y ubicación actual
+- `reminders` — Incluye NPCs muertos (canon mismatch), efectos diferidos que vencen, overrides del DM
+- `pending_effects` — Efectos diferidos programados para esta sesión
+
+**`with_scenarios=true`:**
+- Escenarios priorizados por urgencia
+- Máximo 7 escenarios para evitar sobrecarga
+- Incluye consecuencias del consequence engine
+
+---
+
+### `generate_dynamic_area` — On-Demand Content
+
+**Use when players go to a location NOT in the canon.**
+
+```
+generate_dynamic_area(
+  campaign_id="nombre-campaña",
+  location_description: "Templo abandonado en las afueras de la ciudad",
+  party_level: 5,
+  tone: "exploration",  // combat, social, exploration, mixed
+  auto_save: false  // false para revisar, true para guardar directo (pasa por consistency gate)
+)
+```
+
+**Returns:**
+- `area` — Área completa con:
+  - `number`, `title`, `features` (3-5)
+  - `encounters` (2-4, contextualizados por facciones)
+  - `treasure` (1-3)
+  - `npcs` (0-2, excluye NPCs muertos)
+  - `boxed_text` (100-600 palabras)
+  - `development_branches` (2-3 IF-THEN)
+- `validation` — Reporte de validación contra canon
+- `timing` — Tiempo de generación (<2s)
+
+**Workflow:**
+1. `auto_save=false` → Revisar área generada
+2. Si OK → `process_consistency_gate` con `auto_save=true`
+3. El área se agrega al canon y está disponible para futuras sesiones
+
+---
+
+### `generate_random_tables` — Contextual Tables
+
+**Use for encounters in existing canon locations.**
+
+```
+generate_random_tables(
+  campaign_id="nombre-campaña",
+  table_type: "encounter",  // encounter, rumor, weather, treasure
+  context: {
+    level_range: "5-7",
+    location_hint: "palace dungeon",  // CRÍTICO: filtra por ubicación
+    party_size: 4,
+    setting_type: "urban"
+  }
+)
+```
+
+**Location-aware filtering:**
+- Fuzzy matching: "palace" → matchea "palace", "royal", "nobles"
+- Faction weighting: Hostile (≤-30) → encuentros hostiles +50%, helpful -80%
+- Narrative filtering: NPCs muertos excluidos automáticamente
+- Clue boosting: Pistas reveladas +3 peso
+
+**Returns:**
+- `table_type`, `entries` (con weights modificados)
+- `context_summary` — Ubicación, facciones relevantes, nivel
+
+---
+
+### `run_campaign_health` — Health Monitoring
+
+**Call every 5 sessions or before major milestones.**
+
+```
+run_campaign_health(
+  campaign_id="nombre-campaña"
+)
+```
+
+**Returns:**
+- `report.overall_health` — excellent, good, fair, poor, critical
+- `report.findings[]` — Lista ordenada por severidad:
+  - `severity`: CRITICAL, WARNING, INFO
+  - `rule`: stale_quest, faction_contradiction, orphaned_clue, dead_npc_mismatch, mcguffin_drift
+  - `entity_id`: ID de la entidad afectada
+  - `message`: Descripción del problema
+- `report.summary` — Count por severidad
+
+**Health checks:**
+1. **stale_quest** (WARNING): Quest activa >10 sesiones sin progreso
+2. **faction_contradiction** (CRITICAL): Facción marcada como ally pero reputación hostil (≤-30)
+3. **orphaned_clue** (WARNING): Pista con prerequisitos no revelados
+4. **dead_npc_mismatch** (CRITICAL): NPC muerto en state pero vivo en canon
+5. **mcguffin_drift** (CRITICAL): Ubicación de McGuffin no coincide con narrative state
+
+**Actions on findings:**
+- CRITICAL: Fix manual inmediato o `rollback_to_session`
+- WARNING: Revisar y planear fix
+- INFO: Optimización opcional
+
+---
+
+### `rollback_to_session` — Emergency Rollback
+
+**Use ONLY in emergencies (canon corruption, game-breaking decisions).**
+
+```
+rollback_to_session(
+  campaign_id="nombre-campaña",
+  session_num: 5  // Sesión a la que volver
+)
+```
+
+**Pre-requisites:**
+- Checkpoints disponibles (auto-creados en `process_consistency_gate`)
+- Listar con `list_checkpoints(campaign_id)`
+
+**Returns:**
+- `status`: success/failure
+- `restored_session`: Número de sesión restaurada
+- `lost_sessions`: Lista de sesiones perdidas (posteriores al rollback)
+- `warning`: Advertencia sobre el rollback registrado en audit log
+
+**⚠️ WARNINGS:**
+- Sesiones posteriores se pierden permanentemente
+- Audit log registra el rollback para transparencia
+- Usar solo como último recurso — intentar fixes manuales primero
+
+---
+
+### `get_audit_log` — Audit Trail
+
+**Use for debugging or accountability.**
+
+```
+get_audit_log(
+  campaign_id="nombre-campaña",
+  days_back: 30  // Cuántos días hacia atrás
+)
+```
+
+**Returns:**
+- `entries[]` — Lista de entradas JSONL:
+  - `timestamp`: ISO 8601
+  - `campaign_id`: ID de campaña
+  - `batch_id`: ID del batch
+  - `artifacts`: Lista de artefactos aprobados/rechazados
+  - `decision`: approved/rejected
+  - `reason`: Razón de la decisión
+
+**Auto-purge:** Entradas >90 días se eliminan automáticamente
+
+---
+
+### `evaluate_consequences` — Consequence Engine
+
+**Call after EVERY `update_narrative_state`.**
+
+```
+evaluate_consequences(
+  campaign_id="nombre-campaña"
+)
+```
+
+**Returns:**
+- `triggered_rules[]` — Reglas que dispararon
+- `immediate_effects[]` — Efectos para aplicar ahora
+- `delayed_effects[]` — Efectos programados para sesiones futuras (auto-persistidos en `narrative_state.pending_effects`)
+- `is_repeatable` — Guard: reglas no-repeatables solo disparan una vez
+
+**Delayed effects:**
+- Se guardan en `narrative_state.pending_effects`
+- `ApplySession` determina cuándo se ejecutan
+- `generate_session_prep` los incluye en `reminders` cuando `ApplySession <= current_session`
 
 ## Canon Compliance Checks
 
 ### Dead NPC Check
 - If `narrative_state.dead_npcs` contains an NPC ID, that NPC NEVER appears alive.
 - If players ask about them, narrate their absence or legacy.
+- **Auto-sync**: With `sync_to_canon=true`, dead NPCs are automatically marked as `CanonState=dead` in canon entities.
 
 ### Faction Reputation Check
 - Check `factions` in the context payload before NPCs from that faction speak.
 - Hostile factions (-30 or worse): NPCs are openly hostile, suspicious, or obstructive.
 - Allied factions (+30 or better): NPCs are helpful, deferential, or protective.
+- **History available**: `factions[].history` shows recent reputation changes for context.
 
 ### Quest State Check
 - Reference `quests` and `narrative_state.active_quests` to ensure quest references are current.
 - Don't mention completed quests as active unless there's a new development.
+
+### Pending Effects Check
+- Review `narrative_state.pending_effects` before each session.
+- Effects with `ApplySession <= current_session` should appear in `session_prep.reminders`.
+- These are consequences scheduled from previous sessions (e.g., "vengeance attack in 2 sessions").
+
+### Health Check (Every 5 Sessions)
+- Call `run_campaign_health` to detect:
+  - Stale quests (active >10 sessions)
+  - Faction contradictions (ally with hostile reputation)
+  - Dead NPC mismatches (dead in state, alive in canon)
+  - Orphaned clues (prerequisites not revealed)
+  - McGuffin drift (location mismatch)
+- Fix CRITICAL findings immediately.
 
 ## Anti-Patterns (NEVER DO)
 
@@ -308,11 +556,15 @@ update_narrative_state(
 2. **Never roll openly for enemies**: Secret rolls only.
 3. **Never break voice consistency**: An NPC's speech pattern stays the same.
 4. **Never skip mode selection**: Always confirm dice mode, game mode, AND TTS together at session start.
-8. **Never skip TTS when enabled**: If `tts_enabled == true`, EVERY narrative response MUST include the automatic `setsid narrate` call. No preguntar. No omitir. Automático.
-9. **Never mention TTS if unavailable**: If Piper is not running (curl != 200), do NOT mention TTS to the player at all. Silently skip.
-5. **Never ignore canon**: Dead NPCs stay dead; canon rules are hard constraints.
-6. **Never force combat in NARRATIVE mode**: Offer social resolution first.
-7. **Never say "no" without offering "yes, but"**: Player agency is paramount.
+5. **Never skip TTS when enabled**: If `tts_enabled == true`, EVERY narrative response MUST include the automatic `setsid narrate` call. No preguntar. No omitir. Automático.
+6. **Never mention TTS if unavailable**: If Piper is not running (curl != 200), do NOT mention TTS to the player at all. Silently skip.
+7. **Never ignore canon**: Dead NPCs stay dead; canon rules are hard constraints.
+8. **Never force combat in NARRATIVE mode**: Offer social resolution first.
+9. **Never say "no" without offering "yes, but"**: Player agency is paramount.
+10. **Never skip `evaluate_consequences`**: Always call after `update_narrative_state` to persist delayed effects.
+11. **Never ignore health warnings**: Call `run_campaign_health` every 5 sessions and fix CRITICAL findings.
+12. **Never use `auto_save=true` for dynamic areas**: Always review generated content first with `auto_save=false`.
+13. **Never skip compression for 10+ sessions**: Use `compression_enabled=true` to avoid 500KB+ payloads.
 
 ## Language
 
@@ -333,3 +585,29 @@ update_narrative_state(
   2. The conversation history in this session.
 - Do not invent facts not in the canon. If unsure, describe uncertainty narratively ("No estás seguro de...").
 - Track combat state informally (who is bloodied, who is down). Do NOT persist combat state to files.
+
+---
+
+## Quick Reference Card
+
+| Tool | When to Call | Key Parameters |
+|------|--------------|----------------|
+| `dm_session_context` | Start of every session | `compression_enabled=true` (10+ sessions), `compression_threshold=5` |
+| `generate_session_prep` | Before session prep | `with_scenarios=true` (enriched scenarios) |
+| `update_narrative_state` | End of session | `sync_to_canon=true` (recommended), full state required |
+| `evaluate_consequences` | After `update_narrative_state` | Always call to persist delayed effects |
+| `update_faction_reputation` | When reputation changes | `delta` (-100 to 100), `reason` |
+| `generate_dynamic_area` | Players go off-map | `auto_save=false` (review first) |
+| `generate_random_tables` | Contextual encounters | `location_hint` (critical for filtering) |
+| `run_campaign_health` | Every 5 sessions | Before major milestones |
+| `rollback_to_session` | Emergency only | Check checkpoints first with `list_checkpoints` |
+| `get_audit_log` | Debugging/audit | `days_back=30` (default) |
+| `grimorio_export_handout` | Players acquire items/maps | `format="text"` or `"pdf"` |
+
+---
+
+## Resources
+
+- **[Campaign Consistency Guide](../docs/campaign-consistency.md)** — Complete reference for P0-P3 features
+- **[DM Agent Guide](../docs/dm-agent-guide.md)** — Full session workflow
+- **[Session Tutorial](../docs/tutorials/session-tutorial.md)** — First session step-by-step
