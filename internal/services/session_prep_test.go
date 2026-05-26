@@ -480,3 +480,187 @@ func TestSessionPrepService_generateReminders(t *testing.T) {
 		}
 	})
 }
+
+func TestSessionPrepService_generateLikelyScenarios_unresolvedDecisions(t *testing.T) {
+	svc := NewSessionPrepService(nil, nil, nil)
+
+	state := &domain.NarrativeState{
+		SessionLog: []domain.SessionRecord{
+			{
+				SessionNum: 1,
+				KeyDecisions: []domain.Decision{
+					{ID: "d1", Description: "Spare the goblin", ChoiceMade: "spared", ImpactScope: "local"},
+					{ID: "d2", Description: "Steal the gem", ChoiceMade: "stole", ImpactScope: "resolved"},
+				},
+			},
+			{
+				SessionNum: 2,
+				KeyDecisions: []domain.Decision{
+					{ID: "d3", Description: "Trust the stranger", ChoiceMade: "trusted", ImpactScope: "global"},
+				},
+			},
+			{
+				SessionNum: 3,
+				KeyDecisions: []domain.Decision{
+					{ID: "d4", Description: "Burn the bridge", ChoiceMade: "burned", ImpactScope: "local"},
+					{ID: "d5", Description: "Help the villager", ChoiceMade: "helped", ImpactScope: "resolved"},
+				},
+			},
+		},
+		ActiveQuests: []domain.QuestState{
+			{ID: "q1", Name: "Main Quest", Status: "active", SourceAct: "act-1"},
+		},
+	}
+
+	got := svc.generateLikelyScenarios(state, nil, 4)
+
+	// Should contain unresolved decisions from all sessions
+	wantDecisions := []string{"Spare the goblin", "Trust the stranger", "Burn the bridge"}
+	for _, want := range wantDecisions {
+		found := false
+		for _, scenario := range got {
+			if strings.Contains(scenario, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected scenario containing %q, got %v", want, got)
+		}
+	}
+
+	// Should NOT contain resolved decisions
+	resolvedDecisions := []string{"Steal the gem", "Help the villager"}
+	for _, notWant := range resolvedDecisions {
+		for _, scenario := range got {
+			if strings.Contains(scenario, notWant) {
+				t.Fatalf("expected resolved decision %q to NOT appear, got %v", notWant, got)
+			}
+		}
+	}
+}
+
+func TestSessionPrepService_generateLikelyScenarios_factionDriven(t *testing.T) {
+	svc := NewSessionPrepService(nil, nil, nil)
+
+	state := &domain.NarrativeState{
+		ActiveQuests: []domain.QuestState{
+			{ID: "q1", Name: "Main Quest", Status: "active", SourceAct: "act-1"},
+		},
+	}
+
+	factionMatrix := &domain.FactionReputationMatrix{
+		CampaignID: "test-campaign",
+		Entries: []domain.ReputationEntry{
+			{
+				FactionID: "faction-guild",
+				PartyID:   "party-1",
+				Score:     -20,
+				History: []domain.ReputationEvent{
+					{Session: 4, Delta: -10, Reason: "insulted the leader"},
+					{Session: 5, Delta: -20, Reason: "betrayed guild"},
+				},
+			},
+			{
+				FactionID: "faction-merchant",
+				PartyID:   "party-1",
+				Score:     15,
+				History: []domain.ReputationEvent{
+					{Session: 5, Delta: 15, Reason: "completed trade deal"},
+				},
+			},
+		},
+	}
+
+	got := svc.generateLikelyScenarios(state, factionMatrix, 6)
+
+	// Should contain faction changes from session 5 (targetSession-1 = 5)
+	wantFactions := []string{"betrayed guild", "completed trade deal"}
+	for _, want := range wantFactions {
+		found := false
+		for _, scenario := range got {
+			if strings.Contains(scenario, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected faction scenario containing %q, got %v", want, got)
+		}
+	}
+
+	// Should NOT contain faction changes from session 4
+	for _, scenario := range got {
+		if strings.Contains(scenario, "insulted the leader") {
+			t.Fatalf("expected session 4 faction event to NOT appear, got %v", got)
+		}
+	}
+}
+
+func TestSessionPrepService_GetPrep_factionSnapshot(t *testing.T) {
+	ctx := context.Background()
+	canonRepo := repository.NewMemoryCanonRepository()
+	stateRepo := repository.NewMemoryNarrativeStateRepository()
+	factionRepo := repository.NewMemoryFactionRepository()
+
+	svc := NewSessionPrepService(canonRepo, stateRepo, factionRepo)
+
+	doc := &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "faction-test",
+		Entities: []domain.CanonEntity{
+			{ID: "npc-1", Name: "Test NPC", Type: domain.EntityTypeNPC, CanonState: domain.EntityStateAlive},
+		},
+	}
+	_ = canonRepo.Save("faction-test", doc)
+
+	state := &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "faction-test",
+		CurrentSession: 2,
+		SessionLog: []domain.SessionRecord{
+			{SessionNum: 1, Summary: "First session"},
+		},
+		ActiveQuests: []domain.QuestState{
+			{ID: "q1", Name: "Quest 1", Status: "active", SourceAct: "act-1"},
+		},
+	}
+	_ = stateRepo.Save("faction-test", state)
+
+	factionMatrix := &domain.FactionReputationMatrix{
+		CampaignID: "faction-test",
+		Entries: []domain.ReputationEntry{
+			{
+				FactionID: "faction-guild",
+				PartyID:   "party-1",
+				Score:     50,
+				Status:    "friendly",
+				History: []domain.ReputationEvent{
+					{Session: 1, Delta: 20, Reason: "helped the guild"},
+					{Session: 2, Delta: 30, Reason: "completed mission"},
+				},
+			},
+		},
+	}
+	_ = factionRepo.Save("faction-test", factionMatrix)
+
+	prep, _, err := svc.GetPrep(ctx, "faction-test", 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if prep == nil {
+		t.Fatalf("expected prep, got nil")
+	}
+
+	if len(prep.FactionSnapshot) == 0 {
+		t.Fatalf("expected faction snapshot to be populated, got empty")
+	}
+
+	if prep.FactionSnapshot[0].FactionID != "faction-guild" {
+		t.Fatalf("expected faction-guild in snapshot, got %v", prep.FactionSnapshot)
+	}
+
+	if prep.FactionSnapshot[0].Score != 50 {
+		t.Fatalf("expected score 50, got %d", prep.FactionSnapshot[0].Score)
+	}
+}
