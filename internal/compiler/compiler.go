@@ -879,6 +879,7 @@ func (c *Compiler) htmlToPDFChromium(ctx context.Context, htmlPath, pdfPath stri
 	cmd := exec.CommandContext(ctx, c.PDFEngine,
 		"--headless",
 		"--no-sandbox",
+		"--disable-setuid-sandbox",
 		"--disable-gpu",
 		"--disable-web-security",
 		"--allow-file-access-from-files",
