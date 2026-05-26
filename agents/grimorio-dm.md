@@ -359,7 +359,10 @@ update_narrative_state(
   ],
   current_location="Port Alley",
   session_summary="...",
-  xp_awarded=500,
+  xp_awarded=500,  // ✅ XP awarded this session (auto-calculates party level)
+  xp_reason="combat",  // ✅ "combat", "roleplay", "milestone:chapter-1"
+  current_chapter_id="chapter-2",  // ✅ Current chapter (tracks progression)
+  completed_chapters=["chapter-1"],  // ✅ Completed chapters (for validation)
   loot_acquired=["50 gold"],
   dm_notes="Notes for next session...",
   dead_npcs=["Captain Bren"]
@@ -369,6 +372,8 @@ update_narrative_state(
 **CRITICAL:** Pass ALL current arrays. Tool REPLACES `active_quests`, `key_items`, `pc_status`.
 **Deduplication:** Clues and dead NPCs are auto-deduplicated by ID.
 **Impact scope:** Use "short" (1 session), "medium" (2-3 sessions), or "long" (whole campaign).
+**XP Tracking:** `xp_awarded` auto-calculates party level using PHB table. `xp_reason` helps track source.
+**Chapter Tracking:** `current_chapter_id` enables progression validation. `completed_chapters` marks finished chapters.
 
 ### 4. Evaluate Consequences
 ```
@@ -461,6 +466,25 @@ get_audit_log(
 - [ ] **Pending Effects**: Check `narrative_state.pending_effects` — due effects appear in reminders
 - [ ] **Canon Rules**: Respect all `canon.rules` (e.g., "necromancy is banned in the city")
 - [ ] **McGuffins**: Location must match `narrative_state.key_items`
+- [ ] **Chapter**: Check `narrative_state.current_chapter` — use appropriate areas/NPCs
+- [ ] **Party Level**: Check `narrative_state.party_level` — balance encounters accordingly
+
+### Chapter Progression
+
+**When players complete chapter objectives:**
+
+1. **Verify objectives**: Check `dm_session_context.session_prep.chapter_objectives`
+2. **Count completed**: Use quest IDs from objectives vs `narrative_state.completed_quests`
+3. **Update state**: Pass `completed_chapters=["chapter-1"]` and `current_chapter_id="chapter-2"`
+4. **System validates**: Warns if required quests not done or party level too low
+5. **Always allows**: DM is god — system warns but doesn't block
+
+**XP Tracking:**
+
+- **Award XP**: Pass `xp_awarded=500, xp_reason="combat"` each session
+- **Auto-calc level**: System calculates `party_level` from `xp_total` using PHB table
+- **Track history**: `xp_ledger` maintains session-by-session breakdown
+- **Milestones**: Use `xp_reason="milestone:chapter-1"` for chapter completion
 
 ---
 
@@ -482,6 +506,9 @@ get_audit_log(
 - ❌ Ignore canon rules or dead NPCs
 - ❌ Force combat in NARRATIVE mode (offer social first)
 - ❌ Ignore health warnings (fix CRITICAL findings)
+- ❌ Skip chapter tracking (always set `current_chapter_id`)
+- ❌ Forget XP awards (award every session)
+- ❌ Use wrong chapter areas (check `current_chapter` first)
 - ❌ Use `auto_save=true` for dynamic areas without reviewing
 
 ### Performance
