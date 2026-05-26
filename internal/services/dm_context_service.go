@@ -524,50 +524,52 @@ func (s *DMContextService) buildCondensedSummary(sessions []domain.SessionRecord
 	return builder.String()
 }
 
-// TODO: Use filterNPCsByRelevance to reduce payload size for large campaigns
-// func (s *DMContextService) filterNPCsByRelevance(
-// 	npcs map[string]domain.NPCContext,
-// 	currentLocation string,
-// 	activeQuests []domain.QuestState,
-// 	canon *domain.CanonDocument,
-// ) map[string]domain.NPCContext {
-// 	relevant := make(map[string]domain.NPCContext)
+// filterNPCsByRelevance filters NPCs based on current location and active quests
 //
-// 	// Build set of relevant NPC IDs
-// 	relevantIDs := make(map[string]bool)
-//
-// 	// Add quest givers
-// 	for _, quest := range activeQuests {
-// 		if quest.GiverNPC != "" {
-// 			relevantIDs[quest.GiverNPC] = true
-// 		}
-// 	}
-//
-// 	// Add NPCs at current location
-// 	for _, entity := range canon.Entities {
-// 		if entity.Type == domain.EntityTypeNPC {
-// 			if location, ok := entity.Properties["location"].(string); ok {
-// 				if location == currentLocation {
-// 					relevantIDs[entity.ID] = true
-// 				}
-// 			}
-// 		}
-// 	}
-//
-// 	// Filter NPCs
-// 	for name, npc := range npcs {
-// 		if relevantIDs[npc.Name] || relevantIDs[name] {
-// 			relevant[name] = npc
-// 		}
-// 	}
-//
-// 	// If no relevant NPCs found, return all (fallback)
-// 	if len(relevant) == 0 {
-// 		return npcs
-// 	}
-//
-// 	return relevant
-// }
+//nolint:unused // Reserved for future payload optimization in large campaigns
+func (s *DMContextService) filterNPCsByRelevance(
+	npcs map[string]domain.NPCContext,
+	currentLocation string,
+	activeQuests []domain.QuestState,
+	canon *domain.CanonDocument,
+) map[string]domain.NPCContext {
+	relevant := make(map[string]domain.NPCContext)
+
+	// Build set of relevant NPC IDs
+	relevantIDs := make(map[string]bool)
+
+	// Add quest givers
+	for _, quest := range activeQuests {
+		if quest.GiverNPC != "" {
+			relevantIDs[quest.GiverNPC] = true
+		}
+	}
+
+	// Add NPCs at current location
+	for _, entity := range canon.Entities {
+		if entity.Type == domain.EntityTypeNPC {
+			if location, ok := entity.Properties["location"].(string); ok {
+				if location == currentLocation {
+					relevantIDs[entity.ID] = true
+				}
+			}
+		}
+	}
+
+	// Filter NPCs
+	for name, npc := range npcs {
+		if relevantIDs[npc.Name] || relevantIDs[name] {
+			relevant[name] = npc
+		}
+	}
+
+	// If no relevant NPCs found, return all (fallback)
+	if len(relevant) == 0 {
+		return npcs
+	}
+
+	return relevant
+}
 
 func orEmptySlice[T any](s []T) []T {
 	if s == nil {
