@@ -4,17 +4,19 @@ import "time"
 
 // SessionPrep is a synthesized prep sheet for the next session
 type SessionPrep struct {
-	CampaignID             string                 `json:"campaign_id"`
-	SessionNum             int                    `json:"session_num"`
-	PreviouslyOn           string                 `json:"previously_on"`
-	LikelyScenarios        []string               `json:"likely_scenarios"`
-	RelevantNPCs           []string               `json:"relevant_npcs"`
-	ActiveQuests           []string               `json:"active_quests"`
-	Reminders              []string               `json:"reminders"`
-	PrepDate               time.Time              `json:"prep_date"`
+	CampaignID               string                    `json:"campaign_id"`
+	SessionNum               int                       `json:"session_num"`
+	PreviouslyOn             string                    `json:"previously_on"`
+	LikelyScenarios          []string                  `json:"likely_scenarios"`
+	RelevantNPCs             []string                  `json:"relevant_npcs"`
+	ActiveQuests             []string                  `json:"active_quests"`
+	Reminders                []string                  `json:"reminders"`
+	PrepDate                 time.Time                 `json:"prep_date"`
 	EncounterRecommendations []EncounterRecommendation `json:"encounter_recommendations,omitempty"`
-	LootSuggestions        []LootSuggestion       `json:"loot_suggestions,omitempty"`
-	NPCAppearances         []NPCAppearance        `json:"npc_appearances,omitempty"`
+	LootSuggestions          []LootSuggestion          `json:"loot_suggestions,omitempty"`
+	NPCAppearances           []NPCAppearance           `json:"npc_appearances,omitempty"`
+	PendingEffects           []DelayedEffect           `json:"pending_effects,omitempty"`
+	FactionSnapshot          []ReputationEntry         `json:"faction_snapshot,omitempty"`
 }
 
 // EncounterRecommendation represents a recommended encounter for a session.

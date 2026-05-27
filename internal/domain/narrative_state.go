@@ -10,23 +10,31 @@ type NarrativeState struct {
 	CurrentSession int       `json:"current_session"`
 	LastUpdated    time.Time `json:"last_updated"`
 
+	// Chapter and XP tracking
+	CurrentChapter    string    `json:"current_chapter,omitempty"`
+	CompletedChapters []string  `json:"completed_chapters,omitempty"`
+	PartyLevel        int       `json:"party_level,omitempty"`
+	XPTotal           int       `json:"xp_total,omitempty"`
+	XPLedger          []XPEntry `json:"xp_ledger,omitempty"`
+
 	// Mutable state (serialized in logical order)
 	RevealedClues     []RevealedClue   `json:"revealed_clues"`
-	ActiveQuests      []QuestState     `json:"-"` // Internal objects
-	QuestNames        []string         `json:"active_quests,omitempty"`
-	CompletedQuests   []QuestState     `json:"-"` // Internal objects
-	CompletedQuestIDs []string         `json:"completed_quests"`
-	FailedQuests      []QuestState     `json:"-"` // Internal objects
-	FailedQuestIDs    []string         `json:"failed_quests"`
+	ActiveQuests      []QuestState     `json:"active_quests,omitempty"`
+	QuestNames        []string         `json:"-"` // Internal cache, not serialized
+	CompletedQuests   []QuestState     `json:"completed_quests,omitempty"`
+	CompletedQuestIDs []string         `json:"-"` // Internal cache, not serialized
+	FailedQuests      []QuestState     `json:"failed_quests,omitempty"`
+	FailedQuestIDs    []string         `json:"-"` // Internal cache, not serialized
 	DeadNPCs          []NPCDeathRecord `json:"dead_npcs"`
-	KeyItems          []KeyItem        `json:"-"` // Internal objects
-	ItemNames         []string         `json:"key_items,omitempty"`
+	KeyItems          []KeyItem        `json:"key_items,omitempty"`
+	ItemNames         []string         `json:"-"` // Internal cache, not serialized
 	LootAcquired      []string         `json:"loot_acquired,omitempty"`
 	DMNotes           string           `json:"dm_notes,omitempty"`
 	CurrentLocation   string           `json:"current_location,omitempty"`
 	PCStatuses        []PCStatus       `json:"pc_status,omitempty"`
 	SessionLog        []SessionRecord  `json:"session_log"`
 	DMOverrides       []DMOverride     `json:"dm_overrides"`
+	PendingEffects    []DelayedEffect  `json:"pending_effects,omitempty"`
 }
 
 // Validate checks if the narrative state is valid
@@ -157,13 +165,14 @@ func (k *KeyItem) Validate() error {
 
 // SessionRecord records what happened in a session
 type SessionRecord struct {
-	SessionNum   int        `json:"session_num"`
-	Date         time.Time  `json:"date"`
-	Summary      string     `json:"summary"`
-	KeyDecisions []Decision `json:"key_decisions"`
-	XPAwarded    int        `json:"xp_awarded"`
-	LootAcquired []string   `json:"loot_acquired"`
-	DMNotes      string     `json:"dm_notes"`
+	SessionNum       int        `json:"session_num"`
+	Date             time.Time  `json:"date"`
+	Summary          string     `json:"summary"`
+	CondensedSummary string     `json:"condensed_summary,omitempty"` // For compressed sessions
+	KeyDecisions     []Decision `json:"key_decisions"`
+	XPAwarded        int        `json:"xp_awarded"`
+	LootAcquired     []string   `json:"loot_acquired"`
+	DMNotes          string     `json:"dm_notes"`
 }
 
 // Validate checks if the session record is valid
@@ -221,20 +230,24 @@ func (d *DMOverride) Validate() error {
 
 // StateUpdate represents a batch update to narrative state
 type StateUpdate struct {
-	SessionNum       int              `json:"session_num"`
-	RevealedClues    []RevealedClue   `json:"revealed_clues,omitempty"`
-	DeadNPCs         []NPCDeathRecord `json:"dead_npcs,omitempty"`
-	CompletedQuests  []string         `json:"completed_quests,omitempty"`
-	NewQuests        []QuestState     `json:"new_quests,omitempty"`
-	KeyItems         []KeyItem        `json:"key_items,omitempty"`
-	KeyDecisions     []Decision       `json:"key_decisions,omitempty"`
-	XPAwarded        int              `json:"xp_awarded,omitempty"`
-	LootAcquired     []string         `json:"loot_acquired,omitempty"`
-	SessionSummary   string           `json:"session_summary,omitempty"`
-	DMNotes          string           `json:"dm_notes,omitempty"`
-	CurrentLocation  string           `json:"current_location,omitempty"`
-	PCStatuses       []PCStatus       `json:"pc_status,omitempty"`
-	ReplaceSession   bool             `json:"replace_session,omitempty"` // If true, replace existing session log entry
+	SessionNum        int              `json:"session_num"`
+	CurrentChapterID  string           `json:"current_chapter_id,omitempty"`
+	CompletedChapters []string         `json:"completed_chapters,omitempty"`
+	RevealedClues     []RevealedClue   `json:"revealed_clues,omitempty"`
+	DeadNPCs          []NPCDeathRecord `json:"dead_npcs,omitempty"`
+	CompletedQuests   []string         `json:"completed_quests,omitempty"`
+	NewQuests         []QuestState     `json:"new_quests,omitempty"`
+	KeyItems          []KeyItem        `json:"key_items,omitempty"`
+	KeyDecisions      []Decision       `json:"key_decisions,omitempty"`
+	XPAwarded         int              `json:"xp_awarded,omitempty"`
+	XPReason          string           `json:"xp_reason,omitempty"`
+	LootAcquired      []string         `json:"loot_acquired,omitempty"`
+	SessionSummary    string           `json:"session_summary,omitempty"`
+	DMNotes           string           `json:"dm_notes,omitempty"`
+	CurrentLocation   string           `json:"current_location,omitempty"`
+	PCStatuses        []PCStatus       `json:"pc_status,omitempty"`
+	ReplaceSession    bool             `json:"replace_session,omitempty"` // If true, replace existing session log entry
+	SyncToCanon       bool             `json:"sync_to_canon,omitempty"`   // If true, propagate state changes to canon
 }
 
 // SessionPrepContext provides context for preparing the next session

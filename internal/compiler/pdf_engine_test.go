@@ -127,6 +127,14 @@ func TestHtmlToPDF_Chromium(t *testing.T) {
 		t.Skip("No Chromium/Chrome browser found in PATH, skipping integration test")
 	}
 
+	// Verify Chromium can actually run in headless mode (CI environments may have it installed but not functional)
+	testCtx, testCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer testCancel()
+	cmd := exec.CommandContext(testCtx, chromiumBin, "--headless", "--disable-gpu", "--version")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Chromium cannot run in headless mode (likely missing dependencies in CI), skipping integration test")
+	}
+
 	tmpDir := t.TempDir()
 	htmlPath := filepath.Join(tmpDir, "test.html")
 	pdfPath := filepath.Join(tmpDir, "test.pdf")

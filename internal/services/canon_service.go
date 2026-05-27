@@ -17,18 +17,20 @@ import (
 
 // CanonService handles canon document business logic
 type CanonService struct {
-	canonRepo    repository.CanonRepository
-	stateRepo    repository.NarrativeStateRepository
-	cache        *cache.LRUCache[string, *domain.CanonDocument]
-	cacheEnabled bool
-	degraded     bool
+	canonRepo      repository.CanonRepository
+	stateRepo      repository.NarrativeStateRepository
+	checkpointRepo repository.CheckpointRepository
+	cache          *cache.LRUCache[string, *domain.CanonDocument]
+	cacheEnabled   bool
+	degraded       bool
 }
 
 // NewCanonService creates a new canon service
-func NewCanonService(canonRepo repository.CanonRepository, stateRepo repository.NarrativeStateRepository) *CanonService {
+func NewCanonService(canonRepo repository.CanonRepository, stateRepo repository.NarrativeStateRepository, checkpointRepo repository.CheckpointRepository) *CanonService {
 	svc := &CanonService{
-		canonRepo: canonRepo,
-		stateRepo: stateRepo,
+		canonRepo:      canonRepo,
+		stateRepo:      stateRepo,
+		checkpointRepo: checkpointRepo,
 	}
 
 	// Cache configuration from environment
@@ -360,6 +362,86 @@ func (s *CanonService) GetRelationshipGraph(ctx context.Context, campaignID stri
 		CampaignID: doc.CampaignID,
 		Nodes:      doc.Entities,
 		Edges:      doc.Relationships,
+	}, nil
+}
+
+// RollbackResult represents the outcome of a rollback operation
+type RollbackResult struct {
+	Success           bool     `json:"success"`
+	RestoredSession   int      `json:"restored_session"`
+	CheckpointBatchID string   `json:"checkpoint_batch_id"`
+	Warnings          []string `json:"warnings"`
+	LostSessions      []int    `json:"lost_sessions"`
+}
+
+// RollbackToSession restores canon and state to a checkpoint
+func (s *CanonService) RollbackToSession(
+	ctx context.Context,
+	campaignID string,
+	sessionNum int,
+) (*RollbackResult, error) {
+	if s.degraded {
+		return nil, fmt.Errorf("cannot rollback: service is in degraded mode")
+	}
+
+	if s.checkpointRepo == nil {
+		return nil, fmt.Errorf("checkpoint repository not configured")
+	}
+
+	// 1. Find checkpoint
+	checkpoint, err := s.checkpointRepo.FindBySessionNum(ctx, campaignID, sessionNum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find checkpoint for session %d: %w", sessionNum, err)
+	}
+
+	// 2. Validate checkpoint integrity
+	computedHash, err := computeCheckpointHash(checkpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute checkpoint hash: %w", err)
+	}
+	if computedHash != checkpoint.CheckpointHash {
+		return nil, fmt.Errorf("checkpoint integrity check failed: hash mismatch")
+	}
+
+	// 3. Load current state to identify lost sessions
+	currentState, err := s.stateRepo.Load(campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load current state: %w", err)
+	}
+
+	lostSessions := []int{}
+	for _, session := range currentState.SessionLog {
+		if session.SessionNum > sessionNum {
+			lostSessions = append(lostSessions, session.SessionNum)
+		}
+	}
+
+	// 4. Restore snapshots atomically
+	if err := s.canonRepo.Save(campaignID, checkpoint.CanonSnapshot); err != nil {
+		return nil, fmt.Errorf("failed to restore canon snapshot: %w", err)
+	}
+
+	if err := s.stateRepo.Save(campaignID, checkpoint.StateSnapshot); err != nil {
+		return nil, fmt.Errorf("failed to restore state snapshot: %w", err)
+	}
+
+	// 5. Invalidate cache
+	if s.cacheEnabled && s.cache != nil {
+		s.cache.Remove(campaignID)
+	}
+
+	// 6. Generate warnings
+	warnings := []string{}
+	if len(lostSessions) > 0 {
+		warnings = append(warnings, fmt.Sprintf("%d sessions will be lost: %v", len(lostSessions), lostSessions))
+	}
+
+	return &RollbackResult{
+		Success:           true,
+		RestoredSession:   sessionNum,
+		CheckpointBatchID: checkpoint.BatchID,
+		Warnings:          warnings,
+		LostSessions:      lostSessions,
 	}, nil
 }
 

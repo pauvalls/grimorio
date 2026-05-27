@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/pauvalls/grimorio/internal/domain"
 )
 
@@ -53,7 +55,7 @@ type MonsterRepository interface {
 	Save(monster *domain.Monster) error
 	Read(campaignID, name string) (*domain.Monster, error)
 	List(campaignID string) ([]domain.Monster, error)
-	Delete(campaignID, name string) error
+	Delete(ctx context.Context, campaignID, name string) error
 }
 
 // EncounterRepository defines operations for encounter persistence

@@ -69,13 +69,18 @@ func (e *ConsequenceEngine) Evaluate(ctx context.Context, campaignID string, sta
 	})
 
 	for _, rule := range eval.TriggeredRules {
-		for _, effect := range rule.Effects {
+		for i, effect := range rule.Effects {
 			if effect.Delay != "" {
 				applySession := state.CurrentSession + parseDelaySessions(effect.Delay)
 				eval.DelayedEffects = append(eval.DelayedEffects, domain.DelayedEffect{
+					ID:             makeDelayedEffectID(rule.ID, i),
+					Description:    effect.Description,
+					EffectType:     effect.Type,
+					Target:         effect.Target,
 					Effect:         effect,
 					TriggerSession: state.CurrentSession,
 					ApplySession:   applySession,
+					Applied:        false,
 				})
 			} else {
 				eval.ImmediateEffects = append(eval.ImmediateEffects, effect)
@@ -189,6 +194,91 @@ func (e *ConsequenceEngine) conditionMatches(cond domain.Condition, state *domai
 		// Unknown condition type: pass (permissive)
 		return true
 	}
+}
+
+// ApplyEvaluation appends non-duplicate delayed effects from an evaluation to the narrative state.
+// It respects IsRepeatable: if a rule is not repeatable and the state already contains an effect
+// from that rule, no new effects from that rule are appended.
+func (e *ConsequenceEngine) ApplyEvaluation(eval *domain.ConsequenceEvaluation, state *domain.NarrativeState) error {
+	if eval == nil || state == nil {
+		return nil
+	}
+
+	// Build map of rule IDs to their IsRepeatable status from triggered rules
+	ruleRepeatable := make(map[string]bool, len(eval.TriggeredRules))
+	for _, rule := range eval.TriggeredRules {
+		ruleRepeatable[rule.ID] = rule.IsRepeatable
+	}
+
+	existingIDs := make(map[string]bool, len(state.PendingEffects))
+	for _, pe := range state.PendingEffects {
+		existingIDs[pe.ID] = true
+	}
+
+	for _, de := range eval.DelayedEffects {
+		if existingIDs[de.ID] {
+			continue // dedup by exact ID
+		}
+		sourceRuleID := extractRuleIDFromEffectID(de.ID)
+		if sourceRuleID != "" {
+			isRepeatable, known := ruleRepeatable[sourceRuleID]
+			if known && !isRepeatable && e.hasExistingEffectFromRule(sourceRuleID, state) {
+				continue // non-repeatable rule already has an effect in state
+			}
+		}
+		de.Applied = false
+		de.TriggerSession = eval.SessionNum
+		state.PendingEffects = append(state.PendingEffects, de)
+		existingIDs[de.ID] = true
+	}
+
+	return nil
+}
+
+// GetPendingEffects returns all pending effects due for the given session number,
+// sorted by ApplySession ascending.
+func (e *ConsequenceEngine) GetPendingEffects(state *domain.NarrativeState, sessionNum int) []domain.DelayedEffect {
+	if state == nil {
+		return nil
+	}
+
+	var result []domain.DelayedEffect
+	for _, de := range state.PendingEffects {
+		if !de.Applied && de.ApplySession <= sessionNum {
+			result = append(result, de)
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ApplySession < result[j].ApplySession
+	})
+
+	return result
+}
+
+// hasExistingEffectFromRule checks if the state already contains any pending
+// effect derived from the given rule ID.
+func (e *ConsequenceEngine) hasExistingEffectFromRule(ruleID string, state *domain.NarrativeState) bool {
+	for _, pe := range state.PendingEffects {
+		if extractRuleIDFromEffectID(pe.ID) == ruleID {
+			return true
+		}
+	}
+	return false
+}
+
+func extractRuleIDFromEffectID(effectID string) string {
+	// Format: {ruleID}-{idx}
+	for i := len(effectID) - 1; i >= 0; i-- {
+		if effectID[i] == '-' {
+			return effectID[:i]
+		}
+	}
+	return ""
+}
+
+func makeDelayedEffectID(ruleID string, effectIndex int) string {
+	return fmt.Sprintf("%s-%d", ruleID, effectIndex)
 }
 
 func parseDelaySessions(delay string) int {

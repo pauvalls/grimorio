@@ -17,9 +17,10 @@ func setupE2ETestHandlers(tmpDir string) (*CampaignHandlers, func()) {
 	charRepo := repository.NewMemoryCharacterRepository()
 	npcRepo := repository.NewMemoryNPCRepository()
 	questRepo := repository.NewMemoryQuestRepository()
+	canonRepo := repository.NewMemoryCanonRepository()
 
 	campaignService := services.NewCampaignService(
-		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
+		campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo,
 		tmpDir, "",
 	)
 

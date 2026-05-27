@@ -245,6 +245,190 @@ func TestParseDelaySessions(t *testing.T) {
 	}
 }
 
+func TestConsequenceEngine_Evaluate_EnrichedDelayedEffects(t *testing.T) {
+	ctx := context.Background()
+	canonRepo := repository.NewMemoryCanonRepository()
+
+	doc := &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "enriched-campaign",
+		Rules: []domain.CanonRule{
+			{
+				ID:        "rule-delayed-enriched",
+				Statement: `{"trigger":{"type":"npc_death","entity_id":"boss"},"effects":[{"type":"spawn","target":"npc","delay":"2 sessions","description":"replacement appears"}],"priority":5}`,
+				Domain:    "consequence",
+			},
+		},
+	}
+	_ = canonRepo.Save("enriched-campaign", doc)
+
+	engine := NewConsequenceEngine(canonRepo)
+	state := &domain.NarrativeState{
+		CampaignID:     "enriched-campaign",
+		CurrentSession: 3,
+		DeadNPCs: []domain.NPCDeathRecord{
+			{NPCID: "boss", Name: "Big Boss", Session: 3},
+		},
+	}
+
+	eval, err := engine.Evaluate(ctx, "enriched-campaign", state)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(eval.DelayedEffects) != 1 {
+		t.Fatalf("expected 1 delayed effect, got %d", len(eval.DelayedEffects))
+	}
+	de := eval.DelayedEffects[0]
+	if de.ID != "rule-delayed-enriched-0" {
+		t.Fatalf("id = %q, want rule-delayed-enriched-0", de.ID)
+	}
+	if de.Description != "replacement appears" {
+		t.Fatalf("description = %q, want 'replacement appears'", de.Description)
+	}
+	if de.EffectType != "spawn" {
+		t.Fatalf("effect_type = %q, want spawn", de.EffectType)
+	}
+	if de.Target != "npc" {
+		t.Fatalf("target = %q, want npc", de.Target)
+	}
+	if de.TriggerSession != 3 {
+		t.Fatalf("trigger_session = %d, want 3", de.TriggerSession)
+	}
+	if de.ApplySession != 5 {
+		t.Fatalf("apply_session = %d, want 5", de.ApplySession)
+	}
+	if de.Applied != false {
+		t.Fatalf("applied = %v, want false", de.Applied)
+	}
+}
+
+func TestConsequenceEngine_ApplyEvaluation(t *testing.T) {
+	engine := NewConsequenceEngine(repository.NewMemoryCanonRepository())
+
+	t.Run("append new delayed effects", func(t *testing.T) {
+		state := &domain.NarrativeState{CampaignID: "test", PendingEffects: []domain.DelayedEffect{}}
+		eval := &domain.ConsequenceEvaluation{
+			SessionNum: 3,
+			DelayedEffects: []domain.DelayedEffect{
+				{ID: "rule-001-0", Description: "Effect 1", ApplySession: 5},
+				{ID: "rule-001-1", Description: "Effect 2", ApplySession: 6},
+			},
+		}
+
+		err := engine.ApplyEvaluation(eval, state)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(state.PendingEffects) != 2 {
+			t.Fatalf("expected 2 pending effects, got %d", len(state.PendingEffects))
+		}
+		if state.PendingEffects[0].Applied != false {
+			t.Fatalf("expected Applied=false, got %v", state.PendingEffects[0].Applied)
+		}
+		if state.PendingEffects[0].TriggerSession != 3 {
+			t.Fatalf("expected TriggerSession=3, got %d", state.PendingEffects[0].TriggerSession)
+		}
+	})
+
+	t.Run("deduplicate by ID", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			CampaignID:     "test",
+			PendingEffects: []domain.DelayedEffect{{ID: "rule-001-0", Description: "Existing"}},
+		}
+		eval := &domain.ConsequenceEvaluation{
+			SessionNum: 3,
+			DelayedEffects: []domain.DelayedEffect{
+				{ID: "rule-001-0", Description: "Duplicate"},
+				{ID: "rule-002-0", Description: "New"},
+			},
+		}
+
+		err := engine.ApplyEvaluation(eval, state)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(state.PendingEffects) != 2 {
+			t.Fatalf("expected 2 pending effects, got %d", len(state.PendingEffects))
+		}
+		if state.PendingEffects[0].Description != "Existing" {
+			t.Fatalf("expected existing preserved, got %s", state.PendingEffects[0].Description)
+		}
+	})
+
+	t.Run("non-repeatable rule blocked", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			CampaignID:     "test",
+			PendingEffects: []domain.DelayedEffect{{ID: "rule-once-0", Description: "First"}},
+		}
+		eval := &domain.ConsequenceEvaluation{
+			SessionNum: 3,
+			TriggeredRules: []domain.ConsequenceRule{
+				{ID: "rule-once", IsRepeatable: false},
+			},
+			DelayedEffects: []domain.DelayedEffect{
+				{ID: "rule-once-1", Description: "Second from same rule"},
+			},
+		}
+
+		err := engine.ApplyEvaluation(eval, state)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(state.PendingEffects) != 1 {
+			t.Fatalf("expected 1 pending effect (non-repeatable blocked), got %d", len(state.PendingEffects))
+		}
+	})
+
+	t.Run("repeatable rule allowed", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			CampaignID:     "test",
+			PendingEffects: []domain.DelayedEffect{{ID: "rule-repeat-0", Description: "First"}},
+		}
+		eval := &domain.ConsequenceEvaluation{
+			SessionNum: 3,
+			TriggeredRules: []domain.ConsequenceRule{
+				{ID: "rule-repeat", IsRepeatable: true},
+			},
+			DelayedEffects: []domain.DelayedEffect{
+				{ID: "rule-repeat-1", Description: "Second from repeatable rule"},
+			},
+		}
+
+		err := engine.ApplyEvaluation(eval, state)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(state.PendingEffects) != 2 {
+			t.Fatalf("expected 2 pending effects (repeatable allowed), got %d", len(state.PendingEffects))
+		}
+	})
+}
+
+func TestConsequenceEngine_GetPendingEffects(t *testing.T) {
+	engine := NewConsequenceEngine(repository.NewMemoryCanonRepository())
+
+	state := &domain.NarrativeState{
+		CampaignID: "test",
+		PendingEffects: []domain.DelayedEffect{
+			{ID: "e1", Description: "Due session 2", ApplySession: 2, Applied: false},
+			{ID: "e2", Description: "Due session 3", ApplySession: 3, Applied: false},
+			{ID: "e3", Description: "Due session 5", ApplySession: 5, Applied: false},
+			{ID: "e4", Description: "Already applied", ApplySession: 2, Applied: true},
+		},
+	}
+
+	pending := engine.GetPendingEffects(state, 3)
+	if len(pending) != 2 {
+		t.Fatalf("expected 2 pending effects for session 3, got %d", len(pending))
+	}
+	if pending[0].ID != "e1" {
+		t.Fatalf("expected e1 first (sorted), got %s", pending[0].ID)
+	}
+	if pending[1].ID != "e2" {
+		t.Fatalf("expected e2 second, got %s", pending[1].ID)
+	}
+}
+
 func TestConsequenceEngine_Conditions(t *testing.T) {
 	ctx := context.Background()
 	canonRepo := repository.NewMemoryCanonRepository()

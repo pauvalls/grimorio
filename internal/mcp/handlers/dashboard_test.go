@@ -31,7 +31,7 @@ func TestHandleFactionDashboard_HappyPath(t *testing.T) {
 	_, _ = factionService.UpdateReputation(context.Background(), "test-campaign", "fac1", "party1", 30, "Helped villagers", "manual")
 	_, _ = factionService.UpdateReputation(context.Background(), "test-campaign", "fac2", "party1", -40, "Stole from guild", "manual")
 
-	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
+	canonService := services.NewCanonService(canonRepo, narrativeStateRepo, repository.NewMemoryCheckpointRepository())
 	dash := NewDashboardHandlers(factionService, canonService)
 
 	handler := dash.HandleFactionDashboard()
@@ -81,7 +81,7 @@ func TestHandleFactionDashboard_NoData(t *testing.T) {
 		CampaignID:    "empty-campaign",
 	})
 
-	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
+	canonService := services.NewCanonService(canonRepo, narrativeStateRepo, repository.NewMemoryCheckpointRepository())
 	dash := NewDashboardHandlers(
 		services.NewFactionService(canonRepo, factionRepo),
 		canonService,
@@ -110,7 +110,7 @@ func TestHandleFactionDashboard_MissingCampaignID(t *testing.T) {
 	factionRepo := repository.NewMemoryFactionRepository()
 	narrativeStateRepo := repository.NewMemoryNarrativeStateRepository()
 
-	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
+	canonService := services.NewCanonService(canonRepo, narrativeStateRepo, repository.NewMemoryCheckpointRepository())
 	dash := NewDashboardHandlers(
 		services.NewFactionService(canonRepo, factionRepo),
 		canonService,

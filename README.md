@@ -169,11 +169,25 @@ make install
 | **[Architecture](docs/features/architecture.md)** | How Grimorio works internally |
 | **[DM Guide](docs/dm-guide.md)** | General advice for running games |
 | **[DM Agent Guide](docs/dm-agent-guide.md)** | Running live sessions with the AI Dungeon Master |
+| **[Campaign Consistency](docs/campaign-consistency.md)** | **NEW**: Health monitoring, rollback, dynamic content, persistent consequences |
 | **[Developer Guide](docs/developer-guide.md)** | Contributing to Grimorio |
 
 ### What's New
 
 See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
+
+**v4.1.0 — Campaign Consistency & Dynamic Content (Latest)**
+- **📊 Campaign Health Monitoring** — Automated detection of stale quests, faction contradictions, dead NPC mismatches, and lore drift
+- **🔄 Context Compression** — Rolling session summaries reduce DM payload >50% for 20+ session campaigns
+- **🎯 Dynamic Location Content** — Location-aware random tables with faction reputation weighting (±80%)
+- **🗺️ On-Demand Area Generation** — `generate_dynamic_area` creates contextual areas when players go off-map
+- **⏳ Persistent Delayed Effects** — Consequence engine now persists scheduled effects across sessions
+- **↩️ Rollback Capability** — Restore campaign state from checkpoints with SHA256 integrity validation
+- **📝 Audit Logging** — Append-only JSONL log of all consistency gate approvals (90-day auto-purge)
+- **🔍 Multi-Session Prep** — `Previously On` shows last 3 sessions + arc context
+- **🎭 Enriched Scenarios** — Session prep prioritizes pending effects, unresolved decisions, faction changes
+
+See **[Campaign Consistency Guide](docs/campaign-consistency.md)** for complete usage reference.
 
 **v4.0.10 — Update Commands & Campaign Template (Latest)**
 - **🤖 AI Dungeon Master** — `grimorio-dm` primary agent runs live D&D 5e sessions with narrative depth, strict information hiding, and canon compliance
@@ -353,11 +367,25 @@ make install
 | **[Arquitectura](docs/features/architecture.md)** | Cómo funciona Grimorio internamente |
 | **[Guía de DM](docs/dm-guide.md)** | Consejos generales para dirigir juegos |
 | **[Guía del Agente DM](docs/dm-agent-guide.md)** | Ejecutar sesiones en vivo con el Dungeon Master IA |
+| **[Consistencia de Campaña](docs/campaign-consistency.md)** | **NUEVO**: Salud, rollback, contenido dinámico, consecuencias persistentes |
 | **[Guía de Desarrollador](docs/developer-guide.md)** | Contribuir a Grimorio |
 
 ### Novedades
 
 Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
+
+**v4.1.0 — Consistencia de Campaña y Contenido Dinámico (Último)**
+- **📊 Monitoreo de Salud** — Detección automática de quests estancadas, contradicciones de facciones, NPCs muertos inconsistentes, drift de lore
+- **🔄 Compresión de Contexto** — Resúmenes de sesiones reducen payload >50% en campañas de 20+ sesiones
+- **🎯 Contenido por Ubicación** — Tablas aleatorias location-aware con weighting por reputación (±80%)
+- **🗺️ Generación On-Demand** — `generate_dynamic_area` crea áreas contextuales cuando jugadores van fuera del mapa
+- **⏳ Efectos Diferidos Persistentes** — Consecuencias programadas persisten entre sesiones
+- **↩️ Rollback** — Restaurar estado desde checkpoints con validación SHA256
+- **📝 Audit Log** — Log JSONL append-only de aprobaciones del gate (auto-purge 90 días)
+- **🔍 Multi-Sesión Prep** — `Previously On` muestra últimas 3 sesiones + contexto de arco
+- **🎭 Escenarios Enriquecidos** — Prep prioriza efectos pendientes, decisiones sin resolver, cambios de facción
+
+Ver **[Guía de Consistencia de Campaña](docs/campaign-consistency.md)** para referencia completa de uso.
 
 **v4.0.10 — Update Commands y Template de Campaña (Último)**
 - **🤖 Dungeon Master IA** — Agente `grimorio-dm` ejecuta sesiones en vivo de D&D 5e con profundidad narrativa, ocultamiento de información y cumplimiento de canon

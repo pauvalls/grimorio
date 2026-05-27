@@ -16,12 +16,12 @@ func setupPrologueTest(t *testing.T) *PrologueHandlers {
 	charRepo := repository.NewMemoryCharacterRepository()
 	npcRepo := repository.NewMemoryNPCRepository()
 	questRepo := repository.NewMemoryQuestRepository()
+	canonRepo := repository.NewMemoryCanonRepository()
 
 	campaignService := services.NewCampaignService(
-		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
+		campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo,
 		"/tmp/test-prologue", "",
 	)
-	canonRepo := repository.NewMemoryCanonRepository()
 	prologueService := services.NewPrologueService("/tmp/test-prologue", canonRepo)
 
 	return NewPrologueHandlers(prologueService, campaignService)

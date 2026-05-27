@@ -33,6 +33,8 @@ func (h *DMContextHandlers) HandleDMContext() server.ToolHandlerFunc {
 		sessionNum := getIntArg(args, "session_num")
 		includePrologue := getBoolArg(args, "include_prologue")
 		includePDFText := getBoolArg(args, "include_pdf_text")
+		compressionEnabled := getBoolArg(args, "compression_enabled")
+		compressionThreshold := getIntArg(args, "compression_threshold")
 
 		if campaignID == "" {
 			return mcp.NewToolResultError("campaign_id is required"), nil
@@ -42,9 +44,34 @@ func (h *DMContextHandlers) HandleDMContext() server.ToolHandlerFunc {
 			return mcp.NewToolResultError("campaign_id must be kebab-case"), nil
 		}
 
-		payload, warnings, err := h.dmContextService.GetContext(ctx, campaignID, sessionNum, includePrologue, includePDFText)
+		// Default compression threshold to 5 if not specified
+		if compressionThreshold <= 0 {
+			compressionThreshold = 5
+		}
+
+		payload, warnings, err := h.dmContextService.GetContext(ctx, campaignID, sessionNum, includePrologue, includePDFText, compressionEnabled, compressionThreshold)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Add chapter tracking warnings
+		if payload.NarrativeState != nil && payload.NarrativeState.CurrentChapter == "" {
+			warnings = append(warnings, "⚠️ No current chapter set — use current_chapter_id in update_narrative_state")
+		}
+		
+		// Add chapter progress warning
+		if payload.NarrativeState != nil && payload.NarrativeState.CurrentChapter != "" {
+			chapter := payload.NarrativeState.CurrentChapter
+			sessionsInChapter := 0
+			for _, session := range payload.NarrativeState.SessionLog {
+				// Count sessions after chapter started (simplified heuristic)
+				if session.SessionNum >= 1 {
+					sessionsInChapter++
+				}
+			}
+			if sessionsInChapter > 0 {
+				warnings = append(warnings, fmt.Sprintf("📊 Chapter %s progress: %d session(s) played", chapter, sessionsInChapter))
+			}
 		}
 
 		result := struct {

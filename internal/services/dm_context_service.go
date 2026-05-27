@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pauvalls/grimorio/internal/domain"
@@ -65,7 +66,8 @@ func NewDMContextService(
 }
 
 // GetContext aggregates all campaign data into a DMContextPayload.
-func (s *DMContextService) GetContext(ctx context.Context, campaignID string, sessionNum int, includePrologue bool, includePDFText bool) (*domain.DMContextPayload, []string, error) {
+// If compressionEnabled is true, sessions older than compressionThreshold are condensed.
+func (s *DMContextService) GetContext(ctx context.Context, campaignID string, sessionNum int, includePrologue bool, includePDFText bool, compressionEnabled bool, compressionThreshold int) (*domain.DMContextPayload, []string, error) {
 	warnings := []string{}
 	payload := &domain.DMContextPayload{
 		CampaignID:   campaignID,
@@ -103,6 +105,12 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 		}
 	}
 	payload.SessionNum = sessionNum
+	
+	// Apply compression if enabled
+	if compressionEnabled && compressionThreshold > 0 {
+		state.SessionLog = s.compressSessionLog(state.SessionLog, sessionNum, compressionThreshold)
+	}
+	
 	payload.NarrativeState = buildNarrativeContext(state)
 
 	// Load session prep (optional)
@@ -145,8 +153,8 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 	// Load NPCs (optional)
 	npcs, err := s.npcRepo.List(campaignID)
 	if err != nil {
-		warnings = append(warnings, fmt.Sprintf("failed to load NPCs: %v", err))
-	} else {
+		warnings = append(warnings, fmt.Sprintf("failed to load NPCs from repo: %v", err))
+	} else if len(npcs) > 0 {
 		for _, n := range npcs {
 			npcCtx := domain.NPCContext{
 				Name:        n.Name,
@@ -179,6 +187,41 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 			payload.NPCs[n.Name] = npcCtx
 		}
 	}
+	
+	// Fallback: Load NPCs from canon entities if repo returned empty
+	if len(payload.NPCs) == 0 {
+		for _, e := range canonDoc.Entities {
+			if e.Type == domain.EntityTypeNPC {
+				npcCtx := domain.NPCContext{
+					Name:        e.Name,
+					Description: e.Role, // Use role as description fallback
+					Motivation:  e.Motivation,
+					Secret:      e.Secret,
+				}
+				if voice, ok := e.Properties["dialogue_voice"].(string); ok {
+					npcCtx.DialogueVoice = voice
+				}
+				if traits, ok := e.Properties["personality_traits"].([]string); ok {
+					npcCtx.Personality = traits
+				}
+				if tactics, ok := e.Properties["tactics"].(string); ok {
+					npcCtx.Tactics = tactics
+				}
+				if hp, ok := e.Properties["hp"].(int); ok {
+					npcCtx.Stats.HP = hp
+				}
+				if ac, ok := e.Properties["ac"].(int); ok {
+					npcCtx.Stats.AC = ac
+				}
+				payload.NPCs[e.ID] = npcCtx
+			}
+		}
+	}
+	
+	// Warning if NPCs are still empty
+	if len(payload.NPCs) == 0 {
+		warnings = append(warnings, "📜 No NPCs loaded — create NPCs via save_npcs or add to campaign markdown files")
+	}
 
 	// Load quests (optional)
 	quests, err := s.questRepo.List(campaignID)
@@ -201,11 +244,12 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 	}
 
 	// Load bestiary (optional)
+	// Try monster repository first
 	if s.monsterRepo != nil {
 		monsters, err := s.monsterRepo.List(ctx, campaignID)
 		if err != nil {
-			warnings = append(warnings, fmt.Sprintf("failed to load bestiary: %v", err))
-		} else {
+			warnings = append(warnings, fmt.Sprintf("failed to load bestiary from repo: %v", err))
+		} else if len(monsters) > 0 {
 			for _, m := range monsters {
 				mc := domain.MonsterContext{
 					Name:    m.Name,
@@ -238,13 +282,53 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 			}
 		}
 	}
+	
+	// Fallback: Load monsters from canon entities if repo returned empty
+	if len(payload.Bestiary) == 0 {
+		for _, e := range canonDoc.Entities {
+			if e.Type == domain.EntityTypeMonster {
+				mc := domain.MonsterContext{
+					Name:             e.Name,
+					CR:               "",
+					Tactics:          "",
+					DescriptiveCues:  map[string]string{},
+				}
+				if hp, ok := e.Properties["hp"].(int); ok {
+					mc.HP = hp
+				}
+				if ac, ok := e.Properties["ac"].(int); ok {
+					mc.AC = ac
+				}
+				if cr, ok := e.Properties["cr"].(string); ok {
+					mc.CR = cr
+				}
+				if tactics, ok := e.Properties["tactics"].(string); ok {
+					mc.Tactics = tactics
+				}
+				if cues, ok := e.Properties["descriptive_cues"].(map[string]any); ok {
+					for k, v := range cues {
+						if s, ok := v.(string); ok {
+							mc.DescriptiveCues[k] = s
+						}
+					}
+				}
+				payload.Bestiary[e.ID] = mc
+			}
+		}
+	}
+	
+	// Warning if bestiary is still empty
+	if len(payload.Bestiary) == 0 {
+		warnings = append(warnings, "⚔️ No bestiary loaded — create monsters via save_bestiary or add to campaign markdown files")
+	}
 
 	// Load areas (optional)
+	// Try V3 repository first (JSON files in areas_v3/)
 	if s.areaRepo != nil {
 		areas, err := s.areaRepo.ListAll(ctx, campaignID)
 		if err != nil {
-			warnings = append(warnings, fmt.Sprintf("failed to load areas: %v", err))
-		} else {
+			warnings = append(warnings, fmt.Sprintf("failed to load areas from V3 repo: %v", err))
+		} else if len(areas) > 0 {
 			for _, a := range areas {
 				payload.Areas[a.ID] = domain.AreaContext{
 					ID:              a.ID,
@@ -260,13 +344,25 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 			}
 		}
 	}
+	
+	// Fallback: Load WotC-format areas from markdown files (areas/chapter_XX.md)
+	if len(payload.Areas) == 0 {
+		areasFromMarkdown, loadErr := s.loadAreasFromMarkdown(campaignID)
+		if loadErr != nil {
+			warnings = append(warnings, fmt.Sprintf("failed to load WotC areas: %v", loadErr))
+		} else if len(areasFromMarkdown) > 0 {
+			for _, a := range areasFromMarkdown {
+				payload.Areas[a.ID] = a
+			}
+		}
+	}
 
 	// Load factions (optional)
 	if s.factionRepo != nil {
 		matrix, err := s.factionRepo.Load(campaignID)
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("failed to load faction reputation: %v", err))
-		} else {
+		} else if len(matrix.Entries) > 0 {
 			for _, entry := range matrix.Entries {
 				name := entry.FactionID
 				attitude := "neutral"
@@ -289,6 +385,30 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 				}
 			}
 		}
+	}
+	
+	// Fallback: Load factions from canon entities if repo returned empty
+	if len(payload.Factions) == 0 {
+		for _, e := range canonDoc.Entities {
+			if e.Type == domain.EntityTypeFaction {
+				attitude := "neutral"
+				if a, ok := e.Properties["attitude"].(string); ok {
+					attitude = a
+				}
+				payload.Factions[e.ID] = domain.FactionContext{
+					ID:         e.ID,
+					Name:       e.Name,
+					Reputation: 0, // No reputation tracking without faction repo
+					Status:     "neutral",
+					Attitude:   attitude,
+				}
+			}
+		}
+	}
+	
+	// Warning if factions are still empty
+	if len(payload.Factions) == 0 {
+		warnings = append(warnings, "🏛️ No factions loaded — create factions via save_npcs (includes factions) or add to campaign markdown files")
 	}
 
 	// Load prologue (optional)
@@ -405,25 +525,29 @@ func buildCanonContext(doc *domain.CanonDocument) *domain.CanonContext {
 func buildNarrativeContext(state *domain.NarrativeState) *domain.NarrativeContext {
 	if state == nil {
 		return &domain.NarrativeContext{
-			CurrentSession:  0,
-			RevealedClues:   []domain.RevealedClue{},
-			ActiveQuests:    []domain.QuestState{},
-			CompletedQuests: []domain.QuestState{},
-			FailedQuests:    []domain.QuestState{},
-			DeadNPCs:        []domain.NPCDeathRecord{},
-			KeyItems:        []domain.KeyItem{},
-			SessionLog:      []domain.SessionRecord{},
+			CurrentSession:    0,
+			RevealedClues:     []domain.RevealedClue{},
+			ActiveQuests:      []domain.QuestState{},
+			CompletedQuests:   []domain.QuestState{},
+			FailedQuests:      []domain.QuestState{},
+			DeadNPCs:          []domain.NPCDeathRecord{},
+			KeyItems:          []domain.KeyItem{},
+			SessionLog:        []domain.SessionRecord{},
 		}
 	}
 	return &domain.NarrativeContext{
-		CurrentSession:  state.CurrentSession,
-		RevealedClues:   orEmptySlice(state.RevealedClues),
-		ActiveQuests:    orEmptySlice(state.ActiveQuests),
-		CompletedQuests: orEmptySlice(state.CompletedQuests),
-		FailedQuests:    orEmptySlice(state.FailedQuests),
-		DeadNPCs:        orEmptySlice(state.DeadNPCs),
-		KeyItems:        orEmptySlice(state.KeyItems),
-		SessionLog:      orEmptySlice(state.SessionLog),
+		CurrentSession:    state.CurrentSession,
+		CurrentChapter:    state.CurrentChapter,
+		CompletedChapters: orEmptySlice(state.CompletedChapters),
+		PartyLevel:        state.PartyLevel,
+		XPTotal:           state.XPTotal,
+		RevealedClues:     orEmptySlice(state.RevealedClues),
+		ActiveQuests:      orEmptySlice(state.ActiveQuests),
+		CompletedQuests:   orEmptySlice(state.CompletedQuests),
+		FailedQuests:      orEmptySlice(state.FailedQuests),
+		DeadNPCs:          orEmptySlice(state.DeadNPCs),
+		KeyItems:          orEmptySlice(state.KeyItems),
+		SessionLog:        orEmptySlice(state.SessionLog),
 	}
 }
 
@@ -452,9 +576,208 @@ func (s *DMContextService) buildReminders(doc *domain.CanonDocument, state *doma
 	return reminders
 }
 
+// compressSessionLog condenses old sessions into a single summary
+func (s *DMContextService) compressSessionLog(
+	sessionLog []domain.SessionRecord,
+	currentSession int,
+	threshold int,
+) []domain.SessionRecord {
+	if len(sessionLog) <= threshold {
+		return sessionLog
+	}
+
+	compressed := []domain.SessionRecord{}
+	condensedSessions := []domain.SessionRecord{}
+
+	// Separate old vs recent sessions
+	for _, session := range sessionLog {
+		if session.SessionNum <= (currentSession - threshold) {
+			condensedSessions = append(condensedSessions, session)
+		} else {
+			compressed = append(compressed, session)
+		}
+	}
+
+	// Build condensed summary from old sessions
+	if len(condensedSessions) > 0 {
+		condensedText := s.buildCondensedSummary(condensedSessions)
+
+		// Prepend placeholder record
+		compressed = append([]domain.SessionRecord{
+			{
+				SessionNum:       0, // Special value indicating condensed range
+				CondensedSummary: condensedText,
+				Summary:          fmt.Sprintf("Sessions 1-%d condensed", currentSession-threshold),
+			},
+		}, compressed...)
+	}
+
+	return compressed
+}
+
+// buildCondensedSummary extracts key information from old sessions
+func (s *DMContextService) buildCondensedSummary(sessions []domain.SessionRecord) string {
+	var builder strings.Builder
+
+	builder.WriteString("=== SESIONES CONDENSADAS ===\n\n")
+
+	// Collect key decisions from condensed sessions
+	builder.WriteString("Decisiones Mayores:\n")
+	for _, session := range sessions {
+		for _, decision := range session.KeyDecisions {
+			if decision.ImpactScope == "campaign" {
+				fmt.Fprintf(&builder, "- %s (sesión %d)\n", decision.Description, session.SessionNum)
+			}
+		}
+	}
+
+	// Add session summaries
+	builder.WriteString("\nResúmenes de Sesiones:\n")
+	for _, session := range sessions {
+		fmt.Fprintf(&builder, "- Sesión %d: %s\n", session.SessionNum, session.Summary)
+	}
+
+	return builder.String()
+}
+
+// filterNPCsByRelevance filters NPCs based on current location and active quests
+//
+//nolint:unused // Reserved for future payload optimization in large campaigns
+func (s *DMContextService) filterNPCsByRelevance(
+	npcs map[string]domain.NPCContext,
+	currentLocation string,
+	activeQuests []domain.QuestState,
+	canon *domain.CanonDocument,
+) map[string]domain.NPCContext {
+	relevant := make(map[string]domain.NPCContext)
+
+	// Build set of relevant NPC IDs
+	relevantIDs := make(map[string]bool)
+
+	// Add quest givers
+	for _, quest := range activeQuests {
+		if quest.GiverNPC != "" {
+			relevantIDs[quest.GiverNPC] = true
+		}
+	}
+
+	// Add NPCs at current location
+	for _, entity := range canon.Entities {
+		if entity.Type == domain.EntityTypeNPC {
+			if location, ok := entity.Properties["location"].(string); ok {
+				if location == currentLocation {
+					relevantIDs[entity.ID] = true
+				}
+			}
+		}
+	}
+
+	// Filter NPCs
+	for name, npc := range npcs {
+		if relevantIDs[npc.Name] || relevantIDs[name] {
+			relevant[name] = npc
+		}
+	}
+
+	// If no relevant NPCs found, return all (fallback)
+	if len(relevant) == 0 {
+		return npcs
+	}
+
+	return relevant
+}
+
 func orEmptySlice[T any](s []T) []T {
 	if s == nil {
 		return []T{}
 	}
 	return s
+}
+
+// loadAreasFromMarkdown parses WotC-format area files (areas/chapter_XX.md)
+// This is a fallback when V3 repository (areas_v3/*.json) is not available
+func (s *DMContextService) loadAreasFromMarkdown(campaignID string) ([]domain.AreaContext, error) {
+	areasDir := filepath.Join(s.baseDir, campaignID, "areas")
+	if _, err := os.Stat(areasDir); os.IsNotExist(err) {
+		return nil, nil // No areas directory, return empty
+	}
+
+	files, err := filepath.Glob(filepath.Join(areasDir, "chapter_*.md"))
+	if err != nil {
+		return nil, err
+	}
+
+	var contexts []domain.AreaContext
+	for _, file := range files {
+		content, readErr := os.ReadFile(file)
+		if readErr != nil {
+			continue
+		}
+
+		// Parse chapter file to extract areas
+		// WotC format: ## Area X: Title
+		lines := strings.Split(string(content), "\n")
+		var currentArea *domain.AreaContext
+		var areaNumber int
+
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			
+			// Detect area headers: ## Area X: Title or ## X: Title
+			if strings.HasPrefix(trimmed, "## Area ") || strings.HasPrefix(trimmed, "## ") {
+				// Save previous area if exists
+				if currentArea != nil && currentArea.ID != "" {
+					contexts = append(contexts, *currentArea)
+				}
+
+				// Parse new area
+				areaNumber++
+				title := trimmed
+				if strings.HasPrefix(title, "## Area ") {
+					title = strings.TrimPrefix(title, "## Area ")
+					parts := strings.SplitN(title, ": ", 2)
+					if len(parts) == 2 {
+						title = parts[1]
+						// Try to parse number from first part
+						_, _ = fmt.Sscanf(parts[0], "%d", &areaNumber)
+					}
+				} else if strings.HasPrefix(title, "## ") {
+					title = strings.TrimPrefix(title, "## ")
+					parts := strings.SplitN(title, ": ", 2)
+					if len(parts) == 2 {
+						title = parts[1]
+					}
+				}
+
+				filename := filepath.Base(file)
+				chapterID := strings.TrimSuffix(filename, ".md")
+
+				currentArea = &domain.AreaContext{
+					ID:         fmt.Sprintf("%s-area-%d", chapterID, areaNumber),
+					ChapterID:  chapterID,
+					AreaNumber: areaNumber,
+					Title:      title,
+					Summary:    "",
+				}
+			} else if currentArea != nil {
+				// Accumulate content
+				if strings.HasPrefix(trimmed, "**Para leer en voz alta:**") || strings.HasPrefix(trimmed, "**Read Aloud:**") {
+					// Next line(s) are read aloud text
+					continue
+				}
+				if currentArea.PlayerReadAloud == "" && len(trimmed) > 0 {
+					currentArea.PlayerReadAloud += trimmed + "\n"
+				} else if currentArea.Summary == "" && len(trimmed) > 0 {
+					currentArea.Summary += trimmed + "\n"
+				}
+			}
+		}
+
+		// Save last area
+		if currentArea != nil && currentArea.ID != "" {
+			contexts = append(contexts, *currentArea)
+		}
+	}
+
+	return contexts, nil
 }

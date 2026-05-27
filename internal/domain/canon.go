@@ -42,15 +42,17 @@ const (
 
 // CanonDocument is the authoritative source of truth for a campaign
 type CanonDocument struct {
-	SchemaVersion string              `json:"schema_version"`
-	CampaignID    string              `json:"campaign_id"`
-	CreatedAt     time.Time           `json:"created_at"`
-	UpdatedAt     time.Time           `json:"updated_at"`
-	Facts         []CanonFact         `json:"facts"`
-	Entities      []CanonEntity       `json:"entities"`
-	Timeline      []CanonTimelineEvent `json:"timeline"`
-	Rules         []CanonRule         `json:"rules"`
-	Relationships []CanonRelationship `json:"relationships"`
+	SchemaVersion      string                   `json:"schema_version"`
+	CampaignID         string                   `json:"campaign_id"`
+	CreatedAt          time.Time                `json:"created_at"`
+	UpdatedAt          time.Time                `json:"updated_at"`
+	Facts              []CanonFact              `json:"facts"`
+	Entities           []CanonEntity            `json:"entities"`
+	Timeline           []CanonTimelineEvent     `json:"timeline"`
+	Rules              []CanonRule              `json:"rules"`
+	Relationships      []CanonRelationship      `json:"relationships"`
+	ChapterProgression []ChapterProgressionRule `json:"chapter_progression,omitempty"`
+	PartyState         *PartyState              `json:"party_state,omitempty"`
 }
 
 // Validate checks if the canon document is valid

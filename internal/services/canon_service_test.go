@@ -12,7 +12,7 @@ import (
 func setupCanonService() (*CanonService, *repository.MemoryCanonRepository, *repository.MemoryNarrativeStateRepository) {
 	canonRepo := repository.NewMemoryCanonRepository()
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
-	svc := NewCanonService(canonRepo, stateRepo)
+	svc := NewCanonService(canonRepo, stateRepo, nil)
 	return svc, canonRepo, stateRepo
 }
 

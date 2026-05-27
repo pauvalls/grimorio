@@ -32,7 +32,7 @@ func TestDMContextService_GetContext(t *testing.T) {
 	monsterRepo := fsrepo.NewFilesystemMonsterRepository(tmpDir)
 	areaRepo := fsrepo.NewFilesystemAreaRepositoryV3(tmpDir)
 
-	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo)
+	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo, nil)
 
 	svc := NewDMContextService(
 		canonRepo, stateRepo, charRepo, npcRepo, questRepo,
@@ -137,7 +137,7 @@ func TestDMContextService_GetContext(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(tmpDir, "test-campaign", "prologue.md"), []byte("# Prólogo\n\nEl gancho narrativo."), 0644)
 
 	t.Run("complete campaign returns all sections", func(t *testing.T) {
-		payload, warnings, err := svc.GetContext(ctx, "test-campaign", 0, true, false)
+		payload, warnings, err := svc.GetContext(ctx, "test-campaign", 0, true, false, false, 5)
 		assert.NoError(t, err)
 		assert.NotNil(t, payload)
 
@@ -180,13 +180,13 @@ func TestDMContextService_GetContext(t *testing.T) {
 	})
 
 	t.Run("default session_num from narrative state", func(t *testing.T) {
-		payload, _, err := svc.GetContext(ctx, "test-campaign", 0, false, false)
+		payload, _, err := svc.GetContext(ctx, "test-campaign", 0, false, false, false, 5)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, payload.SessionNum)
 	})
 
 	t.Run("missing canon returns error", func(t *testing.T) {
-		_, _, err := svc.GetContext(ctx, "nonexistent", 1, false, false)
+		_, _, err := svc.GetContext(ctx, "nonexistent", 1, false, false, false, 5)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "canon document not found")
 	})
@@ -203,7 +203,7 @@ func TestDMContextService_GetContext(t *testing.T) {
 			CurrentSession: 1,
 		})
 
-		payload, warnings, err := svc.GetContext(ctx, "minimal-campaign", 1, false, false)
+		payload, warnings, err := svc.GetContext(ctx, "minimal-campaign", 1, false, false, false, 5)
 		assert.NoError(t, err)
 		assert.NotNil(t, payload)
 
@@ -226,7 +226,7 @@ func TestDMContextService_GetContext(t *testing.T) {
 	})
 
 	t.Run("payload under size cap", func(t *testing.T) {
-		payload, _, err := svc.GetContext(ctx, "test-campaign", 0, false, false)
+		payload, _, err := svc.GetContext(ctx, "test-campaign", 0, false, false, false, 5)
 		assert.NoError(t, err)
 
 		jsonBytes, err := json.Marshal(payload)
@@ -235,7 +235,7 @@ func TestDMContextService_GetContext(t *testing.T) {
 	})
 
 	t.Run("descriptive cues populated when bestiary has them", func(t *testing.T) {
-		payload, _, err := svc.GetContext(ctx, "test-campaign", 0, false, false)
+		payload, _, err := svc.GetContext(ctx, "test-campaign", 0, false, false, false, 5)
 		assert.NoError(t, err)
 
 		goblin, ok := payload.Bestiary["Goblin"]
@@ -261,7 +261,7 @@ func TestDMContextService_GetContext_LargeCampaign(t *testing.T) {
 	monsterRepo := fsrepo.NewFilesystemMonsterRepository(tmpDir)
 	areaRepo := fsrepo.NewFilesystemAreaRepositoryV3(tmpDir)
 
-	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo)
+	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo, nil)
 	svc := NewDMContextService(
 		canonRepo, stateRepo, charRepo, npcRepo, questRepo,
 		monsterRepo, areaRepo, factionRepo, sessionPrepSvc, tmpDir,
@@ -311,7 +311,7 @@ func TestDMContextService_GetContext_LargeCampaign(t *testing.T) {
 	}
 
 	t.Run("20-area campaign stays under 100KB", func(t *testing.T) {
-		payload, warnings, err := svc.GetContext(ctx, "large-campaign", 0, false, false)
+		payload, warnings, err := svc.GetContext(ctx, "large-campaign", 0, false, false, false, 5)
 		assert.NoError(t, err)
 		assert.NotNil(t, payload)
 		assert.Len(t, payload.Areas, 20)

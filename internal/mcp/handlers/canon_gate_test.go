@@ -15,10 +15,12 @@ import (
 func setupCanonHandlersWithGate() (*CanonHandlers, *services.CanonService, *services.NarrativeStateService, *services.ConsistencyGateService) {
 	canonRepo := repository.NewMemoryCanonRepository()
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
-	canonSvc := services.NewCanonService(canonRepo, stateRepo)
+	checkpointRepo := repository.NewMemoryCheckpointRepository()
+	auditRepo := repository.NewMemoryAuditLogRepository()
+	canonSvc := services.NewCanonService(canonRepo, stateRepo, checkpointRepo)
 	stateSvc := services.NewNarrativeStateService(stateRepo, canonRepo)
 	validator := services.NewValidationEngine(canonSvc, stateSvc, nil, "")
-	gateSvc := services.NewConsistencyGateService(canonSvc, stateSvc, validator)
+	gateSvc := services.NewConsistencyGateService(canonSvc, stateSvc, validator, checkpointRepo, auditRepo)
 
 	handlers := NewCanonHandlers(canonSvc, stateSvc, validator, gateSvc)
 	return handlers, canonSvc, stateSvc, gateSvc

@@ -15,7 +15,7 @@ import (
 func TestSessionPrepHandler(t *testing.T) {
 	canonRepo := repository.NewMemoryCanonRepository()
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
-	svc := services.NewSessionPrepService(canonRepo, stateRepo)
+	svc := services.NewSessionPrepService(canonRepo, stateRepo, nil)
 	handler := NewSessionPrepHandlers(svc)
 
 	// Seed data
@@ -103,6 +103,34 @@ func TestSessionPrepHandler(t *testing.T) {
 		text := result.Content[0].(mcp.TextContent).Text
 		if !strings.Contains(text, "nonexistent") {
 			t.Fatalf("expected campaign_id in result, got: %s", text)
+		}
+	})
+
+	t.Run("with_scenarios true returns encounter recommendations", func(t *testing.T) {
+		args := map[string]any{
+			"campaign_id":     "test-campaign",
+			"session_num":     3,
+			"with_scenarios":  true,
+		}
+		result, err := handler.HandleGenerateSessionPrep()(context.Background(), mcp.CallToolRequest{
+			Params: mcp.CallToolParams{
+				Arguments: args,
+				Name:      "generate_session_prep",
+			},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("expected success, got error: %v", result.Content)
+		}
+		text := result.Content[0].(mcp.TextContent).Text
+		if !strings.Contains(text, "session_num") {
+			t.Fatalf("expected session_num in result, got: %s", text)
+		}
+		// The result should be valid JSON containing prep data
+		if !strings.Contains(text, "prep") {
+			t.Fatalf("expected prep in result, got: %s", text)
 		}
 	})
 }

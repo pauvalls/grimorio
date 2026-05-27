@@ -27,10 +27,12 @@ type RandomTableEntry struct {
 
 // TableContext provides filtering context for table generation
 type TableContext struct {
-	LevelRange   string `json:"level_range,omitempty"`
-	SettingType  string `json:"setting_type,omitempty"`
-	PartySize    int    `json:"party_size,omitempty"`
-	LocationHint string `json:"location_hint,omitempty"`
+	LevelRange     string                      `json:"level_range,omitempty"`
+	SettingType    string                      `json:"setting_type,omitempty"`
+	PartySize      int                         `json:"party_size,omitempty"`
+	LocationHint   string                      `json:"location_hint,omitempty"`
+	FactionContext *FactionReputationMatrix    `json:"-"` // Not serialized, used for weighting
+	NarrativeState *NarrativeState             `json:"-"` // Not serialized, used for filtering
 }
 
 // IsValidTableType checks if a string is a valid table type

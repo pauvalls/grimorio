@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -161,16 +163,14 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 				switch v := c.(type) {
 				case string:
 					update.RevealedClues = append(update.RevealedClues, domain.RevealedClue{
-						ID:              fmt.Sprintf("clue-%d", len(update.RevealedClues)+1),
+						ID:              stableID("clue", campaignID+"|"+v),
 						Description:     v,
 						SourceAct:       defaultSourceAct,
 						SessionRevealed: sessionNum,
 					})
 				case map[string]any:
 					clueID := getStringArg(v, "id")
-					if clueID == "" {
-						clueID = fmt.Sprintf("clue-%d", len(update.RevealedClues)+1)
-					}
+					// Empty IDs are preserved for validation to reject; stable IDs are only auto-generated for string inputs
 					sourceAct := getStringArg(v, "source_act")
 					if sourceAct == "" {
 						sourceAct = defaultSourceAct
@@ -211,7 +211,7 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 				switch v := n.(type) {
 				case string:
 					update.DeadNPCs = append(update.DeadNPCs, domain.NPCDeathRecord{
-						NPCID:   fmt.Sprintf("npc-%d", len(update.DeadNPCs)+1),
+						NPCID:   stableID("npc", campaignID+"|"+v),
 						Name:    v,
 						Session: sessionNum,
 					})
@@ -250,28 +250,46 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 			}
 		}
 
-		// Parse active quests as strings (creates QuestState objects)
+		// Parse active quests (accepts both strings and objects)
 		if active := getStringArray(args, "active_quests"); active != nil {
 			for _, q := range active {
-				if s, ok := q.(string); ok {
+				switch v := q.(type) {
+				case string:
 					update.NewQuests = append(update.NewQuests, domain.QuestState{
-						ID:     fmt.Sprintf("quest-%d", len(update.NewQuests)+1),
-						Name:   s,
+						ID:     stableID("quest", campaignID+"|"+v),
+						Name:   v,
 						Status: "active",
+					})
+				case map[string]any:
+					update.NewQuests = append(update.NewQuests, domain.QuestState{
+						ID:       getStringArg(v, "id"),
+						Name:     getStringArg(v, "name"),
+						Status:   getStringArg(v, "status"),
+						SourceAct: getStringArg(v, "source_act"),
+						GiverNPC: getStringArg(v, "giver_npc"),
 					})
 				}
 			}
 		}
 
-		// Parse key items as strings (creates KeyItem objects)
+		// Parse key items (accepts both strings and objects)
 		if items := getStringArray(args, "key_items"); items != nil {
 			for _, item := range items {
-				if s, ok := item.(string); ok {
+				switch v := item.(type) {
+				case string:
 					update.KeyItems = append(update.KeyItems, domain.KeyItem{
-						ID:           fmt.Sprintf("item-%d", len(update.KeyItems)+1),
-						Name:         s,
+						ID:           stableID("item", campaignID+"|"+v),
+						Name:         v,
 						Holder:       "party",
 						SessionFound: sessionNum,
+					})
+				case map[string]any:
+					update.KeyItems = append(update.KeyItems, domain.KeyItem{
+						ID:           getStringArg(v, "id"),
+						Name:         getStringArg(v, "name"),
+						Holder:       getStringArg(v, "holder"),
+						SessionFound: sessionNum,
+						IsMcGuffin:   getBoolArg(v, "is_mcguffin"),
 					})
 				}
 			}
@@ -293,6 +311,20 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 
 		// Parse current location
 		update.CurrentLocation = getStringArg(args, "current_location")
+
+		// Parse chapter tracking
+		update.CurrentChapterID = getStringArg(args, "current_chapter_id")
+		if completedChapters := getStringArray(args, "completed_chapters"); completedChapters != nil {
+			for _, ch := range completedChapters {
+				if s, ok := ch.(string); ok {
+					update.CompletedChapters = append(update.CompletedChapters, s)
+				}
+			}
+		}
+
+		// Parse XP tracking
+		update.XPAwarded = getIntArg(args, "xp_awarded")
+		update.XPReason = getStringArg(args, "xp_reason")
 
 		// Parse PC statuses
 		if pcStatusVal, ok := args["pc_status"]; ok {
@@ -322,23 +354,45 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 		// Parse replace_session flag
 		update.ReplaceSession = getBoolArg(args, "replace_session")
 
+		// Parse sync_to_canon flag
+		update.SyncToCanon = getBoolArg(args, "sync_to_canon")
+
+		// Pre-mutation validation: reject empty IDs
+		for _, clue := range update.RevealedClues {
+			if clue.ID == "" {
+				return mcp.NewToolResultError("revealed clue with empty ID: all clues must have an explicit or generated ID"), nil
+			}
+		}
+		for _, npc := range update.DeadNPCs {
+			if npc.NPCID == "" {
+				return mcp.NewToolResultError("dead NPC with empty npc_id: all dead NPCs must have an explicit or generated ID"), nil
+			}
+		}
+		for _, quest := range update.NewQuests {
+			if quest.ID == "" {
+				return mcp.NewToolResultError("active quest with empty ID: all quests must have an explicit or generated ID"), nil
+			}
+		}
+		for _, item := range update.KeyItems {
+			if item.ID == "" {
+				return mcp.NewToolResultError("key item with empty ID: all key items must have an explicit or generated ID"), nil
+			}
+		}
+
 		state, err := h.stateService.Update(ctx, campaignID, update)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		// Build warnings for common issues
+		// Sync to canon if requested
 		warnings := []string{}
-
-		// Check for empty clue IDs (would cause dedup issues)
-		emptyIDCount := 0
-		for _, clue := range state.RevealedClues {
-			if clue.ID == "" {
-				emptyIDCount++
+		if update.SyncToCanon {
+			syncWarnings, syncErr := h.stateService.SyncStateToCanon(ctx, campaignID, update)
+			if syncErr != nil {
+				warnings = append(warnings, fmt.Sprintf("canon sync failed: %v", syncErr))
+			} else {
+				warnings = append(warnings, syncWarnings...)
 			}
-		}
-		if emptyIDCount > 0 {
-			warnings = append(warnings, fmt.Sprintf("%d clues have empty IDs (dedup will fail)", emptyIDCount))
 		}
 
 		// Check for duplicate clue descriptions
@@ -491,6 +545,12 @@ func (h *CanonHandlers) HandleProcessConsistencyGate() server.ToolHandlerFunc {
 
 		return mcp.NewToolResultText(string(jsonBytes)), nil
 	}
+}
+
+// stableID generates a deterministic 8-hex hash ID from a prefix and seed.
+func stableID(prefix, seed string) string {
+	h := sha256.Sum256([]byte(seed))
+	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(h[:])[:8])
 }
 
 // getBoolArg extracts a bool argument from the args map

@@ -12,11 +12,11 @@ import (
 func setupGateService(t *testing.T) (*ConsistencyGateService, *repository.MemoryCanonRepository, *repository.MemoryNarrativeStateRepository) {
 	canonRepo := repository.NewMemoryCanonRepository()
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
-	canonSvc := NewCanonService(canonRepo, stateRepo)
+	canonSvc := NewCanonService(canonRepo, stateRepo, nil)
 	stateSvc := NewNarrativeStateService(stateRepo, canonRepo)
 	validator := NewValidationEngine(canonSvc, stateSvc, nil, "")
 
-	gateSvc := NewConsistencyGateService(canonSvc, stateSvc, validator)
+	gateSvc := NewConsistencyGateService(canonSvc, stateSvc, validator, nil, nil)
 	return gateSvc, canonRepo, stateRepo
 }
 
@@ -382,10 +382,10 @@ func containsStr(s, substr string) bool {
 func BenchmarkConsistencyGate_ProcessBatch(b *testing.B) {
 	canonRepo := repository.NewMemoryCanonRepository()
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
-	canonSvc := NewCanonService(canonRepo, stateRepo)
+	canonSvc := NewCanonService(canonRepo, stateRepo, nil)
 	stateSvc := NewNarrativeStateService(stateRepo, canonRepo)
 	validator := NewValidationEngine(canonSvc, stateSvc, nil, "")
-	gateSvc := NewConsistencyGateService(canonSvc, stateSvc, validator)
+	gateSvc := NewConsistencyGateService(canonSvc, stateSvc, validator, nil, nil)
 	ctx := context.Background()
 
 	brief := domain.CampaignBrief{

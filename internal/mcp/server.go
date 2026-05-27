@@ -45,16 +45,19 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	milestoneXpRepo := fsrepo.NewFilesystemMilestoneXPRepository(cfg.OutputDir)
 	tacticsRepo := fsrepo.NewFilesystemTacticsRepository(cfg.OutputDir)
 	playerMapRepo := fsrepo.NewFilesystemPlayerMapRepository(cfg.OutputDir)
+	checkpointRepo := repository.NewCheckpointRepository(cfg.OutputDir)
+	auditRepo := repository.NewAuditLogRepository(cfg.OutputDir)
 
 	// Initialize services
 	campaignService := services.NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
+		canonRepo,
 		cfg.OutputDir, cfg.PDFEngine,
 	)
 	characterService := services.NewCharacterService(charRepo)
 	questService := services.NewQuestService(questRepo)
 	assetService := services.NewAssetService(cfg.OutputDir, cfg.Config)
-	canonService := services.NewCanonService(canonRepo, narrativeStateRepo)
+	canonService := services.NewCanonService(canonRepo, narrativeStateRepo, checkpointRepo)
 
 	// Degraded mode: if CANON_LEGACY_MODE is set or repo initialization fails
 	if os.Getenv("CANON_LEGACY_MODE") == "1" {
@@ -64,13 +67,13 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 
 	narrativeStateService := services.NewNarrativeStateService(narrativeStateRepo, canonRepo)
 	validationEngine := services.NewValidationEngine(canonService, narrativeStateService, factionRepo, cfg.OutputDir)
-	consistencyGateService := services.NewConsistencyGateService(canonService, narrativeStateService, validationEngine)
+	consistencyGateService := services.NewConsistencyGateService(canonService, narrativeStateService, validationEngine, checkpointRepo, auditRepo)
 	factionService := services.NewFactionService(canonRepo, factionRepo)
 	tableService := services.NewRandomTableService(canonRepo)
 	handoutService := services.NewHandoutService(questRepo, canonRepo)
 	consequenceEngine := services.NewConsequenceEngine(canonRepo)
 	adaptationPatchService := services.NewAdaptationPatchService(actRepo, canonRepo)
-	sessionPrepService := services.NewSessionPrepService(canonRepo, narrativeStateRepo)
+	sessionPrepService := services.NewSessionPrepService(canonRepo, narrativeStateRepo, factionRepo)
 	dmContextService := services.NewDMContextService(
 		canonRepo, narrativeStateRepo, charRepo, npcRepo, questRepo,
 		monsterRepo, areaRepoV3, factionRepo, sessionPrepService, cfg.OutputDir,
@@ -370,19 +373,23 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithArray("completed_quests", mcp.Description("Quest IDs completed this session")),
 		mcp.WithArray("dead_npcs", mcp.Description("NPCs who died this session (strings or objects with npc_id/name)")),
 		mcp.WithArray("key_decisions", mcp.Description("Key decisions made this session (strings or objects with id/description/choice_made/impact_scope)")),
-		mcp.WithArray("active_quests", mcp.Description("Quest names to activate this session")),
-		mcp.WithArray("key_items", mcp.Description("Key items acquired this session")),
+		mcp.WithArray("active_quests", mcp.Description("Active quests (objects with id/name/status/source_act)")),
+		mcp.WithArray("key_items", mcp.Description("Key items acquired this session (objects with id/name/holder/session_found)")),
 		mcp.WithString("session_summary", mcp.Description("Summary of what happened this session")),
 		mcp.WithNumber("xp_awarded", mcp.Description("XP awarded this session")),
+		mcp.WithString("xp_reason", mcp.Description("XP reason: combat, roleplay, milestone, exploration")),
 		mcp.WithArray("loot_acquired", mcp.Description("Loot acquired this session")),
 		mcp.WithString("dm_notes", mcp.Description("DM notes for this session")),
 		mcp.WithString("current_location", mcp.Description("Current party location")),
+		mcp.WithString("current_chapter_id", mcp.Description("Current chapter ID (e.g., chapter-1)")),
+		mcp.WithArray("completed_chapters", mcp.Description("Chapter IDs completed this session")),
 		mcp.WithArray("pc_status", mcp.Description("PC health status (objects with name, hp_current, hp_max, conditions)")),
 		mcp.WithString("default_source_act", mcp.Description("Default source act for string clues (e.g., act-1)")),
 		mcp.WithString("default_choice_made", mcp.Description("Default choice made for string decisions")),
 		mcp.WithString("default_impact_scope", mcp.Description("Default impact scope for string decisions")),
 		mcp.WithArray("critical_clue_indices", mcp.Description("0-based indices of critical clues in revealed_clues array")),
 		mcp.WithBoolean("replace_session", mcp.Description("Replace existing session log entry instead of appending")),
+		mcp.WithBoolean("sync_to_canon", mcp.Description("Sync state changes to canon document (default: false)")),
 	), canonHandlers.HandleUpdateNarrativeState())
 
 	s.AddTool(mcp.NewTool("check_consistency",
@@ -437,6 +444,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithDescription("Generate a DM prep sheet for the next session"),
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 		mcp.WithNumber("session_num", mcp.Description("Session number (defaults to current+1)")),
+		mcp.WithBoolean("with_scenarios", mcp.Description("Include encounter, loot, and NPC scenario recommendations"), mcp.DefaultBool(false)),
 	), sessionPrepHandlers.HandleGenerateSessionPrep())
 
 	s.AddTool(mcp.NewTool("generate_flowchart",

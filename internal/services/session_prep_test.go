@@ -15,7 +15,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 	canonRepo := repository.NewMemoryCanonRepository()
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 
-	svc := NewSessionPrepService(canonRepo, stateRepo)
+	svc := NewSessionPrepService(canonRepo, stateRepo, nil)
 
 	seedFullState := func() {
 		doc := &domain.CanonDocument{
@@ -126,7 +126,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 	t.Run("empty state returns warnings but valid sheet", func(t *testing.T) {
 		emptyCanonRepo := repository.NewMemoryCanonRepository()
 		emptyStateRepo := repository.NewMemoryNarrativeStateRepository()
-		emptySvc := NewSessionPrepService(emptyCanonRepo, emptyStateRepo)
+		emptySvc := NewSessionPrepService(emptyCanonRepo, emptyStateRepo, nil)
 
 		doc := &domain.CanonDocument{
 			SchemaVersion: domain.SchemaVersionV2,
@@ -163,7 +163,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 	t.Run("missing canon returns warning", func(t *testing.T) {
 		canonOnlyRepo := repository.NewMemoryCanonRepository()
 		stateOnlyRepo := repository.NewMemoryNarrativeStateRepository()
-		partialSvc := NewSessionPrepService(canonOnlyRepo, stateOnlyRepo)
+		partialSvc := NewSessionPrepService(canonOnlyRepo, stateOnlyRepo, nil)
 
 		state := &domain.NarrativeState{
 			SchemaVersion:  domain.SchemaVersionV2,
@@ -194,7 +194,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 	t.Run("no sessions returns placeholder", func(t *testing.T) {
 		noSessionCanonRepo := repository.NewMemoryCanonRepository()
 		noSessionStateRepo := repository.NewMemoryNarrativeStateRepository()
-		noSessionSvc := NewSessionPrepService(noSessionCanonRepo, noSessionStateRepo)
+		noSessionSvc := NewSessionPrepService(noSessionCanonRepo, noSessionStateRepo, nil)
 
 		doc := &domain.CanonDocument{
 			SchemaVersion: domain.SchemaVersionV2,
@@ -253,7 +253,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 	t.Run("missing narrative state creates initial state", func(t *testing.T) {
 		missingStateCanonRepo := repository.NewMemoryCanonRepository()
 		missingStateRepo := repository.NewMemoryNarrativeStateRepository()
-		missingSvc := NewSessionPrepService(missingStateCanonRepo, missingStateRepo)
+		missingSvc := NewSessionPrepService(missingStateCanonRepo, missingStateRepo, nil)
 
 		doc := &domain.CanonDocument{
 			SchemaVersion: domain.SchemaVersionV2,
@@ -289,7 +289,7 @@ func TestSessionPrepService_GetPrep(t *testing.T) {
 		// Use a repo that returns nil state without error
 		nilStateRepo := &nilReturningStateRepo{}
 		nilCanonRepo := repository.NewMemoryCanonRepository()
-		nilSvc := NewSessionPrepService(nilCanonRepo, nilStateRepo)
+		nilSvc := NewSessionPrepService(nilCanonRepo, nilStateRepo, nil)
 
 		prep, warnings, err := nilSvc.GetPrep(ctx, "nil-state-campaign", 0)
 		if err != nil {
@@ -320,4 +320,347 @@ func (r *nilReturningStateRepo) Save(campaignID string, state *domain.NarrativeS
 
 func (r *nilReturningStateRepo) Exists(campaignID string) bool {
 	return false
+}
+
+func TestSessionPrepService_generatePreviouslyOn(t *testing.T) {
+	svc := NewSessionPrepService(nil, nil, nil)
+
+	t.Run("no sessions returns placeholder", func(t *testing.T) {
+		state := &domain.NarrativeState{SessionLog: []domain.SessionRecord{}}
+		got := svc.generatePreviouslyOn(state)
+		if !strings.Contains(got, "No previous sessions") {
+			t.Fatalf("expected placeholder, got %q", got)
+		}
+	})
+
+	t.Run("one session", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			SessionLog: []domain.SessionRecord{
+				{SessionNum: 1, Summary: "First session."},
+			},
+		}
+		got := svc.generatePreviouslyOn(state)
+		if !strings.Contains(got, "Arc context") {
+			t.Fatalf("expected arc context line, got %q", got)
+		}
+		if !strings.Contains(got, "First session.") {
+			t.Fatalf("expected first session summary, got %q", got)
+		}
+	})
+
+	t.Run("three sessions shows all", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			SessionLog: []domain.SessionRecord{
+				{SessionNum: 1, Summary: "Session 1."},
+				{SessionNum: 2, Summary: "Session 2."},
+				{SessionNum: 3, Summary: "Session 3."},
+			},
+		}
+		got := svc.generatePreviouslyOn(state)
+		if !strings.Contains(got, "Session 3.") {
+			t.Fatalf("expected session 3, got %q", got)
+		}
+		if !strings.Contains(got, "Session 2.") {
+			t.Fatalf("expected session 2, got %q", got)
+		}
+		if !strings.Contains(got, "Session 1.") {
+			t.Fatalf("expected session 1, got %q", got)
+		}
+	})
+
+	t.Run("four sessions shows last 3", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			SessionLog: []domain.SessionRecord{
+				{SessionNum: 1, Summary: "Session 1."},
+				{SessionNum: 2, Summary: "Session 2."},
+				{SessionNum: 3, Summary: "Session 3."},
+				{SessionNum: 4, Summary: "Session 4."},
+			},
+		}
+		got := svc.generatePreviouslyOn(state)
+		if !strings.Contains(got, "Session 4.") {
+			t.Fatalf("expected session 4, got %q", got)
+		}
+		if !strings.Contains(got, "Session 3.") {
+			t.Fatalf("expected session 3, got %q", got)
+		}
+		if !strings.Contains(got, "Session 2.") {
+			t.Fatalf("expected session 2, got %q", got)
+		}
+		if strings.Contains(got, "Session 1.") {
+			t.Fatalf("expected session 1 to be excluded, got %q", got)
+		}
+	})
+}
+
+func TestSessionPrepService_generateLikelyScenarios(t *testing.T) {
+	svc := NewSessionPrepService(nil, nil, nil)
+
+	t.Run("empty quests returns empty", func(t *testing.T) {
+		state := &domain.NarrativeState{ActiveQuests: []domain.QuestState{}}
+		got := svc.generateLikelyScenarios(state, nil, 4)
+		if len(got) != 0 {
+			t.Fatalf("expected 0 scenarios, got %d", len(got))
+		}
+	})
+
+	t.Run("caps at 7", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			ActiveQuests: []domain.QuestState{
+				{ID: "q1", Name: "Quest 1", Status: "active", SourceAct: "act-1"},
+				{ID: "q2", Name: "Quest 2", Status: "active", SourceAct: "act-1"},
+				{ID: "q3", Name: "Quest 3", Status: "active", SourceAct: "act-1"},
+				{ID: "q4", Name: "Quest 4", Status: "active", SourceAct: "act-1"},
+				{ID: "q5", Name: "Quest 5", Status: "active", SourceAct: "act-1"},
+				{ID: "q6", Name: "Quest 6", Status: "active", SourceAct: "act-1"},
+				{ID: "q7", Name: "Quest 7", Status: "active", SourceAct: "act-1"},
+				{ID: "q8", Name: "Quest 8", Status: "active", SourceAct: "act-1"},
+			},
+		}
+		got := svc.generateLikelyScenarios(state, nil, 4)
+		if len(got) != 7 {
+			t.Fatalf("expected 7 scenarios (capped), got %d", len(got))
+		}
+	})
+
+	t.Run("pending effects first priority", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			PendingEffects: []domain.DelayedEffect{
+				{ID: "e1", Description: "Effect 1", ApplySession: 4},
+			},
+			ActiveQuests: []domain.QuestState{
+				{ID: "q1", Name: "Quest 1", Status: "active", SourceAct: "act-1"},
+			},
+		}
+		got := svc.generateLikelyScenarios(state, nil, 4)
+		if len(got) < 2 {
+			t.Fatalf("expected at least 2 scenarios, got %d", len(got))
+		}
+		if !strings.Contains(got[0], "Effect 1") {
+			t.Fatalf("expected pending effect first, got %q", got[0])
+		}
+	})
+}
+
+func TestSessionPrepService_generateReminders(t *testing.T) {
+	svc := NewSessionPrepService(nil, nil, nil)
+
+	t.Run("due pending effects in reminders", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			PendingEffects: []domain.DelayedEffect{
+				{ID: "e1", Description: "Village burns down", Target: "Village", ApplySession: 4},
+			},
+		}
+		doc := &domain.CanonDocument{}
+		got := svc.generateReminders(state, doc, 4)
+		found := false
+		for _, r := range got {
+			if strings.Contains(r, "Village burns down") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected reminder for due pending effect, got %v", got)
+		}
+	})
+
+	t.Run("non-due effects excluded", func(t *testing.T) {
+		state := &domain.NarrativeState{
+			PendingEffects: []domain.DelayedEffect{
+				{ID: "e1", Description: "Future effect", Target: "Town", ApplySession: 6},
+			},
+		}
+		doc := &domain.CanonDocument{}
+		got := svc.generateReminders(state, doc, 4)
+		for _, r := range got {
+			if strings.Contains(r, "Future effect") {
+				t.Fatalf("expected future effect excluded, got %q", r)
+			}
+		}
+	})
+}
+
+func TestSessionPrepService_generateLikelyScenarios_unresolvedDecisions(t *testing.T) {
+	svc := NewSessionPrepService(nil, nil, nil)
+
+	state := &domain.NarrativeState{
+		SessionLog: []domain.SessionRecord{
+			{
+				SessionNum: 1,
+				KeyDecisions: []domain.Decision{
+					{ID: "d1", Description: "Spare the goblin", ChoiceMade: "spared", ImpactScope: "local"},
+					{ID: "d2", Description: "Steal the gem", ChoiceMade: "stole", ImpactScope: "resolved"},
+				},
+			},
+			{
+				SessionNum: 2,
+				KeyDecisions: []domain.Decision{
+					{ID: "d3", Description: "Trust the stranger", ChoiceMade: "trusted", ImpactScope: "global"},
+				},
+			},
+			{
+				SessionNum: 3,
+				KeyDecisions: []domain.Decision{
+					{ID: "d4", Description: "Burn the bridge", ChoiceMade: "burned", ImpactScope: "local"},
+					{ID: "d5", Description: "Help the villager", ChoiceMade: "helped", ImpactScope: "resolved"},
+				},
+			},
+		},
+		ActiveQuests: []domain.QuestState{
+			{ID: "q1", Name: "Main Quest", Status: "active", SourceAct: "act-1"},
+		},
+	}
+
+	got := svc.generateLikelyScenarios(state, nil, 4)
+
+	// Should contain unresolved decisions from all sessions
+	wantDecisions := []string{"Spare the goblin", "Trust the stranger", "Burn the bridge"}
+	for _, want := range wantDecisions {
+		found := false
+		for _, scenario := range got {
+			if strings.Contains(scenario, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected scenario containing %q, got %v", want, got)
+		}
+	}
+
+	// Should NOT contain resolved decisions
+	resolvedDecisions := []string{"Steal the gem", "Help the villager"}
+	for _, notWant := range resolvedDecisions {
+		for _, scenario := range got {
+			if strings.Contains(scenario, notWant) {
+				t.Fatalf("expected resolved decision %q to NOT appear, got %v", notWant, got)
+			}
+		}
+	}
+}
+
+func TestSessionPrepService_generateLikelyScenarios_factionDriven(t *testing.T) {
+	svc := NewSessionPrepService(nil, nil, nil)
+
+	state := &domain.NarrativeState{
+		ActiveQuests: []domain.QuestState{
+			{ID: "q1", Name: "Main Quest", Status: "active", SourceAct: "act-1"},
+		},
+	}
+
+	factionMatrix := &domain.FactionReputationMatrix{
+		CampaignID: "test-campaign",
+		Entries: []domain.ReputationEntry{
+			{
+				FactionID: "faction-guild",
+				PartyID:   "party-1",
+				Score:     -20,
+				History: []domain.ReputationEvent{
+					{Session: 4, Delta: -10, Reason: "insulted the leader"},
+					{Session: 5, Delta: -20, Reason: "betrayed guild"},
+				},
+			},
+			{
+				FactionID: "faction-merchant",
+				PartyID:   "party-1",
+				Score:     15,
+				History: []domain.ReputationEvent{
+					{Session: 5, Delta: 15, Reason: "completed trade deal"},
+				},
+			},
+		},
+	}
+
+	got := svc.generateLikelyScenarios(state, factionMatrix, 6)
+
+	// Should contain faction changes from session 5 (targetSession-1 = 5)
+	wantFactions := []string{"betrayed guild", "completed trade deal"}
+	for _, want := range wantFactions {
+		found := false
+		for _, scenario := range got {
+			if strings.Contains(scenario, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected faction scenario containing %q, got %v", want, got)
+		}
+	}
+
+	// Should NOT contain faction changes from session 4
+	for _, scenario := range got {
+		if strings.Contains(scenario, "insulted the leader") {
+			t.Fatalf("expected session 4 faction event to NOT appear, got %v", got)
+		}
+	}
+}
+
+func TestSessionPrepService_GetPrep_factionSnapshot(t *testing.T) {
+	ctx := context.Background()
+	canonRepo := repository.NewMemoryCanonRepository()
+	stateRepo := repository.NewMemoryNarrativeStateRepository()
+	factionRepo := repository.NewMemoryFactionRepository()
+
+	svc := NewSessionPrepService(canonRepo, stateRepo, factionRepo)
+
+	doc := &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "faction-test",
+		Entities: []domain.CanonEntity{
+			{ID: "npc-1", Name: "Test NPC", Type: domain.EntityTypeNPC, CanonState: domain.EntityStateAlive},
+		},
+	}
+	_ = canonRepo.Save("faction-test", doc)
+
+	state := &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "faction-test",
+		CurrentSession: 2,
+		SessionLog: []domain.SessionRecord{
+			{SessionNum: 1, Summary: "First session"},
+		},
+		ActiveQuests: []domain.QuestState{
+			{ID: "q1", Name: "Quest 1", Status: "active", SourceAct: "act-1"},
+		},
+	}
+	_ = stateRepo.Save("faction-test", state)
+
+	factionMatrix := &domain.FactionReputationMatrix{
+		CampaignID: "faction-test",
+		Entries: []domain.ReputationEntry{
+			{
+				FactionID: "faction-guild",
+				PartyID:   "party-1",
+				Score:     50,
+				Status:    "friendly",
+				History: []domain.ReputationEvent{
+					{Session: 1, Delta: 20, Reason: "helped the guild"},
+					{Session: 2, Delta: 30, Reason: "completed mission"},
+				},
+			},
+		},
+	}
+	_ = factionRepo.Save("faction-test", factionMatrix)
+
+	prep, _, err := svc.GetPrep(ctx, "faction-test", 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if prep == nil {
+		t.Fatalf("expected prep, got nil")
+	}
+
+	if len(prep.FactionSnapshot) == 0 {
+		t.Fatalf("expected faction snapshot to be populated, got empty")
+	}
+
+	if prep.FactionSnapshot[0].FactionID != "faction-guild" {
+		t.Fatalf("expected faction-guild in snapshot, got %v", prep.FactionSnapshot)
+	}
+
+	if prep.FactionSnapshot[0].Score != 50 {
+		t.Fatalf("expected score 50, got %d", prep.FactionSnapshot[0].Score)
+	}
 }

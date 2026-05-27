@@ -1,9 +1,41 @@
 package domain
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 )
+
+func TestNarrativeState_BackwardCompat(t *testing.T) {
+	// Old JSON without pending_effects should unmarshal with nil slice
+	oldJSON := `{
+		"schema_version":"2.0",
+		"campaign_id":"test",
+		"current_session":3,
+		"session_log":[
+			{"session_num":1,"date":"2024-01-01T00:00:00Z","summary":"First session","key_decisions":[],"xp_awarded":0}
+		],
+		"dead_npcs":[],
+		"dm_overrides":[]
+	}`
+	var state NarrativeState
+	if err := json.Unmarshal([]byte(oldJSON), &state); err != nil {
+		t.Fatalf("unmarshal old json failed: %v", err)
+	}
+	if state.PendingEffects != nil {
+		t.Fatalf("pending_effects should be nil for old json, got %v", state.PendingEffects)
+	}
+	if state.CurrentSession != 3 {
+		t.Fatalf("current_session = %d, want 3", state.CurrentSession)
+	}
+	if len(state.SessionLog) != 1 {
+		t.Fatalf("session_log length = %d, want 1", len(state.SessionLog))
+	}
+	// Validate should still pass
+	if err := state.Validate(); err != nil {
+		t.Fatalf("validate failed for old json: %v", err)
+	}
+}
 
 func TestNarrativeState_Validate(t *testing.T) {
 	tests := []struct {

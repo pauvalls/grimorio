@@ -8,17 +8,20 @@ import (
 	"time"
 
 	"github.com/pauvalls/grimorio/internal/domain"
+	"github.com/pauvalls/grimorio/internal/repository"
 )
 
 // ConsistencyGateService validates batches and manages gate lifecycle
 type ConsistencyGateService struct {
-	canonSvc   *CanonService
-	stateSvc   *NarrativeStateService
-	validator  *ValidationEngine
-	locks      map[string]*domain.LockState
-	results    map[string]*domain.GateResult // key: campaignID+batchID
-	mu         sync.RWMutex
-	maxRetries int
+	canonSvc       *CanonService
+	stateSvc       *NarrativeStateService
+	validator      *ValidationEngine
+	checkpointRepo repository.CheckpointRepository
+	auditRepo      repository.AuditLogRepository
+	locks          map[string]*domain.LockState
+	results        map[string]*domain.GateResult // key: campaignID+batchID
+	mu             sync.RWMutex
+	maxRetries     int
 }
 
 // NewConsistencyGateService creates a new consistency gate service
@@ -26,14 +29,18 @@ func NewConsistencyGateService(
 	canonSvc *CanonService,
 	stateSvc *NarrativeStateService,
 	validator *ValidationEngine,
+	checkpointRepo repository.CheckpointRepository,
+	auditRepo repository.AuditLogRepository,
 ) *ConsistencyGateService {
 	return &ConsistencyGateService{
-		canonSvc:   canonSvc,
-		stateSvc:   stateSvc,
-		validator:  validator,
-		locks:      make(map[string]*domain.LockState),
-		results:    make(map[string]*domain.GateResult),
-		maxRetries: 2,
+		canonSvc:       canonSvc,
+		stateSvc:       stateSvc,
+		validator:      validator,
+		checkpointRepo: checkpointRepo,
+		auditRepo:      auditRepo,
+		locks:          make(map[string]*domain.LockState),
+		results:        make(map[string]*domain.GateResult),
+		maxRetries:     2,
 	}
 }
 
