@@ -739,7 +739,7 @@ func (s *DMContextService) loadAreasFromMarkdown(campaignID string) ([]domain.Ar
 					if len(parts) == 2 {
 						title = parts[1]
 						// Try to parse number from first part
-						fmt.Sscanf(parts[0], "%d", &areaNumber)
+						_, _ = fmt.Sscanf(parts[0], "%d", &areaNumber)
 					}
 				} else if strings.HasPrefix(title, "## ") {
 					title = strings.TrimPrefix(title, "## ")

@@ -343,7 +343,7 @@ func sanitizeName(name string) string {
 // parseInt attempts to parse an integer from string
 func parseInt(s string) int {
 	var result int
-	fmt.Sscanf(s, "%d", &result)
+	_, _ = fmt.Sscanf(s, "%d", &result)
 	return result
 }
 
