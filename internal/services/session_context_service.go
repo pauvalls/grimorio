@@ -347,11 +347,6 @@ func (s *SessionContextService) GetFullContext(
 		}
 	}
 
-	// Load prologue (optional)
-	if includePrologue {
-		// Prologue loading handled by caller
-		// (implementation omitted - same as existing)
-	}
 
 	// Check PDF availability
 	// (implementation omitted - same as existing)
