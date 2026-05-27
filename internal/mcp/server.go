@@ -51,6 +51,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	// Initialize services
 	campaignService := services.NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
+		canonRepo,
 		cfg.OutputDir, cfg.PDFEngine,
 	)
 	characterService := services.NewCharacterService(charRepo)
@@ -372,19 +373,23 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithArray("completed_quests", mcp.Description("Quest IDs completed this session")),
 		mcp.WithArray("dead_npcs", mcp.Description("NPCs who died this session (strings or objects with npc_id/name)")),
 		mcp.WithArray("key_decisions", mcp.Description("Key decisions made this session (strings or objects with id/description/choice_made/impact_scope)")),
-		mcp.WithArray("active_quests", mcp.Description("Quest names to activate this session")),
-		mcp.WithArray("key_items", mcp.Description("Key items acquired this session")),
+		mcp.WithArray("active_quests", mcp.Description("Active quests (objects with id/name/status/source_act)")),
+		mcp.WithArray("key_items", mcp.Description("Key items acquired this session (objects with id/name/holder/session_found)")),
 		mcp.WithString("session_summary", mcp.Description("Summary of what happened this session")),
 		mcp.WithNumber("xp_awarded", mcp.Description("XP awarded this session")),
+		mcp.WithString("xp_reason", mcp.Description("XP reason: combat, roleplay, milestone, exploration")),
 		mcp.WithArray("loot_acquired", mcp.Description("Loot acquired this session")),
 		mcp.WithString("dm_notes", mcp.Description("DM notes for this session")),
 		mcp.WithString("current_location", mcp.Description("Current party location")),
+		mcp.WithString("current_chapter_id", mcp.Description("Current chapter ID (e.g., chapter-1)")),
+		mcp.WithArray("completed_chapters", mcp.Description("Chapter IDs completed this session")),
 		mcp.WithArray("pc_status", mcp.Description("PC health status (objects with name, hp_current, hp_max, conditions)")),
 		mcp.WithString("default_source_act", mcp.Description("Default source act for string clues (e.g., act-1)")),
 		mcp.WithString("default_choice_made", mcp.Description("Default choice made for string decisions")),
 		mcp.WithString("default_impact_scope", mcp.Description("Default impact scope for string decisions")),
 		mcp.WithArray("critical_clue_indices", mcp.Description("0-based indices of critical clues in revealed_clues array")),
 		mcp.WithBoolean("replace_session", mcp.Description("Replace existing session log entry instead of appending")),
+		mcp.WithBoolean("sync_to_canon", mcp.Description("Sync state changes to canon document (default: false)")),
 	), canonHandlers.HandleUpdateNarrativeState())
 
 	s.AddTool(mcp.NewTool("check_consistency",

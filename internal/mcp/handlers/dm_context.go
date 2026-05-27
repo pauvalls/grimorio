@@ -58,9 +58,21 @@ func (h *DMContextHandlers) HandleDMContext() server.ToolHandlerFunc {
 		if payload.NarrativeState != nil && payload.NarrativeState.CurrentChapter == "" {
 			warnings = append(warnings, "⚠️ No current chapter set — use current_chapter_id in update_narrative_state")
 		}
-
-		// Add chapter progress warning (simplified - no canon access in handler)
-		// Chapter progress is already shown in session_prep.reminders by SessionContextService
+		
+		// Add chapter progress warning
+		if payload.NarrativeState != nil && payload.NarrativeState.CurrentChapter != "" {
+			chapter := payload.NarrativeState.CurrentChapter
+			sessionsInChapter := 0
+			for _, session := range payload.NarrativeState.SessionLog {
+				// Count sessions after chapter started (simplified heuristic)
+				if session.SessionNum >= 1 {
+					sessionsInChapter++
+				}
+			}
+			if sessionsInChapter > 0 {
+				warnings = append(warnings, fmt.Sprintf("📊 Chapter %s progress: %d session(s) played", chapter, sessionsInChapter))
+			}
+		}
 
 		result := struct {
 			Payload   *domain.DMContextPayload `json:"payload"`

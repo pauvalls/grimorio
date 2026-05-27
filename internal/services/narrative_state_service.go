@@ -158,16 +158,14 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 			SchemaVersion:     domain.SchemaVersionV2,
 			CampaignID:        campaignID,
 			CurrentSession:    0,
+			CurrentChapter:    "",
+			CompletedChapters: []string{},
 			RevealedClues:     []domain.RevealedClue{},
 			ActiveQuests:      []domain.QuestState{},
-			QuestNames:        []string{},
 			CompletedQuests:   []domain.QuestState{},
-			CompletedQuestIDs: []string{},
 			FailedQuests:      []domain.QuestState{},
-			FailedQuestIDs:    []string{},
 			DeadNPCs:          []domain.NPCDeathRecord{},
 			KeyItems:          []domain.KeyItem{},
-			ItemNames:         []string{},
 			LootAcquired:      []string{},
 			SessionLog:        []domain.SessionRecord{},
 			DMOverrides:       []domain.DMOverride{},
@@ -195,7 +193,6 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 			if completedSet[quest.ID] {
 				quest.Status = "completed"
 				state.CompletedQuests = append(state.CompletedQuests, quest)
-				state.CompletedQuestIDs = append(state.CompletedQuestIDs, quest.Name)
 			} else {
 				remainingActive = append(remainingActive, quest)
 			}
@@ -206,12 +203,6 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 	// Merge quest state (upsert by ID, preserve order)
 	if len(update.NewQuests) > 0 {
 		state.ActiveQuests = mergeQuests(state.ActiveQuests, update.NewQuests)
-		state.QuestNames = nil
-		for _, q := range state.ActiveQuests {
-			if q.Name != "" {
-				state.QuestNames = append(state.QuestNames, q.Name)
-			}
-		}
 	}
 
 	// Merge dead NPCs with deduplication
@@ -220,12 +211,6 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 	// Merge key items state (upsert by ID, preserve order)
 	if len(update.KeyItems) > 0 {
 		state.KeyItems = mergeKeyItems(state.KeyItems, update.KeyItems)
-		state.ItemNames = nil
-		for _, item := range state.KeyItems {
-			if item.Name != "" {
-				state.ItemNames = append(state.ItemNames, item.Name)
-			}
-		}
 	}
 
 	// Update current location
@@ -319,20 +304,20 @@ func (s *NarrativeStateService) Update(ctx context.Context, campaignID string, u
 	if state.RevealedClues == nil {
 		state.RevealedClues = []domain.RevealedClue{}
 	}
-	if state.QuestNames == nil {
-		state.QuestNames = []string{}
+	if state.ActiveQuests == nil {
+		state.ActiveQuests = []domain.QuestState{}
 	}
-	if state.CompletedQuestIDs == nil {
-		state.CompletedQuestIDs = []string{}
+	if state.CompletedQuests == nil {
+		state.CompletedQuests = []domain.QuestState{}
 	}
-	if state.FailedQuestIDs == nil {
-		state.FailedQuestIDs = []string{}
+	if state.FailedQuests == nil {
+		state.FailedQuests = []domain.QuestState{}
 	}
 	if state.DeadNPCs == nil {
 		state.DeadNPCs = []domain.NPCDeathRecord{}
 	}
-	if state.ItemNames == nil {
-		state.ItemNames = []string{}
+	if state.KeyItems == nil {
+		state.KeyItems = []domain.KeyItem{}
 	}
 	if state.LootAcquired == nil {
 		state.LootAcquired = []string{}

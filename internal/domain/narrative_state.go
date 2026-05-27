@@ -19,15 +19,15 @@ type NarrativeState struct {
 
 	// Mutable state (serialized in logical order)
 	RevealedClues     []RevealedClue   `json:"revealed_clues"`
-	ActiveQuests      []QuestState     `json:"-"` // Internal objects
-	QuestNames        []string         `json:"active_quests,omitempty"`
-	CompletedQuests   []QuestState     `json:"-"` // Internal objects
-	CompletedQuestIDs []string         `json:"completed_quests"`
-	FailedQuests      []QuestState     `json:"-"` // Internal objects
-	FailedQuestIDs    []string         `json:"failed_quests"`
+	ActiveQuests      []QuestState     `json:"active_quests,omitempty"`
+	QuestNames        []string         `json:"-"` // Internal cache, not serialized
+	CompletedQuests   []QuestState     `json:"completed_quests,omitempty"`
+	CompletedQuestIDs []string         `json:"-"` // Internal cache, not serialized
+	FailedQuests      []QuestState     `json:"failed_quests,omitempty"`
+	FailedQuestIDs    []string         `json:"-"` // Internal cache, not serialized
 	DeadNPCs          []NPCDeathRecord `json:"dead_npcs"`
-	KeyItems          []KeyItem        `json:"-"` // Internal objects
-	ItemNames         []string         `json:"key_items,omitempty"`
+	KeyItems          []KeyItem        `json:"key_items,omitempty"`
+	ItemNames         []string         `json:"-"` // Internal cache, not serialized
 	LootAcquired      []string         `json:"loot_acquired,omitempty"`
 	DMNotes           string           `json:"dm_notes,omitempty"`
 	CurrentLocation   string           `json:"current_location,omitempty"`

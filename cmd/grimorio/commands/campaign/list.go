@@ -41,9 +41,11 @@ func runList(cCtx *cli.Context) error {
 	charRepo := repository.NewFilesystemCharacterRepository(cfg.OutputDir)
 	npcRepo := repository.NewFilesystemNPCRepository(cfg.OutputDir)
 	questRepo := repository.NewFilesystemQuestRepository(cfg.OutputDir)
+	canonRepo := repository.NewFilesystemCanonRepository(cfg.OutputDir)
 
 	svc := services.NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
+		canonRepo,
 		cfg.OutputDir, cfg.PDFEngine,
 	)
 

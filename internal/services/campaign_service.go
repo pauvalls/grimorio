@@ -15,6 +15,7 @@ import (
 
 // CampaignService handles campaign business logic
 type CampaignService struct {
+	canonRepo    repository.CanonRepository
 	campaignRepo repository.CampaignRepository
 	actRepo      repository.ActRepository
 	charRepo     repository.CharacterRepository
@@ -31,6 +32,7 @@ func NewCampaignService(
 	charRepo repository.CharacterRepository,
 	npcRepo repository.NPCRepository,
 	questRepo repository.QuestRepository,
+	canonRepo repository.CanonRepository,
 	baseDir string,
 	pdfEngine string,
 ) *CampaignService {
@@ -191,24 +193,45 @@ func (s *CampaignService) saveMarkdownFile(campaignID, subdir, filename, content
 	return nil
 }
 
-// SaveLore saves lore to a campaign
-func (s *CampaignService) SaveLore(campaignID, content string) error {
-	return s.saveMarkdownFile(campaignID, "", "lore.md", content)
-}
+// SaveAreas saves areas to a campaign as markdown
+func (s *CampaignService) SaveAreas(campaignID, chapterID, content string) error {
+	if !s.campaignRepo.Exists(campaignID) {
+		return fmt.Errorf("campaign not found: %s", campaignID)
+	}
 
-// SaveNPCs saves NPCs to a campaign as markdown
-func (s *CampaignService) SaveNPCs(campaignID, content string) error {
-	return s.saveMarkdownFile(campaignID, "npcs", "npcs_and_factions.md", content)
-}
+	// 1. Parse markdown to extract areas
+	parser := NewEntityParser()
+	areas, err := parser.ParseAreas(content, campaignID, chapterID)
+	if err != nil {
+		return fmt.Errorf("failed to parse areas from markdown: %w", err)
+	}
 
-// SaveEncounters saves encounters to a campaign as markdown
-func (s *CampaignService) SaveEncounters(campaignID, content string) error {
-	return s.saveMarkdownFile(campaignID, "encounters", "encounters.md", content)
-}
+	// Validate: at least one area found
+	if len(areas) == 0 {
+		return fmt.Errorf("no areas found in markdown - expected format: ### Área X: Nombre")
+	}
 
-// SaveBestiary saves bestiary to a campaign as markdown
-func (s *CampaignService) SaveBestiary(campaignID, content string) error {
-	return s.saveMarkdownFile(campaignID, "bestiary", "bestiary.md", content)
+	// 2. Write markdown file (atomic: temp + rename)
+	dir := filepath.Join(s.baseDir, campaignID, "areas")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	filename := fmt.Sprintf("%s.md", chapterID)
+	tempPath := filepath.Join(dir, "."+filename+".tmp")
+	finalPath := filepath.Join(dir, filename)
+
+	if err := os.WriteFile(tempPath, []byte(content), 0644); err != nil {
+		return fmt.Errorf("failed to write markdown: %w", err)
+	}
+
+	// 3. Atomic rename: temp → final
+	if err := os.Rename(tempPath, finalPath); err != nil {
+		_ = os.Remove(tempPath)
+		return fmt.Errorf("failed to finalize markdown write: %w", err)
+	}
+
+	return nil
 }
 
 // SaveMaps saves maps to a campaign as markdown

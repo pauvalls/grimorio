@@ -217,6 +217,11 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 			}
 		}
 	}
+	
+	// Warning if NPCs are still empty
+	if len(payload.NPCs) == 0 {
+		warnings = append(warnings, "📜 No NPCs loaded — create NPCs via save_npcs or add to campaign markdown files")
+	}
 
 	// Load quests (optional)
 	quests, err := s.questRepo.List(campaignID)
@@ -311,6 +316,11 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 			}
 		}
 	}
+	
+	// Warning if bestiary is still empty
+	if len(payload.Bestiary) == 0 {
+		warnings = append(warnings, "⚔️ No bestiary loaded — create monsters via save_bestiary or add to campaign markdown files")
+	}
 
 	// Load areas (optional)
 	// Try V3 repository first (JSON files in areas_v3/)
@@ -394,6 +404,11 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 				}
 			}
 		}
+	}
+	
+	// Warning if factions are still empty
+	if len(payload.Factions) == 0 {
+		warnings = append(warnings, "🏛️ No factions loaded — create factions via save_npcs (includes factions) or add to campaign markdown files")
 	}
 
 	// Load prologue (optional)
