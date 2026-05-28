@@ -113,45 +113,45 @@ func (g *NPCGenerator) GenerateMarkdown(npcs []domain.NPC, factions []domain.Fac
 	sb.WriteString("## NPCs Principales\n\n")
 
 	for _, npc := range npcs {
-		sb.WriteString(fmt.Sprintf("### %s\n\n", npc.Name))
-		sb.WriteString(fmt.Sprintf("- **ID:** %s\n", npc.ID))
-		sb.WriteString(fmt.Sprintf("- **Rol:** %s\n", npc.Role))
+		fmt.Fprintf(&sb, "### %s\n\n", npc.Name)
+		fmt.Fprintf(&sb, "- **ID:** %s\n", npc.ID)
+		fmt.Fprintf(&sb, "- **Rol:** %s\n", npc.Role)
 		if npc.Faction != "" {
-			sb.WriteString(fmt.Sprintf("- **Facción:** %s\n", npc.Faction))
+			fmt.Fprintf(&sb, "- **Facción:** %s\n", npc.Faction)
 		}
-		sb.WriteString(fmt.Sprintf("- **Descripción:** %s\n\n", npc.Description))
+		fmt.Fprintf(&sb, "- **Descripción:** %s\n\n", npc.Description)
 
 		if npc.Stats != nil && (npc.Stats.HP > 0 || npc.Stats.AC > 0) {
-			sb.WriteString("#### Estadísticas de Combate\n\n")
+			fmt.Fprintf(&sb, "#### Estadísticas de Combate\n\n")
 			if npc.Stats.HP > 0 {
-				sb.WriteString(fmt.Sprintf("- **PG:** %d\n", npc.Stats.HP))
+				fmt.Fprintf(&sb, "- **PG:** %d\n", npc.Stats.HP)
 			}
 			if npc.Stats.AC > 0 {
-				sb.WriteString(fmt.Sprintf("- **CA:** %d\n", npc.Stats.AC))
+				fmt.Fprintf(&sb, "- **CA:** %d\n", npc.Stats.AC)
 			}
-			sb.WriteString("\n")
+			fmt.Fprintf(&sb, "\n")
 		}
 
-		sb.WriteString("---\n\n")
+		fmt.Fprintf(&sb, "---\n\n")
 	}
 
 	if len(factions) > 0 {
 		sb.WriteString("## Facciones\n\n")
 		for _, faction := range factions {
-			sb.WriteString(fmt.Sprintf("### %s\n\n", faction.Name))
-			sb.WriteString(fmt.Sprintf("- **ID:** %s\n", faction.ID))
-			sb.WriteString(fmt.Sprintf("- **Descripción:** %s\n", faction.Description))
-			sb.WriteString(fmt.Sprintf("- **Objetivo:** %s\n", faction.Agenda))
+			fmt.Fprintf(&sb, "### %s\n\n", faction.Name)
+			fmt.Fprintf(&sb, "- **ID:** %s\n", faction.ID)
+			fmt.Fprintf(&sb, "- **Descripción:** %s\n", faction.Description)
+			fmt.Fprintf(&sb, "- **Objetivo:** %s\n", faction.Agenda)
 			if faction.Tier > 0 {
-				sb.WriteString(fmt.Sprintf("- **Tier:** %d\n", faction.Tier))
+				fmt.Fprintf(&sb, "- **Tier:** %d\n", faction.Tier)
 			}
 			if len(faction.Allies) > 0 {
-				sb.WriteString(fmt.Sprintf("- **Aliados:** %s\n", strings.Join(faction.Allies, ", ")))
+				fmt.Fprintf(&sb, "- **Aliados:** %s\n", strings.Join(faction.Allies, ", "))
 			}
 			if len(faction.Enemies) > 0 {
-				sb.WriteString(fmt.Sprintf("- **Enemigos:** %s\n", strings.Join(faction.Enemies, ", ")))
+				fmt.Fprintf(&sb, "- **Enemigos:** %s\n", strings.Join(faction.Enemies, ", "))
 			}
-			sb.WriteString("\n---\n\n")
+			fmt.Fprintf(&sb, "\n---\n\n")
 		}
 	}
 
