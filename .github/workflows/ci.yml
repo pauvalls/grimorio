@@ -42,7 +42,7 @@ jobs:
         which google-chrome-stable || sudo apt-get install -y wkhtmltopdf
 
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out $(go list ./... | grep -v -E '/(cmd|scripts|internal/repository/mocks)/')
+      run: go test -v -race -coverprofile=coverage.out $(go list ./... | grep -vE '^github.com/pauvalls/grimorio/(cmd|scripts|internal/repository/mocks)')
 
     - name: Check coverage
       run: |
