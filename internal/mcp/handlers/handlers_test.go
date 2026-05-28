@@ -17,9 +17,10 @@ func setupTestHandlers() (*CampaignHandlers, *CharacterHandlers, *QuestHandlers)
 	npcRepo := repository.NewMemoryNPCRepository()
 	questRepo := repository.NewMemoryQuestRepository()
 	canonRepo := repository.NewMemoryCanonRepository()
+	monsterRepo := repository.NewMemoryMonsterRepository()
 
 	campaignService := services.NewCampaignService(
-		campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo,
+		campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo,
 		"/tmp/test", "",
 	)
 	characterService := services.NewCharacterService(charRepo)

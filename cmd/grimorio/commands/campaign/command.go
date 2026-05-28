@@ -14,6 +14,7 @@ func NewCampaignCommand() *cli.Command {
 			NewDiffCommand(),
 			NewExportCommand(),
 			NewImportCommand(),
+			NewRegisterCommand(),
 		},
 	}
 }

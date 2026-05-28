@@ -1,6 +1,7 @@
 package campaign
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,7 +9,9 @@ import (
 	"time"
 
 	"github.com/pauvalls/grimorio/internal/config"
+	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
+	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
 	"github.com/pauvalls/grimorio/internal/services"
 	"github.com/urfave/cli/v2"
 )
@@ -42,10 +45,12 @@ func runList(cCtx *cli.Context) error {
 	npcRepo := repository.NewFilesystemNPCRepository(cfg.OutputDir)
 	questRepo := repository.NewFilesystemQuestRepository(cfg.OutputDir)
 	canonRepo := repository.NewFilesystemCanonRepository(cfg.OutputDir)
+	fsMonsterRepo := fsrepo.NewFilesystemMonsterRepository(cfg.OutputDir)
 
 	svc := services.NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
 		canonRepo,
+		&monsterRepoWrapper{fs: fsMonsterRepo},
 		cfg.OutputDir, cfg.PDFEngine,
 	)
 
@@ -74,4 +79,33 @@ _, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
 		return fmt.Errorf("flush output: %w", err)
 	}
 	return nil
+}
+
+// monsterRepoWrapper adapts fs.FilesystemMonsterRepository to repository.MonsterRepository
+type monsterRepoWrapper struct {
+	fs *fsrepo.FilesystemMonsterRepository
+}
+
+func (w *monsterRepoWrapper) Save(monster *domain.Monster) error {
+	return w.fs.Save(context.Background(), monster.CampaignID, monster)
+}
+
+func (w *monsterRepoWrapper) Read(campaignID, name string) (*domain.Monster, error) {
+	return w.fs.Read(context.Background(), campaignID, name)
+}
+
+func (w *monsterRepoWrapper) List(campaignID string) ([]domain.Monster, error) {
+	ptrs, err := w.fs.List(context.Background(), campaignID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]domain.Monster, len(ptrs))
+	for i, p := range ptrs {
+		result[i] = *p
+	}
+	return result, nil
+}
+
+func (w *monsterRepoWrapper) Delete(ctx context.Context, campaignID, name string) error {
+	return w.fs.Delete(ctx, campaignID, name)
 }

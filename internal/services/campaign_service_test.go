@@ -16,7 +16,8 @@ func TestCampaignService_CreateCampaign(t *testing.T) {
 	npcRepo := repository.NewMemoryNPCRepository()
 	questRepo := repository.NewMemoryQuestRepository()
 	canonRepo := repository.NewMemoryCanonRepository()
-	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, "/tmp/campaigns", "")
+	monsterRepo := repository.NewMemoryMonsterRepository()
+	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, "/tmp/campaigns", "")
 
 	tests := []struct {
 		name         string
@@ -81,7 +82,8 @@ func TestCampaignService_GetCampaign(t *testing.T) {
 	npcRepo := repository.NewMemoryNPCRepository()
 	questRepo := repository.NewMemoryQuestRepository()
 	canonRepo := repository.NewMemoryCanonRepository()
-	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, "/tmp/campaigns", "")
+	monsterRepo := repository.NewMemoryMonsterRepository()
+	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, "/tmp/campaigns", "")
 
 	// Create a campaign first
 	_, err := service.CreateCampaign("get-test", "Get Test", "Setting")
@@ -133,7 +135,8 @@ func TestCampaignService_SaveAct(t *testing.T) {
 	npcRepo := repository.NewMemoryNPCRepository()
 	questRepo := repository.NewMemoryQuestRepository()
 	canonRepo := repository.NewMemoryCanonRepository()
-	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, "/tmp/campaigns", "")
+	monsterRepo := repository.NewMemoryMonsterRepository()
+	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, "/tmp/campaigns", "")
 
 	// Create a campaign first
 	_, err := service.CreateCampaign("act-test", "Act Test", "Setting")
@@ -298,8 +301,9 @@ func TestCampaignService_CompilePDF(t *testing.T) {
 	npcRepo := repository.NewMemoryNPCRepository()
 	questRepo := repository.NewMemoryQuestRepository()
 	canonRepo := repository.NewMemoryCanonRepository()
+	monsterRepo := repository.NewMemoryMonsterRepository()
 	tmpDir := t.TempDir()
-	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, tmpDir, "echo")
+	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, tmpDir, "echo")
 
 	// Create a campaign first
 	_, err := service.CreateCampaign("pdf-test", "PDF Test", "Setting")
@@ -330,7 +334,8 @@ func TestCampaignService_CompilePDF_MissingCampaign(t *testing.T) {
 	npcRepo := repository.NewMemoryNPCRepository()
 	questRepo := repository.NewMemoryQuestRepository()
 	canonRepo := repository.NewMemoryCanonRepository()
-	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, "/tmp/campaigns", "")
+	monsterRepo := repository.NewMemoryMonsterRepository()
+	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, "/tmp/campaigns", "")
 
 	ctx := context.Background()
 	_, err := service.CompilePDF(ctx, "missing-campaign", "")
@@ -346,7 +351,8 @@ func TestCampaignService_ListCampaigns(t *testing.T) {
 	npcRepo := repository.NewMemoryNPCRepository()
 	questRepo := repository.NewMemoryQuestRepository()
 	canonRepo := repository.NewMemoryCanonRepository()
-	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, "/tmp/campaigns", "")
+	monsterRepo := repository.NewMemoryMonsterRepository()
+	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, "/tmp/campaigns", "")
 
 	// Create some campaigns
 	_, _ = service.CreateCampaign("list-1", "List 1", "Setting 1")

@@ -312,6 +312,22 @@ Brief: {brief-description}
 CRITICAL: Read template: internal/compiler/templates/map.md.tmpl")
 ```
 
+### Fase 4b: Register NPCs and Bestiary in Canon
+
+**CRITICAL:** After NPCs and Bestiary are generated, you MUST register them in canon.json.
+
+```
+MCP: save_npcs(campaign="{campaign-name}", content={read npcs_and_factions.md})
+MCP: save_bestiary(campaign="{campaign-name}", content={read bestiary.md})
+```
+
+**Why:** This syncs the markdown content with canon.json so `grimorio_dm_session_context` can load them.
+
+**Expected result:**
+- ✅ NPCs registered (count: X)
+- ✅ Monsters registered (count: Y)
+- ✅ No warnings in DM Context
+
 ### Fase 5: Validate Batch 1 (CONSISTENCY GATE)
 
 ```

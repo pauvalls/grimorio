@@ -14,6 +14,7 @@ import (
 
 	"github.com/pauvalls/grimorio/internal/compiler"
 	"github.com/pauvalls/grimorio/internal/domain"
+	"github.com/pauvalls/grimorio/internal/generators"
 	"github.com/pauvalls/grimorio/internal/repository"
 )
 
@@ -25,6 +26,7 @@ type CampaignService struct {
 	charRepo     repository.CharacterRepository
 	npcRepo      repository.NPCRepository
 	questRepo    repository.QuestRepository
+	monsterRepo  repository.MonsterRepository
 	baseDir      string
 	pdfEngine    string
 }
@@ -37,6 +39,7 @@ func NewCampaignService(
 	npcRepo repository.NPCRepository,
 	questRepo repository.QuestRepository,
 	canonRepo repository.CanonRepository,
+	monsterRepo repository.MonsterRepository,
 	baseDir string,
 	pdfEngine string,
 ) *CampaignService {
@@ -47,6 +50,7 @@ func NewCampaignService(
 		npcRepo:      npcRepo,
 		questRepo:    questRepo,
 		canonRepo:    canonRepo,
+		monsterRepo:  monsterRepo,
 		baseDir:      baseDir,
 		pdfEngine:    pdfEngine,
 	}
@@ -488,6 +492,54 @@ func (s *CampaignService) CampaignState(campaignID string) (*domain.CampaignStat
 		ActiveQuests:    activeQuests,
 		CompletedQuests: completedQuests,
 	}, nil
+}
+
+// GenerateAndRegisterNPCs generates NPCs from canon and saves them to the campaign
+// This is a non-blocking operation - warnings are returned but do not cause failure
+func (s *CampaignService) GenerateAndRegisterNPCs(ctx context.Context, campaignID string) ([]domain.NPC, []string, error) {
+	generator := generators.NewNPCGenerator(s.canonRepo)
+	npcs, warnings, err := generator.GenerateFromCanon(ctx, campaignID)
+	if err != nil {
+		return nil, warnings, fmt.Errorf("failed to generate NPCs: %w", err)
+	}
+
+	if len(npcs) == 0 {
+		return npcs, warnings, nil
+	}
+
+	// Save each NPC to the repository
+	for _, npc := range npcs {
+		if saveErr := s.npcRepo.Save(&npc); saveErr != nil {
+			warnings = append(warnings, fmt.Sprintf("failed to save NPC %s: %v", npc.Name, saveErr))
+			// Continue with other NPCs - non-blocking
+		}
+	}
+
+	return npcs, warnings, nil
+}
+
+// GenerateAndRegisterMonsters generates monsters from canon and saves them to the campaign
+// This is a non-blocking operation - warnings are returned but do not cause failure
+func (s *CampaignService) GenerateAndRegisterMonsters(ctx context.Context, campaignID string) ([]domain.Monster, []string, error) {
+	generator := generators.NewMonsterGenerator(s.canonRepo)
+	monsters, warnings, err := generator.GenerateFromCanon(ctx, campaignID)
+	if err != nil {
+		return nil, warnings, fmt.Errorf("failed to generate monsters: %w", err)
+	}
+
+	if len(monsters) == 0 {
+		return monsters, warnings, nil
+	}
+
+	// Save each monster to the repository
+	for _, monster := range monsters {
+		if saveErr := s.monsterRepo.Save(&monster); saveErr != nil {
+			warnings = append(warnings, fmt.Sprintf("failed to save monster %s: %v", monster.Name, saveErr))
+			// Continue with other monsters - non-blocking
+		}
+	}
+
+	return monsters, warnings, nil
 }
 
 // syncCanonEntities updates canon.json with parsed entities (upsert by ID)

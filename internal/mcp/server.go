@@ -10,6 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pauvalls/grimorio/internal/config"
+	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/mcp/handlers"
 	"github.com/pauvalls/grimorio/internal/repository"
 	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
@@ -52,6 +53,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	campaignService := services.NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
 		canonRepo,
+		&monsterRepoWrapper{fs: monsterRepo},
 		cfg.OutputDir, cfg.PDFEngine,
 	)
 	characterService := services.NewCharacterService(charRepo)
@@ -142,7 +144,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	characterHandlers := handlers.NewCharacterHandlers(characterService)
 	questHandlers := handlers.NewQuestHandlers(questService)
 	assetHandlers := handlers.NewAssetHandlers(assetService)
-	canonHandlers := handlers.NewCanonHandlers(canonService, narrativeStateService, validationEngine, consistencyGateService)
+	canonHandlers := handlers.NewCanonHandlers(canonService, narrativeStateService, validationEngine, consistencyGateService, campaignService)
 	factionHandlers := handlers.NewFactionHandlers(factionService)
 	tableHandlers := handlers.NewTableHandlers(tableService)
 	handoutHandlers := handlers.NewHandoutHandlers(handoutService)
@@ -563,3 +565,33 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 
 	return s, shutdown
 }
+
+// monsterRepoWrapper adapts fs.FilesystemMonsterRepository to repository.MonsterRepository
+type monsterRepoWrapper struct {
+	fs *fsrepo.FilesystemMonsterRepository
+}
+
+func (w *monsterRepoWrapper) Save(monster *domain.Monster) error {
+	return w.fs.Save(context.Background(), monster.CampaignID, monster)
+}
+
+func (w *monsterRepoWrapper) Read(campaignID, name string) (*domain.Monster, error) {
+	return w.fs.Read(context.Background(), campaignID, name)
+}
+
+func (w *monsterRepoWrapper) List(campaignID string) ([]domain.Monster, error) {
+	ptrs, err := w.fs.List(context.Background(), campaignID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]domain.Monster, len(ptrs))
+	for i, p := range ptrs {
+		result[i] = *p
+	}
+	return result, nil
+}
+
+func (w *monsterRepoWrapper) Delete(ctx context.Context, campaignID, name string) error {
+	return w.fs.Delete(ctx, campaignID, name)
+}
+

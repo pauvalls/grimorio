@@ -15,10 +15,11 @@ import (
 
 // CanonHandlers handles canon and narrative coherence MCP tools
 type CanonHandlers struct {
-	canonService   *services.CanonService
-	stateService   *services.NarrativeStateService
+	canonService     *services.CanonService
+	stateService     *services.NarrativeStateService
 	validationEngine *services.ValidationEngine
-	gateService    *services.ConsistencyGateService
+	gateService      *services.ConsistencyGateService
+	campaignService  *services.CampaignService
 }
 
 // NewCanonHandlers creates new canon handlers
@@ -27,12 +28,14 @@ func NewCanonHandlers(
 	stateService *services.NarrativeStateService,
 	validationEngine *services.ValidationEngine,
 	gateService *services.ConsistencyGateService,
+	campaignService *services.CampaignService,
 ) *CanonHandlers {
 	return &CanonHandlers{
 		canonService:     canonService,
 		stateService:     stateService,
 		validationEngine: validationEngine,
 		gateService:      gateService,
+		campaignService:  campaignService,
 	}
 }
 
@@ -74,14 +77,43 @@ func (h *CanonHandlers) HandleGenerateAdventureBible() server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		// Auto-generate and register NPCs and monsters from canon
+		// Non-blocking: warnings are collected but don't cause failure
+		generatedNPCs := 0
+		generatedMonsters := 0
+		generationWarnings := []string{}
+
+		if h.campaignService != nil {
+			// Generate NPCs
+			npcs, npcWarnings, npcErr := h.campaignService.GenerateAndRegisterNPCs(ctx, doc.CampaignID)
+			if npcErr != nil {
+				generationWarnings = append(generationWarnings, fmt.Sprintf("NPC generation: %v", npcErr))
+			} else {
+				generatedNPCs = len(npcs)
+				generationWarnings = append(generationWarnings, npcWarnings...)
+			}
+
+			// Generate Monsters
+			monsters, monsterWarnings, monsterErr := h.campaignService.GenerateAndRegisterMonsters(ctx, doc.CampaignID)
+			if monsterErr != nil {
+				generationWarnings = append(generationWarnings, fmt.Sprintf("Monster generation: %v", monsterErr))
+			} else {
+				generatedMonsters = len(monsters)
+				generationWarnings = append(generationWarnings, monsterWarnings...)
+			}
+		}
+
 		result := map[string]any{
-			"canon_id":            doc.CampaignID,
-			"campaign_id":         doc.CampaignID,
-			"facts_count":         len(doc.Facts),
-			"entities_count":      len(doc.Entities),
+			"canon_id":              doc.CampaignID,
+			"campaign_id":           doc.CampaignID,
+			"facts_count":           len(doc.Facts),
+			"entities_count":        len(doc.Entities),
 			"timeline_events_count": len(doc.Timeline),
-			"rules_count":         len(doc.Rules),
-			"canon_summary":       fmt.Sprintf("Canon initialized for '%s' with %d facts, %d entities, %d timeline events, and %d rules.", doc.CampaignID, len(doc.Facts), len(doc.Entities), len(doc.Timeline), len(doc.Rules)),
+			"rules_count":           len(doc.Rules),
+			"generated_npcs":        generatedNPCs,
+			"generated_monsters":    generatedMonsters,
+			"generation_warnings":   generationWarnings,
+			"canon_summary":         fmt.Sprintf("Canon initialized for '%s' with %d facts, %d entities, %d timeline events, and %d rules. Generated %d NPCs and %d monsters.", doc.CampaignID, len(doc.Facts), len(doc.Entities), len(doc.Timeline), len(doc.Rules), generatedNPCs, generatedMonsters),
 		}
 
 		jsonBytes, err := json.MarshalIndent(result, "", "  ")

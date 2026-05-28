@@ -1,0 +1,159 @@
+package generators
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/pauvalls/grimorio/internal/domain"
+	"github.com/pauvalls/grimorio/internal/repository"
+)
+
+// NPCGenerator generates NPCs from canon data
+type NPCGenerator struct {
+	canonRepo repository.CanonRepository
+}
+
+// NewNPCGenerator creates a new NPC generator
+func NewNPCGenerator(canonRepo repository.CanonRepository) *NPCGenerator {
+	return &NPCGenerator{
+		canonRepo: canonRepo,
+	}
+}
+
+// GenerateFromCanon generates NPCs based on canon entities
+func (g *NPCGenerator) GenerateFromCanon(ctx context.Context, campaignID string) ([]domain.NPC, []string, error) {
+	doc, err := g.canonRepo.Load(campaignID)
+	if err != nil {
+		return nil, []string{fmt.Sprintf("failed to load canon: %v", err)}, nil
+	}
+
+	var npcs []domain.NPC
+	var warnings []string
+	now := time.Now()
+
+	for _, entity := range doc.Entities {
+		if entity.Type != domain.EntityTypeNPC {
+			continue
+		}
+
+		npc := domain.NPC{
+			ID:          entity.ID,
+			CampaignID:  campaignID,
+			Name:        entity.Name,
+			Role:        entity.Role,
+			Description: entity.Motivation,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}
+
+		// Extract faction from properties if available
+		if faction, ok := entity.Properties["faction"].(string); ok && faction != "" {
+			npc.Faction = faction
+		}
+
+		// Extract stats from properties if available
+		if hp, ok := entity.Properties["hp"].(int); ok {
+			if npc.Stats == nil {
+				npc.Stats = &domain.StatBlock{}
+			}
+			npc.Stats.HP = hp
+		}
+		if ac, ok := entity.Properties["ac"].(int); ok {
+			if npc.Stats == nil {
+				npc.Stats = &domain.StatBlock{}
+			}
+			npc.Stats.AC = ac
+		}
+
+		// Generate description from properties if not set
+		if npc.Description == "" {
+			npc.Description = g.generateDescription(entity)
+		}
+
+		npcs = append(npcs, npc)
+	}
+
+	if len(npcs) == 0 {
+		warnings = append(warnings, "no NPC entities found in canon document")
+	}
+
+	return npcs, warnings, nil
+}
+
+// generateDescription creates a description from entity properties
+func (g *NPCGenerator) generateDescription(entity domain.CanonEntity) string {
+	var parts []string
+
+	if entity.Role != "" {
+		parts = append(parts, fmt.Sprintf("Un %s que juega un papel importante en la campaña.", entity.Role))
+	}
+
+	if connections := entity.Connections; len(connections) > 0 {
+		parts = append(parts, fmt.Sprintf("Está conectado con: %s.", strings.Join(connections, ", ")))
+	}
+
+	if secret := entity.Secret; secret != "" {
+		parts = append(parts, fmt.Sprintf("Secreto: %s", secret))
+	}
+
+	if len(parts) == 0 {
+		return "Un personaje no jugador con motivaciones y objetivos propios."
+	}
+
+	return strings.Join(parts, " ")
+}
+
+// GenerateMarkdown generates markdown content for NPCs
+func (g *NPCGenerator) GenerateMarkdown(npcs []domain.NPC, factions []domain.Faction) string {
+	var sb strings.Builder
+
+	sb.WriteString("# NPCs y Facciones\n\n")
+	sb.WriteString("## NPCs Principales\n\n")
+
+	for _, npc := range npcs {
+		sb.WriteString(fmt.Sprintf("### %s\n\n", npc.Name))
+		sb.WriteString(fmt.Sprintf("- **ID:** %s\n", npc.ID))
+		sb.WriteString(fmt.Sprintf("- **Rol:** %s\n", npc.Role))
+		if npc.Faction != "" {
+			sb.WriteString(fmt.Sprintf("- **Facción:** %s\n", npc.Faction))
+		}
+		sb.WriteString(fmt.Sprintf("- **Descripción:** %s\n\n", npc.Description))
+
+		if npc.Stats != nil && (npc.Stats.HP > 0 || npc.Stats.AC > 0) {
+			sb.WriteString("#### Estadísticas de Combate\n\n")
+			if npc.Stats.HP > 0 {
+				sb.WriteString(fmt.Sprintf("- **PG:** %d\n", npc.Stats.HP))
+			}
+			if npc.Stats.AC > 0 {
+				sb.WriteString(fmt.Sprintf("- **CA:** %d\n", npc.Stats.AC))
+			}
+			sb.WriteString("\n")
+		}
+
+		sb.WriteString("---\n\n")
+	}
+
+	if len(factions) > 0 {
+		sb.WriteString("## Facciones\n\n")
+		for _, faction := range factions {
+			sb.WriteString(fmt.Sprintf("### %s\n\n", faction.Name))
+			sb.WriteString(fmt.Sprintf("- **ID:** %s\n", faction.ID))
+			sb.WriteString(fmt.Sprintf("- **Descripción:** %s\n", faction.Description))
+			sb.WriteString(fmt.Sprintf("- **Objetivo:** %s\n", faction.Agenda))
+			if faction.Tier > 0 {
+				sb.WriteString(fmt.Sprintf("- **Tier:** %d\n", faction.Tier))
+			}
+			if len(faction.Allies) > 0 {
+				sb.WriteString(fmt.Sprintf("- **Aliados:** %s\n", strings.Join(faction.Allies, ", ")))
+			}
+			if len(faction.Enemies) > 0 {
+				sb.WriteString(fmt.Sprintf("- **Enemigos:** %s\n", strings.Join(faction.Enemies, ", ")))
+			}
+			sb.WriteString("\n---\n\n")
+		}
+	}
+
+	return sb.String()
+}

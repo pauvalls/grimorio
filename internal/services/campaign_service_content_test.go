@@ -17,9 +17,10 @@ func setupContentTestService(t *testing.T) (*CampaignService, string) {
 	npcRepo := repository.NewMemoryNPCRepository()
 	questRepo := repository.NewMemoryQuestRepository()
 	canonRepo := repository.NewMemoryCanonRepository()
+	monsterRepo := repository.NewMemoryMonsterRepository()
 	service := NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
-		canonRepo,
+		canonRepo, monsterRepo,
 		tmpDir, "",
 	)
 

@@ -16,11 +16,20 @@ func setupTestCanonHandlers() (*CanonHandlers, *services.CanonService, *services
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 	checkpointRepo := repository.NewMemoryCheckpointRepository()
 	auditRepo := repository.NewMemoryAuditLogRepository()
+	campaignRepo := repository.NewMemoryCampaignRepository()
+	actRepo := repository.NewMemoryActRepository()
+	charRepo := repository.NewMemoryCharacterRepository()
+	npcRepo := repository.NewMemoryNPCRepository()
+	questRepo := repository.NewMemoryQuestRepository()
+	monsterRepo := repository.NewMemoryMonsterRepository()
+	
 	canonService := services.NewCanonService(canonRepo, stateRepo, checkpointRepo)
 	stateService := services.NewNarrativeStateService(stateRepo, canonRepo)
 	validator := services.NewValidationEngine(canonService, stateService, nil, "")
 	gateService := services.NewConsistencyGateService(canonService, stateService, validator, checkpointRepo, auditRepo)
-	return NewCanonHandlers(canonService, stateService, validator, gateService), canonService, stateService, validator
+	campaignService := services.NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, "/tmp", "")
+	
+	return NewCanonHandlers(canonService, stateService, validator, gateService, campaignService), canonService, stateService, validator
 }
 
 func TestHandleGenerateAdventureBible(t *testing.T) {

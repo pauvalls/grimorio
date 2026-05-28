@@ -17,12 +17,20 @@ func setupCanonHandlersWithGate() (*CanonHandlers, *services.CanonService, *serv
 	stateRepo := repository.NewMemoryNarrativeStateRepository()
 	checkpointRepo := repository.NewMemoryCheckpointRepository()
 	auditRepo := repository.NewMemoryAuditLogRepository()
+	campaignRepo := repository.NewMemoryCampaignRepository()
+	actRepo := repository.NewMemoryActRepository()
+	charRepo := repository.NewMemoryCharacterRepository()
+	npcRepo := repository.NewMemoryNPCRepository()
+	questRepo := repository.NewMemoryQuestRepository()
+	monsterRepo := repository.NewMemoryMonsterRepository()
+	
 	canonSvc := services.NewCanonService(canonRepo, stateRepo, checkpointRepo)
 	stateSvc := services.NewNarrativeStateService(stateRepo, canonRepo)
 	validator := services.NewValidationEngine(canonSvc, stateSvc, nil, "")
 	gateSvc := services.NewConsistencyGateService(canonSvc, stateSvc, validator, checkpointRepo, auditRepo)
+	campaignSvc := services.NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, "/tmp", "")
 
-	handlers := NewCanonHandlers(canonSvc, stateSvc, validator, gateSvc)
+	handlers := NewCanonHandlers(canonSvc, stateSvc, validator, gateSvc, campaignSvc)
 	return handlers, canonSvc, stateSvc, gateSvc
 }
 

@@ -1,12 +1,14 @@
 package services
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
+	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
 )
 
 // TestSession0_Flow tests the complete session 0 flow:
@@ -32,16 +34,18 @@ func TestSession0_Flow(t *testing.T) {
 	npcRepo := repository.NewFilesystemNPCRepository(testDir)
 	questRepo := repository.NewFilesystemQuestRepository(testDir)
 	canonRepo := repository.NewFilesystemCanonRepository(testDir)
+	fsMonsterRepo := fsrepo.NewFilesystemMonsterRepository(testDir)
 	
 	// Create campaign directory
 	if err := campaignRepo.Create(campaign); err != nil {
 		t.Fatalf("Failed to create campaign: %v", err)
 	}
 	
-	// Create service
+	// Create service with monster repo wrapper
 	svc := NewCampaignService(
 		campaignRepo, actRepo, charRepo, npcRepo, questRepo,
 		canonRepo,
+		&monsterRepoWrapper{fs: fsMonsterRepo},
 		testDir, "",
 	)
 	
@@ -156,4 +160,33 @@ func TestSession0_Flow(t *testing.T) {
 	}
 	
 	t.Log("✅ Session 0 flow test PASSED")
+}
+
+// monsterRepoWrapper adapts fs.FilesystemMonsterRepository to repository.MonsterRepository
+type monsterRepoWrapper struct {
+	fs *fsrepo.FilesystemMonsterRepository
+}
+
+func (w *monsterRepoWrapper) Save(monster *domain.Monster) error {
+	return w.fs.Save(context.Background(), monster.CampaignID, monster)
+}
+
+func (w *monsterRepoWrapper) Read(campaignID, name string) (*domain.Monster, error) {
+	return w.fs.Read(context.Background(), campaignID, name)
+}
+
+func (w *monsterRepoWrapper) List(campaignID string) ([]domain.Monster, error) {
+	ptrs, err := w.fs.List(context.Background(), campaignID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]domain.Monster, len(ptrs))
+	for i, p := range ptrs {
+		result[i] = *p
+	}
+	return result, nil
+}
+
+func (w *monsterRepoWrapper) Delete(ctx context.Context, campaignID, name string) error {
+	return w.fs.Delete(ctx, campaignID, name)
 }
