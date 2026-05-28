@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v4.1.1] - 2026-05-28
+
+### Ci
+
+- Trigger fresh CI run with clean cache
+- Exclude mocks package from test coverage (no tests, causes covdata error)
+- Fix test filter regex to properly exclude packages
+
+### Docs
+
+- Update changelog for v4.1.0
+
+### Feat
+
+- Auto-register NPCs and bestiary in canon
+
+### Fix
+
+- Replace WriteString(fmt.Sprintf) with fmt.Fprintf for staticcheck
+- Replace WriteString(fmt.Sprintf) with fmt.Fprintf in npc_generator
+
 ## [v4.1.0] - 2026-05-27
 
 ### Docs
