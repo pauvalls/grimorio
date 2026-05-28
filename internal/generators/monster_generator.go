@@ -129,32 +129,32 @@ func (g *MonsterGenerator) GenerateMarkdown(monsters []domain.Monster) string {
 	sb.WriteString("# Bestiario\n\n")
 
 	for _, monster := range monsters {
-		sb.WriteString(fmt.Sprintf("## %s\n\n", monster.Name))
-		sb.WriteString(fmt.Sprintf("*%s %s*\n\n", monster.Size, monster.Type))
-		sb.WriteString(fmt.Sprintf("- **ID:** %s\n", monster.ID))
-		sb.WriteString(fmt.Sprintf("- **CR:** %s\n", monster.CR))
-		sb.WriteString(fmt.Sprintf("- **Descripción:** %s\n\n", monster.Description))
+		fmt.Fprintf(&sb, "## %s\n\n", monster.Name)
+		fmt.Fprintf(&sb, "*%s %s*\n\n", monster.Size, monster.Type)
+		fmt.Fprintf(&sb, "- **ID:** %s\n", monster.ID)
+		fmt.Fprintf(&sb, "- **CR:** %s\n", monster.CR)
+		fmt.Fprintf(&sb, "- **Descripción:** %s\n\n", monster.Description)
 
 		if monster.Stats.HP > 0 || monster.Stats.AC > 0 {
-			sb.WriteString("### Estadísticas Base\n\n")
+			fmt.Fprintf(&sb, "### Estadísticas Base\n\n")
 			if monster.Stats.AC > 0 {
-				sb.WriteString(fmt.Sprintf("**Clase de Armadura:** %d\n", monster.Stats.AC))
+				fmt.Fprintf(&sb, "**Clase de Armadura:** %d\n", monster.Stats.AC)
 			}
 			if monster.Stats.HP > 0 {
-				sb.WriteString(fmt.Sprintf("**Puntos de Golpe:** %d\n", monster.Stats.HP))
+				fmt.Fprintf(&sb, "**Puntos de Golpe:** %d\n", monster.Stats.HP)
 			}
-			sb.WriteString("\n")
+			fmt.Fprintf(&sb, "\n")
 		}
 
 		if len(monster.Abilities) > 0 {
-			sb.WriteString("### Habilidades Especiales\n\n")
+			fmt.Fprintf(&sb, "### Habilidades Especiales\n\n")
 			for _, ability := range monster.Abilities {
-				sb.WriteString(fmt.Sprintf("- %s\n", ability))
+				fmt.Fprintf(&sb, "- %s\n", ability)
 			}
-			sb.WriteString("\n")
+			fmt.Fprintf(&sb, "\n")
 		}
 
-		sb.WriteString("---\n\n")
+		fmt.Fprintf(&sb, "---\n\n")
 	}
 
 	return sb.String()
