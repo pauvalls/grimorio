@@ -183,6 +183,14 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with numbered areas (WotC format)")),
 	), campaignHandlers.HandleSaveAreas())
 
+	s.AddTool(mcp.NewTool("save_chapter",
+		mcp.WithDescription("Save a self-contained chapter with inline NPCs, encounters, and areas (WotC format: 10-15 areas per chapter)"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithNumber("chapter_number", mcp.Required(), mcp.Description("Chapter number (1, 2, 3...)"), mcp.Title("Chapter Number")),
+		mcp.WithString("title", mcp.Required(), mcp.Description("Chapter title")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with inline NPCs, encounters, and numbered areas (WotC format)")),
+	), campaignHandlers.HandleSaveChapter())
+
 	s.AddTool(mcp.NewTool("save_lore",
 		mcp.WithDescription("Save world lore and history for the campaign"),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),

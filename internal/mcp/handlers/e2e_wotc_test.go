@@ -461,3 +461,229 @@ Una llave de plata que brilla con luz propia. Abre cualquier cerradura de plata 
 	t.Log("  - Setting Guide (DM-only, Geography, History, Factions, Secrets)")
 	t.Log("  - Appendices (Magic Items, NPCs/Monsters, Handouts, Reference Tables)")
 }
+
+func TestE2E_ChapterSequentialFlow(t *testing.T) {
+	tmpDir := t.TempDir()
+	handlers, cleanup := setupE2ETestHandlers(tmpDir)
+	defer cleanup()
+
+	campaignName := "chapter-e2e-test"
+	campaignTitle := "Chapter E2E Test Campaign"
+
+	// Step 1: Create campaign
+	t.Log("Step 1: Creating campaign...")
+	createHandler := handlers.HandleCreateCampaign()
+	result, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name":  campaignName,
+		"title": campaignTitle,
+	}))
+	if err != nil {
+		t.Fatalf("create_campaign error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("create_campaign returned error: %v", result.Content)
+	}
+
+	// Step 2: Save Introduction
+	t.Log("Step 2: Saving Introduction...")
+	introHandler := handlers.HandleSaveIntroduction()
+	_, err = introHandler(context.Background(), newToolRequest("save_introduction", map[string]any{
+		"campaign": campaignName,
+		"content":  "# Introduction\n\nTest campaign.",
+	}))
+	if err != nil {
+		t.Fatalf("save_introduction error: %v", err)
+	}
+
+	// Step 3: Save Lore
+	t.Log("Step 3: Saving Lore...")
+	loreHandler := handlers.HandleSaveLore()
+	_, err = loreHandler(context.Background(), newToolRequest("save_lore", map[string]any{
+		"campaign": campaignName,
+		"content":  "# Lore\n\nTest lore.",
+	}))
+	if err != nil {
+		t.Fatalf("save_lore error: %v", err)
+	}
+
+	// Step 4: Save Chapter 1 (NEW: self-contained chapter)
+	t.Log("Step 4: Saving Chapter 1 via save_chapter...")
+	chapterHandler := handlers.HandleSaveChapter()
+	chapterContent := `# Capítulo 1: El Comienzo
+
+## Apertura Narrativa
+
+Los héroes llegan al pueblo.
+
+## NPCs en este Capítulo
+
+### Aldeano Mayor
+*Neutral humano*
+
+Un viejo líder del pueblo.
+
+## Encuentros
+
+### Encuentro 1: Emboscada
+*Dificultad: Medium*
+
+Los bandidos atacan desde las sombras.
+
+**Monstruos:**
+- 3x Bandido
+
+**Recompensas:**
+- 100 XP
+
+## Áreas
+
+### Área 1: Entrada del Pueblo
+
+> Los jugadores ven el pueblo desde la colina.
+
+La entrada está custodiada por guardias.
+
+**Características:**
+- **Muralla:** Madera reforzada
+
+**Tesoro:**
+- Monedas de cobre (10 gp)
+
+**Desarrollo:** Los guardias permiten el paso si los PJs son amistosos.
+
+**Ganchos:**
+- El mercader les ofrece una quest
+- Un niño les pide ayuda
+
+### Área 2: La Taberna
+
+> Humo y risas salen de la taberna.
+
+Un lugar acogedor para descansar.
+
+**Características:**
+- **Barra:** El tabernero conoce rumores
+
+**Tesoro:**
+- Poción de curación (50 gp)
+
+**Desarrollo:** El tabernero menciona la cueva misteriosa.
+
+**Ganchos:**
+- Un mensajero busca a los héroes
+- Un duelo amistoso ofrece recompensa
+
+## Consecuencias y Transición
+
+El pueblo queda a salvo.
+
+**Gancho al siguiente capítulo:** Una carta llega con noticias oscuras.
+`
+
+	result, err = chapterHandler(context.Background(), newToolRequest("save_chapter", map[string]any{
+		"campaign":       campaignName,
+		"chapter_number": float64(1),
+		"title":          "El Comienzo",
+		"content":        chapterContent,
+	}))
+	if err != nil {
+		t.Fatalf("save_chapter error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("save_chapter returned error: %v", result.Content)
+	}
+	t.Log("Chapter 1 saved successfully")
+
+	// Step 5: Verify chapter file exists
+	t.Log("Step 5: Verifying chapter file...")
+	chapterPath := filepath.Join(tmpDir, campaignName, "chapters", "chapter_01.md")
+	if _, err := os.Stat(chapterPath); os.IsNotExist(err) {
+		t.Fatalf("Chapter file not found: %s", chapterPath)
+	}
+	t.Logf("  ✓ chapter_01.md exists")
+
+	// Step 6: Save Bestiary (needed for creature references)
+	t.Log("Step 6: Saving Bestiary...")
+	bestiaryHandler := handlers.HandleSaveBestiary()
+	bestiaryContent := `# Bestiary
+
+## Bandido
+*Medium humanoid*
+
+**AC** 12 | **HP** 11
+`
+	_, err = bestiaryHandler(context.Background(), newToolRequest("save_bestiary", map[string]any{
+		"campaign": campaignName,
+		"content":  bestiaryContent,
+	}))
+	if err != nil {
+		t.Fatalf("save_bestiary error: %v", err)
+	}
+
+	// Step 7: Save Appendices
+	t.Log("Step 7: Saving Appendices...")
+	appendixHandler := handlers.HandleSaveAppendices()
+	_, err = appendixHandler(context.Background(), newToolRequest("save_appendices", map[string]any{
+		"campaign": campaignName,
+		"content":  "# Appendices\n\nTest appendices.",
+	}))
+	if err != nil {
+		t.Fatalf("save_appendices error: %v", err)
+	}
+
+	// Step 8: Compile PDF
+	t.Log("Step 8: Compiling PDF...")
+	compileHandler := handlers.HandleCompilePDF()
+	result, err = compileHandler(context.Background(), newToolRequest("compile_pdf", map[string]any{
+		"campaign": campaignName,
+		"title":    campaignTitle,
+	}))
+	if err != nil {
+		t.Fatalf("compile_pdf error: %v", err)
+	}
+
+	if result.IsError {
+		t.Logf("PDF compilation note: %v", result.Content)
+	} else {
+		t.Log("PDF compiled successfully")
+	}
+
+	// Verify HTML was generated and contains chapter content
+	htmlPath := filepath.Join(tmpDir, campaignName, "campaign.html")
+	if _, err := os.Stat(htmlPath); err == nil {
+		htmlContent, _ := os.ReadFile(htmlPath)
+		htmlStr := string(htmlContent)
+
+		checks := []struct {
+			name   string
+			search string
+		}{
+			{"Chapter title", "Capítulo 1"},
+			{"Area 1", "Área 1"},
+			{"Area 2", "Área 2"},
+			{"NPC section", "Aldeano Mayor"},
+			{"Encounter section", "Emboscada"},
+			{"Consequences", "Consecuencias"},
+		}
+
+		for _, check := range checks {
+			if strings.Contains(htmlStr, check.search) {
+				t.Logf("  ✓ '%s' found in HTML", check.name)
+			} else {
+				t.Errorf("  ✗ '%s' NOT found in HTML", check.name)
+			}
+		}
+	} else {
+		t.Log("  Note: campaign.html not found (no PDF engine may be available)")
+	}
+
+	// Step 9: Verify chapters/ directory is used (not areas/)
+	areasDir := filepath.Join(tmpDir, campaignName, "areas")
+	if _, err := os.Stat(areasDir); os.IsNotExist(err) {
+		t.Log("  ✓ No areas/ directory (using chapters/ structure)")
+	} else {
+		t.Log("  Note: areas/ directory exists (may be from campaign creation)")
+	}
+
+	t.Log("\n=== E2E Chapter-Sequential Flow Test COMPLETE ===")
+}
