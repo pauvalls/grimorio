@@ -206,3 +206,4 @@ func TestEntityParser_ParseChapter_AreaValidation(t *testing.T) {
 		t.Errorf("ParseChapter() areas = %d, want 16", len(result.Areas))
 	}
 }
+

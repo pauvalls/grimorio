@@ -221,14 +221,37 @@ validate_wotc_format() {
     if [ "$boxed_count" -ge 1 ]; then
         invalid_boxed=0
         for content_file in $content_files; do
+            in_boxed=0
+            boxed_text=""
             while IFS= read -r line; do
-                if [[ $line == ">>*" ]]; then
-                    word_count=$(grep -A 10 "^>>" "$content_file" | wc -w)
-                    if [ $word_count -lt 100 ] || [ $word_count -gt 600 ]; then
-                        invalid_boxed=$((invalid_boxed + 1))
+                if [[ $line == ">>"* ]]; then
+                    if [ $in_boxed -eq 1 ] && [ -n "$boxed_text" ]; then
+                        word_count=$(echo "$boxed_text" | wc -w)
+                        if [ $word_count -lt 100 ] || [ $word_count -gt 600 ]; then
+                            invalid_boxed=$((invalid_boxed + 1))
+                        fi
+                    fi
+                    in_boxed=1
+                    boxed_text="${line#>>}"
+                elif [ $in_boxed -eq 1 ]; then
+                    if [[ $line == "#"* ]] || [[ $line == "---"* ]]; then
+                        word_count=$(echo "$boxed_text" | wc -w)
+                        if [ $word_count -lt 100 ] || [ $word_count -gt 600 ]; then
+                            invalid_boxed=$((invalid_boxed + 1))
+                        fi
+                        in_boxed=0
+                        boxed_text=""
+                    else
+                        boxed_text="$boxed_text $line"
                     fi
                 fi
             done < "$content_file"
+            if [ $in_boxed -eq 1 ] && [ -n "$boxed_text" ]; then
+                word_count=$(echo "$boxed_text" | wc -w)
+                if [ $word_count -lt 100 ] || [ $word_count -gt 600 ]; then
+                    invalid_boxed=$((invalid_boxed + 1))
+                fi
+            fi
         done
         
         if [ $invalid_boxed -eq 0 ]; then

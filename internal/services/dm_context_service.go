@@ -345,14 +345,95 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 		}
 	}
 	
-	// Fallback: Load WotC-format areas from markdown files (areas/chapter_XX.md)
+	// Fallback: Load WotC-format areas from markdown files (chapters/ or areas/)
 	if len(payload.Areas) == 0 {
-		areasFromMarkdown, loadErr := s.loadAreasFromMarkdown(campaignID)
+		areas, chapterNPCs, monsterNames, loadWarnings, loadErr := s.loadCampaignAreas(campaignID)
 		if loadErr != nil {
-			warnings = append(warnings, fmt.Sprintf("failed to load WotC areas: %v", loadErr))
-		} else if len(areasFromMarkdown) > 0 {
-			for _, a := range areasFromMarkdown {
+			warnings = append(warnings, fmt.Sprintf("failed to load campaign areas: %v", loadErr))
+		} else {
+			warnings = append(warnings, loadWarnings...)
+			for _, a := range areas {
 				payload.Areas[a.ID] = a
+			}
+			// Merge chapter NPCs into payload (fill missing fields only)
+			for _, npc := range chapterNPCs {
+				existing, ok := payload.NPCs[npc.Name]
+				if ok {
+					if existing.Description == "" {
+						existing.Description = npc.Description
+					}
+					if existing.Faction == "" {
+						existing.Faction = npc.Faction
+					}
+					if existing.Stats.HP == 0 && npc.Stats.HP > 0 {
+						existing.Stats.HP = npc.Stats.HP
+					}
+					if existing.Stats.AC == 0 && npc.Stats.AC > 0 {
+						existing.Stats.AC = npc.Stats.AC
+					}
+					payload.NPCs[npc.Name] = existing
+				} else {
+					payload.NPCs[npc.Name] = npc
+				}
+			}
+			// Enrich all NPCs from canon entities (Motivation, Secret, Voice, Personality, Tactics)
+			for name, npc := range payload.NPCs {
+				for _, e := range canonDoc.Entities {
+					if e.Type == domain.EntityTypeNPC && e.Name == name {
+						npc.Motivation = e.Motivation
+						npc.Secret = e.Secret
+						if voice, ok := e.Properties["dialogue_voice"].(string); ok {
+							npc.DialogueVoice = voice
+						}
+						if traits, ok := e.Properties["personality_traits"].([]string); ok {
+							npc.Personality = traits
+						}
+						if tactics, ok := e.Properties["tactics"].(string); ok {
+							npc.Tactics = tactics
+						}
+						payload.NPCs[name] = npc
+						break
+					}
+				}
+			}
+			// Add monsters from encounter refs to bestiary
+			for _, name := range monsterNames {
+				if _, ok := payload.Bestiary[name]; !ok {
+					mc := domain.MonsterContext{
+						Name:            name,
+						CR:              "",
+						DescriptiveCues: map[string]string{},
+					}
+					// Enrich from canon entities
+					for _, e := range canonDoc.Entities {
+						if e.Type == domain.EntityTypeMonster && e.Name == name {
+							if hp, ok := e.Properties["hp"].(int); ok {
+								mc.HP = hp
+							}
+							if ac, ok := e.Properties["ac"].(int); ok {
+								mc.AC = ac
+							}
+							if cr, ok := e.Properties["cr"].(string); ok {
+								mc.CR = cr
+							}
+							if tactics, ok := e.Properties["tactics"].(string); ok {
+								mc.Tactics = tactics
+							}
+							if cues, ok := e.Properties["descriptive_cues"].(map[string]any); ok {
+								for k, v := range cues {
+									if s, ok := v.(string); ok {
+										mc.DescriptiveCues[k] = s
+									}
+								}
+							}
+							break
+						}
+					}
+					payload.Bestiary[name] = mc
+					if mc.CR == "" {
+						warnings = append(warnings, fmt.Sprintf("⚔️ Monster %s from chapter encounters lacks CR — add to bestiary or canon", name))
+					}
+				}
 			}
 		}
 	}
@@ -694,9 +775,9 @@ func orEmptySlice[T any](s []T) []T {
 	return s
 }
 
-// loadAreasFromMarkdown parses WotC-format area files (areas/chapter_XX.md)
-// This is a fallback when V3 repository (areas_v3/*.json) is not available
-func (s *DMContextService) loadAreasFromMarkdown(campaignID string) ([]domain.AreaContext, error) {
+// loadAreasFromAreasDir parses WotC-format area files from the legacy areas/ directory.
+// This is a fallback when V3 repository (areas_v3/*.json) is not available.
+func (s *DMContextService) loadAreasFromAreasDir(campaignID string) ([]domain.AreaContext, error) {
 	areasDir := filepath.Join(s.baseDir, campaignID, "areas")
 	if _, err := os.Stat(areasDir); os.IsNotExist(err) {
 		return nil, nil // No areas directory, return empty
@@ -722,7 +803,7 @@ func (s *DMContextService) loadAreasFromMarkdown(campaignID string) ([]domain.Ar
 
 		for _, line := range lines {
 			trimmed := strings.TrimSpace(line)
-			
+
 			// Detect area headers: ## Area X: Title or ## X: Title
 			if strings.HasPrefix(trimmed, "## Area ") || strings.HasPrefix(trimmed, "## ") {
 				// Save previous area if exists
@@ -780,4 +861,106 @@ func (s *DMContextService) loadAreasFromMarkdown(campaignID string) ([]domain.Ar
 	}
 
 	return contexts, nil
+}
+
+// loadAreasFromChapters reads chapter markdown files from chapters/ directory,
+// parses inline NPCs, encounters, and areas, and returns structured contexts.
+func (s *DMContextService) loadAreasFromChapters(campaignID string) ([]domain.AreaContext, []domain.NPCContext, []string, error) {
+	chaptersDir := filepath.Join(s.baseDir, campaignID, "chapters")
+	if _, err := os.Stat(chaptersDir); os.IsNotExist(err) {
+		return nil, nil, nil, nil
+	}
+
+	files, err := filepath.Glob(filepath.Join(chaptersDir, "chapter_*.md"))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	parser := NewEntityParser()
+	var areas []domain.AreaContext
+	var npcs []domain.NPCContext
+	monsterSet := make(map[string]bool)
+
+	for _, file := range files {
+		content, readErr := os.ReadFile(file)
+		if readErr != nil {
+			continue
+		}
+
+		filename := filepath.Base(file)
+		chapterID := strings.TrimSuffix(filename, ".md")
+
+		// Extract chapter number from filename (chapter_NN.md → N)
+		var chapterNum int
+		_, _ = fmt.Sscanf(filename, "chapter_%d.md", &chapterNum)
+
+		result, parseErr := parser.ParseChapter(string(content), campaignID, chapterNum)
+		if parseErr != nil {
+			continue
+		}
+
+		// Fix area IDs to use filename-based chapterID (chapter_01 not chapter-1)
+		for _, a := range result.Areas {
+			areaID := fmt.Sprintf("%s-area-%d", chapterID, a.AreaNumber)
+			areas = append(areas, domain.AreaContext{
+				ID:              areaID,
+				ChapterID:       chapterID,
+				AreaNumber:      a.AreaNumber,
+				Title:           a.Title,
+				Summary:         a.Description,
+				PlayerReadAloud: a.PlayerReadAloud,
+				Encounters:      a.Encounters,
+				NPCs:            a.NPCs,
+				Treasure:        a.Treasure,
+			})
+		}
+
+		// Extract NPCs from chapter
+		for _, n := range result.NPCs {
+			npcCtx := domain.NPCContext{
+				Name:        n.Name,
+				Description: n.Description,
+			}
+			if n.Stats != nil {
+				npcCtx.Stats = domain.NPCStats{
+					HP: n.Stats.HP,
+					AC: n.Stats.AC,
+				}
+			}
+			npcs = append(npcs, npcCtx)
+		}
+
+		// Extract unique monster names from encounter refs
+		for _, enc := range result.Encounters {
+			for _, m := range enc.Monsters {
+				monsterSet[m.Name] = true
+			}
+		}
+
+		// Also include monsters explicitly parsed from the chapter
+		for _, m := range result.Monsters {
+			monsterSet[m.Name] = true
+		}
+	}
+
+	monsterNames := make([]string, 0, len(monsterSet))
+	for name := range monsterSet {
+		monsterNames = append(monsterNames, name)
+	}
+
+	return areas, npcs, monsterNames, nil
+}
+
+// loadCampaignAreas auto-detects chapters/ vs areas/ and returns AreaContexts.
+// Prefers chapters/ when both exist.
+// When loading from chapters, also returns inline NPCs and monster names for enrichment.
+func (s *DMContextService) loadCampaignAreas(campaignID string) (areas []domain.AreaContext, chapterNPCs []domain.NPCContext, monsterNames []string, warnings []string, err error) {
+	chaptersDir := filepath.Join(s.baseDir, campaignID, "chapters")
+	if _, err = os.Stat(chaptersDir); err == nil {
+		areas, chapterNPCs, monsterNames, err = s.loadAreasFromChapters(campaignID)
+		return areas, chapterNPCs, monsterNames, nil, err
+	}
+
+	areas, err = s.loadAreasFromAreasDir(campaignID)
+	return areas, nil, nil, nil, err
 }
