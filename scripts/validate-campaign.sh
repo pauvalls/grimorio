@@ -88,22 +88,43 @@ validate_structure() {
     echo "Running Structure Validation..."
     echo ""
     
+    # Detect campaign structure: chapters/ (new) vs acts/ (legacy)
+    local has_chapters=false
+    local has_acts=false
+    if [ -d "$CAMPAIGN_PATH/chapters" ]; then
+        has_chapters=true
+    fi
+    if [ -d "$CAMPAIGN_PATH/acts" ]; then
+        has_acts=true
+    fi
+    
     local required_files=(
         "lore.md"
-        "npcs/npcs_and_factions.md"
         "bestiary/bestiary.md"
-        "encounters/encounters.md"
         "maps/maps_and_scenes.md"
     )
     
+    # npcs and encounters are optional for chapter-based campaigns (inline)
+    if [ "$has_acts" = true ]; then
+        required_files+=("npcs/npcs_and_factions.md")
+        required_files+=("encounters/encounters.md")
+    fi
+    
     local required_dirs=(
-        "acts"
         "npcs"
         "bestiary"
-        "encounters"
         "maps"
         "assets"
     )
+    
+    # Either acts/ or chapters/ must exist
+    if [ "$has_chapters" = true ]; then
+        required_dirs+=("chapters")
+    elif [ "$has_acts" = true ]; then
+        required_dirs+=("acts")
+    else
+        required_dirs+=("acts")
+    fi
     
     # Check directories
     for dir in "${required_dirs[@]}"; do
@@ -127,13 +148,30 @@ validate_structure() {
         fi
     done
     
-    # Check acts
-    act_count=$(find "$CAMPAIGN_PATH/acts" -name "*.md" -type f 2>/dev/null | wc -l)
-    if [ $act_count -ge 1 ]; then
-        print_check "Acts" "PASS" "$act_count act files found"
-    else
-        print_check "Acts" "FAIL" "No act files found"
-        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Generate at least 1 act file"
+    # Check acts or chapters
+    if [ "$has_chapters" = true ]; then
+        chapter_count=$(find "$CAMPAIGN_PATH/chapters" -name "*.md" -type f 2>/dev/null | wc -l)
+        if [ $chapter_count -ge 1 ]; then
+            print_check "Chapters" "PASS" "$chapter_count chapter files found"
+        else
+            print_check "Chapters" "FAIL" "No chapter files found"
+            REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Generate at least 1 chapter file"
+        fi
+    fi
+    
+    if [ "$has_acts" = true ]; then
+        act_count=$(find "$CAMPAIGN_PATH/acts" -name "*.md" -type f 2>/dev/null | wc -l)
+        if [ $act_count -ge 1 ]; then
+            print_check "Acts" "PASS" "$act_count act files found"
+        else
+            print_check "Acts" "FAIL" "No act files found"
+            REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Generate at least 1 act file"
+        fi
+    fi
+    
+    if [ "$has_chapters" = false ] && [ "$has_acts" = false ]; then
+        print_check "Content" "FAIL" "No acts/ or chapters/ directory found"
+        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Generate act or chapter content"
     fi
     
     # Check assets
@@ -147,25 +185,50 @@ validate_structure() {
     echo ""
 }
 
+# Get content files from acts/ or chapters/ (whichever exists)
+get_content_files() {
+    local pattern="$1"
+    local files=""
+    if [ -d "$CAMPAIGN_PATH/chapters" ]; then
+        files="$CAMPAIGN_PATH"/chapters/*.md
+    fi
+    if [ -d "$CAMPAIGN_PATH/acts" ]; then
+        if [ -n "$files" ]; then
+            files="$files $CAMPAIGN_PATH"/acts/*.md
+        else
+            files="$CAMPAIGN_PATH"/acts/*.md
+        fi
+    fi
+    echo "$files"
+}
+
 validate_wotc_format() {
     echo "Running WotC Format Validation..."
     echo ""
     
+    local content_files
+    content_files=$(get_content_files)
+    
+    if [ -z "$content_files" ]; then
+        print_check "WotC Format" "FAIL" "No content files found in acts/ or chapters/"
+        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Generate act or chapter content"
+        echo ""
+        return
+    fi
+    
     # Boxed Text Validation
-    boxed_count=$(grep -c '^>>' "$CAMPAIGN_PATH"/acts/*.md 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
+    boxed_count=$(grep -c '^>>' $content_files 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
     if [ "$boxed_count" -ge 1 ]; then
-        # Validate word count per boxed text (sample check)
         invalid_boxed=0
-        for act_file in "$CAMPAIGN_PATH"/acts/*.md; do
+        for content_file in $content_files; do
             while IFS= read -r line; do
-                if [[ $line == ">>"* ]]; then
-                    # Extract boxed text (simplified - just check next few lines)
-                    word_count=$(grep -A 10 "^>>" "$act_file" | wc -w)
+                if [[ $line == ">>*" ]]; then
+                    word_count=$(grep -A 10 "^>>" "$content_file" | wc -w)
                     if [ $word_count -lt 100 ] || [ $word_count -gt 600 ]; then
                         invalid_boxed=$((invalid_boxed + 1))
                     fi
                 fi
-            done < "$act_file"
+            done < "$content_file"
         done
         
         if [ $invalid_boxed -eq 0 ]; then
@@ -180,8 +243,8 @@ validate_wotc_format() {
     fi
     
     # Character Hooks Validation
-    hook_count=$(grep -ci 'hook\|gancho' "$CAMPAIGN_PATH"/acts/*.md 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
-    area_count=$(grep -c '^## Area' "$CAMPAIGN_PATH"/acts/*.md 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
+    hook_count=$(grep -ci 'hook\|gancho' $content_files 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
+    area_count=$(grep -c '^## Area\|^### Área' $content_files 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
     
     if [ $area_count -gt 0 ]; then
         hooks_per_area=$((hook_count / area_count))
@@ -197,13 +260,12 @@ validate_wotc_format() {
     fi
     
     # Developments Validation
-    dev_count=$(grep -ci 'development\|desarrollo' "$CAMPAIGN_PATH"/acts/*.md 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
+    dev_count=$(grep -ci 'development\|desarrollo' $content_files 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
     
     if [ $area_count -gt 0 ]; then
         devs_per_area=$((dev_count / area_count))
         if [ $devs_per_area -ge 3 ]; then
-            # Check recovery paths
-            recovery_count=$(grep -ci 'if.*fail\|si.*fallan\|recovery\|recuperación' "$CAMPAIGN_PATH"/acts/*.md 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
+            recovery_count=$(grep -ci 'if.*fail\|si.*fallan\|recovery\|recuperación' $content_files 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
             if [ $recovery_count -ge $dev_count ]; then
                 print_check "Developments" "PASS" "$devs_per_area per area with recovery paths (≥3 required)"
             else
@@ -220,30 +282,30 @@ validate_wotc_format() {
     fi
     
     # Running Guidance Validation
-    guidance_count=$(grep -c 'Cómo Dirigir esta Escena\|Running the Scene' "$CAMPAIGN_PATH"/acts/*.md 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
+    guidance_count=$(grep -c 'Cómo Dirigir esta Escena\|Running the Scene\|Cómo Dirigir Este Capítulo' $content_files 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
     
     if [ $guidance_count -ge 1 ]; then
         print_check "Running Guidance" "PASS" "$guidance_count sections found"
     else
         print_check "Running Guidance" "FAIL" "No running guidance sections found"
-        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add 'Cómo Dirigir esta Escena' section to each area"
+        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add 'Cómo Dirigir Este Capítulo' section"
     fi
     
     # Sidebars Validation
-    sidebar_count=$(grep -c '^> #####' "$CAMPAIGN_PATH"/acts/*.md 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
-    act_count_files=$(find "$CAMPAIGN_PATH/acts" -name "*.md" -type f 2>/dev/null | wc -l)
+    sidebar_count=$(grep -c '^> #####' $content_files 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
+    content_file_count=$(echo "$content_files" | wc -w)
     
-    if [ $act_count_files -gt 0 ]; then
-        sidebars_per_act=$((sidebar_count / act_count_files))
-        if [ $sidebars_per_act -ge 1 ]; then
-            print_check "Sidebars" "PASS" "$sidebar_count total (≥1 per act)"
+    if [ $content_file_count -gt 0 ]; then
+        sidebars_per_file=$((sidebar_count / content_file_count))
+        if [ $sidebars_per_file -ge 1 ]; then
+            print_check "Sidebars" "PASS" "$sidebar_count total (≥1 per file)"
         else
-            print_check "Sidebars" "FAIL" "$sidebars_per_act per act (required: ≥1)"
-            REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add at least 1 sidebar to each act (rules clarification, DM tip, or lore excerpt)"
+            print_check "Sidebars" "FAIL" "$sidebars_per_file per file (required: ≥1)"
+            REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add at least 1 sidebar to each file (rules clarification, DM tip, or lore excerpt)"
         fi
     else
-        print_check "Sidebars" "FAIL" "No act files found"
-        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Generate act content first"
+        print_check "Sidebars" "FAIL" "No content files found"
+        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Generate act or chapter content first"
     fi
     
     echo ""
@@ -253,16 +315,26 @@ validate_references() {
     echo "Running Cross-Reference Validation..."
     echo ""
     
+    local content_files
+    content_files=$(get_content_files)
+    
+    if [ -z "$content_files" ]; then
+        print_check "Cross-References" "FAIL" "No content files found in acts/ or chapters/"
+        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Generate act or chapter content"
+        echo ""
+        return
+    fi
+    
     # Check creature references
     creature_errors=0
     if [ -f "$CAMPAIGN_PATH/bestiary/bestiary.md" ]; then
-        creature_refs=$(grep -oE '\[[A-Z][a-z]+[A-Z][a-z]+\]' "$CAMPAIGN_PATH"/acts/*.md 2>/dev/null | sort -u || true)
+        creature_refs=$(grep -oE '\[[A-Z][a-z]+[A-Z][a-z]+\]' $content_files 2>/dev/null | sort -u || true)
         for creature in $creature_refs; do
             creature_clean=$(echo "$creature" | tr -d '[]')
             if ! grep -q "$creature_clean" "$CAMPAIGN_PATH/bestiary/bestiary.md" 2>/dev/null; then
                 creature_errors=$((creature_errors + 1))
                 if [ $creature_errors -le 5 ]; then
-                    REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add creature '$creature_clean' to bestiary OR fix reference in acts"
+                    REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add creature '$creature_clean' to bestiary OR fix reference"
                 fi
             fi
         done
@@ -278,16 +350,16 @@ validate_references() {
         REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Create bestiary/bestiary.md first"
     fi
     
-    # Check NPC references
+    # Check NPC references (only if npcs file exists; chapters may have inline NPCs)
     npc_errors=0
     if [ -f "$CAMPAIGN_PATH/npcs/npcs_and_factions.md" ]; then
-        npc_refs=$(grep -oE '\*[A-Z][a-z]+[A-Z][a-z]+\*' "$CAMPAIGN_PATH"/acts/*.md 2>/dev/null | sort -u || true)
+        npc_refs=$(grep -oE '\*[A-Z][a-z]+[A-Z][a-z]+\*' $content_files 2>/dev/null | sort -u || true)
         for npc in $npc_refs; do
             npc_clean=$(echo "$npc" | tr -d '*')
             if ! grep -q "$npc_clean" "$CAMPAIGN_PATH/npcs/npcs_and_factions.md" 2>/dev/null; then
                 npc_errors=$((npc_errors + 1))
                 if [ $npc_errors -le 5 ]; then
-                    REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add NPC '$npc_clean' to npcs_and_factions.md OR fix reference in acts"
+                    REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add NPC '$npc_clean' to npcs_and_factions.md OR fix reference"
                 fi
             fi
         done
@@ -299,8 +371,12 @@ validate_references() {
             print_check "NPC References" "FAIL" "$npc_errors/$npc_total NPCs not found in npcs_and_factions.md"
         fi
     else
-        print_check "NPC References" "FAIL" "NPCs file not found"
-        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Create npcs/npcs_and_factions.md first"
+        if [ -d "$CAMPAIGN_PATH/chapters" ]; then
+            print_check "NPC References" "PASS" "No npcs file (inline NPCs in chapters — OK)"
+        else
+            print_check "NPC References" "FAIL" "NPCs file not found"
+            REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Create npcs/npcs_and_factions.md first"
+        fi
     fi
     
     echo ""
