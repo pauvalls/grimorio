@@ -1,0 +1,98 @@
+# Capítulo {{.ChapterNumber}}: {{.Title}}
+
+> **Modo de Juego:** {{.GameMode}}
+> 
+> **Duración:** {{.Duration}} | **Nivel:** {{.LevelRange}} | **Tono:** {{.Tone}}
+> 
+> **Activo Narrativo Transferido:** {{.AssetHandoff}}
+
+---
+
+## Apertura Narrativa
+
+{{.Opener}}
+
+---
+
+## NPCs en este Capítulo
+
+{{range .InlineNPCs}}
+### {{.Name}}
+*{{.Role}}*
+
+{{.Description}}
+
+{{if .Stats}}
+**Estadísticas:** AC {{.Stats.AC}}, HP {{.Stats.HP}}
+{{end}}
+
+{{end}}
+
+---
+
+## Encuentros
+
+{{range .Encounters}}
+### Encuentro {{.Number}}: {{.Name}}
+*Dificultad: {{.Difficulty}}*
+
+{{.Description}}
+
+**Monstruos:**
+{{range .Monsters}}
+- {{.Quantity}}x {{.Name}}
+{{end}}
+
+**Recompensas:**
+{{range .Rewards}}
+- {{.Description}}
+{{end}}
+
+{{end}}
+
+---
+
+## Áreas
+
+{{range .Areas}}
+### Área {{.Number}}: {{.Name}}
+
+> {{.ReadAloud}}
+
+{{.Description}}
+
+**Características:**
+{{range .Features}}
+- **{{.Name}}:** {{.Description}}
+{{end}}
+
+**Tesoro:**
+{{range .Treasure}}
+- {{.Name}} ({{.ValueGP}} gp)
+{{end}}
+
+**Desarrollo:** {{.Development}}
+
+{{if .Hooks}}
+**Ganchos:**
+{{range .Hooks}}
+- {{.}}
+{{end}}
+{{end}}
+
+{{if .DMSidebar}}
+<div class="dm-sidebar">
+<h5>{{.DMSidebar.Title}}</h5>
+<p>{{.DMSidebar.Content}}</p>
+</div>
+{{end}}
+
+{{end}}
+
+---
+
+## Consecuencias y Transición
+
+{{.Consequences}}
+
+**Gancho al siguiente capítulo:** {{.NextHook}}

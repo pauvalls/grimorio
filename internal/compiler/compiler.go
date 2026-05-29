@@ -48,6 +48,9 @@ var settingGuideTemplate string
 //go:embed templates/appendices.md.tmpl
 var appendicesTemplate string
 
+//go:embed templates/chapter.md.tmpl
+var chapterTemplate string
+
 //go:embed templates/session-prep.md.tmpl
 var sessionPrepTemplate string
 
@@ -148,6 +151,8 @@ func GetTemplate(tmplType string) (string, error) {
 		return settingGuideTemplate, nil
 	case "appendices":
 		return appendicesTemplate, nil
+	case "chapter":
+		return chapterTemplate, nil
 	case "session-prep":
 		return sessionPrepTemplate, nil
 	case "character-sheet":
@@ -211,8 +216,27 @@ func (c *Compiler) Compile(ctx context.Context, title string) (string, error) {
 	return "", fmt.Errorf("PDF generation failed after %d attempts: images missing (expected %d, found %d)", maxRetries, lastExpected, lastFound)
 }
 
+// hasDir checks if a directory exists and is a directory.
+func hasDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
 // generateHTML reads all markdown sources and generates the full HTML document.
 func (c *Compiler) generateHTML(title string) ([]string, error) {
+	// Auto-detect campaign structure: chapters/ (new) vs areas/ (legacy)
+	chapterDir := filepath.Join(c.CampaignDir, "chapters")
+	areasDir := filepath.Join(c.CampaignDir, "areas")
+	
+	var chapterSectionName, chapterSectionPath string
+	if hasDir(chapterDir) {
+		chapterSectionName = "Chapters"
+		chapterSectionPath = chapterDir
+	} else {
+		chapterSectionName = "Chapters (Areas)"
+		chapterSectionPath = areasDir
+	}
+
 	sections := []struct {
 		name  string
 		path  string
@@ -220,7 +244,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 	}{
 		{"Introduction", filepath.Join(c.CampaignDir, "introduction.md"), false},
 		{"Lore y Ambientación", filepath.Join(c.CampaignDir, "lore.md"), false},
-		{"Chapters (Areas)", filepath.Join(c.CampaignDir, "areas"), true},
+		{chapterSectionName, chapterSectionPath, true},
 		{"Setting Guide", filepath.Join(c.CampaignDir, "setting-guide.md"), false},
 		{"Apéndice A: NPCs y Facciones", filepath.Join(c.CampaignDir, "npcs"), true},
 		{"Apéndice B: Bestiario", filepath.Join(c.CampaignDir, "bestiary"), true},
@@ -607,18 +631,24 @@ func (c *Compiler) generateShockPointsHTML(shockPoints []struct {
 func (c *Compiler) generateAdventureRoster() string {
 	var npcs, monsters, encounters []string
 
-	// Scan acts for entities
-	actsDir := filepath.Join(c.CampaignDir, "areas")
-	if info, err := os.Stat(actsDir); err == nil && info.IsDir() {
-		files, _ := os.ReadDir(actsDir)
-		for _, f := range files {
-			if strings.HasSuffix(f.Name(), ".md") {
-				content, _ := os.ReadFile(filepath.Join(actsDir, f.Name()))
-				n, m, e := extractRosterEntries(string(content))
-				npcs = append(npcs, n...)
-				monsters = append(monsters, m...)
-				encounters = append(encounters, e...)
+	// Scan chapters (new structure) or areas (legacy) for entities
+	chapterDirs := []string{
+		filepath.Join(c.CampaignDir, "chapters"),
+		filepath.Join(c.CampaignDir, "areas"),
+	}
+	for _, dir := range chapterDirs {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			files, _ := os.ReadDir(dir)
+			for _, f := range files {
+				if strings.HasSuffix(f.Name(), ".md") {
+					content, _ := os.ReadFile(filepath.Join(dir, f.Name()))
+					n, m, e := extractRosterEntries(string(content))
+					npcs = append(npcs, n...)
+					monsters = append(monsters, m...)
+					encounters = append(encounters, e...)
+				}
 			}
+			break // Only scan the first existing directory
 		}
 	}
 
@@ -775,6 +805,7 @@ func (c *Compiler) countImagesInMarkdownSources() (int, error) {
 
 	sections := []string{
 		filepath.Join(c.CampaignDir, "lore.md"),
+		filepath.Join(c.CampaignDir, "chapters"),
 		filepath.Join(c.CampaignDir, "areas"),
 		filepath.Join(c.CampaignDir, "npcs"),
 		filepath.Join(c.CampaignDir, "bestiary"),

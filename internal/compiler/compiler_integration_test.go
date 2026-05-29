@@ -241,6 +241,112 @@ func TestCompileBackwardCompatibility(t *testing.T) {
 	}
 }
 
+// TestCompileWithChapters tests compilation with new chapters/ structure
+func TestCompileWithChapters(t *testing.T) {
+	// Skip if no PDF engine is available
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping integration test")
+	}
+
+	tmpDir := t.TempDir()
+
+	// Create minimal campaign with chapters/ instead of areas/
+	createTestCampaignWithChapters(t, tmpDir, "Chapters Test Campaign")
+
+	// Compile
+	ctx := context.Background()
+	c := compiler.New(tmpDir, "")
+	pdfPath, err := c.Compile(ctx, "Chapters Test Campaign")
+
+	if err != nil {
+		t.Fatalf("Compile with chapters/ failed: %v", err)
+	}
+
+	// Verify PDF was created
+	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		t.Errorf("PDF file not created at %s", pdfPath)
+	}
+
+	// Verify HTML contains chapter content
+	htmlPath := filepath.Join(tmpDir, "campaign.html")
+	htmlContent, err := os.ReadFile(htmlPath)
+	if err != nil {
+		t.Fatalf("Failed to read HTML: %v", err)
+	}
+
+	htmlStr := string(htmlContent)
+
+	// Check for chapter content
+	if !strings.Contains(htmlStr, "Área 1") {
+		t.Error("HTML missing Área 1 from chapter content")
+	}
+	if !strings.Contains(htmlStr, "chapter_01") {
+		// Chapter files should be included
+		t.Log("Note: chapter filename may not appear in HTML directly")
+	}
+}
+
+// Helper function to create minimal test campaign with chapters/ structure
+func createTestCampaignWithChapters(t *testing.T, dir, name string) {
+	t.Helper()
+
+	// Create required directories (no areas/)
+	dirs := []string{"chapters", "npcs", "bestiary", "encounters", "maps", "assets"}
+	for _, d := range dirs {
+		if err := os.MkdirAll(filepath.Join(dir, d), 0755); err != nil {
+			t.Fatalf("Failed to create directory %s: %v", d, err)
+		}
+	}
+
+	// Create introduction.md
+	intro := `# ` + name + `
+
+Esta es una campaña de prueba con capítulos.
+`
+	_ = os.WriteFile(filepath.Join(dir, "introduction.md"), []byte(intro), 0644)
+
+	// Create lore.md
+	lore := `# Lore y Ambientación
+
+Este es el lore de la campaña de prueba.
+`
+	_ = os.WriteFile(filepath.Join(dir, "lore.md"), []byte(lore), 0644)
+
+	// Create appendices.md
+	appendices := `# Appendices
+
+Apéndices de la campaña.
+`
+	_ = os.WriteFile(filepath.Join(dir, "appendices.md"), []byte(appendices), 0644)
+
+	// Create a chapter file
+	chapterContent := `# Capítulo 1: El Comienzo
+
+## Apertura Narrativa
+
+Los héroes llegan al pueblo.
+
+## Áreas
+
+### Área 1: Entrada del Pueblo
+
+> Los jugadores ven el pueblo desde la colina.
+
+La entrada está custodiada por guardias.
+
+### Área 2: La Taberna
+
+> Humo y risas salen de la taberna.
+
+Un lugar acogedor para descansar.
+
+## Consecuencias y Transición
+
+El pueblo queda a salvo.
+`
+	_ = os.WriteFile(filepath.Join(dir, "chapters", "chapter_01.md"), []byte(chapterContent), 0644)
+}
+
 // Helper function to create minimal test campaign
 func createTestCampaign(t *testing.T, dir, name string) {
 	t.Helper()

@@ -481,6 +481,182 @@ func (p *EntityParser) ParseEncounters(content string, campaignID string) ([]dom
 	return encounters, nil
 }
 
+// ParseChapter extracts inline NPCs, encounters, and areas from a self-contained chapter markdown.
+// Expected format:
+// # Capítulo N: Title
+// ## NPCs en este Capítulo
+// ### NPC Name
+// ## Encuentros
+// ### Encuentro N: Name
+// ## Áreas
+// ### Área N: Name
+func (p *EntityParser) ParseChapter(content, campaignID string, chapterNum int) (*ParseResult, error) {
+	result := &ParseResult{
+		NPCs:       []domain.NPC{},
+		Encounters: []domain.Encounter{},
+		Areas:      []domain.Area{},
+	}
+
+	lines := strings.Split(content, "\n")
+	var currentNPC *domain.NPC
+	var currentEncounter *domain.Encounter
+	var currentArea *domain.Area
+
+	inNPCSection := false
+	inEncounterSection := false
+	inAreaSection := false
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+
+		lower := strings.ToLower(trimmed)
+
+		// Detect section boundaries
+		if strings.HasPrefix(lower, "## ") {
+			inNPCSection = false
+			inEncounterSection = false
+			inAreaSection = false
+
+			if strings.Contains(lower, "npc") {
+				inNPCSection = true
+			} else if strings.Contains(lower, "encuentro") {
+				inEncounterSection = true
+			} else if strings.Contains(lower, "área") || strings.Contains(lower, "area") {
+				inAreaSection = true
+			}
+			continue
+		}
+
+		// Parse area heading: ### Área N: Name
+		if inAreaSection {
+			if matches := regexp.MustCompile(`^#{3}\s+(?:Área|Area)\s+(\d+)[:\s]*(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
+				areaNum := parseInt(matches[1])
+				name := strings.TrimSpace(matches[2])
+
+				if currentArea != nil {
+					result.Areas = append(result.Areas, *currentArea)
+				}
+
+				chapterID := fmt.Sprintf("chapter-%d", chapterNum)
+				currentArea = &domain.Area{
+					ID:         fmt.Sprintf("%s-area-%d", chapterID, areaNum),
+					ChapterID:  chapterID,
+					AreaNumber: areaNum,
+					Title:      name,
+				}
+				continue
+			}
+
+			if currentArea != nil {
+				// Accumulate description (skip headings and list markers)
+				if !strings.HasPrefix(trimmed, "#") && !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "*") {
+					if currentArea.Description != "" {
+						currentArea.Description += " "
+					}
+					currentArea.Description += trimmed
+				}
+			}
+		}
+
+		// Parse encounter heading: ### Encuentro N: Name
+		if inEncounterSection {
+			if matches := regexp.MustCompile(`^#{3}\s+Encuentro\s+(\d+)[:\s]*(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
+				name := strings.TrimSpace(matches[2])
+
+				if currentEncounter != nil {
+					result.Encounters = append(result.Encounters, *currentEncounter)
+				}
+
+				currentEncounter = &domain.Encounter{
+					ID:         sanitizeName(name),
+					CampaignID: campaignID,
+					Name:       name,
+					Difficulty: "medium",
+				}
+				continue
+			}
+		}
+
+		// Parse NPC heading: ### NPC Name
+		if inNPCSection {
+			if matches := regexp.MustCompile(`^#{3}\s+(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
+				name := strings.TrimSpace(matches[1])
+
+				// Skip generic headers
+				lowerName := strings.ToLower(name)
+				if strings.Contains(lowerName, "npc") || strings.Contains(lowerName, "personaje") {
+					continue
+				}
+
+				if currentNPC != nil {
+					result.NPCs = append(result.NPCs, *currentNPC)
+				}
+
+				currentNPC = &domain.NPC{
+					ID:         sanitizeName(name),
+					CampaignID: campaignID,
+					Name:       name,
+					Role:       "chapter-inline",
+				}
+				continue
+			}
+
+			if currentNPC != nil {
+				// Parse stats
+				if stats := p.parseStats(trimmed); stats != nil {
+					if currentNPC.Stats == nil {
+						currentNPC.Stats = stats
+					} else {
+						if stats.AC > 0 {
+							currentNPC.Stats.AC = stats.AC
+						}
+						if stats.HP > 0 {
+							currentNPC.Stats.HP = stats.HP
+						}
+					}
+				}
+
+			// Parse role from italic line into description, keep Role as chapter-inline
+			if strings.HasPrefix(trimmed, "*") && strings.HasSuffix(trimmed, "*") {
+				role := strings.Trim(trimmed, "*")
+				if currentNPC.Description != "" {
+					currentNPC.Description += " "
+				}
+				currentNPC.Description += role
+			}
+
+				// Accumulate description
+				if !strings.HasPrefix(trimmed, "*") && !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "#") {
+					if currentNPC.Description != "" {
+						currentNPC.Description += " "
+					}
+					currentNPC.Description += trimmed
+				}
+			}
+		}
+	}
+
+	// Save last entities
+	if currentArea != nil {
+		result.Areas = append(result.Areas, *currentArea)
+	}
+	if currentEncounter != nil {
+		result.Encounters = append(result.Encounters, *currentEncounter)
+	}
+	if currentNPC != nil {
+		result.NPCs = append(result.NPCs, *currentNPC)
+	}
+
+	if len(result.Areas) == 0 {
+		return nil, fmt.Errorf("no areas found in chapter - expected format: ### Área X: Nombre")
+	}
+
+	return result, nil
+}
+
 // ParseAreas extracts areas from markdown content (WotC format)
 // Expected format:
 // ### Área 1: Puerta del Norte
