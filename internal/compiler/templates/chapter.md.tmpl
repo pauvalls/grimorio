@@ -4,13 +4,26 @@
 > 
 > **Duración:** {{.Duration}} | **Nivel:** {{.LevelRange}} | **Tono:** {{.Tone}}
 > 
-> **Activo Narrativo Transferido:** {{.AssetHandoff}}
+> **Objetivos del Capítulo:**
+> - {{.Objective1}}
+> - {{.Objective2}}
+> - {{.Objective3}}
+> 
+> **Asset para el Siguiente Capítulo:** {{.AssetHandoff}}
 
 ---
 
-## Apertura Narrativa
+## Apertura del Capítulo
 
-{{.Opener}}
+**Running this Chapter:**
+
+{{.RunningGuidance}}
+
+---
+
+## Adventure Background
+
+{{.Background}}
 
 ---
 
@@ -18,14 +31,55 @@
 
 {{range .InlineNPCs}}
 ### {{.Name}}
-*{{.Role}}*
 
-{{.Description}}
+*{{.Alignment}} {{.Race}} {{.Class}}*
 
-{{if .Stats}}
-**Estadísticas:** AC {{.Stats.AC}}, HP {{.Stats.HP}}
-{{end}}
+**Ubicación:** {{.Location}}
 
+**Estadísticas de Combate:** CA {{.Stats.AC}}, PG {{.Stats.HP}}
+
+**Rol en la historia:** {{.Role}}
+
+---
+
+#### Apariencia Física
+
+{{.Appearance}}
+
+#### Personalidad
+
+{{.Personality}}
+
+#### Voz
+
+**Tono:** {{.VoiceTone}}
+**Accent:** {{.VoiceAccent}}
+**Catchphrases:** {{.Catchphrases}}
+
+#### Secretos
+
+**Secreto Trivial:** {{.SecretTrivial}}
+**Secreto Importante #1:** {{.SecretImportant1}}
+**Secreto Importante #2:** {{.SecretImportant2}}
+**Secreto de Campaña:** {{.SecretCampaign}}
+
+#### Ganchos de Trama
+
+**Hook #1:** {{.Hook1}}
+**Hook #2:** {{.Hook2}}
+**Hook #3:** {{.Hook3}}
+
+#### Diálogo para Leer
+
+*"{{.DialogueLine1}}"*
+
+*"{{.DialogueLine2}}"*
+
+*"{{.DialogueLine3}}"*
+
+**Stat Block:** Ver [Appendix B: NPCs and Monsters](appendices.md#appendix-b)
+
+---
 {{end}}
 
 ---
@@ -34,20 +88,102 @@
 
 {{range .Encounters}}
 ### Encuentro {{.Number}}: {{.Name}}
-*Dificultad: {{.Difficulty}}*
 
-{{.Description}}
+**Dificultad:** {{.Difficulty}}
 
-**Monstruos:**
+**XP Total:** {{.XPTotal}} XP
+
+**Ambientación:** {{.Setting}}
+
+**Template:** {{.Template}}
+
+---
+
+#### Objetivo
+
+{{.Objective}}
+
+---
+
+#### Enemigos / Desafíos
+
+| Criatura | Cantidad | CR | XP |
+|----------|----------|----|----|
 {{range .Monsters}}
-- {{.Quantity}}x {{.Name}}
+| {{.Name}} | {{.Quantity}} | {{.CR}} | {{.XP}} |
 {{end}}
 
-**Recompensas:**
-{{range .Rewards}}
+---
+
+#### Mapa Táctico
+
+**Dimensiones:** {{.MapWidth}} × {{.MapHeight}} pies (cuadrícula de {{.GridWidth}}×{{.GridHeight}} cuadros)
+
+**Iluminación:** {{.Lighting}}
+
+**Terreno:** {{.Terrain}}
+
+**Elementos Interactivos:**
+| Posición | Elemento | Efecto Mecánico |
+|----------|----------|-----------------|
+{{range .InteractiveElements}}
+| {{.Position}} | {{.Name}} | {{.Effect}} |
+{{end}}
+
+---
+
+#### Desarrollo Round-by-Round
+
+| Ronda | Enemigos | Eventos Ambientales | Condición de Victoria |
+|-------|----------|---------------------|----------------------|
+{{range .Rounds}}
+| {{.Number}} | {{.Enemies}} | {{.Events}} | {{.VictoryCondition}} |
+{{end}}
+
+---
+
+#### Resolución Alternativa
+
+**Diplomacia/Engaño:**
+- **CD:** Persuasión/Engaño DC {{.DiplomacyDC}}
+- **Requisitos:** {{.DiplomacyReqs}}
+- **Consecuencias:** {{.DiplomacyConsequences}}
+
+**Sigilo/Evasión:**
+- **Rutas posibles:** {{.StealthRoutes}}
+- **CDs:** Sigilo DC {{.StealthDC}}
+- **Qué pasa si detectan:** {{.StealthDetected}}
+
+**Solución Creativa:**
+{{.CreativeSolution}}
+
+---
+
+#### Recompensa
+
+**XP por PJ:** {{.XPPPJ}} XP
+
+**Botín:**
+{{range .Loot}}
 - {{.Description}}
 {{end}}
 
+**Aliados Potenciales:**
+{{range .PotentialAllies}}
+- {{.Name}} — {{.Description}}
+{{end}}
+
+---
+
+#### Notas del DM
+
+**Escalado:** {{.Scaling}}
+
+**Alternativas:** {{.Alternatives}}
+
+**Ganchos:** {{.Hooks}}
+
+---
 {{end}}
 
 ---
@@ -57,42 +193,171 @@
 {{range .Areas}}
 ### Área {{.Number}}: {{.Name}}
 
-> {{.ReadAloud}}
+>> **Texto para Leer:** *{{.ReadAloud}}*
+
+---
+
+#### Descripción para el DM
 
 {{.Description}}
 
-**Características:**
-{{range .Features}}
-- **{{.Name}}:** {{.Description}}
+**Percepción DC {{.PerceptionDC}}:** {{.PerceptionResult}}
+
+**Investigación DC {{.InvestigationDC}}:** {{.InvestigationResult}}
+
+{{if .ArcanaDC}}
+**Arcano DC {{.ArcanaDC}}:** {{.ArcanaResult}}
 {{end}}
 
-**Tesoro:**
-{{range .Treasure}}
-- {{.Name}} ({{.ValueGP}} gp)
+{{if .ReligionDC}}
+**Religión DC {{.ReligionDC}}:** {{.ReligionResult}}
 {{end}}
 
-**Desarrollo:** {{.Development}}
+{{if .NatureDC}}
+**Naturaleza DC {{.NatureDC}}:** {{.NatureResult}}
+{{end}}
 
-{{if .Hooks}}
-**Ganchos:**
-{{range .Hooks}}
-- {{.}}
+---
+
+#### Criaturas
+
+{{range .Creatures}}
+- {{.Quantity}} **{{.Name}}** (ver [bestiary.md](bestiary.md#{{.Anchor}}))
 {{end}}
+
+---
+
+#### Tesoro
+
+- **XP total:** {{.XPTotal}} XP
+- **Moneda:** {{.GP}} gp, {{.SP}} sp
+- **Objetos:**
+{{range .Items}}
+  - **{{.Name}}** ({{.Description}})
 {{end}}
+
+---
+
+#### Conexiones
+
+- → [Área {{.ConnectionForward.Number}}](chapter_{{.ChapterNumber}}.md#área-{{.ConnectionForward.Number}}) — {{.ConnectionForward.Description}}
+- ← [Área {{.ConnectionBackward.Number}}](chapter_{{.ChapterNumber}}.md#área-{{.ConnectionBackward.Number}}) — {{.ConnectionBackward.Description}}
+
+---
+
+#### Secretos y Trampas
+
+{{range .Secrets}}
+- **Detectar:** Percepción DC {{.DetectDC}}
+- **Mecanismo:** {{.Mechanism}}
+- **Consecuencia:** {{.Consequence}}
+- **Desactivar:** {{.DisableSkill}} DC {{.DisableDC}}
+{{end}}
+
+---
+
+#### Desarrollo
+
+{{range .Developments}}
+**Si los PJs {{.Condition}}:**
+- **Consecuencia inmediata:** {{.ImmediateConsequence}}
+- **Consecuencia futura:** {{.FutureConsequence}}
+- **Recuperación:** {{.RecoveryPath}}
+
+{{end}}
+
+---
+
+#### Decision Points
+
+{{range .DecisionPoints}}
+- **IF** los PJs {{.Condition}}, **THEN** {{.Consequence}}
+  - **Affects:** {{.Affects}}
+  - **World State:** {{.WorldState}}
+
+{{end}}
+
+---
+
+#### Character Hooks
+
+{{range .CharacterHooks}}
+- **[{{.Background}}] / [{{.Class}}]:** {{.Hook}}
+{{end}}
+
+---
+
+#### Cómo Dirigir esta Escena
+
+1. **Preparación:** {{.PrepNotes}}
+2. **Ritmo Sugerido:** {{.Pacing}}
+3. **Señales de los Jugadores:** {{.PlayerSignals}}
+4. **Cuándo Improvisar:** {{.ImproviseWhen}}
+5. **Cuándo ceñirse al Guión:** {{.StickToScript}}
 
 {{if .DMSidebar}}
-<div class="dm-sidebar">
-<h5>{{.DMSidebar.Title}}</h5>
-<p>{{.DMSidebar.Content}}</p>
-</div>
+---
+
+> ##### {{.DMSidebar.Title}}
+> {{.DMSidebar.Content}}
 {{end}}
 
+---
 {{end}}
 
 ---
 
 ## Consecuencias y Transición
 
-{{.Consequences}}
+### Si los PJs tienen éxito:
 
-**Gancho al siguiente capítulo:** {{.NextHook}}
+{{.SuccessConsequences}}
+
+### Si los PJs fracasan:
+
+{{.FailureConsequences}}
+
+### Consecuencias de elecciones clave:
+
+{{range .KeyDecisions}}
+- {{.Choice}} → {{.Outcome}}
+{{end}}
+
+---
+
+**Asset para el Siguiente Capítulo:**
+- **{{.NextAsset.Type}}:** {{.NextAsset.Name}} ({{.NextAsset.Purpose}})
+
+**Gancho al Capítulo {{.NextChapterNumber}}:** {{.NextChapterHook}}
+
+---
+
+## Referencia Rápida
+
+### NPCs en este Capítulo
+
+| NPC | Ubicación | Motivación | Secreto |
+|-----|-----------|------------|---------|
+{{range .InlineNPCs}}
+| {{.Name}} | {{.Location}} | {{.Motivation}} | {{.HasSecret}} |
+{{end}}
+
+### Encuentros
+
+| Encuentro | Tipo | Dificultad | XP |
+|-----------|------|------------|-----|
+{{range .Encounters}}
+| {{.Name}} | {{.Type}} | {{.Difficulty}} | {{.XPTotal}} |
+{{end}}
+
+### Resumen de Tesoros
+
+| Área | XP | Moneda | Objetos |
+|------|-----|--------|---------|
+{{range .Areas}}
+| Área {{.Number}} | {{.XPTotal}} | {{.GP}} gp | {{.ItemCount}} |
+{{end}}
+
+---
+
+*Fin del Capítulo {{.ChapterNumber}}*
