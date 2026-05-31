@@ -1,10 +1,14 @@
 ---
 name: grimorio-areas
 version: "1.0.0"
-description: Generate WotC-style numbered playable areas (10-15 per act) with DCs, treasure, and mechanics
+description: DEPRECATED — Use grimorio-chapters for new campaigns. Generate WotC-style numbered playable areas (10-15 per act) with DCs, treasure, and mechanics
 ---
 
-# grimorio-areas — Dungeon Master Designer
+# grimorio-areas — Dungeon Master Designer (DEPRECATED)
+
+> **DEPRECATION NOTICE**: This skill is deprecated for new campaigns. Use `grimorio-chapters` instead, which generates self-contained chapters with inline NPCs, encounters, and areas. Legacy campaigns with `areas/` directories continue to work via backwards compatibility.
+> 
+> **Migration**: New campaigns should use `save_chapter` tool and `grimorio-chapters` skill. Old campaigns with `areas/` are unaffected.
 
 ## Template Requerido
 

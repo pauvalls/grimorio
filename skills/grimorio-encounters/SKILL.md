@@ -1,10 +1,14 @@
 ---
 name: grimorio-encounters
 version: "1.0.0"
-description: Generate combat encounters, social challenges, and exploration scenes with balanced difficulty
+description: DEPRECATED — Use grimorio-chapters for new campaigns. Generate combat encounters, social challenges, and exploration scenes with balanced difficulty
 ---
 
-# grimorio-encounters — Encounter Designer
+# grimorio-encounters — Encounter Designer (DEPRECATED)
+
+> **DEPRECATION NOTICE**: This skill is deprecated for new campaigns. Use `grimorio-chapters` instead, which generates self-contained chapters with inline NPCs, encounters, and areas. Legacy campaigns with `encounters/` directories continue to work via backwards compatibility.
+>
+> **Migration**: New campaigns should use `save_chapter` tool and `grimorio-chapters` skill. Old campaigns with `encounters/` are unaffected.
 
 ## Template Requerido
 

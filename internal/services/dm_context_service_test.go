@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -326,6 +327,440 @@ func TestDMContextService_GetContext_LargeCampaign(t *testing.T) {
 		for _, w := range warnings {
 			assert.NotContains(t, w, "exceeds 100KB")
 		}
+	})
+}
+
+func TestDMContextService_loadAreasFromChapters(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	canonRepo := repository.NewMemoryCanonRepository()
+	stateRepo := repository.NewMemoryNarrativeStateRepository()
+	charRepo := repository.NewMemoryCharacterRepository()
+	npcRepo := repository.NewMemoryNPCRepository()
+	questRepo := repository.NewMemoryQuestRepository()
+	factionRepo := repository.NewMemoryFactionRepository()
+	monsterRepo := fsrepo.NewFilesystemMonsterRepository(tmpDir)
+	areaRepo := fsrepo.NewFilesystemAreaRepositoryV3(tmpDir)
+
+	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo, nil)
+	svc := NewDMContextService(
+		canonRepo, stateRepo, charRepo, npcRepo, questRepo,
+		monsterRepo, areaRepo, factionRepo, sessionPrepSvc, tmpDir,
+	)
+
+	campaignDir := filepath.Join(tmpDir, "chapter-campaign")
+	chaptersDir := filepath.Join(campaignDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+
+	// Write chapter_01.md with 2 areas, NPCs, encounters
+	chapterContent := `# Capítulo 1: El Comienzo
+
+## NPCs en este Capítulo
+
+### Aldeano Mayor
+*Neutral humano*
+
+Un viejo líder del pueblo.
+
+**Estadísticas:** AC 12, HP 15
+
+## Encuentros
+
+### Encuentro 1: Emboscada
+*Dificultad: Medium*
+
+**Monstruos:**
+- 3x Bandido
+- 1x Líder Bandido
+
+## Áreas
+
+### Área 1: Entrada del Pueblo
+
+> Los jugadores ven el pueblo desde la colina.
+
+La entrada está custodiada por guardias.
+
+**Características:**
+- **Muralla:** Madera reforzada
+
+### Área 2: La Taberna
+
+> Humo y risas salen de la taberna.
+
+Un lugar acogedor para descansar.
+`
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01.md"), []byte(chapterContent), 0644)
+
+	t.Run("parses chapter markdown into correct AreaContext fields", func(t *testing.T) {
+		areas, npcs, monsters, err := svc.loadAreasFromChapters("chapter-campaign")
+		assert.NoError(t, err)
+		assert.Len(t, areas, 2, "should extract 2 areas")
+		assert.Len(t, npcs, 1, "should extract 1 NPC")
+		assert.Len(t, monsters, 2, "should extract 2 unique monster names from encounters")
+
+		// Verify first area
+		if len(areas) > 0 {
+			area1 := areas[0]
+			assert.Equal(t, "chapter_01-area-1", area1.ID)
+			assert.Equal(t, "chapter_01", area1.ChapterID)
+			assert.Equal(t, 1, area1.AreaNumber)
+			assert.Equal(t, "Entrada del Pueblo", area1.Title)
+			assert.Contains(t, area1.Summary, "La entrada está custodiada")
+			assert.Contains(t, area1.PlayerReadAloud, "Los jugadores ven el pueblo")
+		}
+
+		// Verify second area
+		if len(areas) > 1 {
+			area2 := areas[1]
+			assert.Equal(t, "chapter_01-area-2", area2.ID)
+			assert.Equal(t, "chapter_01", area2.ChapterID)
+			assert.Equal(t, 2, area2.AreaNumber)
+			assert.Equal(t, "La Taberna", area2.Title)
+		}
+	})
+
+	t.Run("returns empty for non-existent chapters dir", func(t *testing.T) {
+		areas, npcs, monsters, err := svc.loadAreasFromChapters("nonexistent")
+		assert.NoError(t, err)
+		assert.Empty(t, areas)
+		assert.Empty(t, npcs)
+		assert.Empty(t, monsters)
+	})
+
+	t.Run("handles multiple chapter files", func(t *testing.T) {
+		// Add chapter_02.md
+		chapter2Content := `# Capítulo 2: La Cueva
+
+## Áreas
+
+### Área 1: Entrada de la Cueva
+
+> Un túnel oscuro se abre ante los PJs.
+
+La cueva está húmeda.
+`
+		_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_02.md"), []byte(chapter2Content), 0644)
+
+		areas, _, _, err := svc.loadAreasFromChapters("chapter-campaign")
+		assert.NoError(t, err)
+		assert.Len(t, areas, 3, "should have 3 areas total (2 from ch1 + 1 from ch2)")
+
+		// Verify chapter 2 area
+		var caveArea *domain.AreaContext
+		for i := range areas {
+			if areas[i].ChapterID == "chapter_02" {
+				caveArea = &areas[i]
+				break
+			}
+		}
+		assert.NotNil(t, caveArea, "should find chapter_02 area")
+		assert.Equal(t, "chapter_02-area-1", caveArea.ID)
+		assert.Equal(t, "Entrada de la Cueva", caveArea.Title)
+		assert.Contains(t, caveArea.PlayerReadAloud, "túnel oscuro")
+	})
+}
+
+func TestDMContextService_loadCampaignAreas(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	canonRepo := repository.NewMemoryCanonRepository()
+	stateRepo := repository.NewMemoryNarrativeStateRepository()
+	charRepo := repository.NewMemoryCharacterRepository()
+	npcRepo := repository.NewMemoryNPCRepository()
+	questRepo := repository.NewMemoryQuestRepository()
+	factionRepo := repository.NewMemoryFactionRepository()
+	monsterRepo := fsrepo.NewFilesystemMonsterRepository(tmpDir)
+	areaRepo := fsrepo.NewFilesystemAreaRepositoryV3(tmpDir)
+
+	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo, nil)
+	svc := NewDMContextService(
+		canonRepo, stateRepo, charRepo, npcRepo, questRepo,
+		monsterRepo, areaRepo, factionRepo, sessionPrepSvc, tmpDir,
+	)
+
+	t.Run("prefers chapters when both dirs exist", func(t *testing.T) {
+		campaignDir := filepath.Join(tmpDir, "both-campaign")
+		chaptersDir := filepath.Join(campaignDir, "chapters")
+		areasDir := filepath.Join(campaignDir, "areas")
+		_ = os.MkdirAll(chaptersDir, 0755)
+		_ = os.MkdirAll(areasDir, 0755)
+
+		// Write a chapter file
+		_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01.md"), []byte(`# Capítulo 1
+
+## Áreas
+
+### Área 1: Desde Capítulo
+
+> Texto para leer.
+
+Descripción del área desde capítulo.
+`), 0644)
+
+		// Write a legacy area file
+		_ = os.WriteFile(filepath.Join(areasDir, "chapter_01.md"), []byte(`## Area 1: Desde Areas
+
+Resumen del área desde areas.
+`), 0644)
+
+		areas, _, _, warnings, err := svc.loadCampaignAreas("both-campaign")
+		assert.NoError(t, err)
+		assert.Len(t, areas, 1)
+		assert.Equal(t, "Desde Capítulo", areas[0].Title, "should prefer chapters/ content")
+		assert.Empty(t, warnings)
+	})
+
+	t.Run("falls back to areas when no chapters dir", func(t *testing.T) {
+		campaignDir := filepath.Join(tmpDir, "legacy-campaign")
+		areasDir := filepath.Join(campaignDir, "areas")
+		_ = os.MkdirAll(areasDir, 0755)
+
+		_ = os.WriteFile(filepath.Join(areasDir, "chapter_01.md"), []byte(`## Area 1: Desde Areas Legacy
+
+Resumen del área.
+`), 0644)
+
+		areas, _, _, warnings, err := svc.loadCampaignAreas("legacy-campaign")
+		assert.NoError(t, err)
+		assert.Len(t, areas, 1)
+		assert.Equal(t, "Desde Areas Legacy", areas[0].Title, "should fallback to areas/ content")
+		assert.Empty(t, warnings)
+	})
+
+	t.Run("returns empty when neither dir exists", func(t *testing.T) {
+		areas, _, _, warnings, err := svc.loadCampaignAreas("empty-campaign")
+		assert.NoError(t, err)
+		assert.Empty(t, areas)
+		assert.Empty(t, warnings)
+	})
+}
+
+func TestDMContextService_GetContext_ChapterCampaign(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	canonRepo := repository.NewMemoryCanonRepository()
+	stateRepo := repository.NewMemoryNarrativeStateRepository()
+	charRepo := repository.NewMemoryCharacterRepository()
+	npcRepo := repository.NewMemoryNPCRepository()
+	questRepo := repository.NewMemoryQuestRepository()
+	factionRepo := repository.NewMemoryFactionRepository()
+	monsterRepo := fsrepo.NewFilesystemMonsterRepository(tmpDir)
+	areaRepo := fsrepo.NewFilesystemAreaRepositoryV3(tmpDir)
+
+	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo, nil)
+	svc := NewDMContextService(
+		canonRepo, stateRepo, charRepo, npcRepo, questRepo,
+		monsterRepo, areaRepo, factionRepo, sessionPrepSvc, tmpDir,
+	)
+
+	// Seed canon with an NPC entity and a monster entity for enrichment
+	canonDoc := &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "chapter-campaign",
+		Entities: []domain.CanonEntity{
+			{
+				ID:         "npc-aldeano",
+				Name:       "Aldeano Mayor",
+				Type:       domain.EntityTypeNPC,
+				CanonState: domain.EntityStateAlive,
+				Motivation: "proteger el pueblo",
+				Secret:     "conoce la ubicación de la cueva",
+				Properties: map[string]any{
+					"dialogue_voice":     "Habla con voz cansada",
+					"personality_traits": []string{"prudente", "sabio"},
+					"tactics":            "Busca ayuda de los guardias",
+				},
+			},
+			{
+				ID:   "monster-bandido",
+				Name: "Bandido",
+				Type: domain.EntityTypeMonster,
+				Properties: map[string]any{
+					"cr":    "1/4",
+					"hp":    11,
+					"ac":    12,
+					"tactics": "Atacar en grupo desde la cubierta",
+					"descriptive_cues": map[string]any{
+						"full_hp":  "El bandido te apunta con su arco.",
+						"half_hp":  "El bandido sangra pero sigue disparando.",
+						"low_hp":   "El bandido intenta huir.",
+						"defeated": "El bandido cae al suelo.",
+					},
+				},
+			},
+		},
+	}
+	_ = canonRepo.Save("chapter-campaign", canonDoc)
+	_ = stateRepo.Save("chapter-campaign", &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "chapter-campaign",
+		CurrentSession: 1,
+	})
+
+	// Create chapters directory with content
+	campaignDir := filepath.Join(tmpDir, "chapter-campaign")
+	chaptersDir := filepath.Join(campaignDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+
+	chapterContent := `# Capítulo 1: El Comienzo
+
+## NPCs en este Capítulo
+
+### Aldeano Mayor
+*Neutral humano*
+
+Un viejo líder del pueblo.
+
+**Estadísticas:** AC 12, HP 15
+
+## Encuentros
+
+### Encuentro 1: Emboscada
+*Dificultad: Medium*
+
+**Monstruos:**
+- 3x Bandido
+- 1x Líder Bandido
+
+## Áreas
+
+### Área 1: Entrada del Pueblo
+
+> Los jugadores ven el pueblo desde la colina.
+
+La entrada está custodiada por guardias.
+
+### Área 2: La Taberna
+
+> Humo y risas salen de la taberna.
+
+Un lugar acogedor.
+`
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01.md"), []byte(chapterContent), 0644)
+
+	t.Run("full chapter campaign returns areas from chapters", func(t *testing.T) {
+		payload, _, err := svc.GetContext(ctx, "chapter-campaign", 0, false, false, false, 5)
+		assert.NoError(t, err)
+		assert.NotNil(t, payload)
+
+		// Should have 2 areas from chapter
+		assert.Len(t, payload.Areas, 2, "should load areas from chapters/")
+
+		area1, ok := payload.Areas["chapter_01-area-1"]
+		assert.True(t, ok, "should have area chapter_01-area-1")
+		assert.Equal(t, "Entrada del Pueblo", area1.Title)
+		assert.Equal(t, "chapter_01", area1.ChapterID)
+		assert.Contains(t, area1.PlayerReadAloud, "Los jugadores ven el pueblo")
+
+		area2, ok := payload.Areas["chapter_01-area-2"]
+		assert.True(t, ok, "should have area chapter_01-area-2")
+		assert.Equal(t, "La Taberna", area2.Title)
+	})
+
+	t.Run("chapter NPCs merge with canon enrichment", func(t *testing.T) {
+		payload, _, err := svc.GetContext(ctx, "chapter-campaign", 0, false, false, false, 5)
+		assert.NoError(t, err)
+		assert.NotNil(t, payload)
+
+		// Should have NPC from chapter, enriched from canon
+		npc, ok := payload.NPCs["Aldeano Mayor"]
+		assert.True(t, ok, "should have Aldeano Mayor in NPCs")
+		assert.Equal(t, "Aldeano Mayor", npc.Name)
+		assert.Contains(t, npc.Description, "Un viejo líder del pueblo.", "chapter description should be used")
+		assert.Equal(t, "proteger el pueblo", npc.Motivation, "canon motivation should enrich")
+		assert.Equal(t, "conoce la ubicación de la cueva", npc.Secret, "canon secret should enrich")
+		assert.Equal(t, "Habla con voz cansada", npc.DialogueVoice, "canon voice should enrich")
+		assert.Equal(t, []string{"prudente", "sabio"}, npc.Personality, "canon personality should enrich")
+		assert.Equal(t, "Busca ayuda de los guardias", npc.Tactics, "canon tactics should enrich")
+		assert.Equal(t, 12, npc.Stats.AC, "chapter stats AC")
+		assert.Equal(t, 15, npc.Stats.HP, "chapter stats HP")
+	})
+
+	t.Run("encounter monsters added to bestiary and enriched from canon", func(t *testing.T) {
+		payload, warnings, err := svc.GetContext(ctx, "chapter-campaign", 0, false, false, false, 5)
+		assert.NoError(t, err)
+		assert.NotNil(t, payload)
+
+		// Bandido should be in bestiary from encounter ref, enriched from canon
+		bandido, ok := payload.Bestiary["Bandido"]
+		assert.True(t, ok, "should have Bandido in bestiary from encounter refs")
+		assert.Equal(t, "Bandido", bandido.Name)
+		assert.Equal(t, "1/4", bandido.CR, "canon CR should enrich")
+		assert.Equal(t, 12, bandido.AC, "canon AC should enrich")
+		assert.Equal(t, 11, bandido.HP, "canon HP should enrich")
+		assert.Equal(t, "Atacar en grupo desde la cubierta", bandido.Tactics, "canon tactics should enrich")
+		assert.NotNil(t, bandido.DescriptiveCues)
+		assert.Contains(t, bandido.DescriptiveCues, "full_hp")
+		assert.Contains(t, bandido.DescriptiveCues, "defeated")
+
+		// Líder Bandido should be in bestiary as stub (no canon entity)
+		lider, ok := payload.Bestiary["Líder Bandido"]
+		assert.True(t, ok, "should have Líder Bandido in bestiary")
+		assert.Equal(t, "Líder Bandido", lider.Name)
+		assert.Empty(t, lider.CR, "no canon entity means empty CR")
+
+		// Should have warning for monster without CR
+		var hasCRWarning bool
+		for _, w := range warnings {
+			if strings.Contains(w, "Líder Bandido") && strings.Contains(w, "CR") {
+				hasCRWarning = true
+				break
+			}
+		}
+		assert.True(t, hasCRWarning, "should warn about monster without CR")
+	})
+}
+
+func TestDMContextService_GetContext_ChapterAndLegacyFallback(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	canonRepo := repository.NewMemoryCanonRepository()
+	stateRepo := repository.NewMemoryNarrativeStateRepository()
+	charRepo := repository.NewMemoryCharacterRepository()
+	npcRepo := repository.NewMemoryNPCRepository()
+	questRepo := repository.NewMemoryQuestRepository()
+	factionRepo := repository.NewMemoryFactionRepository()
+	monsterRepo := fsrepo.NewFilesystemMonsterRepository(tmpDir)
+	areaRepo := fsrepo.NewFilesystemAreaRepositoryV3(tmpDir)
+
+	sessionPrepSvc := NewSessionPrepService(canonRepo, stateRepo, nil)
+	svc := NewDMContextService(
+		canonRepo, stateRepo, charRepo, npcRepo, questRepo,
+		monsterRepo, areaRepo, factionRepo, sessionPrepSvc, tmpDir,
+	)
+
+	_ = canonRepo.Save("legacy-only", &domain.CanonDocument{
+		SchemaVersion: domain.SchemaVersionV2,
+		CampaignID:    "legacy-only",
+	})
+	_ = stateRepo.Save("legacy-only", &domain.NarrativeState{
+		SchemaVersion:  domain.SchemaVersionV2,
+		CampaignID:     "legacy-only",
+		CurrentSession: 1,
+	})
+
+	// Create only areas/ (no chapters/)
+	campaignDir := filepath.Join(tmpDir, "legacy-only")
+	areasDir := filepath.Join(campaignDir, "areas")
+	_ = os.MkdirAll(areasDir, 0755)
+
+	_ = os.WriteFile(filepath.Join(areasDir, "chapter_01.md"), []byte(`## Area 1: Entrada Legacy
+
+Resumen del área legacy.
+`), 0644)
+
+	t.Run("legacy areas/ fallback still works", func(t *testing.T) {
+		payload, _, err := svc.GetContext(ctx, "legacy-only", 0, false, false, false, 5)
+		assert.NoError(t, err)
+		assert.NotNil(t, payload)
+		assert.Len(t, payload.Areas, 1, "should fallback to areas/ when no chapters/")
+
+		area, ok := payload.Areas["chapter_01-area-1"]
+		assert.True(t, ok)
+		assert.Equal(t, "Entrada Legacy", area.Title)
 	})
 }
 

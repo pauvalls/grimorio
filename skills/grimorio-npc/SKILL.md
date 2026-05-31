@@ -1,10 +1,29 @@
 ---
 name: grimorio-npc
 version: "1.0.0"
-description: Generate NPCs, factions, and social relationships with WotC-enhanced descriptions
+description: Generate NPCs, factions, and social relationships with WotC-enhanced descriptions. Split mode for chapter-sequential campaigns.
 ---
 
 # grimorio-npc — NPC Designer
+
+## Modo Split (Chapter-Sequential)
+
+Para campañas que usan `grimorio-chapters` y `save_chapter`:
+
+**Fase de Capítulos (Inline):**
+- Generar perfiles **condensados** (150-300 palabras) dentro de cada capítulo
+- Incluir solo: apariencia, motivación, relación con PJs, secreto
+- NO incluir stat blocks completos inline
+- Rol: `chapter-inline`
+
+**Fase de Appendices (Consolidado):**
+- Generar perfiles **completos** (500-800 palabras) para todos los NPCs de la campaña
+- Incluir stat blocks, equipamiento, historia completa
+- Guardar en `npcs/npcs_and_factions.md` vía `save_npcs`
+
+**Cross-References:**
+- Los nombres de NPCs en capítulos deben coincidir exactamente con los de appendices
+- `validate_canon` asegura consistencia de nombres entre capítulos
 
 ## Template Requerido
 

@@ -430,21 +430,127 @@ func TestHandleSaveIntroduction(t *testing.T) {
 	}
 }
 
-func TestHandleSaveIntroduction_MissingCampaign(t *testing.T) {
+func TestHandleSaveChapter(t *testing.T) {
 	handlers, _, _ := setupTestHandlers()
 
-	handler := handlers.HandleSaveIntroduction()
-	args := map[string]any{
-		"content": "Some content",
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "chapter-handler-test",
+	})); err != nil {
+		t.Fatal(err)
 	}
 
-	result, err := handler(context.Background(), newToolRequest("save_introduction", args))
+	chapterContent := `# Capítulo 1: El Comienzo
+
+## Áreas
+
+### Área 1: Entrada
+
+Descripción del área.
+
+### Área 2: Taberna
+
+Descripción de la taberna.
+
+## Consecuencias
+
+Fin.
+`
+
+	handler := handlers.HandleSaveChapter()
+	args := map[string]any{
+		"campaign":       "chapter-handler-test",
+		"chapter_number": float64(1),
+		"title":          "El Comienzo",
+		"content":        chapterContent,
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_chapter", args))
 	if err != nil {
-		t.Fatalf("HandleSaveIntroduction() error: %v", err)
+		t.Fatalf("HandleSaveChapter() error: %v", err)
+	}
+
+	if result.IsError {
+		t.Errorf("HandleSaveChapter() returned error result: %v", result.Content)
+	}
+}
+
+func TestHandleSaveChapter_MissingCampaign(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	handler := handlers.HandleSaveChapter()
+	args := map[string]any{
+		"chapter_number": float64(1),
+		"title":          "Title",
+		"content":        "content",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_chapter", args))
+	if err != nil {
+		t.Fatalf("HandleSaveChapter() error: %v", err)
 	}
 
 	if !result.IsError {
-		t.Errorf("HandleSaveIntroduction() should return error for missing campaign")
+		t.Errorf("HandleSaveChapter() should return error for missing campaign")
+	}
+}
+
+func TestHandleSaveChapter_InvalidChapterNumber(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "chapter-invalid-test",
+	})); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := handlers.HandleSaveChapter()
+	args := map[string]any{
+		"campaign":       "chapter-invalid-test",
+		"chapter_number": float64(0),
+		"title":          "Title",
+		"content":        "content",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_chapter", args))
+	if err != nil {
+		t.Fatalf("HandleSaveChapter() error: %v", err)
+	}
+
+	if !result.IsError {
+		t.Errorf("HandleSaveChapter() should return error for invalid chapter_number")
+	}
+}
+
+func TestHandleSaveChapter_NoAreas(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	// Create campaign first
+	createHandler := handlers.HandleCreateCampaign()
+	if _, err := createHandler(context.Background(), newToolRequest("create_campaign", map[string]any{
+		"name": "chapter-no-areas-test",
+	})); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := handlers.HandleSaveChapter()
+	args := map[string]any{
+		"campaign":       "chapter-no-areas-test",
+		"chapter_number": float64(1),
+		"title":          "Title",
+		"content":        "# Capítulo 1\n\nSin áreas.",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_chapter", args))
+	if err != nil {
+		t.Fatalf("HandleSaveChapter() error: %v", err)
+	}
+
+	if !result.IsError {
+		t.Errorf("HandleSaveChapter() should return error for content without areas")
 	}
 }
 
@@ -535,5 +641,23 @@ func TestHandleSaveAppendices_MissingCampaign(t *testing.T) {
 
 	if !result.IsError {
 		t.Errorf("HandleSaveAppendices() should return error for missing campaign")
+	}
+}
+
+func TestHandleSaveIntroduction_MissingCampaign(t *testing.T) {
+	handlers, _, _ := setupTestHandlers()
+
+	handler := handlers.HandleSaveIntroduction()
+	args := map[string]any{
+		"content": "Some content",
+	}
+
+	result, err := handler(context.Background(), newToolRequest("save_introduction", args))
+	if err != nil {
+		t.Fatalf("HandleSaveIntroduction() error: %v", err)
+	}
+
+	if !result.IsError {
+		t.Errorf("HandleSaveIntroduction() should return error for missing campaign")
 	}
 }

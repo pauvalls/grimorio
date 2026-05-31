@@ -295,33 +295,29 @@ func (p *EntityParser) parseFactionField(faction *domain.Faction, key, value str
 // parseStats extracts AC and HP from text
 func (p *EntityParser) parseStats(line string) *domain.StatBlock {
 	stats := &domain.StatBlock{}
-	
+
 	matches := p.statRegex.FindAllStringSubmatch(line, -1)
 	for _, match := range matches {
-		for i, val := range match {
-			if val == "" {
-				continue
+		// match[0] is full match, match[1] is AC group, match[2] is HP group
+		if len(match) > 1 && match[1] != "" {
+			num := parseInt(match[1])
+			if num > 0 {
+				stats.AC = num
 			}
-			if i > 0 {
-				num := parseInt(val)
-				if num > 0 {
-					// Determine if AC or HP based on context
-					lower := strings.ToLower(line)
-					if strings.Contains(lower, "ac") || strings.Contains(lower, "ca") {
-						stats.AC = num
-					} else if strings.Contains(lower, "hp") || strings.Contains(lower, "pg") {
-						stats.HP = num
-					}
-				}
+		}
+		if len(match) > 2 && match[2] != "" {
+			num := parseInt(match[2])
+			if num > 0 {
+				stats.HP = num
 			}
 		}
 	}
-	
+
 	// Return nil if no stats found
 	if stats.AC == 0 && stats.HP == 0 {
 		return nil
 	}
-	
+
 	return stats
 }
 
@@ -479,6 +475,311 @@ func (p *EntityParser) ParseEncounters(content string, campaignID string) ([]dom
 	}
 
 	return encounters, nil
+}
+
+// ParseChapter extracts inline NPCs, encounters, and areas from a self-contained chapter markdown.
+// Expected format:
+// # Capítulo N: Title
+// ## NPCs en este Capítulo
+// ### NPC Name
+// ## Encuentros
+// ### Encuentro N: Name
+// ## Áreas
+// ### Área N: Name
+func (p *EntityParser) ParseChapter(content, campaignID string, chapterNum int) (*ParseResult, error) {
+	result := &ParseResult{
+		NPCs:       []domain.NPC{},
+		Encounters: []domain.Encounter{},
+		Areas:      []domain.Area{},
+	}
+
+	lines := strings.Split(content, "\n")
+	var currentNPC *domain.NPC
+	var currentEncounter *domain.Encounter
+	var currentArea *domain.Area
+
+	inNPCSection := false
+	inEncounterSection := false
+	inAreaSection := false
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+
+		lower := strings.ToLower(trimmed)
+
+		// Detect section boundaries
+		if strings.HasPrefix(lower, "## ") {
+			inNPCSection = false
+			inEncounterSection = false
+			inAreaSection = false
+
+			if strings.Contains(lower, "npc") {
+				inNPCSection = true
+			} else if strings.Contains(lower, "encuentro") {
+				inEncounterSection = true
+			} else if strings.Contains(lower, "área") || strings.Contains(lower, "area") {
+				inAreaSection = true
+			}
+			continue
+		}
+
+		// Parse area heading: ### Área N: Name
+		if inAreaSection {
+			if matches := regexp.MustCompile(`^#{3}\s+(?:Área|Area)\s+(\d+)[:\s]*(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
+				areaNum := parseInt(matches[1])
+				name := strings.TrimSpace(matches[2])
+
+				if currentArea != nil {
+					result.Areas = append(result.Areas, *currentArea)
+				}
+
+				chapterID := fmt.Sprintf("chapter-%d", chapterNum)
+				currentArea = &domain.Area{
+					ID:         fmt.Sprintf("%s-area-%d", chapterID, areaNum),
+					ChapterID:  chapterID,
+					AreaNumber: areaNum,
+					Title:      name,
+				}
+				continue
+			}
+
+			if currentArea != nil {
+				// Parse blockquote as PlayerReadAloud
+				if strings.HasPrefix(trimmed, ">") {
+					readAloud := strings.TrimSpace(strings.TrimPrefix(trimmed, ">"))
+					if readAloud != "" {
+						if currentArea.PlayerReadAloud != "" {
+							currentArea.PlayerReadAloud += " "
+						}
+						currentArea.PlayerReadAloud += readAloud
+					}
+					continue
+				}
+				// Accumulate description (skip headings and list markers)
+				if !strings.HasPrefix(trimmed, "#") && !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "*") {
+					if currentArea.Description != "" {
+						currentArea.Description += " "
+					}
+					currentArea.Description += trimmed
+				}
+			}
+		}
+
+		// Parse encounter heading: ### Encuentro N: Name
+		if inEncounterSection {
+			if matches := regexp.MustCompile(`^#{3}\s+Encuentro\s+(\d+)[:\s]*(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
+				name := strings.TrimSpace(matches[2])
+
+				if currentEncounter != nil {
+					result.Encounters = append(result.Encounters, *currentEncounter)
+				}
+
+				currentEncounter = &domain.Encounter{
+					ID:         sanitizeName(name),
+					CampaignID: campaignID,
+					Name:       name,
+					Difficulty: "medium",
+					Monsters:   []domain.MonsterRef{},
+					Rewards:    []domain.Reward{},
+				}
+				continue
+			}
+
+			if currentEncounter != nil {
+				lower := strings.ToLower(trimmed)
+
+				// Parse difficulty
+				if strings.Contains(lower, "dificultad") || strings.Contains(lower, "difficulty") {
+					if strings.Contains(lower, "easy") || strings.Contains(lower, "fácil") {
+						currentEncounter.Difficulty = "easy"
+					} else if strings.Contains(lower, "hard") || strings.Contains(lower, "difícil") {
+						currentEncounter.Difficulty = "hard"
+					} else if strings.Contains(lower, "deadly") || strings.Contains(lower, "mortal") {
+						currentEncounter.Difficulty = "deadly"
+					}
+				}
+
+				// Parse location
+				if strings.Contains(lower, "ubicación") || strings.Contains(lower, "location") {
+					parts := strings.SplitN(trimmed, ":", 2)
+					if len(parts) == 2 {
+						currentEncounter.Location = strings.TrimSpace(parts[1])
+					}
+				}
+
+			// Parse monsters from inline format: "3x Cenizo, 1x Seguidor"
+			if strings.Contains(lower, "monstruos") || strings.Contains(lower, "monsters") ||
+				strings.Contains(lower, "criaturas") || strings.Contains(lower, "creatures") {
+				parts := strings.SplitN(trimmed, ":", 2)
+				if len(parts) == 2 {
+					monsterStr := strings.TrimSpace(parts[1])
+					monsterStr = strings.TrimPrefix(monsterStr, "**")
+					monsterStr = strings.TrimSuffix(monsterStr, "**")
+					monsterStr = strings.TrimSpace(monsterStr)
+					if monsterStr != "" {
+						monsterParts := strings.Split(monsterStr, ",")
+						for _, mp := range monsterParts {
+							mp = strings.TrimSpace(mp)
+							if mp == "" {
+								continue
+							}
+							matches := regexp.MustCompile(`(\d+)?\s*x?\s*(.+)`).FindStringSubmatch(mp)
+							if len(matches) > 2 {
+								qty := 1
+								if matches[1] != "" {
+									qty = parseInt(matches[1])
+								}
+								name := strings.TrimSpace(matches[2])
+								currentEncounter.Monsters = append(currentEncounter.Monsters, domain.MonsterRef{
+									Name:     name,
+									Quantity: qty,
+								})
+							}
+						}
+					}
+				}
+			}
+
+			// Parse monsters from list items (e.g., "- 3x Bandido")
+			if currentEncounter != nil && (strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ")) {
+				listItem := strings.TrimPrefix(trimmed, "- ")
+				listItem = strings.TrimPrefix(listItem, "* ")
+				listItem = strings.TrimSpace(listItem)
+				// Check if it looks like a monster quantity reference
+				matches := regexp.MustCompile(`^(\d+)?\s*x?\s*(.+)`).FindStringSubmatch(listItem)
+				if len(matches) > 2 {
+					potentialName := strings.TrimSpace(matches[2])
+					// Heuristic: if the line is short and doesn't look like a reward or property
+					if potentialName != "" && !strings.Contains(strings.ToLower(potentialName), "xp") &&
+						!strings.Contains(strings.ToLower(potentialName), "gold") {
+						qty := 1
+						if matches[1] != "" {
+							qty = parseInt(matches[1])
+						}
+						currentEncounter.Monsters = append(currentEncounter.Monsters, domain.MonsterRef{
+							Name:     potentialName,
+							Quantity: qty,
+						})
+					}
+				}
+			}
+
+				// Parse rewards
+				if strings.Contains(lower, "recompensa") || strings.Contains(lower, "reward") ||
+					strings.Contains(lower, "xp") || strings.Contains(lower, "gold") {
+					xpMatch := regexp.MustCompile(`(\d+)\s*XP`).FindStringSubmatch(trimmed)
+					if len(xpMatch) > 1 {
+						currentEncounter.Rewards = append(currentEncounter.Rewards, domain.Reward{
+							Type:        "xp",
+							Description: fmt.Sprintf("%s XP", xpMatch[1]),
+							Value:       xpMatch[1],
+						})
+					}
+					goldMatch := regexp.MustCompile(`(\d+)\s*gold`).FindStringSubmatch(trimmed)
+					if len(goldMatch) > 1 {
+						currentEncounter.Rewards = append(currentEncounter.Rewards, domain.Reward{
+							Type:        "gold",
+							Description: fmt.Sprintf("%s gold", goldMatch[1]),
+							Value:       goldMatch[1],
+						})
+					}
+				}
+			}
+		}
+
+		// Parse NPC heading: ### NPC Name
+		if inNPCSection {
+			if matches := regexp.MustCompile(`^#{3}\s+(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
+				name := strings.TrimSpace(matches[1])
+
+				// Skip generic headers
+				lowerName := strings.ToLower(name)
+				if strings.Contains(lowerName, "npc") || strings.Contains(lowerName, "personaje") {
+					continue
+				}
+
+				if currentNPC != nil {
+					result.NPCs = append(result.NPCs, *currentNPC)
+				}
+
+				currentNPC = &domain.NPC{
+					ID:         sanitizeName(name),
+					CampaignID: campaignID,
+					Name:       name,
+					Role:       "chapter-inline",
+				}
+				continue
+			}
+
+			if currentNPC != nil {
+				// Parse stats
+				if stats := p.parseStats(trimmed); stats != nil {
+					if currentNPC.Stats == nil {
+						currentNPC.Stats = stats
+					} else {
+						if stats.AC > 0 {
+							currentNPC.Stats.AC = stats.AC
+						}
+						if stats.HP > 0 {
+							currentNPC.Stats.HP = stats.HP
+						}
+					}
+				}
+
+			// Parse role from italic line into description, keep Role as chapter-inline
+			if strings.HasPrefix(trimmed, "*") && strings.HasSuffix(trimmed, "*") {
+				role := strings.Trim(trimmed, "*")
+				if currentNPC.Description != "" {
+					currentNPC.Description += " "
+				}
+				currentNPC.Description += role
+			}
+
+				// Accumulate description
+				if !strings.HasPrefix(trimmed, "*") && !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "#") {
+					if currentNPC.Description != "" {
+						currentNPC.Description += " "
+					}
+					currentNPC.Description += trimmed
+				}
+			}
+		}
+	}
+
+	// Save last entities
+	if currentArea != nil {
+		result.Areas = append(result.Areas, *currentArea)
+	}
+	if currentEncounter != nil {
+		result.Encounters = append(result.Encounters, *currentEncounter)
+	}
+	if currentNPC != nil {
+		result.NPCs = append(result.NPCs, *currentNPC)
+	}
+
+	// Extract unique monster names from all encounters into result.Monsters
+	monsterSet := make(map[string]bool)
+	for _, enc := range result.Encounters {
+		for _, m := range enc.Monsters {
+			monsterSet[m.Name] = true
+		}
+	}
+	for name := range monsterSet {
+		result.Monsters = append(result.Monsters, domain.Monster{
+			ID:         sanitizeName(name),
+			CampaignID: campaignID,
+			Name:       name,
+		})
+	}
+
+	if len(result.Areas) == 0 {
+		return nil, fmt.Errorf("no areas found in chapter - expected format: ### Área X: Nombre")
+	}
+
+	return result, nil
 }
 
 // ParseAreas extracts areas from markdown content (WotC format)

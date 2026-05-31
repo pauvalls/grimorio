@@ -351,6 +351,56 @@ func (s *CampaignService) saveMarkdownFile(campaignID, subdir, filename, content
 	return nil
 }
 
+// SaveChapter saves a self-contained chapter to a campaign.
+// Writes to campaigns/{id}/chapters/chapter_{NN}.md
+func (s *CampaignService) SaveChapter(campaignID string, chapterNum int, title, content string) error {
+	if !s.campaignRepo.Exists(campaignID) {
+		return fmt.Errorf("campaign not found: %s", campaignID)
+	}
+
+	// 1. Parse markdown to extract inline entities
+	parser := NewEntityParser()
+	result, err := parser.ParseChapter(content, campaignID, chapterNum)
+	if err != nil {
+		return fmt.Errorf("failed to parse chapter: %w", err)
+	}
+
+	// Validate: at least one area found
+	if len(result.Areas) == 0 {
+		return fmt.Errorf("no areas found in chapter - expected format: ### Área X: Nombre")
+	}
+
+	// 2. Write markdown file (atomic: temp + rename)
+	dir := filepath.Join(s.baseDir, campaignID, "chapters")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	filename := fmt.Sprintf("chapter_%02d.md", chapterNum)
+	tempPath := filepath.Join(dir, "."+filename+".tmp")
+	finalPath := filepath.Join(dir, filename)
+
+	if err := os.WriteFile(tempPath, []byte(content), 0644); err != nil {
+		return fmt.Errorf("failed to write markdown: %w", err)
+	}
+
+	// 3. Sync inline NPCs to canon.json
+	if len(result.NPCs) > 0 {
+		if err := s.syncCanonEntities(campaignID, result.NPCs, nil, nil); err != nil {
+			_ = os.Remove(tempPath)
+			return fmt.Errorf("failed to sync canon: %w", err)
+		}
+	}
+
+	// 4. Atomic rename
+	if err := os.Rename(tempPath, finalPath); err != nil {
+		_ = os.Remove(tempPath)
+		return fmt.Errorf("failed to finalize markdown write: %w", err)
+	}
+
+	return nil
+}
+
 // SaveAreas saves areas to a campaign as markdown
 func (s *CampaignService) SaveAreas(campaignID, chapterID, content string) error {
 	if !s.campaignRepo.Exists(campaignID) {
