@@ -161,6 +161,9 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	playerMapHandlers := handlers.NewPlayerMapHandlers(playerMapService)
 	handoutV3Handlers := handlers.NewHandoutV3Handlers(handoutServiceV3)
 
+	// Name generation handler
+	namegenHandlers := handlers.NewNamegenHandlers()
+
 	// Visualization and dashboard handlers
 	vizHandlers := handlers.NewVizHandlers(canonService)
 	dashboardHandlers := handlers.NewDashboardHandlers(factionService, canonService)
@@ -283,6 +286,14 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithDescription("Generate personalized plot hooks for all player characters in a campaign. Returns hooks organized by character and by area for easy integration."),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 	), hookHandlers.HandleGenerateCharacterHooks())
+
+	s.AddTool(mcp.NewTool("generate_names",
+		mcp.WithDescription("Generate fantasy names using syllable-based generation"),
+		mcp.WithString("category", mcp.Required(), mcp.Description("Name category: character, npc, city, tavern, monster, faction, item")),
+		mcp.WithString("style", mcp.Description("Cultural style: generic_fantasy, elven, dwarven, orcish, human_medieval"), mcp.DefaultString("generic_fantasy")),
+		mcp.WithNumber("count", mcp.Required(), mcp.Description("Number of names to generate (1-50)")),
+		mcp.WithNumber("seed", mcp.Description("Random seed for reproducibility")),
+	), namegenHandlers.HandleGenerateNames())
 
 	s.AddTool(mcp.NewTool("grimorio_generate_prologue",
 		mcp.WithDescription("Generate a 4-part narrative prologue for a campaign."),

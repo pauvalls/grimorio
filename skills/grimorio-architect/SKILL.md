@@ -285,6 +285,44 @@ MCP: generate_adventure_bible(
 
 Esto crea `canon.json` — la fuente única de verdad.
 
+### Fase 2c: Generate Name Pool (MCP)
+
+Generate culturally-consistent name pools BEFORE delegating content to sub-agents. This ensures cross-references use exact names and prevents duplicate or inconsistent naming.
+
+**Generate names for all content phases:**
+
+```
+MCP: generate_names(category="npc", style="{dominant-style}", count=20)
+MCP: generate_names(category="monster", style="{dominant-style}", count=15)
+MCP: generate_names(category="character", style="{dominant-style}", count=10)
+MCP: generate_names(category="city", style="{dominant-style}", count=10)
+MCP: generate_names(category="faction", style="{dominant-style}", count=10)
+MCP: generate_names(category="tavern", style="{dominant-style}", count=8)
+MCP: generate_names(category="item", style="{dominant-style}", count=12)
+```
+
+**Phase mapping for injection:**
+- Phase 4 (NPCs + Bestiary): inject `npc` and `monster` names
+- Phase 6 (Characters): inject `character` names
+- Phase 8 (Areas + Maps): inject `city` and `tavern` names
+- Phase 10 (Appendices): inject `item` and `faction` names
+
+**CRITICAL — USE THESE EXACT NAMES:**
+When delegating to ANY sub-agent that creates named entities, prepend the generated name pool to the prompt:
+
+```
+PRE-GENERATED NAME POOL (USE THESE EXACT NAMES — do NOT invent alternatives):
+- NPCs: {name1}, {name2}, {name3} ...
+- Monsters: {name1}, {name2}, {name3} ...
+- Characters: {name1}, {name2}, {name3} ...
+- Cities: {name1}, {name2}, {name3} ...
+- Factions: {name1}, {name2}, {name3} ...
+- Taverns: {name1}, {name2}, {name3} ...
+- Items: {name1}, {name2}, {name3} ...
+
+INSTRUCTION: Use names from the pool above. Do NOT create new names.
+```
+
 ### Fase 3: Introduction
 
 ```
@@ -720,6 +758,7 @@ Usá `/sdd-new` para cambios estructurales en el código de Grimorio:
 - `generate_handouts(campaign, handout_type, content_refs)` → Genera handouts
 - `generate_flowchart(campaign, detail_level)` → Genera flowchart de campaña
 - `generate_session_prep(campaign, session_num)` → Genera prep sheet
+- `generate_names(category, style, count, seed?)` → Genera nombres fantásticos por sílabas (character, npc, city, tavern, monster, faction, item)
 
 ### Validation
 - `validate_canon(campaign_id, proposal_id, proposal_type, content)` → Valida contra canon
