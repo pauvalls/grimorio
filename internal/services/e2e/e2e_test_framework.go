@@ -3,6 +3,9 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -77,12 +80,18 @@ type TestResults struct {
 
 // E2ETestRunner runs E2E test suites.
 type E2ETestRunner struct {
-	ctx context.Context
+	ctx     context.Context
+	harness *TestHarness
 }
 
 // NewE2ETestRunner creates a new E2ETestRunner.
 func NewE2ETestRunner(ctx context.Context) *E2ETestRunner {
 	return &E2ETestRunner{ctx: ctx}
+}
+
+// NewE2ETestRunnerWithHarness creates a runner with a specific harness.
+func NewE2ETestRunnerWithHarness(ctx context.Context, harness *TestHarness) *E2ETestRunner {
+	return &E2ETestRunner{ctx: ctx, harness: harness}
 }
 
 // RunSuite executes all tests in a suite.
@@ -124,22 +133,33 @@ func (r *E2ETestRunner) RunTest(test *E2ETest, fixtures []TestFixture) TestResul
 
 	// Execute steps
 	for _, step := range test.Steps {
-		// TODO: Execute MCP tool
-		_ = step
+		if r.harness == nil {
+			result.Status = "fail"
+			result.Error = fmt.Sprintf("no harness available for step %s", step.Action)
+			result.Duration = time.Since(startTime)
+			return result
+		}
+		if err := executeStep(r.ctx, r.harness, step); err != nil {
+			result.Status = "fail"
+			result.Error = fmt.Sprintf("step %s failed: %v", step.Action, err)
+			result.Duration = time.Since(startTime)
+			return result
+		}
 	}
 
 	// Run assertions
 	for _, assertion := range test.Assertions {
+		passed, message := assertFileSystem(r.harness, assertion)
 		assertionResult := AssertionResult{
 			Type:    assertion.Type,
-			Passed:  true, // TODO: Implement actual assertion logic
-			Message: fmt.Sprintf("Assertion %s on %s", assertion.Type, assertion.Target),
+			Passed:  passed,
+			Message: message,
 		}
 		result.Assertions = append(result.Assertions, assertionResult)
-		
+
 		if !assertionResult.Passed {
 			result.Status = "fail"
-			result.Error = fmt.Sprintf("Assertion failed: %s", assertion.Type)
+			result.Error = fmt.Sprintf("Assertion failed: %s - %s", assertion.Type, message)
 		}
 	}
 
@@ -161,10 +181,34 @@ func (r *E2ETestRunner) GenerateTestFixtures(campaignType string) ([]TestFixture
 }
 
 // CleanupFixture cleans up a test fixture.
+// It deletes campaign directories with the "test_" prefix under the harness base dir.
+// Directories without the "test_" prefix are skipped for safety.
 func (r *E2ETestRunner) CleanupFixture(fixture TestFixture) error {
 	if !fixture.CleanupRequired {
 		return nil
 	}
-	// TODO: Implement cleanup logic
+	if r.harness == nil {
+		return fmt.Errorf("no harness available for cleanup")
+	}
+
+	baseDir := r.harness.BaseDir
+	entries, err := os.ReadDir(baseDir)
+	if err != nil {
+		return fmt.Errorf("failed to read base dir %s: %w", baseDir, err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasPrefix(name, "test-") {
+			continue // Safety: only delete test- prefixed directories
+		}
+		targetPath := filepath.Join(baseDir, name)
+		if err := os.RemoveAll(targetPath); err != nil {
+			return fmt.Errorf("failed to remove %s: %w", targetPath, err)
+		}
+	}
 	return nil
 }
