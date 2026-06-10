@@ -57,7 +57,7 @@ func (h *CharacterHandlers) HandleGenerateCharacter() server.ToolHandlerFunc {
 		}
 
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		msg := fmt.Sprintf("Character '%s' created in campaign '%s' (Level %d %s %s)",
@@ -87,7 +87,7 @@ func (h *CharacterHandlers) HandleGetCharacter() server.ToolHandlerFunc {
 
 		character, err := h.service.GetCharacter(campaign, name)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		// Format character sheet as text
@@ -111,7 +111,7 @@ func (h *CharacterHandlers) HandleListCharacters() server.ToolHandlerFunc {
 
 		characters, err := h.service.ListCharacters(campaign)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		if len(characters) == 0 {
