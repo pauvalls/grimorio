@@ -2,7 +2,7 @@ package mcp
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -61,9 +61,12 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	assetService := services.NewAssetService(cfg.OutputDir, cfg.Config)
 	canonService := services.NewCanonService(canonRepo, narrativeStateRepo, checkpointRepo)
 
+	// Initialize structured logger
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+
 	// Degraded mode: if CANON_LEGACY_MODE is set or repo initialization fails
 	if os.Getenv("CANON_LEGACY_MODE") == "1" {
-		log.Println("WARNING: CANON_LEGACY_MODE is enabled. Canon consistency gates will be bypassed.")
+		logger.Warn("CANON_LEGACY_MODE is enabled. Canon consistency gates will be bypassed.", "component", "canon")
 		canonService.SetDegraded(true)
 	}
 
@@ -116,11 +119,11 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		if lifecycle.IsInstalled() {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			if err := lifecycle.Start(ctx); err != nil {
-				log.Printf("WARNING: Piper TTS failed to start: %v", err)
+				logger.Warn("Piper TTS failed to start", "error", err, "component", "tts")
 			}
 			cancel()
 		} else {
-			log.Println("INFO: Piper TTS not installed. TTS will be unavailable.")
+			logger.Info("Piper TTS not installed. TTS will be unavailable.", "component", "tts")
 		}
 
 		client := piper.NewClient(piperCfg.Host, piperCfg.Port)

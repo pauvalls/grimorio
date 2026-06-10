@@ -1,9 +1,28 @@
-.PHONY: test lint build bench docker clean release help
+.PHONY: test lint build bench docker clean release help dev fmt tidy
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT  ?= $(shell git rev-parse --short HEAD)
 DATE    ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS  = -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)
+
+dev: ## Start air for hot-reload development
+	@command -v air >/dev/null 2>&1 || { \
+		echo "air is not installed. Install with: go install github.com/air-verse/air@latest"; \
+		exit 1; \
+	}
+	air
+
+fmt: ## Run gofmt and goimports on all .go files
+	gofmt -w .
+	@command -v goimports >/dev/null 2>&1 || { \
+		echo "goimports not installed. Install with: go install golang.org/x/tools/cmd/goimports@latest"; \
+		exit 1; \
+	}
+	goimports -w .
+
+tidy: ## Run go mod tidy and verify
+	go mod tidy
+	go mod verify
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
