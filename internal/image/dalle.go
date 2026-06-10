@@ -12,10 +12,11 @@ import (
 )
 
 type DalleProvider struct {
-	APIKey string
-	Model  string
-	Size   string
-	client *http.Client
+	APIKey  string
+	Model   string
+	Size    string
+	BaseURL string
+	client  *http.Client
 }
 
 const dalleTimeout = 5 * time.Minute
@@ -31,10 +32,11 @@ func NewDalleProvider(apiKey, model string) (*DalleProvider, error) {
 		model = "dall-e-3"
 	}
 	return &DalleProvider{
-		APIKey: apiKey,
-		Model:  model,
-		Size:   "1024x1024",
-		client: &http.Client{Timeout: dalleTimeout},
+		APIKey:  apiKey,
+		Model:   model,
+		Size:    "1024x1024",
+		BaseURL: "https://api.openai.com/v1",
+		client:  &http.Client{Timeout: dalleTimeout},
 	}, nil
 }
 
@@ -75,7 +77,7 @@ func (d *DalleProvider) Generate(prompt string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/images/generations", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", d.BaseURL+"/images/generations", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -123,5 +125,11 @@ func downloadImage(url string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to download image: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("image download failed %d: %s", resp.StatusCode, string(body))
+	}
+
 	return io.ReadAll(resp.Body)
 }
