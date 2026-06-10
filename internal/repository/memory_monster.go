@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -75,7 +74,7 @@ func (r *MemoryMonsterRepository) List(campaignID string) ([]domain.Monster, err
 	return result, nil
 }
 
-func (r *MemoryMonsterRepository) Delete(ctx context.Context, campaignID, name string) error {
+func (r *MemoryMonsterRepository) Delete(campaignID, name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

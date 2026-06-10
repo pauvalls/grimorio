@@ -610,7 +610,7 @@ func (w *monsterRepoWrapper) List(campaignID string) ([]domain.Monster, error) {
 	return result, nil
 }
 
-func (w *monsterRepoWrapper) Delete(ctx context.Context, campaignID, name string) error {
-	return w.fs.Delete(ctx, campaignID, name)
+func (w *monsterRepoWrapper) Delete(campaignID, name string) error {
+	return w.fs.Delete(context.Background(), campaignID, name)
 }
 

@@ -1,8 +1,6 @@
 package mocks
 
 import (
-	"context"
-
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
 )
@@ -141,7 +139,7 @@ type MonsterRepositoryMock struct {
 	SaveFunc   func(monster *domain.Monster) error
 	ReadFunc   func(campaignID, name string) (*domain.Monster, error)
 	ListFunc   func(campaignID string) ([]domain.Monster, error)
-	DeleteFunc func(ctx context.Context, campaignID, name string) error
+	DeleteFunc func(campaignID, name string) error
 }
 
 // Save implements MonsterRepository
@@ -169,9 +167,9 @@ func (m *MonsterRepositoryMock) List(campaignID string) ([]domain.Monster, error
 }
 
 // Delete implements MonsterRepository
-func (m *MonsterRepositoryMock) Delete(ctx context.Context, campaignID, name string) error {
+func (m *MonsterRepositoryMock) Delete(campaignID, name string) error {
 	if m.DeleteFunc != nil {
-		return m.DeleteFunc(ctx, campaignID, name)
+		return m.DeleteFunc(campaignID, name)
 	}
 	return nil
 }
