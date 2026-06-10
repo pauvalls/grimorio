@@ -31,12 +31,13 @@ func (h *CampaignHandlers) HandleCreateCampaign() server.ToolHandlerFunc {
 		name := getStringArg(args, "name")
 		title := getStringArg(args, "title")
 		setting := getStringArg(args, "setting")
+		template := getStringArg(args, "template")
 
 		if name == "" {
 			return mcp.NewToolResultError("campaign name is required"), nil
 		}
 
-		campaign, err := h.service.CreateCampaign(name, title, setting)
+		campaign, err := h.service.CreateCampaign(name, title, setting, template)
 		if err != nil {
 			return ToToolResult(err), nil
 		}

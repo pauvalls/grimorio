@@ -61,8 +61,8 @@ func (s *CampaignService) GetBaseDir() string {
 	return s.baseDir
 }
 
-// CreateCampaign creates a new campaign
-func (s *CampaignService) CreateCampaign(name, title, setting string) (*domain.Campaign, error) {
+// CreateCampaign creates a new campaign with optional template.
+func (s *CampaignService) CreateCampaign(name, title, setting, templateName string) (*domain.Campaign, error) {
 	if title == "" {
 		title = name
 	}
@@ -72,6 +72,15 @@ func (s *CampaignService) CreateCampaign(name, title, setting string) (*domain.C
 		Title:   title,
 		Setting: setting,
 		Status:  "active",
+	}
+
+	// Apply template defaults if provided
+	if templateName != "" {
+		tmpl, err := GetTemplate(templateName)
+		if err == nil {
+			campaign.Template = tmpl.Name
+			ApplyTemplate(campaign, tmpl)
+		}
 	}
 
 	if err := s.campaignRepo.Create(campaign); err != nil {

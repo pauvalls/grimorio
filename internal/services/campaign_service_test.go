@@ -54,7 +54,7 @@ func TestCampaignService_CreateCampaign(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			campaign, err := service.CreateCampaign(tt.campaignName, tt.title, tt.setting)
+			campaign, err := service.CreateCampaign(tt.campaignName, tt.title, tt.setting, "")
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("CreateCampaign() expected error but got nil")
@@ -86,7 +86,7 @@ func TestCampaignService_GetCampaign(t *testing.T) {
 	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, "/tmp/campaigns", "")
 
 	// Create a campaign first
-	_, err := service.CreateCampaign("get-test", "Get Test", "Setting")
+	_, err := service.CreateCampaign("get-test", "Get Test", "Setting", "")
 	if err != nil {
 		t.Fatalf("Failed to create test campaign: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestCampaignService_SaveAct(t *testing.T) {
 	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, "/tmp/campaigns", "")
 
 	// Create a campaign first
-	_, err := service.CreateCampaign("act-test", "Act Test", "Setting")
+	_, err := service.CreateCampaign("act-test", "Act Test", "Setting", "")
 	if err != nil {
 		t.Fatalf("Failed to create test campaign: %v", err)
 	}
@@ -306,7 +306,7 @@ func TestCampaignService_CompilePDF(t *testing.T) {
 	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, tmpDir, "echo")
 
 	// Create a campaign first
-	_, err := service.CreateCampaign("pdf-test", "PDF Test", "Setting")
+	_, err := service.CreateCampaign("pdf-test", "PDF Test", "Setting", "")
 	if err != nil {
 		t.Fatalf("Failed to create test campaign: %v", err)
 	}
@@ -355,8 +355,8 @@ func TestCampaignService_ListCampaigns(t *testing.T) {
 	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, "/tmp/campaigns", "")
 
 	// Create some campaigns
-	_, _ = service.CreateCampaign("list-1", "List 1", "Setting 1")
-	_, _ = service.CreateCampaign("list-2", "List 2", "Setting 2")
+	_, _ = service.CreateCampaign("list-1", "List 1", "Setting 1", "")
+	_, _ = service.CreateCampaign("list-2", "List 2", "Setting 2", "")
 
 	campaigns, err := service.ListCampaigns()
 	if err != nil {

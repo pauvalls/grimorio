@@ -99,6 +99,14 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		tacticsRepo,
 	)
 
+	// Fase 3 product features
+	treasureService := services.NewTreasureService()
+	campaignHealthCheck := services.NewCampaignHealthCheck(
+		canonRepo, narrativeStateRepo, questRepo, factionRepo, npcRepo, cfg.OutputDir,
+	)
+	campaignHealthScore := services.NewCampaignHealthScore(campaignHealthCheck, validationEngine)
+	exportHandlers := handlers.NewExportHandlers(cfg.OutputDir, cfg.PDFEngine)
+
 	// TTS initialization
 	var ttsService *services.TTSService
 	var ttsHandlers *handlers.TTSHandlers
@@ -172,6 +180,10 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	dashboardHandlers := handlers.NewDashboardHandlers(factionService, canonService)
 	timelineHandlers := handlers.NewTimelineHandlers(narrativeStateService)
 
+	// Fase 3 handlers
+	healthHandlers := handlers.NewHealthHandlers(campaignHealthScore)
+	treasureHandlers := handlers.NewTreasureHandlers(treasureService)
+
 	// Register tools
 	// Campaign management
 	s.AddTool(mcp.NewTool("create_campaign",
@@ -179,6 +191,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithString("name", mcp.Required(), mcp.Description("Campaign name (kebab-case)"), mcp.Title("Campaign Name")),
 		mcp.WithString("title", mcp.Description("Campaign title")),
 		mcp.WithString("setting", mcp.Description("Brief setting description")),
+		mcp.WithString("template", mcp.Description("Campaign template preset: Urban Fantasy, Gothic Horror, Maritime Adventure, Dungeon Crawl, Political Intrigue")),
 	), campaignHandlers.HandleCreateCampaign())
 
 	s.AddTool(mcp.NewTool("save_areas",
@@ -543,6 +556,26 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithDescription("Show a vertical timeline of all recorded sessions with expandable key decisions"),
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 	), timelineHandlers.HandleSessionTimeline())
+
+	// Fase 3 product feature tools
+	s.AddTool(mcp.NewTool("campaign_health_dashboard",
+		mcp.WithDescription("Compute and return campaign health scores (0-100) for OverallHealth, CanonCompleteness, NarrativeCoherence, FactionBalance, WotCCompliance, and HookCoverage"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+	), healthHandlers.HandleCampaignHealthDashboard())
+
+	s.AddTool(mcp.NewTool("generate_treasure",
+		mcp.WithDescription("Generate SRD-compliant treasure (individual or hoard)"),
+		mcp.WithString("type", mcp.Description("Treasure type: individual or hoard"), mcp.DefaultString("individual")),
+		mcp.WithNumber("cr", mcp.Description("Challenge Rating for individual treasure (0-30)"), mcp.DefaultNumber(1)),
+		mcp.WithNumber("tier", mcp.Description("Treasure tier for hoards (1-4)"), mcp.DefaultNumber(1)),
+	), treasureHandlers.HandleGenerateTreasure())
+
+	s.AddTool(mcp.NewTool("export_campaign",
+		mcp.WithDescription("Export campaign to PDF, Markdown, or EPUB"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("format", mcp.Description("Export format: pdf, markdown, epub"), mcp.DefaultString("pdf")),
+		mcp.WithString("title", mcp.Description("Export title (defaults to campaign name)")),
+	), exportHandlers.HandleExportCampaign())
 
 	// TTS tools
 	s.AddTool(mcp.NewTool("set_dm_mode",

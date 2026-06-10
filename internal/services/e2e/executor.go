@@ -66,7 +66,7 @@ func executeCreateCampaign(_ context.Context, h *TestHarness, step TestStep) err
 	if name == "" {
 		name = "test_campaign"
 	}
-	_, err := h.CampaignService.CreateCampaign(name, getStringParam(step.Params, "title"), getStringParam(step.Params, "setting"))
+	_, err := h.CampaignService.CreateCampaign(name, getStringParam(step.Params, "title"), getStringParam(step.Params, "setting"), getStringParam(step.Params, "template"))
 	return err
 }
 

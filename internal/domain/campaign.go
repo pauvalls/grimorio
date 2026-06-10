@@ -15,6 +15,7 @@ type Campaign struct {
 	Setting     string    `json:"setting"`     // Brief setting description
 	Description string    `json:"description"` // Full description
 	Status      string    `json:"status"`      // active, paused, completed, archived
+	Template    string    `json:"template,omitempty"` // Template preset used
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
