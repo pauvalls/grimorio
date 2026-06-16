@@ -2,7 +2,8 @@ package mcp
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pauvalls/grimorio/internal/config"
 	"github.com/pauvalls/grimorio/internal/domain"
+	"github.com/pauvalls/grimorio/internal/image"
 	"github.com/pauvalls/grimorio/internal/mcp/handlers"
 	"github.com/pauvalls/grimorio/internal/repository"
 	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
@@ -59,11 +61,22 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	characterService := services.NewCharacterService(charRepo)
 	questService := services.NewQuestService(questRepo)
 	assetService := services.NewAssetService(cfg.OutputDir, cfg.Config)
+	// Wire image-generation cache (Fase 4). The cache is best-effort:
+	// a failure here must not break MCP server startup, so we log and
+	// continue with an un-cached service.
+	if imgCache, err := image.NewImageCache(cfg.ImageCacheDir, cfg.ImageCacheSize); err == nil {
+		assetService = assetService.WithCache(imgCache)
+	} else {
+		fmt.Fprintf(os.Stderr, "warning: image cache disabled: %v\n", err)
+	}
 	canonService := services.NewCanonService(canonRepo, narrativeStateRepo, checkpointRepo)
+
+	// Initialize structured logger
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 	// Degraded mode: if CANON_LEGACY_MODE is set or repo initialization fails
 	if os.Getenv("CANON_LEGACY_MODE") == "1" {
-		log.Println("WARNING: CANON_LEGACY_MODE is enabled. Canon consistency gates will be bypassed.")
+		logger.Warn("CANON_LEGACY_MODE is enabled. Canon consistency gates will be bypassed.", "component", "canon")
 		canonService.SetDegraded(true)
 	}
 
@@ -96,6 +109,14 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		tacticsRepo,
 	)
 
+	// Fase 3 product features
+	treasureService := services.NewTreasureService()
+	campaignHealthCheck := services.NewCampaignHealthCheck(
+		canonRepo, narrativeStateRepo, questRepo, factionRepo, npcRepo, cfg.OutputDir,
+	)
+	campaignHealthScore := services.NewCampaignHealthScore(campaignHealthCheck, validationEngine)
+	exportHandlers := handlers.NewExportHandlers(cfg.OutputDir, cfg.PDFEngine)
+
 	// TTS initialization
 	var ttsService *services.TTSService
 	var ttsHandlers *handlers.TTSHandlers
@@ -116,11 +137,11 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		if lifecycle.IsInstalled() {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			if err := lifecycle.Start(ctx); err != nil {
-				log.Printf("WARNING: Piper TTS failed to start: %v", err)
+				logger.Warn("Piper TTS failed to start", "error", err, "component", "tts")
 			}
 			cancel()
 		} else {
-			log.Println("INFO: Piper TTS not installed. TTS will be unavailable.")
+			logger.Info("Piper TTS not installed. TTS will be unavailable.", "component", "tts")
 		}
 
 		client := piper.NewClient(piperCfg.Host, piperCfg.Port)
@@ -169,6 +190,10 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	dashboardHandlers := handlers.NewDashboardHandlers(factionService, canonService)
 	timelineHandlers := handlers.NewTimelineHandlers(narrativeStateService)
 
+	// Fase 3 handlers
+	healthHandlers := handlers.NewHealthHandlers(campaignHealthScore)
+	treasureHandlers := handlers.NewTreasureHandlers(treasureService)
+
 	// Register tools
 	// Campaign management
 	s.AddTool(mcp.NewTool("create_campaign",
@@ -176,6 +201,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithString("name", mcp.Required(), mcp.Description("Campaign name (kebab-case)"), mcp.Title("Campaign Name")),
 		mcp.WithString("title", mcp.Description("Campaign title")),
 		mcp.WithString("setting", mcp.Description("Brief setting description")),
+		mcp.WithString("template", mcp.Description("Campaign template preset: Urban Fantasy, Gothic Horror, Maritime Adventure, Dungeon Crawl, Political Intrigue")),
 	), campaignHandlers.HandleCreateCampaign())
 
 	s.AddTool(mcp.NewTool("save_areas",
@@ -541,6 +567,26 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
 	), timelineHandlers.HandleSessionTimeline())
 
+	// Fase 3 product feature tools
+	s.AddTool(mcp.NewTool("campaign_health_dashboard",
+		mcp.WithDescription("Compute and return campaign health scores (0-100) for OverallHealth, CanonCompleteness, NarrativeCoherence, FactionBalance, WotCCompliance, and HookCoverage"),
+		mcp.WithString("campaign_id", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+	), healthHandlers.HandleCampaignHealthDashboard())
+
+	s.AddTool(mcp.NewTool("generate_treasure",
+		mcp.WithDescription("Generate SRD-compliant treasure (individual or hoard)"),
+		mcp.WithString("type", mcp.Description("Treasure type: individual or hoard"), mcp.DefaultString("individual")),
+		mcp.WithNumber("cr", mcp.Description("Challenge Rating for individual treasure (0-30)"), mcp.DefaultNumber(1)),
+		mcp.WithNumber("tier", mcp.Description("Treasure tier for hoards (1-4)"), mcp.DefaultNumber(1)),
+	), treasureHandlers.HandleGenerateTreasure())
+
+	s.AddTool(mcp.NewTool("export_campaign",
+		mcp.WithDescription("Export campaign to PDF, Markdown, or EPUB"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("format", mcp.Description("Export format: pdf, markdown, epub"), mcp.DefaultString("pdf")),
+		mcp.WithString("title", mcp.Description("Export title (defaults to campaign name)")),
+	), exportHandlers.HandleExportCampaign())
+
 	// TTS tools
 	s.AddTool(mcp.NewTool("set_dm_mode",
 		mcp.WithDescription("Set the DM output mode to written or TTS"),
@@ -610,7 +656,7 @@ func (w *monsterRepoWrapper) List(campaignID string) ([]domain.Monster, error) {
 	return result, nil
 }
 
-func (w *monsterRepoWrapper) Delete(ctx context.Context, campaignID, name string) error {
-	return w.fs.Delete(ctx, campaignID, name)
+func (w *monsterRepoWrapper) Delete(campaignID, name string) error {
+	return w.fs.Delete(context.Background(), campaignID, name)
 }
 

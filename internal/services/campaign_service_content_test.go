@@ -25,7 +25,7 @@ func setupContentTestService(t *testing.T) (*CampaignService, string) {
 	)
 
 	// Create a test campaign
-	_, err := service.CreateCampaign("test-campaign", "Test Campaign", "Test Setting")
+	_, err := service.CreateCampaign("test-campaign", "Test Campaign", "Test Setting", "")
 	if err != nil {
 		t.Fatalf("Failed to create test campaign: %v", err)
 	}

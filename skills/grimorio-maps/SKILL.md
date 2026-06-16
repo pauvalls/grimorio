@@ -94,14 +94,14 @@ El template define el formato WotC obligatorio para descripciones de ubicaciones
 - **Interacción:** [Qué pasa si interactúan]
 - **DC:** [Percepción/Investigación DC XX si aplica]
 
-**Conexiones:**
+**Connections:**
 - → Zona X [descripción de cómo se llega]
 - ← Zona Y [desde dónde se llega]
 
 **NPCs o Criaturas:**
 - [Nombres exactos de npcs.md/bestiary.md]
 
-**Tesoro o Pistas:**
+**Treasure o Pistas:**
 - [Qué pueden encontrar si investigan]
 
 #### Zona 2: {Nombre}
@@ -181,9 +181,9 @@ ELSE:
 - [ ] **Descripción General:** 2-3 párrafos con 5 sentidos
 - [ ] **Zonas Numeradas:** Cada zona con nombre descriptivo
 - [ ] **Elementos Interactivos:** Cada zona tiene algo que hacer/interactuar
-- [ ] **Conexiones Claras:** Cómo se conectan las zonas entre sí
+- [ ] **Connections Claras:** Cómo se conectan las zonas entre sí
 - [ ] **NPCs/Criaturas:** Nombres exactos de npcs.md/bestiary.md
-- [ ] **Tesoro/Pistas:** Algo que encontrar en cada zona relevante
+- [ ] **Treasure/Pistas:** Algo que encontrar en cada zona relevante
 - [ ] **Mapa Sugerido:** Estilo, dimensiones, elementos clave, labels
 - [ ] **Notas de Combate:** Terreno, iluminación, elementos tácticos (si aplica)
 - [ ] **Propósito Claro:** Cada zona sirve a algo (no hay zonas de relleno)
@@ -259,7 +259,7 @@ Cada zona debe tener:
 - ✅ Cada zona tiene elementos interactivos
 
 ### ValidateSpatialCoherence
-- ✅ Conexiones entre zonas son claras y lógicas
+- ✅ Connections entre zonas son claras y lógicas
 - ✅ No hay zonas aisladas sin conexión
 - ✅ Flujo de zonas tiene sentido narrativo
 

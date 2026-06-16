@@ -1,110 +1,110 @@
-# Sesión Cero — Guía para el DM
+# Session Zero — DM Guide
 
-## Información de la Campaña
+## Campaign Information
 
-| Campo | Valor |
+| Field | Value |
 |-------|-------|
-| Nombre | {{.Name}} |
-| Título | {{.Title}} |
-| Ambientación | {{.Setting}} |
-| Rango de Nivel | {{.LevelRange}} |
-| Tono | {{.Tone}} |
+| Name | {{.Name}} |
+| Title | {{.Title}} |
+| Setting | {{.Setting}} |
+| Level Range | {{.LevelRange}} |
+| Tone | {{.Tone}} |
 
 ---
 
-## Puntos de Shock y Advertencias de Contenido
+## Shock Points and Content Warnings
 
 {{if .ShockPoints}}
-Los siguientes puntos de shock identifican contenido potencialmente sensible en esta campaña:
+The following shock points identify potentially sensitive content in this campaign:
 
 {{range .ShockPoints}}
 <div class="shock-point {{.Severity}}">
 <span class="severity-badge">{{.Severity}}</span>
 <strong>{{.Type}}</strong>: {{.Description}}
 
-**Herramientas de seguridad recomendadas:** {{range .SafetyTools}}{{.}}, {{end}}
+**Recommended safety tools:** {{range .SafetyTools}}{{.}}, {{end}}
 </div>
 {{end}}
 {{else}}
-No se identificaron puntos de shock específicos. Revisar los temas de la campaña para contenido sensible.
+No specific shock points were identified. Review the campaign themes for sensitive content.
 {{end}}
 
 ---
 
-## Herramientas de Seguridad
+## Safety Tools
 
-Antes de comenzar, asegurate de que todos los jugadores estén cómodos con:
+Before starting, make sure all players are comfortable with:
 
-- **Líneas y Veos**: Qué temas están fuera de límites y cuáles requieren un "¿podemos ir allí?" antes de continuar.
-- **Ficha X**: Cualquier jugador puede levantar una ficha para pausar o retroceder una escena sin preguntas.
-- **Check-in entre sesiones**: Preguntar brevemente cómo se sintieron con la sesión anterior.
+- **Lines and Veils**: Which topics are off-limits and which require a "can we go there?" check before continuing.
+- **X-Card**: Any player can raise a card to pause or rewind a scene with no questions asked.
+- **Session check-ins**: Briefly ask how players felt about the previous session.
 
 ---
 
-## Reglas de Casa
+## House Rules
 
 {{.HouseRules}}
 
 ---
 
-## Creación de Personajes
+## Character Creation
 
-### Guías
-- Nivel inicial: {{.StartingLevel}}
-- Fuentes permitidas: {{.AllowedSources}}
-- Estadísticas: {{.StatMethod}}
+### Guidelines
+- Starting level: {{.StartingLevel}}
+- Allowed sources: {{.AllowedSources}}
+- Stat method: {{.StatMethod}}
 
-### Worksheet de Creación de Personaje
+### Character Creation Worksheet
 
 <div class="character-worksheet">
 <div class="worksheet-section">
-<h4>Antecedentes y Conexiones</h4>
-<div class="prompt-box">¿Qué conecta a tu personaje con esta región? ¿Dónde creció y por qué lo dejó?</div>
+<h4>Background and Connections</h4>
+<div class="prompt-box">What connects your character to this region? Where did they grow up and why did they leave?</div>
 </div>
 
 <div class="worksheet-section">
-<h4>Motivaciones</h4>
-<div class="prompt-box">¿Qué busca tu personaje? ¿Qué lo motiva a aventurarse en lugar de quedarse en casa?</div>
+<h4>Motivations</h4>
+<div class="prompt-box">What is your character seeking? What drives them to adventure instead of staying home?</div>
 </div>
 
 <div class="worksheet-section">
-<h4>Vínculos con el Partido</h4>
-<div class="prompt-box">¿Cómo conoció a los otros miembros del grupo? ¿Qué objetivo los une?</div>
+<h4>Party Bonds</h4>
+<div class="prompt-box">How did they meet the other party members? What goal unites them?</div>
 </div>
 
 <div class="worksheet-section">
-<h4>Secretos y Defectos</h4>
-<div class="prompt-box">¿Qué oculta tu personaje? ¿Qué debilidad podrían explotar sus enemigos?</div>
+<h4>Secrets and Flaws</h4>
+<div class="prompt-box">What does your character hide? What weakness could their enemies exploit?</div>
 </div>
 </div>
 
-### Trasfondos Sugeridos
+### Suggested Backgrounds
 {{.SuggestedBackgrounds}}
 
 ---
 
-## Ganchos de Personaje
+## Character Hooks
 
-Cada jugador recibirá un gancho personalizado que conecta su personaje con la trama principal. Estos ganchos se generan a partir de:
+Each player will receive a personalized hook connecting their character to the main plot. These hooks are generated from:
 
-- **Clase y arquetipo**: Cómo las habilidades del personaje encajan en el mundo.
-- **Trasfondo**: Qué pasado del personaje resuena con la campaña.
-- **Vínculos y defectos**: Elementos personales que el DM puede usar para crear tensión narrativa.
+- **Class and archetype**: How the character's abilities fit into the world.
+- **Background**: Which parts of the character's past resonate with the campaign.
+- **Bonds and flaws**: Personal elements the DM can use to create narrative tension.
 
-> **Nota para el DM**: Generá los ganchos con la herramienta `generate_character_hooks` antes de la Sesión Cero y compartilos con cada jugador individualmente.
+> **Note for the DM**: Generate the hooks with the `generate_character_hooks` tool before Session Zero and share them with each player individually.
 
 ---
 
-## Tono y Estilo
+## Tone and Style
 
 {{.ToneDescription}}
 
 ---
 
-## Próximos Pasos
+## Next Steps
 
-1. Revisar los puntos de shock y herramientas de seguridad con el grupo.
-2. Revisar los ganchos de personaje con cada jugador.
-3. Establecer las herramientas de seguridad y acuerdos de mesa.
-4. Resolver dudas de creación de personajes.
-5. Planificar la primera sesión usando `generate_session_prep`.
+1. Review the shock points and safety tools with the group.
+2. Review the character hooks with each player.
+3. Establish the safety tools and table agreements.
+4. Resolve character creation questions.
+5. Plan the first session using `generate_session_prep`.

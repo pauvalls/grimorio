@@ -48,6 +48,7 @@ type AssetService struct {
 	baseDir       string
 	imgConfig     image.Config
 	imageProvider image.Provider // injectable for testing
+	imageCache    *image.ImageCache
 }
 
 // NewAssetService creates a new asset service
@@ -64,6 +65,15 @@ func NewAssetServiceWithProvider(baseDir string, provider image.Provider) *Asset
 		baseDir:       baseDir,
 		imageProvider: provider,
 	}
+}
+
+// WithCache attaches an ImageCache to the service and returns the receiver
+// for fluent chaining. When set, the provider chain is wrapped in a
+// CachingProvider so repeated generations with the same inputs are served
+// from cache.
+func (s *AssetService) WithCache(c *image.ImageCache) *AssetService {
+	s.imageCache = c
+	return s
 }
 
 func (s *AssetService) campaignDir(campaign string) string {
@@ -121,30 +131,116 @@ func (s *AssetService) GenerateDivider(campaign, filename, style string, width i
 // GenerateImage generates an image using AI with fallback providers.
 // Rate limiting is per-campaign so different campaigns can generate in parallel.
 func (s *AssetService) GenerateImage(campaign, filename, prompt, imgType string) (string, error) {
+	return s.generateImageImpl(campaign, filename, prompt, imgType, false)
+}
+
+// GenerateImageForce is GenerateImage with force_regenerate=true. It
+// bypasses the cache read layer, calls the provider chain, and writes
+// the fresh bytes back to the cache.
+func (s *AssetService) GenerateImageForce(campaign, filename, prompt, imgType string, force bool) (string, error) {
+	return s.generateImageImpl(campaign, filename, prompt, imgType, force)
+}
+
+func (s *AssetService) generateImageImpl(campaign, filename, prompt, imgType string, forceRegenerate bool) (string, error) {
 	lim := getCampaignLimiter(campaign)
 	if err := lim.Wait(context.Background()); err != nil {
 		return "", fmt.Errorf("rate limiter error: %w", err)
 	}
 
-	providers := s.getProviders()
-
 	outputPath := filepath.Join(s.assetsDir(campaign), ensureImageExt(filename))
+
+	if forceRegenerate {
+		// Bypass cache read; still write on success.
+		data, err := s.generateBypassingCache(prompt)
+		if err != nil {
+			return "", fmt.Errorf("image generation failed (force): %w", err)
+		}
+		if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+			return "", fmt.Errorf("failed to create output dir: %w", err)
+		}
+		if err := os.WriteFile(outputPath, data, 0644); err != nil {
+			return "", fmt.Errorf("failed to write image: %w", err)
+		}
+		return outputPath, nil
+	}
+
+	providers := s.getProviders()
 	_, err := image.GenerateAndSaveWithFallback(providers, prompt, outputPath)
 	if err != nil {
 		return "", fmt.Errorf("image generation failed (tried %d providers): %w", len(providers), err)
 	}
-
 	return outputPath, nil
 }
 
-// getProviders returns the list of providers to try
-// If a custom provider is injected (for testing), use only that
-// Otherwise use the fallback chain: primary -> raphael -> pollinations
-func (s *AssetService) getProviders() []image.Provider {
-	if s.imageProvider != nil {
-		return []image.Provider{s.imageProvider}
+// generateBypassingCache calls the underlying provider chain directly
+// (no cache read) and writes the result to the cache. It supports two
+// configurations:
+//
+//  1. The chain is wrapped in a CachingProvider → use BypassAndWrite.
+//  2. A custom provider is injected for tests → call it directly and
+//     write to the cache if a cache is attached.
+func (s *AssetService) generateBypassingCache(prompt string) ([]byte, error) {
+	chain := s.getProviders()
+	if len(chain) == 0 {
+		return nil, fmt.Errorf("no providers configured")
 	}
-	return image.NewProviderChain(s.imgConfig)
+	if cp, ok := chain[0].(*image.CachingProvider); ok {
+		data, _, err := cp.BypassAndWrite(prompt)
+		return data, err
+	}
+	// Direct provider (e.g. test mock). Bypass any caching: just call it.
+	data, err := chain[0].Generate(prompt)
+	if err != nil {
+		return nil, err
+	}
+	if s.imageCache != nil {
+		providerName := chain[0].Name()
+		model := s.imgConfig.DalleModel
+		if providerName != "dalle" {
+			model = "flux"
+		}
+		key := image.ComputeKey(prompt, providerName, model,
+			s.imgConfig.Width, s.imgConfig.Height, s.imgConfig.Seed)
+		s.imageCache.Put(key, data)
+	}
+	return data, nil
+}
+
+// getProviders returns the list of providers to try.
+// When a custom provider is injected (for testing) it is used as the
+// primary, regardless of whether a cache is attached. When no custom
+// provider is set, the default fallback chain is built. If a cache is
+// attached, the chain is wrapped in a CachingProvider.
+func (s *AssetService) getProviders() []image.Provider {
+	var inner []image.Provider
+	if s.imageProvider != nil {
+		inner = []image.Provider{s.imageProvider}
+	} else {
+		inner = image.NewProviderChain(s.imgConfig)
+	}
+	if s.imageCache == nil {
+		return inner
+	}
+	// Wrap the (possibly custom) inner chain in a CachingProvider.
+	providerName := s.imgConfig.Provider
+	if s.imageProvider != nil {
+		providerName = s.imageProvider.Name()
+	}
+	if providerName == "" {
+		providerName = inner[0].Name()
+	}
+	model := s.imgConfig.DalleModel
+	if providerName != "dalle" {
+		model = "flux"
+	}
+	cp := image.NewCachingProvider(inner, s.imageCache, image.CachingProviderConfig{
+		Provider: providerName,
+		Model:    model,
+		Width:    s.imgConfig.Width,
+		Height:   s.imgConfig.Height,
+		Seed:     s.imgConfig.Seed,
+	})
+	return []image.Provider{cp}
 }
 
 // InsertImageReference inserts an image reference into a markdown file.

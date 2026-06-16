@@ -22,7 +22,7 @@ func TestCampaignService_SaveChapter(t *testing.T) {
 	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, tmpDir, "")
 
 	// Create a campaign first
-	_, err := service.CreateCampaign("chapter-test", "Chapter Test", "Setting")
+	_, err := service.CreateCampaign("chapter-test", "Chapter Test", "Setting", "")
 	if err != nil {
 		t.Fatalf("Failed to create test campaign: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestCampaignService_SaveChapter_NoAreas(t *testing.T) {
 	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, tmpDir, "")
 
 	// Create a campaign first
-	_, err := service.CreateCampaign("no-areas-test", "No Areas Test", "Setting")
+	_, err := service.CreateCampaign("no-areas-test", "No Areas Test", "Setting", "")
 	if err != nil {
 		t.Fatalf("Failed to create test campaign: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestCampaignService_SaveChapter_MultipleChapters(t *testing.T) {
 	service := NewCampaignService(campaignRepo, actRepo, charRepo, npcRepo, questRepo, canonRepo, monsterRepo, tmpDir, "")
 
 	// Create a campaign first
-	_, err := service.CreateCampaign("multi-chapter-test", "Multi Chapter Test", "Setting")
+	_, err := service.CreateCampaign("multi-chapter-test", "Multi Chapter Test", "Setting", "")
 	if err != nil {
 		t.Fatalf("Failed to create test campaign: %v", err)
 	}

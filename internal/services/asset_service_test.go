@@ -59,6 +59,76 @@ func TestGenerateImage_Success(t *testing.T) {
 	}
 }
 
+// TestGenerateImage_WithCacheHit is a regression test for Fase 4 image cache:
+// the second call with the same inputs should be served from cache without
+// hitting the inner provider.
+func TestGenerateImage_WithCacheHit(t *testing.T) {
+	tmpDir := t.TempDir()
+	provider := &mockProvider{name: "mock", configured: true}
+	service := NewAssetServiceWithProvider(tmpDir, provider)
+
+	imgCache, err := image.NewImageCache(t.TempDir(), 50)
+	if err != nil {
+		t.Fatalf("NewImageCache: %v", err)
+	}
+	service = service.WithCache(imgCache)
+
+	// First call: provider hit
+	_, err = service.GenerateImage("test-campaign", "img1", "epic dragon", "cover")
+	if err != nil {
+		t.Fatalf("first GenerateImage: %v", err)
+	}
+	if provider.callCount.Load() != 1 {
+		t.Fatalf("first call: provider.calls = %d, want 1", provider.callCount.Load())
+	}
+
+	// Second call with same inputs → cache hit, provider NOT called again
+	_, err = service.GenerateImage("test-campaign", "img1", "epic dragon", "cover")
+	if err != nil {
+		t.Fatalf("second GenerateImage: %v", err)
+	}
+	if provider.callCount.Load() != 1 {
+		t.Errorf("second call: provider.calls = %d, want still 1 (cache hit)", provider.callCount.Load())
+	}
+}
+
+// TestGenerateImage_ForceRegenerateBypassesCache verifies that
+// force_regenerate=true skips the cache read and rewrites the entry.
+func TestGenerateImage_ForceRegenerateBypassesCache(t *testing.T) {
+	tmpDir := t.TempDir()
+	provider := &mockProvider{name: "mock", configured: true}
+	service := NewAssetServiceWithProvider(tmpDir, provider)
+
+	imgCache, err := image.NewImageCache(t.TempDir(), 50)
+	if err != nil {
+		t.Fatalf("NewImageCache: %v", err)
+	}
+	service = service.WithCache(imgCache)
+
+	// First call: primes the cache.
+	if _, err := service.GenerateImage("test-campaign", "img1", "epic dragon", "cover"); err != nil {
+		t.Fatalf("prime: %v", err)
+	}
+	if provider.callCount.Load() != 1 {
+		t.Fatalf("prime: provider.calls = %d, want 1", provider.callCount.Load())
+	}
+
+	// Force regenerate: must call provider again AND update cache.
+	if _, err := service.GenerateImageForce("test-campaign", "img1", "epic dragon", "cover", true); err != nil {
+		t.Fatalf("force: %v", err)
+	}
+	if provider.callCount.Load() != 2 {
+		t.Errorf("force: provider.calls = %d, want 2", provider.callCount.Load())
+	}
+	// Subsequent non-force call: still cache hit (rewritten with same bytes)
+	if _, err := service.GenerateImage("test-campaign", "img1", "epic dragon", "cover"); err != nil {
+		t.Fatalf("post-force: %v", err)
+	}
+	if provider.callCount.Load() != 2 {
+		t.Errorf("post-force: provider.calls = %d, want still 2 (cache hit)", provider.callCount.Load())
+	}
+}
+
 func TestGenerateImage_ProviderError(t *testing.T) {
 	tmpDir := t.TempDir()
 	provider := &mockProvider{

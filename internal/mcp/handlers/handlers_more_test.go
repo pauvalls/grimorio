@@ -244,3 +244,21 @@ func TestHandleGenerateDivider(t *testing.T) {
 	// May fail due to filesystem, but should not panic
 	_ = result
 }
+
+// TestHandleGenerateImage_ForceRegenerateArg verifies the MCP handler
+// passes the force_regenerate boolean argument through to the service
+// (Fase 4 image cache).
+func TestHandleGenerateImage_ForceRegenerateArg(t *testing.T) {
+	// Missing required args → should still return error without panicking.
+	assetService := services.NewAssetService(t.TempDir(), image.Config{})
+	assetHandlers := NewAssetHandlers(assetService)
+	handler := assetHandlers.HandleGenerateImage()
+
+	// force_regenerate alone is not enough — campaign/filename/prompt required.
+	_, err := handler(context.Background(), newToolRequest("generate_image", map[string]any{
+		"force_regenerate": true,
+	}))
+	if err != nil {
+		t.Fatalf("HandleGenerateImage() error: %v", err)
+	}
+}

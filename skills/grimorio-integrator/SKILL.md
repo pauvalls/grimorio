@@ -127,12 +127,12 @@ for act in acts:
 
 ### Fase 2: Technical Standardization
 
-#### Standard 2.1: Formato de Tesoro
+#### Standard 2.1: Formato de Treasure
 
 Todo tesoro debe seguir este formato exacto:
 
 ```markdown
-**Tesoro:**
+**Treasure:**
 - **XP:** XXX XP (dividido entre X PJs = XX XP cada uno)
 - **Moneda:** XX gp, XX sp, XX cp
 - **Objetos:** 
@@ -147,12 +147,12 @@ Toda referencia a criatura debe seguir:
 - X **Nombre Exacto** (referencia: Bestiary p.X / MM p.X)
 ```
 
-#### Standard 2.3: Formato de Conexiones
+#### Standard 2.3: Formato de Connections
 
 Toda conexión entre áreas debe ser BIDIRECCIONAL:
 
 ```markdown
-**Conexiones:**
+**Connections:**
 - → Área X (dirección cardinal, descripción breve)
 - ← Área Y (desde dónde se llega)
 ```
@@ -498,7 +498,7 @@ Crear tabla de NPCs al final de cada acto:
 
 ```markdown
 ### Referencia Rápida de NPCs en este Acto
-| NPC | Ubicación | Motivación | Secret |
+| NPC | Ubicación | Motivation | Secret |
 |-----|-----------|------------|--------|
 | Silas | Área 3 | Proteger la casa | Sabe dónde está la llave |
 ```
@@ -508,7 +508,7 @@ Crear tabla de NPCs al final de cada acto:
 Crear resumen de tesoros por acto:
 
 ```markdown
-### Resumen de Tesoros
+### Treasure Summary
 | Área | XP | Moneda | Objetos |
 |------|-----|--------|---------|
 | Área 1 | 100 | 15 gp | Llave de Latón |
@@ -519,7 +519,7 @@ Crear resumen de tesoros por acto:
 Verificar y documentar todas las conexiones:
 
 ```markdown
-### Mapa de Conexiones
+### Mapa de Connections
 Área 1 → Área 2 → Área 4 → Boss
   ↓         ↓
 Área 3 → Área 5 (secreta)
@@ -554,7 +554,7 @@ fix_dc("DC bajo", "DC 10")
 fix_dc("DC medio", "DC 12")
 ```
 
-#### Auto-Fix 6.2: Conexiones Unidireccionales → Bidireccionales
+#### Auto-Fix 6.2: Connections Unidireccionales → Bidireccionales
 
 ```python
 # Si Área A → Área B pero no B → A, agregar B → A
@@ -562,7 +562,7 @@ if A.connects_to(B) and not B.connects_to(A):
     B.add_connection(A)
 ```
 
-#### Auto-Fix 6.3: Tesoro Faltante
+#### Auto-Fix 6.3: Treasure Faltante
 
 ```python
 # Si área tiene criaturas pero no tesoro, sugerir tesoro basado en CR

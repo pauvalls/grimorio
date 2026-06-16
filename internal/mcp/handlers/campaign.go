@@ -31,14 +31,15 @@ func (h *CampaignHandlers) HandleCreateCampaign() server.ToolHandlerFunc {
 		name := getStringArg(args, "name")
 		title := getStringArg(args, "title")
 		setting := getStringArg(args, "setting")
+		template := getStringArg(args, "template")
 
 		if name == "" {
 			return mcp.NewToolResultError("campaign name is required"), nil
 		}
 
-		campaign, err := h.service.CreateCampaign(name, title, setting)
+		campaign, err := h.service.CreateCampaign(name, title, setting, template)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Campaign '%s' created successfully", campaign.Name)), nil
@@ -69,7 +70,7 @@ func (h *CampaignHandlers) HandleSaveAreas() server.ToolHandlerFunc {
 		}
 
 		if err := h.service.SaveAct(campaign, chapterNum, title, content); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Chapter %d '%s' (areas) saved to campaign '%s'", chapterNum, title, campaign)), nil
@@ -103,7 +104,7 @@ func (h *CampaignHandlers) HandleSaveChapter() server.ToolHandlerFunc {
 		}
 
 		if err := h.service.SaveChapter(campaign, chapterNum, title, content); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Chapter %d '%s' saved to campaign '%s'", chapterNum, title, campaign)), nil
@@ -130,7 +131,7 @@ func (h *CampaignHandlers) HandleCompilePDF() server.ToolHandlerFunc {
 
 		pdfPath, err := h.service.CompilePDF(ctx, campaign, title)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("PDF compiled: %s", pdfPath)), nil
@@ -153,7 +154,7 @@ func (h *CampaignHandlers) HandleSaveLore() server.ToolHandlerFunc {
 		}
 
 		if err := h.service.SaveLore(campaign, content); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Lore saved to campaign '%s'", campaign)), nil
@@ -176,7 +177,7 @@ func (h *CampaignHandlers) HandleSaveNPCs() server.ToolHandlerFunc {
 		}
 
 		if err := h.service.SaveNPCs(campaign, content); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("NPCs saved to campaign '%s'", campaign)), nil
@@ -199,7 +200,7 @@ func (h *CampaignHandlers) HandleSaveEncounters() server.ToolHandlerFunc {
 		}
 
 		if err := h.service.SaveEncounters(campaign, content); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Encounters saved to campaign '%s'", campaign)), nil
@@ -222,7 +223,7 @@ func (h *CampaignHandlers) HandleSaveBestiary() server.ToolHandlerFunc {
 		}
 
 		if err := h.service.SaveBestiary(campaign, content); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Bestiary saved to campaign '%s'", campaign)), nil
@@ -245,7 +246,7 @@ func (h *CampaignHandlers) HandleSaveMaps() server.ToolHandlerFunc {
 		}
 
 		if err := h.service.SaveMaps(campaign, content); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Maps saved to campaign '%s'", campaign)), nil
@@ -268,7 +269,7 @@ func (h *CampaignHandlers) HandleSaveIntroduction() server.ToolHandlerFunc {
 		}
 
 		if err := h.service.SaveIntroduction(campaign, content); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Introduction saved to campaign '%s'", campaign)), nil
@@ -291,7 +292,7 @@ func (h *CampaignHandlers) HandleSaveSettingGuide() server.ToolHandlerFunc {
 		}
 
 		if err := h.service.SaveSettingGuide(campaign, content); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Setting guide saved to campaign '%s'", campaign)), nil
@@ -314,7 +315,7 @@ func (h *CampaignHandlers) HandleSaveAppendices() server.ToolHandlerFunc {
 		}
 
 		if err := h.service.SaveAppendices(campaign, content); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Appendices saved to campaign '%s'", campaign)), nil
@@ -336,7 +337,7 @@ func (h *CampaignHandlers) HandleGetTemplate() server.ToolHandlerFunc {
 
 		template, err := h.service.GetTemplate(tmplType)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		return mcp.NewToolResultText(template), nil

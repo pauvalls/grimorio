@@ -52,8 +52,8 @@ func TestPrologueTemplate_RendersFourParts(t *testing.T) {
 	if !strings.Contains(output, `<h2 id="sec-prologue">`) {
 		t.Errorf("Output should contain prologue heading")
 	}
-	if !strings.Contains(output, "Prólogo") {
-		t.Errorf("Output should contain 'Prólogo'")
+	if !strings.Contains(output, "Prologue") {
+		t.Errorf("Output should contain 'Prologue' (English default; i18n-english-default)")
 	}
 
 	// Verify all 4 parts are rendered

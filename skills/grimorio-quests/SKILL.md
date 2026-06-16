@@ -142,7 +142,7 @@ El template define el formato WotC obligatorio para quests y misiones.
 
 ---
 
-## Conexiones
+## Connections
 
 **Conecta con:**
 - [Quest principal de la campaña]
@@ -215,7 +215,7 @@ ELSE:
 - [ ] **Objetivos Claros:** Se sabe cuándo se completó la quest
 - [ ] **Recompensas Variadas:** Objeto, información, aliado, desarrollo
 - [ ] **Consecuencias:** Éxito, fracaso, e ignorar documentados
-- [ ] **Conexiones:** Conecta con trama principal u otras quests
+- [ ] **Connections:** Conecta con trama principal u otras quests
 - [ ] **NPCs Existentes:** NPC que da la quest existe en npcs.md
 - [ ] **Locaciones Existentes:** Lugares referenciados existen en maps.md
 - [ ] **Cantidad Aproximada:** 1 por PJ o 2-3 generales para one-shot

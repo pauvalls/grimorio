@@ -733,7 +733,7 @@ func (e *ValidationEngine) validateWotCFormat(report *domain.ValidationReport, c
 		}
 		report.AddSuggestion(
 			"Developments section incomplete",
-			"Add 3-5 decision branches with **Si [condición]**: structure, **Consecuencia:**, and **Recuperación:** paths",
+			"Add 3-5 decision branches with **If [condition]**: structure, **Consequence:**, and **Recovery:** paths",
 			"WotC standards require multiple decision branches per area")
 	}
 
@@ -745,7 +745,7 @@ func (e *ValidationEngine) validateWotCFormat(report *domain.ValidationReport, c
 		}
 		report.AddSuggestion(
 			"Insufficient solution variety",
-			"Add at least 2 different solution types per obstacle: Stealth (CD X), Social (CD Y Persuasión), or Combat",
+			"Add at least 2 different solution types per obstacle: Stealth (DC X), Social (DC Y Persuasion), or Combat",
 			"WotC adventures offer multiple paths through encounters")
 	}
 

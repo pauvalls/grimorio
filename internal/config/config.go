@@ -80,6 +80,14 @@ type Config struct {
 	CompilerVersion int    `json:"compiler_version"`
 	image.Config
 	TTS TTSConfig `json:"tts"`
+
+	// ImageCacheDir is the on-disk root for the image-generation cache.
+	// Defaults to ~/.cache/grimorio/images.
+	ImageCacheDir string `json:"image_cache_dir" env:"GRIMORIO_IMAGE_CACHE_DIR"`
+
+	// ImageCacheSize is the in-memory LRU capacity for the image cache.
+	// Defaults to 50.
+	ImageCacheSize int `json:"image_cache_size" env:"GRIMORIO_IMAGE_CACHE_SIZE"`
 }
 
 func DefaultConfig() *Config {
@@ -90,6 +98,8 @@ func DefaultConfig() *Config {
 		CompilerVersion: 2,
 		Config:          image.DefaultConfig(),
 		TTS:             DefaultTTSConfig(),
+		ImageCacheDir:   filepath.Join(home, ".cache", "grimorio", "images"),
+		ImageCacheSize:  50,
 	}
 }
 
@@ -152,8 +162,20 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.DalleModel = "dall-e-3"
 	}
 	applyTTSDefaults(&cfg)
+	applyImageCacheDefaults(&cfg)
 	applyEnvOverrides(&cfg)
 	return &cfg, nil
+}
+
+// applyImageCacheDefaults fills in zero-valued image-cache fields with defaults.
+func applyImageCacheDefaults(cfg *Config) {
+	defs := DefaultConfig()
+	if cfg.ImageCacheDir == "" {
+		cfg.ImageCacheDir = defs.ImageCacheDir
+	}
+	if cfg.ImageCacheSize <= 0 {
+		cfg.ImageCacheSize = defs.ImageCacheSize
+	}
 }
 
 // applyTTSDefaults fills in zero-valued TTS fields with defaults.
@@ -239,6 +261,14 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("AUDIO_PRELOAD_BUFFER"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.TTS.Audio.PreloadBuffer = n
+		}
+	}
+	if v := os.Getenv("GRIMORIO_IMAGE_CACHE_DIR"); v != "" {
+		cfg.ImageCacheDir = v
+	}
+	if v := os.Getenv("GRIMORIO_IMAGE_CACHE_SIZE"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.ImageCacheSize = n
 		}
 	}
 }

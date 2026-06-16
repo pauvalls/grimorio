@@ -118,7 +118,7 @@ El template define el formato WotC obligatorio para encuentros.
 - **Ronda X:** [Trigger y efecto]
 
 **Efectos por Área:**
-- **Zona X:** [Daño o condiciones]
+- **Zona X:** [Damage o condiciones]
 
 ---
 

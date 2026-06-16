@@ -1,19 +1,19 @@
-# Capítulo {{.ChapterNumber}}: {{.Title}}
+# Chapter {{.ChapterNumber}}: {{.Title}}
 
-> **Modo de Juego:** {{.GameMode}}
+> **Game Mode:** {{.GameMode}}
 > 
-> **Duración:** {{.Duration}} | **Nivel:** {{.LevelRange}} | **Tono:** {{.Tone}}
+> **Duration:** {{.Duration}} | **Level:** {{.LevelRange}} | **Tone:** {{.Tone}}
 > 
-> **Objetivos del Capítulo:**
+> **Chapter Objectives:**
 > - {{.Objective1}}
 > - {{.Objective2}}
 > - {{.Objective3}}
 > 
-> **Asset para el Siguiente Capítulo:** {{.AssetHandoff}}
+> **Asset for the Next Chapter:** {{.AssetHandoff}}
 
 ---
 
-## Apertura del Capítulo
+## Chapter Opening
 
 **Running this Chapter:**
 
@@ -27,49 +27,49 @@
 
 ---
 
-## NPCs en este Capítulo
+## NPCs in this Chapter
 
 {{range .InlineNPCs}}
 ### {{.Name}}
 
 *{{.Alignment}} {{.Race}} {{.Class}}*
 
-**Ubicación:** {{.Location}}
+**Location:** {{.Location}}
 
-**Estadísticas de Combate:** CA {{.Stats.AC}}, PG {{.Stats.HP}}
+**Combat Stats:** AC {{.Stats.AC}}, HP {{.Stats.HP}}
 
-**Rol en la historia:** {{.Role}}
+**Role in the story:** {{.Role}}
 
 ---
 
-#### Apariencia Física
+#### Physical Appearance
 
 {{.Appearance}}
 
-#### Personalidad
+#### Personality
 
 {{.Personality}}
 
-#### Voz
+#### Voice
 
-**Tono:** {{.VoiceTone}}
+**Tone:** {{.VoiceTone}}
 **Accent:** {{.VoiceAccent}}
 **Catchphrases:** {{.Catchphrases}}
 
-#### Secretos
+#### Secrets
 
-**Secreto Trivial:** {{.SecretTrivial}}
-**Secreto Importante #1:** {{.SecretImportant1}}
-**Secreto Importante #2:** {{.SecretImportant2}}
-**Secreto de Campaña:** {{.SecretCampaign}}
+**Trivial Secret:** {{.SecretTrivial}}
+**Important Secret #1:** {{.SecretImportant1}}
+**Important Secret #2:** {{.SecretImportant2}}
+**Campaign Secret:** {{.SecretCampaign}}
 
-#### Ganchos de Trama
+#### Plot Hooks
 
 **Hook #1:** {{.Hook1}}
 **Hook #2:** {{.Hook2}}
 **Hook #3:** {{.Hook3}}
 
-#### Diálogo para Leer
+#### Read-Aloud Dialogue
 
 *"{{.DialogueLine1}}"*
 
@@ -77,37 +77,37 @@
 
 *"{{.DialogueLine3}}"*
 
-**Stat Block:** Ver [Appendix B: NPCs and Monsters](appendices.md#appendix-b)
+**Stat Block:** See [Appendix B: NPCs and Monsters](appendices.md#appendix-b)
 
 ---
 {{end}}
 
 ---
 
-## Encuentros
+## Encounters
 
 {{range .Encounters}}
-### Encuentro {{.Number}}: {{.Name}}
+### Encounter {{.Number}}: {{.Name}}
 
-**Dificultad:** {{.Difficulty}}
+**Difficulty:** {{.Difficulty}}
 
-**XP Total:** {{.XPTotal}} XP
+**Total XP:** {{.XPTotal}} XP
 
-**Ambientación:** {{.Setting}}
+**Setting:** {{.Setting}}
 
 **Template:** {{.Template}}
 
 ---
 
-#### Objetivo
+#### Objective
 
 {{.Objective}}
 
 ---
 
-#### Enemigos / Desafíos
+#### Enemies / Challenges
 
-| Criatura | Cantidad | CR | XP |
+| Creature | Quantity | CR | XP |
 |----------|----------|----|----|
 {{range .Monsters}}
 | {{.Name}} | {{.Quantity}} | {{.CR}} | {{.XP}} |
@@ -115,154 +115,154 @@
 
 ---
 
-#### Mapa Táctico
+#### Tactical Map
 
-**Dimensiones:** {{.MapWidth}} × {{.MapHeight}} pies (cuadrícula de {{.GridWidth}}×{{.GridHeight}} cuadros)
+**Dimensions:** {{.MapWidth}} × {{.MapHeight}} feet ({{.GridWidth}}×{{.GridHeight}} square grid)
 
-**Iluminación:** {{.Lighting}}
+**Lighting:** {{.Lighting}}
 
-**Terreno:** {{.Terrain}}
+**Terrain:** {{.Terrain}}
 
-**Elementos Interactivos:**
-| Posición | Elemento | Efecto Mecánico |
-|----------|----------|-----------------|
+**Interactive Elements:**
+| Position | Element | Mechanical Effect |
+|----------|---------|-------------------|
 {{range .InteractiveElements}}
 | {{.Position}} | {{.Name}} | {{.Effect}} |
 {{end}}
 
 ---
 
-#### Desarrollo Round-by-Round
+#### Round-by-Round Development
 
-| Ronda | Enemigos | Eventos Ambientales | Condición de Victoria |
-|-------|----------|---------------------|----------------------|
+| Round | Enemies | Environmental Events | Victory Condition |
+|-------|---------|----------------------|-------------------|
 {{range .Rounds}}
 | {{.Number}} | {{.Enemies}} | {{.Events}} | {{.VictoryCondition}} |
 {{end}}
 
 ---
 
-#### Resolución Alternativa
+#### Alternative Resolution
 
-**Diplomacia/Engaño:**
-- **CD:** Persuasión/Engaño DC {{.DiplomacyDC}}
-- **Requisitos:** {{.DiplomacyReqs}}
-- **Consecuencias:** {{.DiplomacyConsequences}}
+**Diplomacy/Deception:**
+- **DC:** Persuasion/Deception DC {{.DiplomacyDC}}
+- **Requirements:** {{.DiplomacyReqs}}
+- **Consequences:** {{.DiplomacyConsequences}}
 
-**Sigilo/Evasión:**
-- **Rutas posibles:** {{.StealthRoutes}}
-- **CDs:** Sigilo DC {{.StealthDC}}
-- **Qué pasa si detectan:** {{.StealthDetected}}
+**Stealth/Evasion:**
+- **Possible routes:** {{.StealthRoutes}}
+- **DCs:** Stealth DC {{.StealthDC}}
+- **What happens if detected:** {{.StealthDetected}}
 
-**Solución Creativa:**
+**Creative Solution:**
 {{.CreativeSolution}}
 
 ---
 
-#### Recompensa
+#### Reward
 
-**XP por PJ:** {{.XPPPJ}} XP
+**XP per PC:** {{.XPPPJ}} XP
 
-**Botín:**
+**Loot:**
 {{range .Loot}}
 - {{.Description}}
 {{end}}
 
-**Aliados Potenciales:**
+**Potential Allies:**
 {{range .PotentialAllies}}
 - {{.Name}} — {{.Description}}
 {{end}}
 
 ---
 
-#### Notas del DM
+#### DM Notes
 
-**Escalado:** {{.Scaling}}
+**Scaling:** {{.Scaling}}
 
-**Alternativas:** {{.Alternatives}}
+**Alternatives:** {{.Alternatives}}
 
-**Ganchos:** {{.Hooks}}
+**Hooks:** {{.Hooks}}
 
 ---
 {{end}}
 
 ---
 
-## Áreas
+## Areas
 
 {{range .Areas}}
-### Área {{.Number}}: {{.Name}}
+### Area {{.Number}}: {{.Name}}
 
->> **Texto para Leer:** *{{.ReadAloud}}*
+>> **Read-Aloud Text:** *{{.ReadAloud}}*
 
 ---
 
-#### Descripción para el DM
+#### DM Description
 
 {{.Description}}
 
-**Percepción DC {{.PerceptionDC}}:** {{.PerceptionResult}}
+**Perception DC {{.PerceptionDC}}:** {{.PerceptionResult}}
 
-**Investigación DC {{.InvestigationDC}}:** {{.InvestigationResult}}
+**Investigation DC {{.InvestigationDC}}:** {{.InvestigationResult}}
 
 {{if .ArcanaDC}}
-**Arcano DC {{.ArcanaDC}}:** {{.ArcanaResult}}
+**Arcana DC {{.ArcanaDC}}:** {{.ArcanaResult}}
 {{end}}
 
 {{if .ReligionDC}}
-**Religión DC {{.ReligionDC}}:** {{.ReligionResult}}
+**Religion DC {{.ReligionDC}}:** {{.ReligionResult}}
 {{end}}
 
 {{if .NatureDC}}
-**Naturaleza DC {{.NatureDC}}:** {{.NatureResult}}
+**Nature DC {{.NatureDC}}:** {{.NatureResult}}
 {{end}}
 
 ---
 
-#### Criaturas
+#### Creatures
 
 {{range .Creatures}}
-- {{.Quantity}} **{{.Name}}** (ver [bestiary.md](bestiary.md#{{.Anchor}}))
+- {{.Quantity}} **{{.Name}}** (see [bestiary.md](bestiary.md#{{.Anchor}}))
 {{end}}
 
 ---
 
-#### Tesoro
+#### Treasure
 
-- **XP total:** {{.XPTotal}} XP
-- **Moneda:** {{.GP}} gp, {{.SP}} sp
-- **Objetos:**
+- **Total XP:** {{.XPTotal}} XP
+- **Coin:** {{.GP}} gp, {{.SP}} sp
+- **Items:**
 {{range .Items}}
   - **{{.Name}}** ({{.Description}})
 {{end}}
 
 ---
 
-#### Conexiones
+#### Connections
 
-- → [Área {{.ConnectionForward.Number}}](chapter_{{.ChapterNumber}}.md#área-{{.ConnectionForward.Number}}) — {{.ConnectionForward.Description}}
-- ← [Área {{.ConnectionBackward.Number}}](chapter_{{.ChapterNumber}}.md#área-{{.ConnectionBackward.Number}}) — {{.ConnectionBackward.Description}}
+- → [Area {{.ConnectionForward.Number}}](chapter_{{.ChapterNumber}}.md#area-{{.ConnectionForward.Number}}) — {{.ConnectionForward.Description}}
+- ← [Area {{.ConnectionBackward.Number}}](chapter_{{.ChapterNumber}}.md#area-{{.ConnectionBackward.Number}}) — {{.ConnectionBackward.Description}}
 
 ---
 
-#### Secretos y Trampas
+#### Secrets and Traps
 
 {{range .Secrets}}
-- **Detectar:** Percepción DC {{.DetectDC}}
-- **Mecanismo:** {{.Mechanism}}
-- **Consecuencia:** {{.Consequence}}
-- **Desactivar:** {{.DisableSkill}} DC {{.DisableDC}}
+- **Detect:** Perception DC {{.DetectDC}}
+- **Mechanism:** {{.Mechanism}}
+- **Consequence:** {{.Consequence}}
+- **Disable:** {{.DisableSkill}} DC {{.DisableDC}}
 {{end}}
 
 ---
 
-#### Desarrollo
+#### Development
 
 {{range .Developments}}
-**Si los PJs {{.Condition}}:**
-- **Consecuencia inmediata:** {{.ImmediateConsequence}}
-- **Consecuencia futura:** {{.FutureConsequence}}
-- **Recuperación:** {{.RecoveryPath}}
+**If the PCs {{.Condition}}:**
+- **Immediate consequence:** {{.ImmediateConsequence}}
+- **Future consequence:** {{.FutureConsequence}}
+- **Recovery:** {{.RecoveryPath}}
 
 {{end}}
 
@@ -271,7 +271,7 @@
 #### Decision Points
 
 {{range .DecisionPoints}}
-- **IF** los PJs {{.Condition}}, **THEN** {{.Consequence}}
+- **IF** the PCs {{.Condition}}, **THEN** {{.Consequence}}
   - **Affects:** {{.Affects}}
   - **World State:** {{.WorldState}}
 
@@ -287,13 +287,13 @@
 
 ---
 
-#### Cómo Dirigir esta Escena
+#### Running the Scene
 
-1. **Preparación:** {{.PrepNotes}}
-2. **Ritmo Sugerido:** {{.Pacing}}
-3. **Señales de los Jugadores:** {{.PlayerSignals}}
-4. **Cuándo Improvisar:** {{.ImproviseWhen}}
-5. **Cuándo ceñirse al Guión:** {{.StickToScript}}
+1. **Preparation:** {{.PrepNotes}}
+2. **Suggested Pacing:** {{.Pacing}}
+3. **Player Signals:** {{.PlayerSignals}}
+4. **When to Improvise:** {{.ImproviseWhen}}
+5. **When to Stick to the Script:** {{.StickToScript}}
 
 {{if .DMSidebar}}
 ---
@@ -307,17 +307,17 @@
 
 ---
 
-## Consecuencias y Transición
+## Consequences and Transition
 
-### Si los PJs tienen éxito:
+### If the PCs succeed:
 
 {{.SuccessConsequences}}
 
-### Si los PJs fracasan:
+### If the PCs fail:
 
 {{.FailureConsequences}}
 
-### Consecuencias de elecciones clave:
+### Key decision consequences:
 
 {{range .KeyDecisions}}
 - {{.Choice}} → {{.Outcome}}
@@ -325,39 +325,39 @@
 
 ---
 
-**Asset para el Siguiente Capítulo:**
+**Asset for the Next Chapter:**
 - **{{.NextAsset.Type}}:** {{.NextAsset.Name}} ({{.NextAsset.Purpose}})
 
-**Gancho al Capítulo {{.NextChapterNumber}}:** {{.NextChapterHook}}
+**Hook to Chapter {{.NextChapterNumber}}:** {{.NextChapterHook}}
 
 ---
 
-## Referencia Rápida
+## Quick Reference
 
-### NPCs en este Capítulo
+### NPCs in this Chapter
 
-| NPC | Ubicación | Motivación | Secreto |
-|-----|-----------|------------|---------|
+| NPC | Location | Motivation | Secret |
+|-----|----------|------------|--------|
 {{range .InlineNPCs}}
 | {{.Name}} | {{.Location}} | {{.Motivation}} | {{.HasSecret}} |
 {{end}}
 
-### Encuentros
+### Encounters
 
-| Encuentro | Tipo | Dificultad | XP |
+| Encounter | Type | Difficulty | XP |
 |-----------|------|------------|-----|
 {{range .Encounters}}
 | {{.Name}} | {{.Type}} | {{.Difficulty}} | {{.XPTotal}} |
 {{end}}
 
-### Resumen de Tesoros
+### Treasure Summary
 
-| Área | XP | Moneda | Objetos |
-|------|-----|--------|---------|
+| Area | XP | Coin | Items |
+|------|-----|------|-------|
 {{range .Areas}}
-| Área {{.Number}} | {{.XPTotal}} | {{.GP}} gp | {{.ItemCount}} |
+| Area {{.Number}} | {{.XPTotal}} | {{.GP}} gp | {{.ItemCount}} |
 {{end}}
 
 ---
 
-*Fin del Capítulo {{.ChapterNumber}}*
+*End of Chapter {{.ChapterNumber}}*

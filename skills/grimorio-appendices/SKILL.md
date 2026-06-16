@@ -6,58 +6,58 @@ description: Consolidate campaign reference material — magic items, stat block
 
 # grimorio-appendices — Appendices Master
 
-## Template Requerido
+## Required Template
 
-**ANTES de generar contenido, LEER el template:**
+**BEFORE generating content, READ the template:**
 
 ```
 get_template(type="appendix")
 ```
 
-El template define el formato WotC obligatorio para apéndices de campaña.
+The template defines the WotC mandatory format for campaign appendices.
 
-## Herramientas Disponibles
+## Available Tools
 
-**MCP Tools (USAR para guardar contenido):**
-- `save_appendices` — Guardar apéndices consolidados
-- `validate_canon` — Validar contra canon.json
-- `check_consistency` — Chequeo de consistencia
-- `process_consistency_gate` — Validación batch con auto-retry
+**MCP Tools (USE to save content):**
+- `save_appendices` — Save consolidated appendices
+- `validate_canon` — Validate against canon.json
+- `check_consistency` — Consistency check
+- `process_consistency_gate` — Batch validation with auto-retry
 
-**NO usar Write para contenido creativo** — El frontmatter del agente ya no incluye Write para forzar el uso de MCP save_appendices tool.
+**Do NOT use Write for creative content** — The agent frontmatter no longer includes Write to force the use of the MCP save_appendices tool.
 
-## Workflow Obligatorio
+## Mandatory Workflow
 
 ```
-1. LEER TODOS los archivos de referencia:
-   - canon.json (hechos canónicos, entidades)
-   - bestiary/bestiary.md (criaturas para stat blocks)
-   - npcs/npcs_and_factions.md (NPCs para stat blocks)
-   - handouts/handouts.md (handouts disponibles)
-   - acts/ (encounters y treasure分布)
+1. READ ALL reference files:
+   - canon.json (canonical facts, entities)
+   - bestiary/bestiary.md (creatures for stat blocks)
+   - npcs/npcs_and_factions.md (NPCs for stat blocks)
+   - handouts/handouts.md (available handouts)
+   - acts/ (encounters and treasure distribution)
 
-2. LEER template:
+2. READ template:
    - get_template(type="appendix")
 
-3. CONSOLIDAR apéndices siguiendo el template:
+3. CONSOLIDATE appendices following the template:
    - Appendix A: Magic Items
    - Appendix B: NPCs and Monsters (stat blocks)
    - Appendix C: Handouts
    - Appendix D: Maps
    - Appendix E: Reference Tables
 
-4. VALIDAR antes de guardar:
-   - validate_canon() con entity_references
-   - process_consistency_gate() para validación batch
-   - Máximo 3 reintentos si falla
+4. VALIDATE before saving:
+   - validate_canon() with entity_references
+   - process_consistency_gate() for batch validation
+   - Maximum 3 retries on failure
 
-5. GUARDAR solo si validación pasa:
+5. SAVE only if validation passes:
    - save_appendices(campaign, content)
 
-6. REPORTAR al architect
+6. REPORT to the architect
 ```
 
-## Formato WotC Obligatorio
+## Mandatory WotC Format
 
 ```markdown
 # Appendices: {Campaign Name}
@@ -178,7 +178,7 @@ El template define el formato WotC obligatorio para apéndices de campaña.
 *End of Appendices*
 ```
 
-## Validación de Canon (CRÍTICO)
+## Canon Validation (CRITICAL)
 
 ```python
 max_retries = 3
@@ -191,7 +191,7 @@ WHILE retry_count < max_retries AND NOT validation_passed:
       proposal={
         id: "appendices-main",
         type: "lore",
-        content: "Resumen de los appendices...",
+        content: "Summary of the appendices...",
         entity_references: [
           { entity_id: "npc-001", location: "appendices" },
           { entity_id: "monster-001", location: "appendices" },
@@ -213,39 +213,39 @@ ELSE:
     DO NOT save content
 ```
 
-## Checklist Pre-Guardado
+## Pre-Save Checklist
 
-- [ ] **Appendix A:** Magic items con rarity, type, description, activation
-- [ ] **Appendix B:** NPCs con stat blocks completos (AC, HP, abilities, 10-20 líneas)
-- [ ] **Appendix B:** Monsters con stat blocks completos (traits, actions)
-- [ ] **Appendix C:** Handouts player-facing (sin spoilers)
-- [ ] **Appendix D:** Maps con filename reference para compiler
+- [ ] **Appendix A:** Magic items with rarity, type, description, activation
+- [ ] **Appendix B:** NPCs with full stat blocks (AC, HP, abilities, 10-20 lines)
+- [ ] **Appendix B:** Monsters with full stat blocks (traits, actions)
+- [ ] **Appendix C:** Player-facing handouts (no spoilers)
+- [ ] **Appendix D:** Maps with filename reference for the compiler
 - [ ] **Appendix E:** Random encounters table (d6)
-- [ ] **Appendix E:** Treasure generation table por CR
-- [ ] **Orden:** Items → NPCs → Monsters → Handouts → Maps → Tables
-- [ ] **Concisión:** Stat blocks 10-20 líneas (no fluff)
-- [ ] **Consistencia:** Solo contenido de la campaña (no todo el MM)
+- [ ] **Appendix E:** Treasure generation table by CR
+- [ ] **Order:** Items → NPCs → Monsters → Handouts → Maps → Tables
+- [ ] **Conciseness:** Stat blocks 10-20 lines (no fluff)
+- [ ] **Consistency:** Only campaign content (not the whole MM)
 
 ## Cross-References Format
 
-**OBLIGATORIO usar enlaces markdown:**
+**MANDATORY use markdown links:**
 
 ```markdown
-❌ MAL: Ver bestiary para stats
-✅ BIEN: Ver [Appendix B: NPCs and Monsters](appendices/appendices.md#appendix-b-npcs-and-monsters)
+❌ BAD: See bestiary for stats
+✅ GOOD: See [Appendix B: NPCs and Monsters](appendices/appendices.md#appendix-b-npcs-and-monsters)
 
-❌ MAL: El mapa está en assets
-✅ BIEN: *[Map: palacio-dm.png]* (el compiler busca este archivo)
+❌ BAD: The map is in assets
+✅ GOOD: *[Map: palace-dm.png]* (the compiler looks for this file)
 
-❌ MAL: Como se menciona en el acto 2
-✅ BIEN: Como se menciona en [Acto 2: La Ciudad](acts/chapter_02.md)
+❌ BAD: As mentioned in Act 2
+✅ GOOD: As mentioned in [Act 2: The City](acts/chapter_02.md)
 ```
 
 ## Writing Standards
 
-### Stat Blocks Concisos
+### Concise Stat Blocks
 
-**✅ BIEN (10-20 líneas):**
+**✅ GOOD (10-20 lines):**
 ```markdown
 #### Mastro Aldric
 
@@ -265,77 +265,77 @@ ELSE:
 
 **Longsword.** *Melee Weapon Attack:* +6 to hit, reach 5 ft., one target. *Hit:* 8 (1d8+4) slashing damage.
 
-**Special Equipment:** Anillo de protección (+1 CA), carta de presentación de la Guardia.
+**Special Equipment:** Ring of protection (+1 AC), letter of introduction from the Guard.
 ```
 
-### Magic Items con Activación Clara
+### Magic Items with Clear Activation
 
-**✅ BIEN:**
+**✅ GOOD:**
 ```markdown
-### Amuleto de los Susurros
+### Amulet of Whispers
 
 *Uncommon, Wondrous Item (requires attunement)*
 
-Este amuleto de plata permite al usuario escuchar conversaciones a hasta 60 pies de distancia.
+This silver amulet allows the wearer to hear conversations up to 60 feet away.
 
-**Activation:** Como acción bonus, susurrá el nombre de la persona que querés escuchar. Si está dentro del rango, escuchás su voz claramente.
+**Activation:** As a bonus action, whisper the name of the person you want to hear. If they are within range, you hear their voice clearly.
 ```
 
-### Handouts Player-Facing
+### Player-Facing Handouts
 
-Los handouts DEBEN ser:
-- ✅ Player-facing (sin spoilers de trama)
-- ✅ Físicos o describibles (cartas, mapas, notas)
-- ✅ Útiles para la inmersión
+Handouts MUST be:
+- ✅ Player-facing (no plot spoilers)
+- ✅ Physical or describable (letters, maps, notes)
+- ✅ Useful for immersion
 
-**✅ BIEN:**
+**✅ GOOD:**
 ```markdown
-### Handout 1: Carta de Rescate
+### Handout 1: Rescue Letter
 
-*Una carta arrugada con el sello de la familia Noble.*
+*A crumpled letter with the Noble family's seal.*
 
-"Querido hermano, si estás leyendo esto, he sido capturado. Me tienen en los sótanos de la villa. Buscad la llave bajo..."
+"Dear brother, if you are reading this, I have been captured. They are holding me in the cellars of the villa. Look for the key under..."
 ```
 
 ## WotC Quality Validators
 
 ### ValidateAppendixStructure
-- ✅ 5 apéndices presentes (A-E)
-- ✅ Orden correcto (Items → NPCs → Monsters → Handouts → Maps → Tables)
-- ✅ Cada apéndice tiene introducción contextual
+- ✅ 5 appendices present (A-E)
+- ✅ Correct order (Items → NPCs → Monsters → Handouts → Maps → Tables)
+- ✅ Each appendix has a contextual introduction
 
 ### ValidateStatBlockConciseness
-- ✅ NPCs: 10-20 líneas por stat block
-- ✅ Monsters: 10-15 líneas por stat block
-- ✅ No fluff, solo mecánicas relevantes
+- ✅ NPCs: 10-20 lines per stat block
+- ✅ Monsters: 10-15 lines per stat block
+- ✅ No fluff, only relevant mechanics
 
 ### ValidateItemClarity
-- ✅ Rarity y type especificados
-- ✅ Activación clara (command word, attunement, action)
-- ✅ Efecto mecánico preciso
+- ✅ Rarity and type specified
+- ✅ Clear activation (command word, attunement, action)
+- ✅ Precise mechanical effect
 
 ### ValidateHandoutSafety
-- ✅ Handouts son player-facing (sin spoilers)
-- ✅ Handouts son físicos o describibles
-- ✅ Handouts tienen propósito narrativo
+- ✅ Handouts are player-facing (no spoilers)
+- ✅ Handouts are physical or describable
+- ✅ Handouts have narrative purpose
 
 ## Error Handling
 
-Si la validación falla:
+If validation fails:
 
-1. **Analizar feedback específico** (ej: "stat block incompleto")
-2. **Corregir issues concretos** (agregar campos faltantes)
-3. **Re-validar** con contenido corregido
-4. **Máximo 3 reintentos** — si falla, abortar y reportar
+1. **Analyze specific feedback** (e.g., "stat block incomplete")
+2. **Fix specific issues** (add missing fields)
+3. **Re-validate** with corrected content
+4. **Maximum 3 retries** — if it fails, abort and report
 
-## Output al Architect
+## Output to the Architect
 
 ```markdown
-## Appendices Generados: {campaign_name}
+## Appendices Generated: {campaign_name}
 
 **Status:** ✅ Complete / ❌ Failed
 
-**Contenido:**
+**Content:**
 - Appendix A (Magic Items): {count} items
 - Appendix B (NPCs): {count} stat blocks
 - Appendix B (Monsters): {count} stat blocks
@@ -343,13 +343,13 @@ Si la validación falla:
 - Appendix D (Maps): {count} maps
 - Appendix E (Tables): {count} tables
 
-**Validación:**
+**Validation:**
 - validate_canon: ✅ Passed
 - process_consistency_gate: ✅ Passed
 - ValidateAppendixStructure: ✅ Passed
 
-**Consistencia:**
-- NPCs de npcs.md incluidos: {count}
-- Monsters de bestiary.md incluidos: {count}
-- Items de acts referenciados: {count}
+**Consistency:**
+- NPCs from npcs.md included: {count}
+- Monsters from bestiary.md included: {count}
+- Items from acts referenced: {count}
 ```

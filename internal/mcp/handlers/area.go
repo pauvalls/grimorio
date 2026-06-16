@@ -61,7 +61,7 @@ func (h *AreaHandlers) HandleGenerateArea() server.ToolHandlerFunc {
 			areaNum, 
 			levelRange)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		jsonBytes, _ := json.MarshalIndent(area, "", "  ")
@@ -107,7 +107,7 @@ func (h *AreaHandlers) HandleGenerateAreasChapter() server.ToolHandlerFunc {
 			levelRange, 
 			count)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		jsonBytes, _ := json.MarshalIndent(areas, "", "  ")

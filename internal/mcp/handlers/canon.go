@@ -47,14 +47,31 @@ func (h *CanonHandlers) HandleGenerateAdventureBible() server.ToolHandlerFunc {
 			return mcp.NewToolResultError("invalid arguments"), nil
 		}
 
+		name := getStringArg(args, "name")
 		brief := domain.CampaignBrief{
-			Name:             getStringArg(args, "name"),
+			Name:             name,
 			BriefDescription: getStringArg(args, "brief_description"),
 			LevelRange:       getStringArg(args, "level_range"),
 			Tone:             getStringArg(args, "tone"),
 			SettingType:      getStringArg(args, "setting_type"),
 			VillainType:      getStringArg(args, "villain_type"),
 			McGuffinType:     getStringArg(args, "mcguffin_type"),
+		}
+
+		// Fallback to template defaults if tone/themes are empty
+		if brief.Tone == "" || len(brief.Themes) == 0 {
+			if h.campaignService != nil {
+				if campaign, err := h.campaignService.GetCampaign(name); err == nil && campaign.Template != "" {
+					if tmpl, err := services.GetTemplate(campaign.Template); err == nil {
+						if brief.Tone == "" {
+							brief.Tone = tmpl.Tone
+						}
+						if len(brief.Themes) == 0 {
+							brief.Themes = tmpl.DefaultThemes
+						}
+					}
+				}
+			}
 		}
 
 		// Parse themes array if provided
@@ -74,7 +91,7 @@ func (h *CanonHandlers) HandleGenerateAdventureBible() server.ToolHandlerFunc {
 
 		doc, err := h.canonService.InitializeCanon(ctx, brief)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		// Auto-generate and register NPCs and monsters from canon
@@ -152,7 +169,7 @@ func (h *CanonHandlers) HandleValidateCanon() server.ToolHandlerFunc {
 
 		report, err := h.canonService.ValidateProposal(ctx, campaignID, proposal)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		jsonBytes, err := json.MarshalIndent(report, "", "  ")
@@ -413,7 +430,7 @@ func (h *CanonHandlers) HandleUpdateNarrativeState() server.ToolHandlerFunc {
 
 		state, err := h.stateService.Update(ctx, campaignID, update)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		// Sync to canon if requested
@@ -494,7 +511,7 @@ func (h *CanonHandlers) HandleCheckConsistency() server.ToolHandlerFunc {
 
 		report, err := h.validationEngine.CheckConsistency(ctx, campaignID, scope)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		jsonBytes, err := json.MarshalIndent(report, "", "  ")
@@ -567,7 +584,7 @@ func (h *CanonHandlers) HandleProcessConsistencyGate() server.ToolHandlerFunc {
 
 		result, err := h.gateService.ProcessBatch(ctx, batchProposal, fastMode)
 		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+			return ToToolResult(err), nil
 		}
 
 		jsonBytes, err := json.MarshalIndent(result, "", "  ")

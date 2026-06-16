@@ -292,7 +292,7 @@ ELSE:
 Este documento es **exclusivamente para el DM**. Debe contener:
 - ✅ Spoilers y plot twists
 - ✅ Información oculta que los jugadores no saben
-- ✅ Secretos de facciones
+- ✅ Secrets de facciones
 - ✅ Motivaciones reales de NPCs (pueden diferir de lo que muestran)
 - ✅ Consecuencias no obvias de decisiones
 
