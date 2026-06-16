@@ -1,15 +1,28 @@
-# Chapter {{.ChapterNumber}}: {{.Title}}
+{{if .Title}}# Chapter {{.ChapterNumber}}: {{.Title}}
 
 > **Game Mode:** {{.GameMode}}
-> 
+>
 > **Duration:** {{.Duration}} | **Level:** {{.LevelRange}} | **Tone:** {{.Tone}}
-> 
+>
 > **Chapter Objectives:**
 > - {{.Objective1}}
 > - {{.Objective2}}
 > - {{.Objective3}}
-> 
+>
 > **Asset for the Next Chapter:** {{.AssetHandoff}}
+{{else}}# Capítulo {{.ChapterNumber}}: {{.Título}}
+
+> **Modo de Juego:** {{.ModoDeJuego}}
+>
+> **Duración:** {{.Duración}} | **Rango de Nivel:** {{.RangoDeNivel}} | **Tono:** {{.Tono}}
+>
+> **Objetivos del Capítulo:**
+> - {{.Objetivo1}}
+> - {{.Objetivo2}}
+> - {{.Objetivo3}}
+>
+> **Asset para el Siguiente Capítulo:** {{.AssetHandoff}}
+{{end}}
 
 ---
 
@@ -80,6 +93,37 @@
 **Stat Block:** See [Appendix B: NPCs and Monsters](appendices.md#appendix-b)
 
 ---
+{{end}}
+
+---
+
+## Roleplaying Cues
+
+{{range .RoleplayCues}}
+#### Roleplaying {{.NPC}}
+
+- **Tono:** {{.Tone}}
+- **Catchphrase:** {{.Catchphrase}}
+- **Postura:** {{.Postura}}
+- **Si lo intimidan:** {{.SiIntimidan}}
+- **Si son amables:** {{.SiAmables}}
+- **Si mienten:** {{.SiMienten}}
+
+{{end}}
+
+---
+
+## DM Sidebars
+
+{{range .DMSidebars}}
+> ##### DM Sidebar: {{.Title}}
+>
+> - **Secret #1:** {{.Secreto1}}
+> - **If the PCs {{.Condicion}}:** {{.Consecuencia}}
+> - **NPC Motivation:** {{.MotivacionNPC}}
+> - **Hard Mode Variation:** {{.VariacionHard}}
+> - **Campaign Connection:** {{.ConexionCampana}}
+
 {{end}}
 
 ---
@@ -185,6 +229,43 @@
 
 ---
 {{end}}
+
+---
+
+## Random Encounter Tables
+
+{{range .RandomEncounterTables}}
+> **Random Encounter Table:** {{.Title}}
+>
+> | d6 | Encounter |
+> |----|-----------|
+> {{range .Rows}}
+> | {{.Roll}} | {{.Encounter}} |
+> {{end}}
+
+{{end}}
+
+---
+
+## Traps
+
+{{range .Traps}}
+> ##### Trampa: {{.Name}}
+>
+> - **Trigger:** {{.Trigger}}
+> - **Detect:** Perception DC {{.DetectDC}} — {{.DetectNote}}
+> - **Save:** {{.SaveAbility}} DC {{.SaveDC}} — {{.SaveNote}}
+> - **Disarm:** {{.DisarmSkill}} DC {{.DisarmDC}} — {{.DisarmNote}}
+> - **Damage:** {{.Damage}}
+> - **Escape:** {{.Escape}}
+
+{{end}}
+
+---
+
+## Faction Tracker
+
+{{.FactionTracker}}
 
 ---
 
@@ -357,6 +438,14 @@
 {{range .Areas}}
 | Area {{.Number}} | {{.XPTotal}} | {{.GP}} gp | {{.ItemCount}} |
 {{end}}
+
+---
+
+{{if .Title}}## What's Next?
+{{else}}## ¿Qué Sigue?
+{{end}}
+
+{{.WhatsNext}}
 
 ---
 
