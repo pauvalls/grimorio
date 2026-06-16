@@ -93,11 +93,11 @@ func renderTextReport(w io.Writer, report *domain.ConsistencyReport) {
 		if issue.Passed {
 			marker = "✅"
 		}
-		fmt.Fprintf(w, "%s [%s] %s — %s\n", marker, issue.Severity, issue.Rule, issue.Message)
+		_, _ = fmt.Fprintf(w, "%s [%s] %s — %s\n", marker, issue.Severity, issue.Rule, issue.Message)
 	}
 
-		_, _ = fmt.Fprintln(w)
-	fmt.Fprintf(w, "Summary: %d errors, %d warnings, %d criticals (of %d checks)\n",
+	_, _ = fmt.Fprintln(w)
+	_, _ = fmt.Fprintf(w, "Summary: %d errors, %d warnings, %d criticals (of %d checks)\n",
 		report.Errors, report.Warnings, report.Criticals, report.TotalChecks)
 }
 
