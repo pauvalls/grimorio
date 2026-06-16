@@ -14,6 +14,7 @@ body {
 
 /* Cover — full page */
 .cover-wrapper {
+  column-span: all;
   page-break-after: always;
   page-break-inside: avoid;
   page-break-before: avoid;
@@ -206,6 +207,8 @@ li {
 /* Tables */
 table {
   width: 100%;
+  table-layout: fixed;
+  column-span: all;
   border-collapse: collapse;
   margin: 10px 0;
   font-size: 9pt;
@@ -235,6 +238,8 @@ tr {
 table, tr, td, th {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 td p, th p {
   margin: 0;
