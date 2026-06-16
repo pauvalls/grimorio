@@ -172,3 +172,22 @@ func TestRepStatusLabel(t *testing.T) {
 		})
 	}
 }
+
+// TestRenderFactionDashboard_LangIsSpanish is a regression test for Fase 4 i18n:
+// visualization HTMLs must declare `lang="es"` for Spanish campaigns.
+func TestRenderFactionDashboard_LangIsSpanish(t *testing.T) {
+	matrix := &domain.FactionReputationMatrix{
+		CampaignID: "es-test",
+		Entries: []domain.ReputationEntry{
+			{FactionID: "fac1", Score: 30, History: nil},
+		},
+	}
+	html := renderFactionDashboard(matrix, map[string]string{"fac1": "Council of Light"})
+
+	if !strings.Contains(html, `<html lang="es">`) {
+		t.Errorf("faction dashboard must declare lang=\"es\"; got:\n%s", html)
+	}
+	if strings.Contains(html, `<html lang="en">`) {
+		t.Errorf("faction dashboard must NOT declare lang=\"en\"; got:\n%s", html)
+	}
+}

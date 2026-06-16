@@ -128,6 +128,43 @@ func TestRelationshipGraph_50PlusNodesFallback(t *testing.T) {
 	}
 }
 
+// TestRenderRelationshipGraph_LangIsSpanish is a regression test for Fase 4 i18n:
+// visualization HTMLs must declare `lang="es"` for Spanish campaigns.
+func TestRenderRelationshipGraph_LangIsSpanish(t *testing.T) {
+	graph := &domain.RelationshipGraph{
+		CampaignID: "es-test",
+		Nodes: []domain.CanonEntity{
+			{ID: "npc1", Name: "Gandalf", Type: domain.EntityTypeNPC},
+		},
+		Edges: nil,
+	}
+
+	d3 := renderRelationshipGraph(graph)
+	if !strings.Contains(d3, `<html lang="es">`) {
+		t.Errorf("D3 relationship graph must declare lang=\"es\"; got:\n%s", d3)
+	}
+	if strings.Contains(d3, `<html lang="en">`) {
+		t.Errorf("D3 relationship graph must NOT declare lang=\"en\"; got:\n%s", d3)
+	}
+
+	// 50+ nodes triggers the static SVG path — also a visualization HTML.
+	big := &domain.RelationshipGraph{CampaignID: "es-big"}
+	for i := 0; i < 55; i++ {
+		big.Nodes = append(big.Nodes, domain.CanonEntity{
+			ID:   string(rune('A' + i%26)),
+			Name: "Ent",
+			Type: domain.EntityTypeNPC,
+		})
+	}
+	static := renderRelationshipGraph(big)
+	if !strings.Contains(static, `<html lang="es">`) {
+		t.Errorf("static SVG relationship graph must declare lang=\"es\"; got:\n%s", static)
+	}
+	if strings.Contains(static, `<html lang="en">`) {
+		t.Errorf("static SVG relationship graph must NOT declare lang=\"en\"; got:\n%s", static)
+	}
+}
+
 // extractText pulls the Text content from a CallToolResult.
 func extractText(result *mcp.CallToolResult) string {
 	if result == nil {

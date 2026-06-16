@@ -98,7 +98,7 @@ func renderFactionDashboard(matrix *domain.FactionReputationMatrix, factionNames
 	}
 
 	return fmt.Sprintf(`<!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head><meta charset="utf-8"><title>Faction Reputation Dashboard</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}

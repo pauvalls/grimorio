@@ -3,6 +3,7 @@ package compiler
 import (
 	"archive/zip"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,5 +57,54 @@ func TestEPUBExporter_Format(t *testing.T) {
 	exporter := NewEPUBExporter()
 	if exporter.Format() != "epub" {
 		t.Errorf("expected format 'epub', got %q", exporter.Format())
+	}
+}
+
+// TestEPUBExporter_LanguageIsSpanish is a regression test for Fase 4 i18n:
+// Spanish-language campaigns must be tagged as `es` in the EPUB metadata
+// and MUST NOT regress to the English `en` tag.
+func TestEPUBExporter_LanguageIsSpanish(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "intro.md"), []byte("# Introducción\n\nBienvenidos."), 0644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	exporter := NewEPUBExporter()
+	path, err := exporter.Export(context.Background(), tmpDir, "La Hoja de Vlad")
+	if err != nil {
+		t.Fatalf("Export() error: %v", err)
+	}
+
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		t.Fatalf("open epub: %v", err)
+	}
+	defer zr.Close()
+
+	var opfContent string
+	for _, f := range zr.File {
+		if f.Name == "OEBPS/content.opf" {
+			rc, err := f.Open()
+			if err != nil {
+				t.Fatalf("open opf: %v", err)
+			}
+			buf, err := io.ReadAll(rc)
+			_ = rc.Close()
+			if err != nil {
+				t.Fatalf("read opf: %v", err)
+			}
+			opfContent = string(buf)
+		}
+	}
+
+	if opfContent == "" {
+		t.Fatal("OEBPS/content.opf missing from EPUB")
+	}
+
+	if !strings.Contains(opfContent, "<dc:language>es</dc:language>") {
+		t.Errorf("content.opf must declare Spanish locale; got:\n%s", opfContent)
+	}
+	if strings.Contains(opfContent, "<dc:language>en</dc:language>") {
+		t.Errorf("content.opf must NOT declare English locale; got:\n%s", opfContent)
 	}
 }
