@@ -8,22 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Refactor
 
-- Rename `grimorio-areas` agent and skill to `grimorio-chapters` (v5.0 alignment)
-  - `agents/grimorio-areas.md` is now a deprecated stub pointing to chapters
-  - `agents/grimorio-chapters.md` is the new primary agent
-  - `scripts/validate-opencode.sh` and `patch-opencode-config.py` updated
-  - README architecture diagram updated
-
+- Rename grimorio-areas to grimorio-chapters (v5.0) (agents)
 ## [v5.0.1] - 2026-06-16
+
+### Docs
+
+- Update changelog for v5.0.0
+- Add v5.0.1 release notes (changelog)
 
 ### Feat
 
-- Update /grimorio command to v5.0 chapter-sequential pipeline (aligns with new grimorio-architect agent and skill)
-- Rewrite workflow for v5.0 chapter-sequential pipeline (NPCs/bestiary/encounters/quests now anchor to chapters built first)
+- Rewrite workflow for v5.0 chapter-sequential pipeline (architect)
+- Update /grimorio command to v5.0 chapter-sequential pipeline (command)
 
-### Fix
+## [v5.0.1] - 2026-06-16
 
-- Lint and Windows CI fixes from v5.0.0 release
+### Docs
+
+- Update changelog for v5.0.0
+- Add v5.0.1 release notes (changelog)
+
+### Feat
+
+- Rewrite workflow for v5.0 chapter-sequential pipeline (architect)
+- Update /grimorio command to v5.0 chapter-sequential pipeline (command)
 
 ## [v5.0.0] - 2026-06-16
 
