@@ -95,6 +95,7 @@ jobs:
         go-version: '1.25'
 
     - name: Build grimorio
+      shell: bash
       run: |
         VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
         COMMIT=$(git rev-parse --short HEAD)
@@ -102,6 +103,7 @@ jobs:
         go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" -v -o grimorio ./cmd/grimorio
 
     - name: Build migrate-v1-to-v2
+      shell: bash
       run: |
         VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
         COMMIT=$(git rev-parse --short HEAD)
