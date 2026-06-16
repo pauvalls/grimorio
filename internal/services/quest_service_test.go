@@ -2,6 +2,7 @@ package services
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
@@ -140,8 +141,11 @@ func TestQuestService_ListQuests(t *testing.T) {
 	repo := repository.NewMemoryQuestRepository()
 	questService := NewQuestService(repo)
 
-	// Create some quests
+	// Create some quests. Sleep between writes so MemoryQuestRepository's
+	// time.Now().UnixNano()-based ID generator produces distinct IDs on
+	// hosts with coarse timer resolution (Windows).
 	_, _ = questService.CreateQuest("list-test", "Quest 1", domain.QuestTypeMain, "", "", "", nil)
+	time.Sleep(10 * time.Millisecond)
 	_, _ = questService.CreateQuest("list-test", "Quest 2", domain.QuestTypeSide, "", "", "", nil)
 
 	quests, err := questService.ListQuests("list-test")
@@ -159,8 +163,10 @@ func TestQuestService_ListActiveQuests(t *testing.T) {
 	repo := repository.NewMemoryQuestRepository()
 	questService := NewQuestService(repo)
 
-	// Create quests with different statuses
+	// Create quests with different statuses. Sleep between writes so the
+	// nanosecond-based ID generator yields distinct IDs on Windows.
 	q1, _ := questService.CreateQuest("active-test", "Active Quest", domain.QuestTypeMain, "", "", "", nil)
+	time.Sleep(10 * time.Millisecond)
 	q2, _ := questService.CreateQuest("active-test", "Completed Quest", domain.QuestTypeSide, "", "", "", nil)
 	if err := questService.UpdateQuestStatus("active-test", q2.ID, domain.QuestStatusCompleted, ""); err != nil {
 		t.Fatal(err)

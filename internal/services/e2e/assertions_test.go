@@ -142,9 +142,15 @@ func TestResolvePath(t *testing.T) {
 		t.Errorf("resolvePath(relative) = %q, want %q", resolved, filepath.Join(harness.BaseDir, "relative/path"))
 	}
 
-	// Absolute path should remain unchanged
-	resolved = resolvePath(harness, "/absolute/path")
-	if resolved != "/absolute/path" {
-		t.Errorf("resolvePath(absolute) = %q, want %q", resolved, "/absolute/path")
+	// Absolute path should remain unchanged. Construct an absolute path
+	// that satisfies filepath.IsAbs on the current platform: harness.BaseDir
+	// is already absolute (t.TempDir() returns an OS-absolute path), so
+	// any joined path is also absolute. This keeps the test portable
+	// across Linux/macOS (where "/absolute/path" is absolute) and Windows
+	// (where only paths with a drive letter or UNC root are absolute).
+	absPath := filepath.Join(harness.BaseDir, "absolute", "path")
+	resolved = resolvePath(harness, absPath)
+	if resolved != absPath {
+		t.Errorf("resolvePath(absolute) = %q, want %q", resolved, absPath)
 	}
 }
