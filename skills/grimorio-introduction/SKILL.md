@@ -6,73 +6,73 @@ description: Generate campaign introduction/overview document that sets expectat
 
 # grimorio-introduction — Introduction Master
 
-## Template Requerido
+## Required Template
 
-**ANTES de generar contenido, LEER el template:**
+**BEFORE generating content, READ the template:**
 
 ```
 get_template(type="introduction")
 ```
 
-El template define el formato WotC obligatorio para la introducción de campaña.
+The template defines the mandatory WotC format for the campaign introduction.
 
-## Herramientas Disponibles
+## Available Tools
 
-**MCP Tools (USAR para guardar contenido):**
-- `save_introduction` — Guardar introducción
-- `validate_canon` — Validar contra canon.json
-- `check_consistency` — Chequeo de consistencia
-- `process_consistency_gate` — Validación batch con auto-retry
+**MCP Tools (USE to save content):**
+- `save_introduction` — Save introduction
+- `validate_canon` — Validate against canon.json
+- `check_consistency` — Consistency check
+- `process_consistency_gate` — Batch validation with auto-retry
 
-**NO usar Write para contenido creativo** — El frontmatter del agente ya no incluye Write para forzar el uso de MCP save_introduction tool.
+**DO NOT use Write for creative content** — The agent's frontmatter no longer includes Write to enforce the use of the MCP save_introduction tool.
 
-## Workflow Obligatorio
+## Mandatory Workflow
 
 ```
-1. LEER contexto:
-   - canon.json (hechos canónicos, entidades, reglas del mundo)
-   - lore.md (conflicto central, tono, puntos de inflexión)
+1. READ context:
+   - canon.json (canonical facts, entities, world rules)
+   - lore.md (central conflict, tone, inflection points)
 
-2. LEER template:
+2. READ template:
    - get_template(type="introduction")
 
-3. GENERAR introducción siguiendo el template:
-   - Foreword (1-2 párrafos, voz personal del autor)
-   - Story Overview (2-3 párrafos + read-aloud)
+3. GENERATE introduction following the template:
+   - Foreword (1-2 paragraphs, author's personal voice)
+   - Story Overview (2-3 paragraphs + read-aloud)
    - Adventure Background (timeline)
-   - Running the Adventure (convenciones)
+   - Running the Adventure (conventions)
    - Character Creation Guidelines
-   - Welcome Section (gancho final)
+   - Welcome Section (final hook)
 
-4. VALIDAR antes de guardar:
-   - validate_canon() con entity_references
-   - process_consistency_gate() para validación batch
-   - Máximo 3 reintentos si falla
+4. VALIDATE before saving:
+   - validate_canon() with entity_references
+   - process_consistency_gate() for batch validation
+   - Maximum 3 retries on failure
 
-5. GUARDAR solo si validación pasa:
+5. SAVE only if validation passes:
    - save_introduction(campaign, content)
 
-6. REPORTAR al architect
+6. REPORT to the architect
 ```
 
-## Formato WotC Obligatorio
+## Mandatory WotC Format
 
 ```markdown
-# Introducción: {Campaign Name}
+# Introduction: {Campaign Name}
 
 ## Foreword
 
-[1-2 párrafos. Introducción personal del autor/campañero. Por qué esta aventura es especial. Qué esperaba lograr. Una nota sobre el tono y las expectativas. Esto es voz personal, NO lore oficial.]
+[1-2 paragraphs. Personal introduction from the author/campaigner. Why this adventure is special. What they hoped to achieve. A note about tone and expectations. This is personal voice, NOT official lore.]
 
 ---
 
 ## Story Overview
 
-[2-3 párrafos que establecen el escenario. El gancho inicial. Quiénes son los PJs y por qué están aquí. El misterio o amenaza que deben enfrentar.]
+[2-3 paragraphs that set the stage. The initial hook. Who the PCs are and why they are here. The mystery or threat they must face.]
 
-> **Read-Aloud para los Jugadores:**
+> **Read-Aloud for the Players:**
 >
-> *{{2-3 párrafos que establecen el escenario. El gancho inicial. Quiénes son los PJs y por qué están aquí. El misterio o amenaza que deben enfrentar.}}*
+> *{{2-3 paragraphs that set the stage. The initial hook. Who the PCs are and why they are here. The mystery or threat they must face.}}*
 
 ---
 
@@ -80,12 +80,12 @@ El template define el formato WotC obligatorio para la introducción de campaña
 
 ### Before the Adventure
 
-**Timeline de eventos que llevaron al punto de inicio:**
+**Timeline of events that led to the starting point:**
 
-1. **{Event 1}** — {Hace cuánto tiempo} — {Qué pasó}
-2. **{Event 2}** — {Hace cuánto tiempo} — {Qué pasó}
-3. **{Event 3}** — {Hace cuánto tiempo} — {Qué pasó}
-4. **{Event 4}** — {Hace cuánto tiempo} — {Qué pasó}
+1. **{Event 1}** — {How long ago} — {What happened}
+2. **{Event 2}** — {How long ago} — {What happened}
+3. **{Event 3}** — {How long ago} — {What happened}
+4. **{Event 4}** — {How long ago} — {What happened}
 
 ---
 
@@ -95,9 +95,9 @@ El template define el formato WotC obligatorio para la introducción de campaña
 
 | Abbreviation | Meaning |
 |--------------|---------|
-| **PJs** | Personajes Jugadores |
+| **PCs** | Player Characters |
 | **DM** | Dungeon Master |
-| **NPC** | Personaje No Jugador |
+| **NPC** | Non-Player Character |
 | **PHB** | Player's Handbook |
 | **DMG** | Dungeon Master's Guide |
 
@@ -146,10 +146,10 @@ Characters begin at **level 1**.
 
 ## Welcome
 
-{{Final hook paragraph. 2-3 sentences que capturan el espíritu de la aventura y motivan a los jugadores a comenzar.}}
+{{Final hook paragraph. 2-3 sentences that capture the spirit of the adventure and motivate the players to begin.}}
 ```
 
-## Validación de Canon (CRÍTICO)
+## Canon Validation (CRITICAL)
 
 ```python
 max_retries = 3
@@ -162,7 +162,7 @@ WHILE retry_count < max_retries AND NOT validation_passed:
       proposal={
         id: "introduction-main",
         type: "lore",
-        content: "Resumen de la introducción...",
+        content: "Introduction summary...",
         entity_references: [
           { entity_id: "fact-001", location: "introduction" }
         ]
@@ -182,120 +182,120 @@ ELSE:
     DO NOT save content
 ```
 
-## Checklist Pre-Guardado
+## Pre-Save Checklist
 
-- [ ] **Foreword:** 1-2 párrafos, voz personal del autor (NO lore oficial)
-- [ ] **Story Overview:** 2-3 párrafos que establecen escenario
-- [ ] **Read-Aloud:** Texto en block quote para leer a los jugadores
-- [ ] **Timeline:** 4+ eventos numerados con tiempo y descripción
-- [ ] **Abbreviations:** Tabla de abreviaciones y convenciones
-- [ ] **Conventions:** Read-aloud text, stat blocks, sidebars explicados
-- [ ] **Flowchart:** Referencia al flowchart auto-generado por compiler
-- [ ] **Character Creation:** Starting level, backgrounds recomendados
-- [ ] **Bonds and Hooks:** Bond, Ideal, Flaw explicados
-- [ ] **Welcome:** 2-3 sentences finales que motivan a jugar
-- [ ] **Consistencia:** No contradice lore.md ni canon.json
+- [ ] **Foreword:** 1-2 paragraphs, author's personal voice (NOT official lore)
+- [ ] **Story Overview:** 2-3 paragraphs that set the stage
+- [ ] **Read-Aloud:** Text in block quote to read to the players
+- [ ] **Timeline:** 4+ numbered events with time and description
+- [ ] **Abbreviations:** Table of abbreviations and conventions
+- [ ] **Conventions:** Read-aloud text, stat blocks, sidebars explained
+- [ ] **Flowchart:** Reference to compiler auto-generated flowchart
+- [ ] **Character Creation:** Starting level, recommended backgrounds
+- [ ] **Bonds and Hooks:** Bond, Ideal, Flaw explained
+- [ ] **Welcome:** 2-3 final sentences that motivate to play
+- [ ] **Consistency:** Does not contradict lore.md or canon.json
 
 ## Cross-References Format
 
-**OBLIGATORIO usar enlaces markdown:**
+**MANDATORY use of markdown links:**
 
 ```markdown
-❌ MAL: Ver lore para más detalles
-✅ BIEN: Ver [Lore y Ambientación](lore/lore.md) para más detalles
+❌ WRONG: See lore for more details
+✅ RIGHT: See [Lore and Setting](lore/lore.md) for more details
 
-❌ MAL: Los NPCs están en el archivo de NPCs
-✅ BIEN: Los NPCs están en [NPCs y Facciones](npcs/npcs_and_factions.md)
+❌ WRONG: The NPCs are in the NPC file
+✅ RIGHT: The NPCs are in [NPCs and Factions](npcs/npcs_and_factions.md)
 
-❌ MAL: El flowchart se genera después
-✅ BIEN: El flowchart se auto-genera con `generate_flowchart` (ver [Campaign Flowchart](assets/flowchart.svg))
+❌ WRONG: The flowchart is generated later
+✅ RIGHT: The flowchart is auto-generated with `generate_flowchart` (see [Campaign Flowchart](assets/flowchart.svg))
 ```
 
 ## Writing Standards
 
 ### Foreword vs. Lore
 
-**Foreword (voz personal):**
-> "Esta aventura nació de una pregunta: ¿qué pasa cuando los héroes llegan demasiado tarde? Es una historia sobre consecuencias, redención, y el precio del poder."
+**Foreword (personal voice):**
+> "This adventure was born from a question: what happens when heroes arrive too late? It's a story about consequences, redemption, and the price of power."
 
-**Lore (oficial):**
-> "Hace cincuenta años, el Archimago Valdris desapareció, dejando atrás una torre vacía y un reino en caos."
+**Lore (official):**
+> "Fifty years ago, the Archmage Valdris disappeared, leaving behind an empty tower and a kingdom in chaos."
 
 ### Read-Aloud Text
 
-El read-aloud DEBE:
-- ✅ Estar en block quote (`>`)
-- ✅ Usar segunda persona presente
-- ✅ Ser atmosférico y emocional
-- ✅ NO incluir mecánicas o spoilers
+The read-aloud MUST:
+- ✅ Be in block quote (`>`)
+- ✅ Use second person present
+- ✅ Be atmospheric and emotional
+- ✅ NOT include mechanics or spoilers
 
-**✅ BIEN:**
-> *"El viento frío golpea vuestros rostros mientras ascendéis el sendero. Las ruinas de la antigua fortaleza se alzan ante vosotros, testigos silenciosos de una guerra olvidada. Algo os espera en la cima."*
+**✅ RIGHT:**
+> *"The cold wind strikes your faces as you climb the path. The ruins of the ancient fortress rise before you, silent witnesses of a forgotten war. Something awaits you at the summit."*
 
 ### Timeline Format
 
-Cada evento debe tener:
-- **Nombre del evento** (en negrita)
-- **Tiempo transcurrido** (hace cuánto)
-- **Descripción** (qué pasó y por qué importa)
+Each event must have:
+- **Event name** (in bold)
+- **Time elapsed** (how long ago)
+- **Description** (what happened and why it matters)
 
-**✅ BIEN:**
-> 1. **La Desaparición del Archimago** — Hace 50 años — Valdris se encerró en su torre y nunca más fue visto. Su desaparición desencadenó una guerra de sucesión.
+**✅ RIGHT:**
+> 1. **The Archmage's Disappearance** — 50 years ago — Valdris locked himself in his tower and was never seen again. His disappearance triggered a war of succession.
 
 ## WotC Quality Validators
 
 ### ValidateIntroductionStructure
-- ✅ Foreword presente (1-2 párrafos)
-- ✅ Story Overview con read-aloud
-- ✅ Timeline con 4+ eventos
-- ✅ Running section con convenciones
+- ✅ Foreword present (1-2 paragraphs)
+- ✅ Story Overview with read-aloud
+- ✅ Timeline with 4+ events
+- ✅ Running section with conventions
 - ✅ Character creation guidelines
-- ✅ Welcome section final
+- ✅ Welcome section at end
 
 ### ValidateToneConsistency
-- ✅ Foreword es voz personal (NO lore oficial)
-- ✅ Story Overview establece tono correcto
-- ✅ Welcome motiva a los jugadores
+- ✅ Foreword is personal voice (NOT official lore)
+- ✅ Story Overview establishes correct tone
+- ✅ Welcome motivates the players
 
 ### ValidateCanonCompliance
-- ✅ No contradice canon.json
-- ✅ No contradice lore.md
-- ✅ Entidades referenciadas existen
+- ✅ Does not contradict canon.json
+- ✅ Does not contradict lore.md
+- ✅ Referenced entities exist
 
 ### ValidateDMFriendliness
-- ✅ Abreviaciones explicadas
-- ✅ Convenciones claras (read-aloud, stat blocks, sidebars)
-- ✅ Flowchart referenciado (auto-generado)
+- ✅ Abbreviations explained
+- ✅ Conventions clear (read-aloud, stat blocks, sidebars)
+- ✅ Flowchart referenced (auto-generated)
 
 ## Error Handling
 
-Si la validación falla:
+If validation fails:
 
-1. **Analizar feedback específico** (ej: "contradice evento en lore.md")
-2. **Corregir issues concretos** (ajustar timeline para respetar canon)
-3. **Re-validar** con contenido corregido
-4. **Máximo 3 reintentos** — si falla, abortar y reportar
+1. **Analyze specific feedback** (e.g., "contradicts event in lore.md")
+2. **Fix concrete issues** (adjust timeline to respect canon)
+3. **Re-validate** with corrected content
+4. **Maximum 3 retries** — if it fails, abort and report
 
-## Output al Architect
+## Output to the Architect
 
 ```markdown
-## Introducción Generada: {campaign_name}
+## Generated Introduction: {campaign_name}
 
 **Status:** ✅ Complete / ❌ Failed
 
-**Contenido:**
-- Foreword: {word_count} palabras
-- Story Overview: {word_count} palabras
-- Timeline: {count} eventos
-- Character Creation: {count} backgrounds recomendados
+**Content:**
+- Foreword: {word_count} words
+- Story Overview: {word_count} words
+- Timeline: {count} events
+- Character Creation: {count} recommended backgrounds
 
-**Validación:**
+**Validation:**
 - validate_canon: ✅ Passed
 - process_consistency_gate: ✅ Passed
 - ValidateIntroductionStructure: ✅ Passed
 
-**Consistencia:**
-- Eventos de lore.md respetados: {count}
-- Entidades de canon.json usadas: {count}
-- Referencias cruzadas generadas: {count}
+**Consistency:**
+- lore.md events respected: {count}
+- canon.json entities used: {count}
+- Cross-references generated: {count}
 ```
