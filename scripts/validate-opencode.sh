@@ -188,7 +188,7 @@ validate_agents() {
         "grimorio-npc"
         "grimorio-bestiary"
         "grimorio-encounters"
-        "grimorio-areas"
+        "grimorio-chapters"
         "grimorio-quests"
         "grimorio-maps"
         "grimorio-characters"
@@ -252,14 +252,14 @@ validate_agents() {
         REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add delegate tool to grimorio-architect"
     fi
     
-    # grimorio-areas should have bash, read, write, grep
-    local areas_tools=("bash" "read" "write" "grep")
-    local areas_section=$(grep -A 30 '"grimorio-areas"' "$OPENCODE_CONFIG")
-    for tool in "${areas_tools[@]}"; do
-        if echo "$areas_section" | grep -q "\"$tool\""; then
-            print_check "grimorio-areas has $tool tool" "PASS"
+    # grimorio-chapters should have bash, read, write, grep
+    local chapters_tools=("bash" "read" "write" "grep")
+    local chapters_section=$(grep -A 30 '"grimorio-chapters"' "$OPENCODE_CONFIG")
+    for tool in "${chapters_tools[@]}"; do
+        if echo "$chapters_section" | grep -q "\"$tool\""; then
+            print_check "grimorio-chapters has $tool tool" "PASS"
         else
-            print_check "grimorio-areas has $tool tool" "WARN" "Missing $tool tool"
+            print_check "grimorio-chapters has $tool tool" "WARN" "Missing $tool tool"
         fi
     done
 }
@@ -277,7 +277,7 @@ validate_skills() {
     # Required Grimorio skills
     local required_skills=(
         "grimorio-architect"
-        "grimorio-areas"
+        "grimorio-chapters"
         "grimorio-npc"
         "grimorio-narrative-custodian"
     )
@@ -313,12 +313,12 @@ validate_skills() {
         print_check "  └─ grimorio-architect references templates" "WARN" "No template references found"
     fi
     
-    # grimorio-areas should reference areas.md.tmpl
-    if grep -A 50 '"grimorio-areas"' "$OPENCODE_CONFIG" | grep -q "areas.md.tmpl"; then
-        print_check "  └─ grimorio-areas references areas.md.tmpl" "PASS"
+    # grimorio-chapters should reference areas.md.tmpl
+    if grep -A 50 '"grimorio-chapters"' "$OPENCODE_CONFIG" | grep -q "areas.md.tmpl"; then
+        print_check "  └─ grimorio-chapters references areas.md.tmpl" "PASS"
     else
-        print_check "  └─ grimorio-areas references areas.md.tmpl" "FAIL" "Missing template reference"
-        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add template reference to grimorio-areas prompt"
+        print_check "  └─ grimorio-chapters references areas.md.tmpl" "FAIL" "Missing template reference"
+        REMEDIATION_STEPS="${REMEDIATION_STEPS}\n- Add template reference to grimorio-chapters prompt"
     fi
 }
 

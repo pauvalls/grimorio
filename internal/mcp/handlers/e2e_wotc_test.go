@@ -677,12 +677,13 @@ El pueblo queda a salvo.
 		t.Log("  Note: campaign.html not found (no PDF engine may be available)")
 	}
 
-	// Step 9: Verify chapters/ directory is used (not areas/)
-	areasDir := filepath.Join(tmpDir, campaignName, "areas")
-	if _, err := os.Stat(areasDir); os.IsNotExist(err) {
-		t.Log("  ✓ No areas/ directory (using chapters/ structure)")
+	// Step 9: Verify chapters/ directory is the only chapter source
+	// (legacy areas/ was removed in v5.0.2 WU7; chapters/ is canonical).
+	chaptersDir := filepath.Join(tmpDir, campaignName, "chapters")
+	if _, err := os.Stat(chaptersDir); err == nil {
+		t.Log("  ✓ chapters/ directory is the chapter source")
 	} else {
-		t.Log("  Note: areas/ directory exists (may be from campaign creation)")
+		t.Log("  Note: chapters/ directory not present")
 	}
 
 	t.Log("\n=== E2E Chapter-Sequential Flow Test COMPLETE ===")

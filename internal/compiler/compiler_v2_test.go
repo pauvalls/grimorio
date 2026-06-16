@@ -13,10 +13,10 @@ func TestCompilerV2_HierarchicalTOC(t *testing.T) {
 	// Create lore
 	_ = os.WriteFile(filepath.Join(tmpDir, "lore.md"), []byte("# Lore\n\nTest."), 0644)
 
-	// Create act with areas
-	areasDir := filepath.Join(tmpDir, "areas")
-	_ = os.MkdirAll(areasDir, 0755)
-	_ = os.WriteFile(filepath.Join(areasDir, "chapter_01_test.md"), []byte(`# Capítulo 1: Test
+	// Create chapter with numbered areas
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01_test.md"), []byte(`# Capítulo 1: Test
 
 ### Área 1: Vestíbulo
 
@@ -35,21 +35,23 @@ Content.
 
 	html := strings.Join(htmlParts, "\n")
 
-	// TOC should contain area references
+	// HTML body should contain the area headings (the legacy
+	// extractAreasFromDir hierarchical TOC was removed in WU7 — areas
+	// are inlined into the body via markdownToHTMLWithID + postProcessHTML).
 	if !strings.Contains(html, "Área 1") {
-		t.Error("TOC should contain Area 1")
+		t.Error("HTML should contain Area 1 heading")
 	}
 	if !strings.Contains(html, "Área 2") {
-		t.Error("TOC should contain Area 2")
+		t.Error("HTML should contain Area 2 heading")
 	}
 }
 
 func TestCompilerV2_CrossReferenceLinks(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	areasDir := filepath.Join(tmpDir, "areas")
-	_ = os.MkdirAll(areasDir, 0755)
-	_ = os.WriteFile(filepath.Join(areasDir, "chapter_01_test.md"), []byte(`# Capítulo 1
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01_test.md"), []byte(`# Capítulo 1
 
 ### Área 1: First
 
@@ -77,9 +79,9 @@ Go back to Área 1.
 func TestCompilerV2_AreaNumberHighlighting(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	areasDir := filepath.Join(tmpDir, "areas")
-	_ = os.MkdirAll(areasDir, 0755)
-	_ = os.WriteFile(filepath.Join(areasDir, "chapter_01_test.md"), []byte(`# Capítulo 1
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01_test.md"), []byte(`# Capítulo 1
 
 ### Área 1: Test
 
@@ -118,10 +120,10 @@ func TestCompilerV2_InlineStatBlock(t *testing.T) {
 **Desafío:** 1/4 (50 PX)
 `), 0644)
 
-	// Create act referencing the creature
-	areasDir := filepath.Join(tmpDir, "areas")
-	_ = os.MkdirAll(areasDir, 0755)
-	_ = os.WriteFile(filepath.Join(areasDir, "chapter_01_test.md"), []byte(`# Capítulo 1
+	// Create chapter referencing the creature
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01_test.md"), []byte(`# Capítulo 1
 
 ### Área 1: Test
 
@@ -150,8 +152,8 @@ func TestCompilerV2_HandoutPages(t *testing.T) {
 
 	// Create minimal campaign
 	_ = os.WriteFile(filepath.Join(tmpDir, "lore.md"), []byte("# Lore\n\nTest."), 0644)
-	_ = os.MkdirAll(filepath.Join(tmpDir, "areas"), 0755)
-	_ = os.WriteFile(filepath.Join(tmpDir, "areas", "chapter_01_test.md"), []byte("# Capítulo 1\n\nTest."), 0644)
+	_ = os.MkdirAll(filepath.Join(tmpDir, "chapters"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "chapters", "chapter_01_test.md"), []byte("# Capítulo 1\n\nTest."), 0644)
 
 	c := NewWithVersion(tmpDir, "", 2)
 	htmlParts, err := c.generateHTML("Test")
@@ -170,9 +172,9 @@ func TestCompilerV2_HandoutPages(t *testing.T) {
 func TestCompilerV1_NoV2Features(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	areasDir := filepath.Join(tmpDir, "areas")
-	_ = os.MkdirAll(areasDir, 0755)
-	_ = os.WriteFile(filepath.Join(areasDir, "chapter_01_test.md"), []byte(`# Capítulo 1
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01_test.md"), []byte(`# Capítulo 1
 
 ### Área 1: Test
 

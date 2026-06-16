@@ -266,18 +266,19 @@ func TestBackwardCompatibility_CSSNewClassesNotRequired(t *testing.T) {
 	if !compiler.IsPDFEngineAvailable() {
 		t.Skip("No PDF engine available, skipping test")
 	}
-	
+
 	tmpDir := t.TempDir()
 	createMinimalCampaign(t, tmpDir)
 
-	// Create content without any new CSS classes
+	// Create content without any new CSS classes (legacy areas/ dir was
+	// removed in v5.0.2 WU7; chapters/ is the only chapter source).
 	areaContent := `### Área 1
 
 Contenido normal sin clases CSS nuevas.
 `
-	areasDir := filepath.Join(tmpDir, "areas")
-	_ = os.MkdirAll(areasDir, 0755)
-	_ = os.WriteFile(filepath.Join(areasDir, "act1.md"), []byte(areaContent), 0644)
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter1.md"), []byte(areaContent), 0644)
 
 	ctx := context.Background()
 	c := compiler.New(tmpDir, "")
@@ -294,8 +295,8 @@ Contenido normal sin clases CSS nuevas.
 func createMinimalCampaign(t *testing.T, dir string) {
 	t.Helper()
 
-	// Create required directories
-	dirs := []string{"areas", "npcs", "bestiary", "encounters", "maps", "assets", "characters"}
+	// Create required directories (grimorio-areas removed in v5.0.2 WU7)
+	dirs := []string{"chapters", "npcs", "bestiary", "encounters", "maps", "assets", "characters"}
 	for _, d := range dirs {
 		_ = os.MkdirAll(filepath.Join(dir, d), 0755)
 	}

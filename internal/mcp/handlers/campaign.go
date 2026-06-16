@@ -46,37 +46,6 @@ func (h *CampaignHandlers) HandleCreateCampaign() server.ToolHandlerFunc {
 	}
 }
 
-// HandleSaveAreas handles the save_areas tool
-func (h *CampaignHandlers) HandleSaveAreas() server.ToolHandlerFunc {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args, ok := request.Params.Arguments.(map[string]any)
-		if !ok {
-			return mcp.NewToolResultError("invalid arguments"), nil
-		}
-
-		campaign := getStringArg(args, "campaign")
-		chapterNum := getIntArg(args, "chapter_number")
-		title := getStringArg(args, "title")
-		content := getStringArg(args, "content")
-
-		if campaign == "" {
-			return mcp.NewToolResultError("campaign is required"), nil
-		}
-		if chapterNum <= 0 {
-			return mcp.NewToolResultError("chapter_number must be a positive integer"), nil
-		}
-		if title == "" {
-			return mcp.NewToolResultError("title is required"), nil
-		}
-
-		if err := h.service.SaveAct(campaign, chapterNum, title, content); err != nil {
-			return ToToolResult(err), nil
-		}
-
-		return mcp.NewToolResultText(fmt.Sprintf("Chapter %d '%s' (areas) saved to campaign '%s'", chapterNum, title, campaign)), nil
-	}
-}
-
 // HandleSaveChapter handles the save_chapter tool
 func (h *CampaignHandlers) HandleSaveChapter() server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

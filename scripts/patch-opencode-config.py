@@ -93,10 +93,10 @@ def patch_config():
         return False
     print("✅ Command template updated")
     
-    # 5. Add template reference to grimorio-areas
-    print("5. Adding template reference to grimorio-areas...")
-    if 'grimorio-areas' in config.get('agent', {}):
-        config['agent']['grimorio-areas']['prompt'] += " Read template areas.md.tmpl"
+    # 5. Add template reference to grimorio-chapters
+    print("5. Adding template reference to grimorio-chapters...")
+    if 'grimorio-chapters' in config.get('agent', {}):
+        config['agent']['grimorio-chapters']['prompt'] += " Read template areas.md.tmpl"
     
     with open(OPENCODE_CONFIG, 'w') as f:
         json.dump(config, f, indent=2)
