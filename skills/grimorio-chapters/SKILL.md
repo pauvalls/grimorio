@@ -87,12 +87,12 @@ Cada capítulo DEBE ser un único archivo markdown que el DM pueda ejecutar sin 
 **Formato:**
 ```markdown
 ### Nombre del NPC
-*Rol / Alineamiento*
+*Rol / Alignment*
 
 Descripción condensada del NPC...
 
-**Motivación:** ...
-**Secreto:** ...
+**Motivation:** ...
+**Secret:** ...
 ```
 
 ### Regla 3: Encuentros Inline
@@ -124,7 +124,7 @@ Cada área DEBE incluir:
 - **Boxed text** (100-600 palabras, read-aloud)
 - **DCs** para habilidades clave
 - **Criaturas** referenciadas por nombre
-- **Tesoro** con valor en gp
+- **Treasure** con valor en gp
 - **Desarrollo** (qué pasa después)
 - **Ganchos** (≥2 por área)
 
@@ -139,7 +139,7 @@ Descripción del área...
 **Características:**
 - **Nombre:** Descripción (DC XX)
 
-**Tesoro:**
+**Treasure:**
 - Nombre del item (valor gp)
 
 **Desarrollo:** Qué pasa después...

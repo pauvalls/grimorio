@@ -276,19 +276,19 @@ Antes de guardar cada acto, verificá:
 **Criaturas:**
 - Cantidad + **Nombre Exacto** del bestiary.md
 
-**Tesoro:**
+**Treasure:**
 - **XP total:** XXX XP
 - **Moneda:** XX gp, XX sp
 - **Objetos:** **Nombre** (efecto breve)
 
-**Conexiones:**
+**Connections:**
 - → Área X (dirección, descripción)
 - ← Área Y (bidireccional obligatorio)
 
-**Secretos y Trampas:**
+**Secrets y Trampas:**
 - **Detectar:** Percepción DC XX
 - **Mecanismo:** Cómo funciona
-- **Consecuencia:** Daño/efecto
+- **Consecuencia:** Damage/efecto
 - **Desactivar:** Herrería/Juego de Manos DC XX
 
 **Desarrollo:**
@@ -307,7 +307,7 @@ Antes de guardar cada acto, verificá:
 1. **Preparación:** Qué necesita el DM
 2. **Ritmo Sugerido:** Timing estimado
 3. **Señales de los Jugadores:** Cuándo están enganchados
-4. **Cuándo Improvisar:** Dónde está OK desviarse
+4. **Cuándo Improvise:** Dónde está OK desviarse
 5. **Cuándo ceñirse al Guión:** Elementos NO negociables
 ```
 
@@ -437,8 +437,8 @@ que se adentran en la oscuridad.*
 
 ### ValidateNPCDescriptions
 - ✅ 5+ párrafos de descripción total
-- ✅ Apariencia física: 3-5 párrafos (rasgos distintivos, vestimenta, expresiones)
-- ✅ Personalidad/voz: 2-3 párrafos (mannerisms, speech patterns, quirks)
+- ✅ Appearance física: 3-5 párrafos (rasgos distintivos, vestimenta, expresiones)
+- ✅ Personality/voz: 2-3 párrafos (mannerisms, speech patterns, quirks)
 - ✅ 3-5 secretos por NPC clave
 - ✅ 3-5 líneas de diálogo sample
 
@@ -460,10 +460,10 @@ que se adentran en la oscuridad.*
 - [ ] **Developments:** 3+ ramas con recovery paths
 - [ ] **Cómo Dirigir:** 5 subsecciones presentes
 - [ ] **NPCs:** 5+ párrafos descripción, 3-5 secretos, 3-5 diálogos
-- [ ] **Tesoro:** XP numérico explícito por área con criaturas
+- [ ] **Treasure:** XP numérico explícito por área con criaturas
 - [ ] **DCs:** Todos NUMÉRICOS (nunca "alto/bajo")
 - [ ] **Nombres:** Todos existen en bestiary.md/npcs.md
-- [ ] **Conexiones:** Bidireccionales verificadas
+- [ ] **Connections:** Bidireccionales verificadas
 - [ ] **Mode Variety:** No más de 2 actos consecutivos con mismo modo
 - [ ] **Asset Chain:** Asset de este acto referenciado en acto siguiente
 - [ ] **Running Guidance:** 150-400 palabras, 2-4 párrafos

@@ -6,50 +6,50 @@ description: Prepare AI image specifications and update markdown references for 
 
 # grimorio-artist — Artist
 
-## Propósito
+## Purpose
 
-Generar especificaciones de imágenes AI y actualizar referencias markdown para:
-- Retratos de NPCs
-- Ilustraciones de monstruos
-- Arte de escenas
-- Portada de campaña
+Generate AI image specifications and update markdown references for:
+- NPC portraits
+- Monster illustrations
+- Scene artwork
+- Campaign cover
 
-**IMPORTANTE:** La generación de imágenes es SIEMPRE secuencial con 3 segundos de delay entre imágenes para evitar rate limiting.
+**IMPORTANT:** Image generation is ALWAYS sequential with a 3-second delay between images to avoid rate limiting.
 
-## Herramientas Disponibles
+## Available Tools
 
 **MCP Tools:**
-- `generate_image` — Generar imágenes AI (retratos, ilustraciones, escenas, portadas)
-- `generate_map` — Generar mapas SVG (usar desde cartographer)
-- `generate_divider` — Generar dividers decorativos SVG
+- `generate_image` — Generate AI images (portraits, illustrations, scenes, covers)
+- `generate_map` — Generate SVG maps (use from cartographer)
+- `generate_divider` — Generate decorative SVG dividers
 
 **System Tools:**
-- `Read` — Leer archivos de campaña
-- `Write` — Escribir batch-spec.json y actualizar markdowns
-- `Bash` — Listar imágenes generadas
-- `Grep` — Buscar referencias en markdowns
-- `Edit` — Actualizar referencias de imágenes
+- `Read` — Read campaign files
+- `Write` — Write batch-spec.json and update markdowns
+- `Bash` — List generated images
+- `Grep` — Search references in markdowns
+- `Edit` — Update image references
 
-## Workflow Obligatorio
+## Mandatory Workflow
 
 ### Phase A: Prepare Batch Specification
 
-**Step 1: Leer TODOS los archivos fuente**
+**Step 1: Read ALL source files**
 
 ```python
-# Leer en orden
-read("{campaign_path}/canon.json")           # Hechos canónicos visuales
-read("{campaign_path}/npcs/npcs_and_factions.md")  # NPCs para retratos
-read("{campaign_path}/bestiary/bestiary.md")  # Monstruos para ilustraciones
-read("{campaign_path}/acts/*.md")            # Escenas marcadas con [SCENE: ...]
-read("{campaign_path}/lore/lore.md")         # Setting/tono para portada
+# Read in order
+read("{campaign_path}/canon.json")           # Visual canonical facts
+read("{campaign_path}/npcs/npcs_and_factions.md")  # NPCs for portraits
+read("{campaign_path}/bestiary/bestiary.md")  # Monsters for illustrations
+read("{campaign_path}/acts/*.md")            # Scenes marked with [SCENE: ...]
+read("{campaign_path}/lore/lore.md")         # Setting/tone for cover
 ```
 
-**IMPORTANTE:** Verificar canon.json primero. Si establece hechos visuales (ej: "la ciudad está bajo el agua", "todos los vampiros tienen cabello plateado"), INCORPORAR esos detalles en los prompts.
+**IMPORTANT:** Check canon.json first. If it establishes visual facts (e.g., "the city is underwater", "all vampires have silver hair"), INCORPORATE those details in the prompts.
 
-**Step 2: Construir batch-spec.json**
+**Step 2: Build batch-spec.json**
 
-Crear `{campaign_path}/assets/batch-spec.json`:
+Create `{campaign_path}/assets/batch-spec.json`:
 
 ```json
 {
@@ -79,51 +79,51 @@ Crear `{campaign_path}/assets/batch-spec.json`:
 }
 ```
 
-**Reglas para prompts:**
-- ✅ SIEMPRE incluir "D&D" o "Dungeons and Dragons" en prompts
-- ✅ Incluir art style: "detailed fantasy art", "professional digital painting"
-- ✅ Para NPCs: incluir race, class, key visual features, personality
-- ✅ Para monstruos: incluir size, type, environment, threatening pose
-- ✅ Para escenas: incluir environment, characters present, action/mood
-- ✅ Para portada: incluir main theme, setting, dramatic composition
+**Prompt rules:**
+- ✅ ALWAYS include "D&D" or "Dungeons and Dragons" in prompts
+- ✅ Include art style: "detailed fantasy art", "professional digital painting"
+- ✅ For NPCs: include race, class, key visual features, personality
+- ✅ For monsters: include size, type, environment, threatening pose
+- ✅ For scenes: include environment, characters present, action/mood
+- ✅ For cover: include main theme, setting, dramatic composition
 
-**Step 3: Contar y verificar**
+**Step 3: Count and verify**
 
 ```python
-# Verificar cobertura completa
+# Verify full coverage
 total_images = len(batch_spec["images"])
 npcs_count = count_images_by_type("portrait")
 monsters_count = count_images_by_type("illustration")
 scenes_count = count_images_by_type("scene")
 cover_count = count_images_by_type("cover")
 
-# Reportar
+# Report
 print(f"Prepared {total_images} images: {cover_count} cover, {npcs_count} NPCs, {monsters_count} monsters, {scenes_count} scenes")
 ```
 
-**REGLA:** NO SKIPPING ALLOWED. Every NPC, monster, and scene MUST have an image.
+**RULE:** NO SKIPPING ALLOWED. Every NPC, monster, and scene MUST have an image.
 
 ### Phase B: Update Markdown References
 
-**Step 1: Listar imágenes generadas**
+**Step 1: List generated images**
 
 ```bash
 ls {campaign_path}/assets/*.png
 ```
 
-Notar todos los archivos PNG generados.
+Note all generated PNG files.
 
-**Step 2: Actualizar README.md**
+**Step 2: Update README.md**
 
-Agregar al inicio (después del título):
+Add at the top (after the title):
 
 ```markdown
-![Portada](assets/cover-art.png)
+![Cover](assets/cover-art.png)
 ```
 
-**Step 3: Usar inline image linking (RECOMENDADO)**
+**Step 3: Use inline image linking (RECOMMENDED)**
 
-Al llamar `generate_image`, usar parámetros opcionales para insertar automáticamente:
+When calling `generate_image`, use optional parameters to insert automatically:
 
 ```json
 {
@@ -137,77 +137,77 @@ Al llamar `generate_image`, usar parámetros opcionales para insertar automátic
 }
 ```
 
-**Parámetros disponibles:**
-- `markdown_file`: Path al archivo markdown (ej: `npcs/npcs_and_factions.md`)
-- `section`: Sección donde insertar (ej: `Gandalf`, `Act 1: The Beginning`)
-- `alt`: Alt text para la imagen (default: filename)
+**Available parameters:**
+- `markdown_file`: Path to the markdown file (e.g., `npcs/npcs_and_factions.md`)
+- `section`: Section where to insert (e.g., `Gandalf`, `Act 1: The Beginning`)
+- `alt`: Alt text for the image (default: filename)
 
-**Step 4: Actualización manual (alternativa)**
+**Step 4: Manual update (alternative)**
 
-Si no se usó inline linking, actualizar manualmente después de generar:
+If inline linking was not used, update manually after generating:
 
 **npcs_and_factions.md:**
 ```markdown
 ### Gandalf
 
-[Descripción del NPC]
+[NPC description]
 
 ![Gandalf](assets/npc-gandalf.png)
 ```
 
 **bestiary.md:**
 ```markdown
-### Dragon Rojo
+### Red Dragon
 
 [Stat block]
 
-![Dragon Rojo](assets/monster-dragon-rojo.png)
+![Red Dragon](assets/monster-red-dragon.png)
 ```
 
 **acts/*.md:**
 ```markdown
-[Reemplazar `[SCENE: description]` con:]
+[Replace `[SCENE: description]` with:]
 
-![Descripción de la escena](assets/scene-act1-encounter.png)
+![Scene description](assets/scene-act1-encounter.png)
 ```
 
-**Step 5: Verificar**
+**Step 5: Verify**
 
 ```bash
-# Contar referencias de imágenes
+# Count image references
 grep -r "!\[" {campaign_path}/*.md {campaign_path}/**/*.md | wc -l
 
-# Verificar que cada imagen en assets/ está referenciada
+# Verify every image in assets/ is referenced
 ```
 
-## Reglas
+## Rules
 
-- ✅ Usar kebab-case para todos los filenames
-- ✅ Cada imagen DEBE estar referenciada en al menos un archivo markdown
-- ✅ NO modificar contenido de escenas/NPCs, solo AGREGAR referencias de imágenes
-- ✅ Si una imagen no existe, notarlo pero NO crear referencias rotas
-- ✅ Usar el filename exacto de assets/ (sin extensión) en la referencia markdown
+- ✅ Use kebab-case for all filenames
+- ✅ Each image MUST be referenced in at least one markdown file
+- ✅ Do NOT modify scene/NPC content, only ADD image references
+- ✅ If an image does not exist, note it but do NOT create broken references
+- ✅ Use the exact filename from assets/ (without extension) in the markdown reference
 
-## Output al Architect
+## Output to the Architect
 
 ```markdown
-## Arte Generado: {campaign_name}
+## Generated Art: {campaign_name}
 
 **Status:** ✅ Complete / ❌ Failed
 
-**Imágenes:**
-- Portada: 1
-- Retratos NPC: {count}
-- Ilustraciones monstruo: {count}
-- Escenas: {count}
+**Images:**
+- Cover: 1
+- NPC portraits: {count}
+- Monster illustrations: {count}
+- Scenes: {count}
 - Total: {count}
 
-**Archivos Actualizados:**
+**Files Updated:**
 - README.md: ✅
-- npcs/npcs_and_factions.md: ✅ ({count} referencias)
-- bestiary/bestiary.md: ✅ ({count} referencias)
-- acts/chapter_01.md: ✅ ({count} referencias)
-- acts/chapter_02.md: ✅ ({count} referencias)
+- npcs/npcs_and_factions.md: ✅ ({count} references)
+- bestiary/bestiary.md: ✅ ({count} references)
+- acts/chapter_01.md: ✅ ({count} references)
+- acts/chapter_02.md: ✅ ({count} references)
 
-**batch-spec.json:** Generado en assets/
+**batch-spec.json:** Generated in assets/
 ```

@@ -77,9 +77,9 @@ El template define el formato WotC obligatorio para fichas de personaje.
 
 **Nivel:** 1
 
-**Alineamiento:** {LG|NG|CG|LN|N|CN|LE|NE|CE}
+**Alignment:** {LG|NG|CG|LN|N|CN|LE|NE|CE}
 
-**Trasfondo:** {Background}
+**Background:** {Background}
 
 ---
 
@@ -145,7 +145,7 @@ El template define el formato WotC obligatorio para fichas de personaje.
 
 ---
 
-## Apariencia y Personalidad
+## Appearance y Personality
 
 **Edad:** XX años
 
@@ -159,7 +159,7 @@ El template define el formato WotC obligatorio para fichas de personaje.
 
 **Piel:** [Tono, características]
 
-### Rasgos de Personalidad
+### Rasgos de Personality
 
 1. [Rasgo 1]
 2. [Rasgo 2]
@@ -252,7 +252,7 @@ ELSE:
 - [ ] **Vínculos con NPCs:** Cada personaje conoce al menos 1 NPC de la campaña
 - [ ] **Stats Estándar:** Array 15,14,13,12,10,8 o point buy equivalente
 - [ ] **Equipo Completo:** Según clase y background
-- [ ] **Personalidad:** Rasgos, ideal, vínculo, defecto completos
+- [ ] **Personality:** Rasgos, ideal, vínculo, defecto completos
 
 ## Cross-References Format
 

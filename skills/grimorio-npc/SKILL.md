@@ -85,11 +85,11 @@ El template define el formato WotC obligatorio para NPCs y facciones.
 
 **Ubicación:** Área X
 
-**Estadísticas de Combate:** CA XX, PG XX (XdX+X), Ataque +X (XdX+X)
+**Estadísticas de Combate:** CA XX, PG XX (XdX+X), Attack +X (XdX+X)
 
 **Rol en la historia:** [Función narrativa]
 
-### Apariencia Física
+### Appearance Física
 
 **Altura y Complexión:** [2-3 oraciones detalladas]
 
@@ -101,7 +101,7 @@ El template define el formato WotC obligatorio para NPCs y facciones.
 
 **Características Distintivas:** [Cicatrices, tatuajes, postura - 1-2 oraciones]
 
-### Personalidad
+### Personality
 
 **Mannerisms:** [Gestos, tics, hábitos - 2-3 oraciones]
 
@@ -117,15 +117,15 @@ El template define el formato WotC obligatorio para NPCs y facciones.
 
 **Catchphrases:** [Frases típicas, muletillas - 1-2 ejemplos]
 
-### Secretos
+### Secrets
 
-**Secreto Trivial:** [Algo curioso sin impacto en trama]
+**Secret Trivial:** [Algo curioso sin impacto en trama]
 
-**Secreto Importante #1:** [Información que puede iniciar quest]
+**Secret Importante #1:** [Información que puede iniciar quest]
 
-**Secreto Importante #2:** [Otra información relevante]
+**Secret Importante #2:** [Otra información relevante]
 
-**Secreto de Campaña:** [Información que cambia la trama principal]
+**Secret de Campaña:** [Información que cambia la trama principal]
 
 ### Ganchos de Trama
 
@@ -165,7 +165,7 @@ El template define el formato WotC obligatorio para NPCs y facciones.
 
 **Relación con jugadores:** [Amigable|Neutral|Hostil|Engañosa]
 
-**Secreto:** [Qué ocultan]
+**Secret:** [Qué ocultan]
 
 **Reputación inicial:** [0-100, donde 50 es neutral]
 ```
@@ -207,17 +207,17 @@ ELSE:
 
 ## Checklist Pre-Guardado (v2.5 WotC Enhanced)
 
-- [ ] **Apariencia Física:** 3-5 párrafos detallados (150-250 palabras)
-- [ ] **Personalidad:** 2-3 párrafos (mannerisms, speech, motivations)
+- [ ] **Appearance Física:** 3-5 párrafos detallados (150-250 palabras)
+- [ ] **Personality:** 2-3 párrafos (mannerisms, speech, motivations)
 - [ ] **Voz:** 1 párrafo (tono, accent, catchphrases)
-- [ ] **Secretos:** 3-5 secretos (1 trivial, 2 importantes, 1 de campaña)
+- [ ] **Secrets:** 3-5 secretos (1 trivial, 2 importantes, 1 de campaña)
 - [ ] **Plot Hooks:** 2-3 hooks explicando interacción con PJs
 - [ ] **Diálogo:** 3-5 líneas para read-aloud
 - [ ] **Stat Block:** En bestiary.md con formato completo
 - [ ] **Referencia Cruzada:** "Ver [bestiary.md](bestiary/bestiary.md#{npc-name})" en npcs.md
 - [ ] **Balance:** 1-2 aliados claros, 2-3 neutrales útiles, 1 hostil encubierto, 1 villano
 - [ ] **Diversidad:** Mezcla de edades, géneros, razas, personalidades
-- [ ] **Conexiones:** Cada NPC conectado con al menos 1 otro NPC/facción/quest
+- [ ] **Connections:** Cada NPC conectado con al menos 1 otro NPC/facción/quest
 - [ ] **Word Count:** NPCs principales 500-800 palabras, secundarios 200-400 palabras
 
 ## Cross-References Format
@@ -232,7 +232,7 @@ ELSE:
 ✅ BIEN: La [Guardia de la Ciudad](npcs/npcs_and_factions.md#guardia-de-la-ciudad)
 
 ❌ MAL: Como se menciona en la quest principal
-✅ BIEN: Como se menciona en [Quest: El Secreto del Herrero](quests/quests.md#el-secreto-del-herrero)
+✅ BIEN: Como se menciona en [Quest: El Secret del Herrero](quests/quests.md#el-secreto-del-herrero)
 ```
 
 ## NPC Stat Block Requirements
@@ -271,9 +271,9 @@ Cada NPC mencionado DEBE tener stat block en bestiary.md:
 ### ValidateNPCWordCount
 - ✅ NPCs principales: 500-800 palabras
 - ✅ NPCs secundarios: 200-400 palabras
-- ✅ Apariencia: 150-250 palabras
-- ✅ Personalidad: 100-150 palabras
-- ✅ Secretos: 150-200 palabras
+- ✅ Appearance: 150-250 palabras
+- ✅ Personality: 100-150 palabras
+- ✅ Secrets: 150-200 palabras
 
 ### ValidateNPCDepth
 - ✅ 5+ párrafos de descripción total

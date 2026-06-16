@@ -130,7 +130,7 @@ Para cada pieza de contenido, chequear:
 - ❌ Si no → ERROR
 
 **13D: Running the Scene Subsections**
-- ✅ 5 subsecciones presentes (Preparación, Ritmo, Señales, Improvisar, Ceñirse)
+- ✅ 5 subsecciones presentes (Preparación, Ritmo, Señales, Improvise, Ceñirse)
 - ❌ Si falta → ERROR
 
 **13E: NPC Description Depth**
