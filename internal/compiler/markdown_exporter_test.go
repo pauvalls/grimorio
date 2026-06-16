@@ -12,12 +12,12 @@ func TestMarkdownExporter_Export_OrderAndSeparator(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create files in arbitrary order
-	os.WriteFile(filepath.Join(tmpDir, "appendices.md"), []byte("# Appendices\n\nItems and monsters."), 0644)
-	os.WriteFile(filepath.Join(tmpDir, "introduction.md"), []byte("# Introduction\n\nWelcome."), 0644)
-	os.WriteFile(filepath.Join(tmpDir, "lore.md"), []byte("# Lore\n\nAncient history."), 0644)
-	os.MkdirAll(filepath.Join(tmpDir, "chapters"), 0755)
-	os.WriteFile(filepath.Join(tmpDir, "chapters", "chapter_02.md"), []byte("# Chapter 2\n\nThe dungeon."), 0644)
-	os.WriteFile(filepath.Join(tmpDir, "chapters", "chapter_01.md"), []byte("# Chapter 1\n\nThe town."), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "appendices.md"), []byte("# Appendices\n\nItems and monsters."), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "introduction.md"), []byte("# Introduction\n\nWelcome."), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "lore.md"), []byte("# Lore\n\nAncient history."), 0644)
+	_ = os.MkdirAll(filepath.Join(tmpDir, "chapters"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "chapters", "chapter_02.md"), []byte("# Chapter 2\n\nThe dungeon."), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "chapters", "chapter_01.md"), []byte("# Chapter 1\n\nThe town."), 0644)
 
 	exporter := NewMarkdownExporter()
 	path, err := exporter.Export(context.Background(), tmpDir, "Test Campaign")
@@ -59,7 +59,7 @@ func TestMarkdownExporter_Export_OrderAndSeparator(t *testing.T) {
 	ch2Idx := strings.Index(string(content), "# Chapter 2")
 	appIdx := strings.Index(string(content), "# Appendices")
 
-	if !(introIdx < loreIdx && loreIdx < ch1Idx && ch1Idx < ch2Idx && ch2Idx < appIdx) {
+	if introIdx >= loreIdx || loreIdx >= ch1Idx || ch1Idx >= ch2Idx || ch2Idx >= appIdx {
 		t.Error("sections are not in canonical order")
 	}
 }

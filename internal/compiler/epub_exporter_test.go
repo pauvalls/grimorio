@@ -13,8 +13,8 @@ import (
 func TestEPUBExporter_Export_ValidStructure(t *testing.T) {
 	tmpDir := t.TempDir()
 	// Create minimal campaign content
-	os.WriteFile(filepath.Join(tmpDir, "introduction.md"), []byte("# Introduction\n\nWelcome to the campaign.\n\n## Overview\n\nThis is the overview."), 0644)
-	os.WriteFile(filepath.Join(tmpDir, "lore.md"), []byte("# Lore\n\nAncient history."), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "introduction.md"), []byte("# Introduction\n\nWelcome to the campaign.\n\n## Overview\n\nThis is the overview."), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "lore.md"), []byte("# Lore\n\nAncient history."), 0644)
 
 	exporter := NewEPUBExporter()
 	path, err := exporter.Export(context.Background(), tmpDir, "Test Campaign")
@@ -27,7 +27,7 @@ func TestEPUBExporter_Export_ValidStructure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open epub zip: %v", err)
 	}
-	defer zr.Close()
+	defer func() { _ = zr.Close() }()
 
 	requiredFiles := map[string]bool{
 		"mimetype":                 false,
@@ -79,7 +79,7 @@ func TestEPUBExporter_LanguageIsEnglish(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open epub: %v", err)
 	}
-	defer zr.Close()
+	defer func() { _ = zr.Close() }()
 
 	var opfContent string
 	for _, f := range zr.File {

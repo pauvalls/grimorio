@@ -85,17 +85,17 @@ func runMigration(c *cli.Context) error {
 		return err
 	}
 	if len(plan) == 0 {
-		fmt.Fprintln(out, "No areas to migrate (areas/ is empty or missing).")
+		_, _ = fmt.Fprintln(out, "No areas to migrate (areas/ is empty or missing).")
 		return nil
 	}
 
 	// Print the plan in both modes.
 	for _, op := range plan {
-		fmt.Fprintf(out, "  %s (%d bytes) -> %s\n", op.Src, op.Size, op.Dst)
+		_, _ = fmt.Fprintf(out, "  %s (%d bytes) -> %s\n", op.Src, op.Size, op.Dst)
 	}
 
 	if !apply {
-		fmt.Fprintf(out, "\nDry-run complete. %d file(s) would be migrated. Re-run with --apply to execute.\n", len(plan))
+		_, _ = fmt.Fprintf(out, "\nDry-run complete. %d file(s) would be migrated. Re-run with --apply to execute.\n", len(plan))
 		return nil
 	}
 
@@ -105,7 +105,7 @@ func runMigration(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("create backup: %w", err)
 		}
-		fmt.Fprintf(out, "Backup created: %s\n", backupDir)
+		_, _ = fmt.Fprintf(out, "Backup created: %s\n", backupDir)
 	}
 
 	// Execute the plan.

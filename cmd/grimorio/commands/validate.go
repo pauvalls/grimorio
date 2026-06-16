@@ -29,8 +29,8 @@ func runValidate(c *cli.Context, engine *services.ValidationEngine) error {
 	}
 
 	if c.NArg() < 1 {
-		fmt.Fprintln(stderr, "campaign name required")
-		fmt.Fprintln(stderr, "Usage: grimorio validate <campaign> [--scope=structure|wotc|references|all] [--json]")
+		_, _ = fmt.Fprintln(stderr, "campaign name required")
+		_, _ = fmt.Fprintln(stderr, "Usage: grimorio validate <campaign> [--scope=structure|wotc|references|all] [--json]")
 		return cli.Exit("campaign name required", 2)
 	}
 

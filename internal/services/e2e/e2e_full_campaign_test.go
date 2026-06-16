@@ -409,9 +409,9 @@ func TestCleanupFixture(t *testing.T) {
 	baseDir := harness.BaseDir
 
 	// Create test directories
-	os.MkdirAll(filepath.Join(baseDir, "test-campaign-a"), 0755)
-	os.MkdirAll(filepath.Join(baseDir, "test-campaign-b"), 0755)
-	os.MkdirAll(filepath.Join(baseDir, "real_campaign"), 0755)
+	_ = os.MkdirAll(filepath.Join(baseDir, "test-campaign-a"), 0755)
+	_ = os.MkdirAll(filepath.Join(baseDir, "test-campaign-b"), 0755)
+	_ = os.MkdirAll(filepath.Join(baseDir, "real_campaign"), 0755)
 
 	fixture := TestFixture{
 		FixtureID:       "cleanup_test",

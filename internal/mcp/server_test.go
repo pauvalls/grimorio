@@ -35,7 +35,7 @@ func TestNewServer_StructuredLogging_LegacyMode(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(w, nil))
 	logger.Warn("CANON_LEGACY_MODE is enabled", "component", "canon")
 
-	w.Close()
+	_ = w.Close()
 	os.Stderr = oldStderr
 
 	var buf bytes.Buffer
@@ -63,7 +63,7 @@ func TestNewServer_StructuredLogging_TTSNotInstalled(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(w, nil))
 	logger.Info("Piper TTS not installed", "component", "tts")
 
-	w.Close()
+	_ = w.Close()
 	os.Stderr = oldStderr
 
 	var buf bytes.Buffer

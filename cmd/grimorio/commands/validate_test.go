@@ -135,8 +135,8 @@ func newTestApp(engine *services.ValidationEngine) *cli.App {
 }
 
 // runTestApp runs the test app and captures stdout + stderr. Returns the
-// error from app.Run and the captured bytes.
-func runTestApp(t *testing.T, app *cli.App, args ...string) (error, string, string) {
+// captured stdout and stderr bytes plus the error from app.Run.
+func runTestApp(t *testing.T, app *cli.App, args ...string) (string, string, error) {
 	t.Helper()
 	oldStdout := os.Stdout
 	oldStderr := os.Stderr
@@ -152,7 +152,7 @@ func runTestApp(t *testing.T, app *cli.App, args ...string) (error, string, stri
 	var bufOut, bufErr bytes.Buffer
 	_, _ = bufOut.ReadFrom(rOut)
 	_, _ = bufErr.ReadFrom(rErr)
-	return err, bufOut.String(), bufErr.String()
+	return bufOut.String(), bufErr.String(), err
 }
 
 // exitCodeFrom extracts the exit code from a cli.ExitCoder error.
@@ -170,7 +170,7 @@ func TestRunValidate_RequiresCampaignArg(t *testing.T) {
 	engine := newTestEngine(t)
 	app := newTestApp(engine)
 
-	err, _, stderr := runTestApp(t, app, "validate")
+	_, stderr, err := runTestApp(t, app, "validate")
 	if err == nil {
 		t.Fatal("expected error for missing campaign arg, got nil")
 	}
@@ -186,7 +186,7 @@ func TestRunValidate_CleanCampaign_ExitZero(t *testing.T) {
 	engine := newTestEngine(t)
 	app := newTestApp(engine)
 
-	err, stdout, _ := runTestApp(t, app, "validate", "demo")
+	stdout, _, err := runTestApp(t, app, "validate", "demo")
 	if err != nil {
 		t.Fatalf("expected clean campaign to return nil, got: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestRunValidate_UnknownScope_UsageError(t *testing.T) {
 	// Note: urfave/cli/v2 only parses flags BEFORE positional args. The
 	// real CLI surface (run by main) accepts both, but tests must mirror
 	// the library's parsing order. Users will write `grimorio validate --scope=x demo`.
-	err, stdout, stderr := runTestApp(t, app, "validate", "--scope=garbage", "demo")
+	stdout, stderr, err := runTestApp(t, app, "validate", "--scope=garbage", "demo")
 	if err == nil {
 		t.Fatalf("expected error for unknown scope, got nil (stdout=%q stderr=%q)", stdout, stderr)
 	}
@@ -223,7 +223,7 @@ func TestRunValidate_AllScopesAccepted(t *testing.T) {
 	for _, scope := range []string{"all", "structure", "wotc", "references"} {
 		t.Run(scope, func(t *testing.T) {
 			app := newTestApp(engine)
-			err, _, _ := runTestApp(t, app, "validate", "demo", "--scope="+scope)
+			_, _, err := runTestApp(t, app, "validate", "demo", "--scope="+scope)
 			if err != nil {
 				t.Errorf("scope=%s should not error on clean campaign, got: %v", scope, err)
 			}
@@ -235,7 +235,7 @@ func TestRunValidate_JSONOutput_RoundTrips(t *testing.T) {
 	engine := newTestEngine(t)
 	app := newTestApp(engine)
 
-	err, stdout, _ := runTestApp(t, app, "validate", "--json", "demo")
+	stdout, _, err := runTestApp(t, app, "validate", "--json", "demo")
 	if err != nil {
 		t.Fatalf("--json should not error on clean campaign, got: %v", err)
 	}
@@ -290,7 +290,7 @@ func TestRunValidate_CriticalIssue_ExitOne(t *testing.T) {
 
 	engine := services.NewValidationEngine(canonSvc, stateSvc, nil, "")
 	app := newTestApp(engine)
-	err, _, _ := runTestApp(t, app, "validate", "demo", "--json")
+	_, _, err := runTestApp(t, app, "validate", "demo", "--json")
 
 	if got := exitCodeFrom(err); got != 1 {
 		t.Errorf("expected exit code 1 for errors, got %d (err=%v)", got, err)
@@ -301,7 +301,7 @@ func TestRunValidate_DefaultScope_IsAll(t *testing.T) {
 	engine := newTestEngine(t)
 	app := newTestApp(engine)
 
-	err, stdout, _ := runTestApp(t, app, "validate", "demo")
+	stdout, _, err := runTestApp(t, app, "validate", "demo")
 	if err != nil {
 		t.Fatalf("default scope should not error on clean campaign, got: %v", err)
 	}
@@ -344,7 +344,7 @@ func TestRunValidate_WotCScope_FiltersNonWotCRules(t *testing.T) {
 
 	engine := services.NewValidationEngine(canonSvc, stateSvc, nil, "")
 	app := newTestApp(engine)
-	err, stdout, _ := runTestApp(t, app, "validate", "--scope=wotc", "--json", "demo")
+	stdout, _, err := runTestApp(t, app, "validate", "--scope=wotc", "--json", "demo")
 
 	// wotc filter drops the npc_alive_check error → exit 0
 	if err != nil {
@@ -398,7 +398,7 @@ func TestRunValidate_ReferencesScope_FiltersNonIntegrationRules(t *testing.T) {
 
 	engine := services.NewValidationEngine(canonSvc, stateSvc, nil, "")
 	app := newTestApp(engine)
-	err, stdout, _ := runTestApp(t, app, "validate", "--scope=references", "--json", "demo")
+	stdout, _, err := runTestApp(t, app, "validate", "--scope=references", "--json", "demo")
 
 	// references filter drops npc_alive_check and wotc_* errors → exit 0
 	if err != nil {

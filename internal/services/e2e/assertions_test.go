@@ -51,7 +51,7 @@ func TestAssertEquals(t *testing.T) {
 	}
 
 	// Should fail for non-matching content
-	passed, msg = assertEquals(harness, TestAssertion{
+	passed, _ = assertEquals(harness, TestAssertion{
 		Type:     "equals",
 		Target:   "test-equals-file.txt",
 		Expected: "wrong content",
@@ -61,7 +61,7 @@ func TestAssertEquals(t *testing.T) {
 	}
 
 	// Should fail for missing file
-	passed, msg = assertEquals(harness, TestAssertion{
+	passed, _ = assertEquals(harness, TestAssertion{
 		Type:     "equals",
 		Target:   "nonexistent.txt",
 		Expected: "anything",
@@ -91,7 +91,7 @@ func TestAssertContains(t *testing.T) {
 	}
 
 	// Should fail for non-contained substring
-	passed, msg = assertContains(harness, TestAssertion{
+	passed, _ = assertContains(harness, TestAssertion{
 		Type:     "contains",
 		Target:   "test-contains-file.txt",
 		Expected: "foo",
@@ -101,7 +101,7 @@ func TestAssertContains(t *testing.T) {
 	}
 
 	// Should fail for missing file
-	passed, msg = assertContains(harness, TestAssertion{
+	passed, _ = assertContains(harness, TestAssertion{
 		Type:     "contains",
 		Target:   "nonexistent.txt",
 		Expected: "anything",

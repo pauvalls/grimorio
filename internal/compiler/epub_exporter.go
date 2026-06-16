@@ -120,10 +120,10 @@ func (e *EPUBExporter) writeEPUB(path, title string, chapters []epubChapter) err
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	zw := zip.NewWriter(f)
-	defer zw.Close()
+	defer func() { _ = zw.Close() }()
 
 	// mimetype must be first and uncompressed
 	h, err := zw.CreateHeader(&zip.FileHeader{
@@ -152,15 +152,15 @@ func (e *EPUBExporter) writeEPUB(path, title string, chapters []epubChapter) err
 	var manifestItems, spineItems, navPoints strings.Builder
 	for _, ch := range chapters {
 		filename := ch.ID + ".xhtml"
-		manifestItems.WriteString(fmt.Sprintf(
+		_, _ = fmt.Fprintf(&manifestItems,
 			`    <item id="%s" href="%s" media-type="application/xhtml+xml"/>%s`,
-			ch.ID, filename, "\n"))
-		spineItems.WriteString(fmt.Sprintf(
+			ch.ID, filename, "\n")
+		_, _ = fmt.Fprintf(&spineItems,
 			`    <itemref idref="%s"/>%s`,
-			ch.ID, "\n"))
-		navPoints.WriteString(fmt.Sprintf(
+			ch.ID, "\n")
+		_, _ = fmt.Fprintf(&navPoints,
 			`    <navPoint id="%s" playOrder="%d"><navLabel><text>%s</text></navLabel><content src="%s"/></navPoint>%s`,
-			ch.ID, len(chapters), html.EscapeString(ch.Title), filename, "\n"))
+			ch.ID, len(chapters), html.EscapeString(ch.Title), filename, "\n")
 
 		xhtml := wrapXHTML(ch.Title, ch.Content)
 		if err := writeZipEntry(zw, "OEBPS/"+filename, xhtml); err != nil {

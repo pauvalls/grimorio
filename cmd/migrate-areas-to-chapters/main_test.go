@@ -16,9 +16,14 @@ func makeFixture(t *testing.T, root string) {
 	if err := os.MkdirAll(areas, 0o755); err != nil {
 		t.Fatalf("mkdir areas: %v", err)
 	}
-	must := os.WriteFile
-	must(filepath.Join(areas, "chapter_01_sombras.md"), []byte("# Capítulo 1: Sombras\n\nContenido uno.\n"), 0o644)
-	must(filepath.Join(areas, "chapter_02_traiciones.md"), []byte("# Capítulo 2: Traiciones\n\nContenido dos.\n"), 0o644)
+	must := func(path string, data []byte) {
+		t.Helper()
+		if err := os.WriteFile(path, data, 0o644); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+	}
+	must(filepath.Join(areas, "chapter_01_sombras.md"), []byte("# Capítulo 1: Sombras\n\nContenido uno.\n"))
+	must(filepath.Join(areas, "chapter_02_traiciones.md"), []byte("# Capítulo 2: Traiciones\n\nContenido dos.\n"))
 }
 
 // runBinary compiles the current package to a temp binary and executes it
