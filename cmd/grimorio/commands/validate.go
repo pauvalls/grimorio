@@ -61,7 +61,7 @@ func runValidate(c *cli.Context, engine *services.ValidationEngine) error {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
 		if encErr := enc.Encode(report); encErr != nil {
-			fmt.Fprintf(stderr, "Error: failed to encode JSON: %v\n", encErr)
+			_, _ = fmt.Fprintf(stderr, "Error: failed to encode JSON: %v\n", encErr)
 			return cli.Exit(encErr.Error(), 2)
 		}
 	} else {
@@ -77,10 +77,10 @@ func runValidate(c *cli.Context, engine *services.ValidationEngine) error {
 
 // renderTextReport writes a human-readable summary to w.
 func renderTextReport(w io.Writer, report *domain.ConsistencyReport) {
-	fmt.Fprintf(w, "Campaign Validation Report\n")
-	fmt.Fprintf(w, "==========================\n")
-	fmt.Fprintf(w, "Campaign: %s\n", report.CampaignID)
-	fmt.Fprintf(w, "Health: %s\n", report.OverallHealth)
+	_, _ = fmt.Fprintf(w, "Campaign Validation Report\n")
+	_, _ = fmt.Fprintf(w, "==========================\n")
+	_, _ = fmt.Fprintf(w, "Campaign: %s\n", report.CampaignID)
+	_, _ = fmt.Fprintf(w, "Health: %s\n", report.OverallHealth)
 	_, _ = fmt.Fprintln(w)
 
 	if len(report.Issues) == 0 {
@@ -96,7 +96,7 @@ func renderTextReport(w io.Writer, report *domain.ConsistencyReport) {
 		fmt.Fprintf(w, "%s [%s] %s — %s\n", marker, issue.Severity, issue.Rule, issue.Message)
 	}
 
-	fmt.Fprintln(w)
+		_, _ = fmt.Fprintln(w)
 	fmt.Fprintf(w, "Summary: %d errors, %d warnings, %d criticals (of %d checks)\n",
 		report.Errors, report.Warnings, report.Criticals, report.TotalChecks)
 }
