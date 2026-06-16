@@ -114,7 +114,7 @@ func runMigration(c *cli.Context) error {
 			return fmt.Errorf("copy %s -> %s: %w", op.Src, op.Dst, err)
 		}
 	}
-	fmt.Fprintf(out, "\nMigration complete: %d file(s) copied to chapters/.\n", len(plan))
+	_, _ = fmt.Fprintf(out, "\nMigration complete: %d file(s) copied to chapters/.\n", len(plan))
 	return nil
 }
 

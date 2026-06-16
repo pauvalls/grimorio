@@ -66,7 +66,7 @@ func TestMarkdownExporter_Export_OrderAndSeparator(t *testing.T) {
 
 func TestMarkdownExporter_Export_MissingSectionsSkipped(t *testing.T) {
 	tmpDir := t.TempDir()
-	os.WriteFile(filepath.Join(tmpDir, "introduction.md"), []byte("# Introduction\n\nOnly this."), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "introduction.md"), []byte("# Introduction\n\nOnly this."), 0644)
 
 	exporter := NewMarkdownExporter()
 	path, err := exporter.Export(context.Background(), tmpDir, "Test Campaign")

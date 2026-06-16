@@ -40,14 +40,14 @@ func runValidate(c *cli.Context, engine *services.ValidationEngine) error {
 
 	engineScope, postFilter, err := mapCLIScope(scopeFlag)
 	if err != nil {
-		fmt.Fprintf(stderr, "Error: %v\n", err)
-		fmt.Fprintln(stderr, "Valid scopes: structure, wotc, references, all")
+		_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+		_, _ = fmt.Fprintln(stderr, "Valid scopes: structure, wotc, references, all")
 		return cli.Exit(err.Error(), 2)
 	}
 
 	report, err := engine.CheckConsistency(context.Background(), campaignID, engineScope)
 	if err != nil {
-		fmt.Fprintf(stderr, "Error: validation failed: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "Error: validation failed: %v\n", err)
 		return cli.Exit(err.Error(), 2)
 	}
 
@@ -81,10 +81,10 @@ func renderTextReport(w io.Writer, report *domain.ConsistencyReport) {
 	fmt.Fprintf(w, "==========================\n")
 	fmt.Fprintf(w, "Campaign: %s\n", report.CampaignID)
 	fmt.Fprintf(w, "Health: %s\n", report.OverallHealth)
-	fmt.Fprintln(w)
+	_, _ = fmt.Fprintln(w)
 
 	if len(report.Issues) == 0 {
-		fmt.Fprintln(w, "✅ All checks passed")
+		_, _ = fmt.Fprintln(w, "✅ All checks passed")
 		return
 	}
 

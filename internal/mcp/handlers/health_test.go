@@ -93,8 +93,8 @@ func TestTreasureHandlers_HandleGenerateTreasure(t *testing.T) {
 func TestExportHandlers_HandleExportCampaign(t *testing.T) {
 	tmpDir := t.TempDir()
 	campaignDir := tmpDir + "/test-campaign"
-	os.MkdirAll(campaignDir, 0755)
-	os.WriteFile(campaignDir+"/introduction.md", []byte("# Introduction\n\nTest."), 0644)
+	_ = os.MkdirAll(campaignDir, 0755)
+	_ = os.WriteFile(campaignDir+"/introduction.md", []byte("# Introduction\n\nTest."), 0644)
 
 	handlers := NewExportHandlers(tmpDir, "")
 
