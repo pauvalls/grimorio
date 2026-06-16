@@ -73,6 +73,7 @@ func TestServicesNoSpanishDefaults(t *testing.T) {
 		"area_service.go",
 		"validation_engine.go",
 		"dm_context_service.go",
+		"campaign_service.go",
 	}
 
 	for _, filename := range targets {
