@@ -113,3 +113,20 @@ func TestREADME_InstallCommandsAreCopyPasteReady(t *testing.T) {
 		t.Error("README must have copy-paste ready Windows install command")
 	}
 }
+
+// TestREADME_DropsExperimentalWindowsLabel ensures we no longer mark
+// Windows as experimental now that the pdftotext path is gated and CI
+// validates Windows builds.
+func TestREADME_DropsExperimentalWindowsLabel(t *testing.T) {
+	content, err := os.ReadFile(readmePath())
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	c := string(content)
+	if strings.Contains(c, "Windows support is experimental") {
+		t.Error("README must not call Windows support 'experimental' (English section)")
+	}
+	if strings.Contains(c, "Soporte de Windows es experimental") {
+		t.Error("README must not call Windows support 'experimental' (Spanish section)")
+	}
+}

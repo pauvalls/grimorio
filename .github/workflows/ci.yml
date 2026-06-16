@@ -81,7 +81,11 @@ jobs:
         args: --timeout=5m
 
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
 
@@ -103,6 +107,10 @@ jobs:
         COMMIT=$(git rev-parse --short HEAD)
         DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" -v -o migrate-v1-to-v2 ./cmd/migrate-v1-to-v2
+
+    - name: Run internal/services tests
+      if: matrix.os == 'windows-latest'
+      run: go test -count=1 -race ./internal/services/...
 
     - name: Test grimorio binary
       run: ./grimorio version

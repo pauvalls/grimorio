@@ -7,12 +7,23 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
 )
+
+// fakeWindowsOverride lets tests force the Windows code path on any host.
+// Production code never sets this; only `GRIMORIO_FAKE_WINDOWS=1` test runs do.
+var fakeWindowsOverride = os.Getenv("GRIMORIO_FAKE_WINDOWS") == "1"
+
+// isWindows reports whether the current process is running on Windows.
+// Tests can force this true via the GRIMORIO_FAKE_WINDOWS env var.
+func isWindows() bool {
+	return fakeWindowsOverride || runtime.GOOS == "windows"
+}
 
 // DMContextMonsterRepository defines the repository interface for monsters within the DM context service.
 type DMContextMonsterRepository interface {
@@ -544,7 +555,15 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 
 // extractPDFText attempts to extract text from a PDF file using pdftotext (poppler-utils).
 // Falls back to a placeholder message if the tool is not available.
+//
+// On Windows the binary lookup is skipped and an explicit error is returned.
+// Windows users should install poppler-utils inside WSL (wsl --install
+// ubuntu; sudo apt install poppler-utils) or set include_pdf_text=false.
 func (s *DMContextService) extractPDFText(pdfPath string) (string, error) {
+	if isWindows() {
+		return "", fmt.Errorf("PDF text extraction requires poppler-utils (pdftotext) which is not available on Windows; install WSL (wsl --install) and run `sudo apt install poppler-utils` or skip include_pdf_text")
+	}
+
 	// Check if pdftotext is available
 	_, err := os.Stat("/usr/bin/pdftotext")
 	if err != nil {

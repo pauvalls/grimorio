@@ -33,7 +33,7 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 ```powershell
 irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 ```
-> ⚠️ **Windows support is experimental** — tested on macOS and Linux only.
+> ℹ️ **Windows support** — PDF text extraction requires `poppler-utils`. Install inside WSL (`wsl --install` then `sudo apt install poppler-utils`) or skip the `include_pdf_text` flag. CI matrix validates Windows builds on every PR.
 
 **Already installed? Update:**
 ```bash
@@ -231,7 +231,7 @@ curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | 
 ```powershell
 irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 ```
-> ⚠️ **Soporte de Windows es experimental** — testeado en macOS y Linux únicamente.
+> ℹ️ **Soporte de Windows** — la extracción de texto PDF requiere `poppler-utils`. Instalalo dentro de WSL (`wsl --install` y luego `sudo apt install poppler-utils`) u omití el flag `include_pdf_text`. La matriz de CI valida builds de Windows en cada PR.
 
 **¿Ya lo tienes instalado? Actualízalo:**
 ```bash
