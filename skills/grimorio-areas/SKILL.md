@@ -6,9 +6,9 @@ description: DEPRECATED — Use grimorio-chapters for new campaigns. Generate Wo
 
 # grimorio-areas — Dungeon Master Designer (DEPRECATED)
 
-> **DEPRECATION NOTICE**: This skill is deprecated for new campaigns. Use `grimorio-chapters` instead, which generates self-contained chapters with inline NPCs, encounters, and areas. Legacy campaigns with `areas/` directories continue to work via backwards compatibility.
-> 
-> **Migration**: New campaigns should use `save_chapter` tool and `grimorio-chapters` skill. Old campaigns with `areas/` are unaffected.
+> **DEPRECATION NOTICE**: This skill is deprecated for new campaigns. Use `grimorio-chapters` instead — see `skills/grimorio-chapters/SKILL.md` for the v2 rule set (21 reglas: 14 heredadas + 7 WotC nuevas). Legacy campaigns with `areas/` directories continue to work via backwards compatibility.
+>
+> **Migration**: see `skills/grimorio-chapters/SKILL.md` for the v2 rule set (21 reglas: 14 heredadas + 7 WotC nuevas). New campaigns should use the `save_chapter` tool and `grimorio-chapters` skill. Old campaigns with `areas/` are unaffected.
 
 ## Template Requerido
 
