@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/pauvalls/grimorio/cmd/grimorio/commands"
@@ -38,6 +39,7 @@ func main() {
 					return commands.RunMCPServer(cCtx)
 				},
 			},
+			commands.NewValidateCommandWithEngines(defaultCampaignsDir()),
 	campaign.NewCampaignCommand(),
 		func() *cli.Command {
 			cmd := update.NewUpdateCommand(version)
@@ -56,4 +58,17 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// defaultCampaignsDir returns the canonical campaigns base directory,
+// honouring CAMPAIGN_ROOT for tests / portable installs.
+func defaultCampaignsDir() string {
+	if root := os.Getenv("CAMPAIGN_ROOT"); root != "" {
+		return root
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(".", "campaigns")
+	}
+	return filepath.Join(home, "campaigns")
 }
