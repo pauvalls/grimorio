@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -227,7 +228,20 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 	// Auto-detect campaign structure: chapters/ (new) vs areas/ (legacy)
 	chapterDir := filepath.Join(c.CampaignDir, "chapters")
 	areasDir := filepath.Join(c.CampaignDir, "areas")
-	
+
+	// Surface silent data loss: when both dirs exist, the legacy areas/ files
+	// are dropped. Emit a single warning so the DM / CI knows.
+	if hasDir(chapterDir) && hasDir(areasDir) {
+		areaFiles, _ := os.ReadDir(areasDir)
+		dropped := 0
+		for _, f := range areaFiles {
+			if strings.HasSuffix(f.Name(), ".md") {
+				dropped++
+			}
+		}
+		log.Printf("[warn] grimorio: both chapters/ and areas/ exist — using chapters/, dropping %d area file(s)", dropped)
+	}
+
 	var chapterSectionName, chapterSectionPath string
 	if hasDir(chapterDir) {
 		chapterSectionName = "Chapters"
