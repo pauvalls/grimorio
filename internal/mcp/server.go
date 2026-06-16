@@ -204,14 +204,6 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithString("template", mcp.Description("Campaign template preset: Urban Fantasy, Gothic Horror, Maritime Adventure, Dungeon Crawl, Political Intrigue")),
 	), campaignHandlers.HandleCreateCampaign())
 
-	s.AddTool(mcp.NewTool("save_areas",
-		mcp.WithDescription("Save a chapter of numbered playable areas for the campaign (WotC format: 10-15 areas per chapter)"),
-		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
-		mcp.WithString("chapter_number", mcp.Required(), mcp.Description("Chapter number (1, 2, 3...)"), mcp.Title("Chapter Number")),
-		mcp.WithString("title", mcp.Required(), mcp.Description("Chapter title")),
-		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with numbered areas (WotC format)")),
-	), campaignHandlers.HandleSaveAreas())
-
 	s.AddTool(mcp.NewTool("save_chapter",
 		mcp.WithDescription("Save a self-contained chapter with inline NPCs, encounters, and areas (WotC format: 10-15 areas per chapter)"),
 		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),

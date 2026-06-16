@@ -278,8 +278,8 @@ func TestVerifyImages(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create campaign structure
-	areasDir := filepath.Join(tmpDir, "areas")
-	if err := os.MkdirAll(areasDir, 0755); err != nil {
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	if err := os.MkdirAll(chaptersDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -289,7 +289,7 @@ func TestVerifyImages(t *testing.T) {
 Some text
 <img src="assets/map.svg" alt="Map">
 `
-	mdPath := filepath.Join(areasDir, "chapter1.md")
+	mdPath := filepath.Join(chaptersDir, "chapter1.md")
 	if err := os.WriteFile(mdPath, []byte(mdContent), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -326,8 +326,8 @@ func TestVerifyImages_Mismatch(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create campaign structure
-	areasDir := filepath.Join(tmpDir, "areas")
-	if err := os.MkdirAll(areasDir, 0755); err != nil {
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	if err := os.MkdirAll(chaptersDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -336,7 +336,7 @@ func TestVerifyImages_Mismatch(t *testing.T) {
 ![Scene 1](assets/scene1.png)
 <img src="assets/map.svg" alt="Map">
 `
-	mdPath := filepath.Join(areasDir, "chapter1.md")
+	mdPath := filepath.Join(chaptersDir, "chapter1.md")
 	if err := os.WriteFile(mdPath, []byte(mdContent), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -429,10 +429,10 @@ func TestGenerateHTML_WithNewSections(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte("# Sesión Cero — Guía para el DM\n\nSafety tools and guidelines."), 0644)
 	_ = os.WriteFile(filepath.Join(tmpDir, "flowchart.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100"/></svg>`), 0644)
 
-	// Create acts with proper WotC area format (10-15 numbered areas per act)
-	areasDir := filepath.Join(tmpDir, "areas")
-	_ = os.MkdirAll(areasDir, 0755)
-	_ = os.WriteFile(filepath.Join(areasDir, "chapter-01.md"), []byte(`# Capítulo 1: El Comienzo
+	// Create chapters with proper WotC area format (10-15 numbered areas per chapter)
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter-01.md"), []byte(`# Capítulo 1: El Comienzo
 
 > **Nivel:** 1-2 | **Duración:** 2-3 horas | **Tono:** Misterioso
 

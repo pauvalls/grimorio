@@ -54,8 +54,10 @@ func TestSkillsNoSpanishProse(t *testing.T) {
 		skillDirs = append(skillDirs, entry.Name())
 	}
 
-	require.GreaterOrEqual(t, len(skillDirs), 17,
-		"expected at least 17 grimorio-* skill directories, found %d", len(skillDirs))
+	// grimorio-areas was removed in v5.0.2 WU7 — see the scope-change
+	// decision in engram topic `sdd/v5.0.2-wotc-fidelity-pdf-render/scope-change-delete-areas`.
+	require.GreaterOrEqual(t, len(skillDirs), 16,
+		"expected at least 16 grimorio-* skill directories, found %d", len(skillDirs))
 
 	for _, dir := range skillDirs {
 		t.Run(dir, func(t *testing.T) {

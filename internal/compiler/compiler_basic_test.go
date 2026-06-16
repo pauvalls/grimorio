@@ -49,7 +49,9 @@ func TestGetTemplate(t *testing.T) {
 		tmplType string
 		wantErr  bool
 	}{
-		{"areas", "areas", false},
+		// "areas" template was removed in v5.0.2 WU7 — grimorio-chapters
+		// is the only chapter skill; the legacy `areas` template and
+		// the `save_areas` MCP tool are gone.
 		{"npc", "npc", false},
 		{"monster", "monster", false},
 		{"encounter", "encounter", false},
@@ -58,6 +60,7 @@ func TestGetTemplate(t *testing.T) {
 		{"introduction", "introduction", false},
 		{"setting-guide", "setting-guide", false},
 		{"appendices", "appendices", false},
+		{"chapter", "chapter", false},
 		{"unknown", "unknown", true},
 	}
 

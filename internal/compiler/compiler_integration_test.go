@@ -130,11 +130,12 @@ func TestCompileWithDMSidebar(t *testing.T) {
 	tmpDir := t.TempDir()
 	createTestCampaign(t, tmpDir, "DM Sidebar Test")
 
-	// Create areas directory with DM sidebar content
-	areasDir := filepath.Join(tmpDir, "areas")
-	_ = os.MkdirAll(areasDir, 0755)
+	// Create chapters directory with DM sidebar content (legacy areas/ dir
+	// was removed in v5.0.2 WU7; chapters/ is the only chapter source).
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
 
-	areaContent := `### Área 1: Entrada
+	chapterContent := `### Área 1: Entrada
 
 <div class="dm-sidebar">
 <h5>DM Tip</h5>
@@ -145,7 +146,7 @@ func TestCompileWithDMSidebar(t *testing.T) {
 
 Contenido normal del área.
 `
-	_ = os.WriteFile(filepath.Join(areasDir, "act1.md"), []byte(areaContent), 0644)
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter1.md"), []byte(chapterContent), 0644)
 
 	ctx := context.Background()
 	c := compiler.New(tmpDir, "")
@@ -351,8 +352,8 @@ El pueblo queda a salvo.
 func createTestCampaign(t *testing.T, dir, name string) {
 	t.Helper()
 
-	// Create required directories
-	dirs := []string{"areas", "npcs", "bestiary", "encounters", "maps", "assets"}
+	// Create required directories (grimorio-areas removed in v5.0.2 WU7)
+	dirs := []string{"chapters", "npcs", "bestiary", "encounters", "maps", "assets"}
 	for _, d := range dirs {
 		if err := os.MkdirAll(filepath.Join(dir, d), 0755); err != nil {
 			t.Fatalf("Failed to create directory %s: %v", d, err)

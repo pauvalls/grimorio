@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,9 +17,6 @@ import (
 
 //go:embed templates/dnd-style.css
 var dndCSS string
-
-//go:embed templates/areas.md.tmpl
-var areasTemplate string
 
 //go:embed templates/npc.md.tmpl
 var npcTemplate string
@@ -132,8 +128,6 @@ func (c *Compiler) SetHandoutRenderer(renderer HandoutRenderer) {
 
 func GetTemplate(tmplType string) (string, error) {
 	switch tmplType {
-	case "areas":
-		return areasTemplate, nil
 	case "npc":
 		return npcTemplate, nil
 	case "monster":
@@ -225,31 +219,9 @@ func hasDir(path string) bool {
 
 // generateHTML reads all markdown sources and generates the full HTML document.
 func (c *Compiler) generateHTML(title string) ([]string, error) {
-	// Auto-detect campaign structure: chapters/ (new) vs areas/ (legacy)
+	// chapters/ is the only chapter source — grimorio-areas (legacy areas/
+	// directory + skill) was removed in v5.0.2 WU7.
 	chapterDir := filepath.Join(c.CampaignDir, "chapters")
-	areasDir := filepath.Join(c.CampaignDir, "areas")
-
-	// Surface silent data loss: when both dirs exist, the legacy areas/ files
-	// are dropped. Emit a single warning so the DM / CI knows.
-	if hasDir(chapterDir) && hasDir(areasDir) {
-		areaFiles, _ := os.ReadDir(areasDir)
-		dropped := 0
-		for _, f := range areaFiles {
-			if strings.HasSuffix(f.Name(), ".md") {
-				dropped++
-			}
-		}
-		log.Printf("[warn] grimorio: both chapters/ and areas/ exist — using chapters/, dropping %d area file(s)", dropped)
-	}
-
-	var chapterSectionName, chapterSectionPath string
-	if hasDir(chapterDir) {
-		chapterSectionName = "Chapters"
-		chapterSectionPath = chapterDir
-	} else {
-		chapterSectionName = "Chapters (Areas)"
-		chapterSectionPath = areasDir
-	}
 
 	sections := []struct {
 		name  string
@@ -258,7 +230,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 	}{
 		{"Introduction", filepath.Join(c.CampaignDir, "introduction.md"), false},
 		{"Lore y Ambientación", filepath.Join(c.CampaignDir, "lore.md"), false},
-		{chapterSectionName, chapterSectionPath, true},
+		{"Chapters", chapterDir, true},
 		{"Setting Guide", filepath.Join(c.CampaignDir, "setting-guide.md"), false},
 		{"Apéndice A: NPCs y Facciones", filepath.Join(c.CampaignDir, "npcs"), true},
 		{"Apéndice B: Bestiario", filepath.Join(c.CampaignDir, "bestiary"), true},
@@ -402,62 +374,10 @@ func (c *Compiler) generateTOC(sections []struct {
 
 		id := "sec-" + sanitizeID(sec.name)
 		fmt.Fprintf(&b, `<li><a href="#%s">%s</a><span class="page-ref"></span></li>`, id, html.EscapeString(sec.name))
-
-		// In v2, extract areas from act files for hierarchical TOC
-		if c.CompilerVersion == 2 && sec.isDir && (strings.Contains(strings.ToLower(sec.name), "chapter") || strings.Contains(strings.ToLower(sec.name), "area")) {
-			areas := c.extractAreasFromDir(sec.path)
-			if len(areas) > 0 {
-				b.WriteString(`<ul class="toc-areas">`)
-				for _, area := range areas {
-					fmt.Fprintf(&b, `<li><a href="#%s">%s</a><span class="page-ref"></span></li>`, area.ID, html.EscapeString(area.Name))
-				}
-				b.WriteString(`</ul>`)
-			}
-		}
 	}
 
 	b.WriteString(`</ul></div>`)
 	return b.String()
-}
-
-type tocArea struct {
-	ID   string
-	Name string
-}
-
-func (c *Compiler) extractAreasFromDir(dirPath string) []tocArea {
-	var areas []tocArea
-	files, err := os.ReadDir(dirPath)
-	if err != nil {
-		return areas
-	}
-
-	areaPattern := regexp.MustCompile(`(?m)^#{3,4}\s+[Áa]rea\s+(\d+)(?:\s*:\s*(.+))?$`)
-
-	for _, f := range files {
-		if !strings.HasSuffix(f.Name(), ".md") {
-			continue
-		}
-		content, err := os.ReadFile(filepath.Join(dirPath, f.Name()))
-		if err != nil {
-			continue
-		}
-
-		matches := areaPattern.FindAllStringSubmatch(string(content), -1)
-		for _, m := range matches {
-			num := m[1]
-			name := "Área " + num
-			if len(m) > 2 && m[2] != "" {
-				name = name + ": " + strings.TrimSpace(m[2])
-			}
-			areas = append(areas, tocArea{
-				ID:   "area-" + num,
-				Name: name,
-			})
-		}
-	}
-
-	return areas
 }
 
 // generateFactionTracker reads the reputation matrix and generates an HTML appendix.
@@ -645,24 +565,19 @@ func (c *Compiler) generateShockPointsHTML(shockPoints []struct {
 func (c *Compiler) generateAdventureRoster() string {
 	var npcs, monsters, encounters []string
 
-	// Scan chapters (new structure) or areas (legacy) for entities
-	chapterDirs := []string{
-		filepath.Join(c.CampaignDir, "chapters"),
-		filepath.Join(c.CampaignDir, "areas"),
-	}
-	for _, dir := range chapterDirs {
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			files, _ := os.ReadDir(dir)
-			for _, f := range files {
-				if strings.HasSuffix(f.Name(), ".md") {
-					content, _ := os.ReadFile(filepath.Join(dir, f.Name()))
-					n, m, e := extractRosterEntries(string(content))
-					npcs = append(npcs, n...)
-					monsters = append(monsters, m...)
-					encounters = append(encounters, e...)
-				}
+	// chapters/ is the only chapter source — grimorio-areas (legacy
+	// areas/ directory) was removed in v5.0.2 WU7.
+	chaptersDir := filepath.Join(c.CampaignDir, "chapters")
+	if info, err := os.Stat(chaptersDir); err == nil && info.IsDir() {
+		files, _ := os.ReadDir(chaptersDir)
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".md") {
+				content, _ := os.ReadFile(filepath.Join(chaptersDir, f.Name()))
+				n, m, e := extractRosterEntries(string(content))
+				npcs = append(npcs, n...)
+				monsters = append(monsters, m...)
+				encounters = append(encounters, e...)
 			}
-			break // Only scan the first existing directory
 		}
 	}
 
@@ -817,10 +732,10 @@ func (c *Compiler) verifyImages(htmlPath string) (int, int, bool, error) {
 func (c *Compiler) countImagesInMarkdownSources() (int, error) {
 	count := 0
 
+	// grimorio-areas (legacy areas/ dir) was removed in v5.0.2 WU7.
 	sections := []string{
 		filepath.Join(c.CampaignDir, "lore.md"),
 		filepath.Join(c.CampaignDir, "chapters"),
-		filepath.Join(c.CampaignDir, "areas"),
 		filepath.Join(c.CampaignDir, "npcs"),
 		filepath.Join(c.CampaignDir, "bestiary"),
 		filepath.Join(c.CampaignDir, "encounters"),

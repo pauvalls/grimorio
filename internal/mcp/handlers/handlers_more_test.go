@@ -39,8 +39,9 @@ func TestHandleGetTemplate(t *testing.T) {
 	handlers, _, _ := setupTestHandlers()
 
 	handler := handlers.HandleGetTemplate()
+	// "chapter" replaces "areas" as the canonical template type in v5.0.2.
 	args := map[string]any{
-		"type": "areas",
+		"type": "chapter",
 	}
 
 	result, err := handler(context.Background(), newToolRequest("get_template", args))

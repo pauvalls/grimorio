@@ -162,7 +162,7 @@ func (h *AreaHandlers) HandleGenerateDynamicArea() server.ToolHandlerFunc {
 			nil, // narrativeState
 		)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to generate area: %v", err)), nil
+			return ToToolResult(err), nil
 		}
 
 		generationTime := time.Since(startTime)
