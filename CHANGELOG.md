@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v5.0.2] - 2026-06-16
+
+### Refactor
+
+- Rename grimorio-areas to grimorio-chapters (v5.0) (agents)
+## [v5.0.1] - 2026-06-16
+
+### Docs
+
+- Update changelog for v5.0.0
+- Add v5.0.1 release notes (changelog)
+
+### Feat
+
+- Rewrite workflow for v5.0 chapter-sequential pipeline (architect)
+- Update /grimorio command to v5.0 chapter-sequential pipeline (command)
+
 ## [v5.0.1] - 2026-06-16
 
 ### Docs
