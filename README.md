@@ -68,7 +68,7 @@ In OpenCode, switch to the `grimorio-architect` agent and run:
 ```
 /grimorio A sunken city where the nobles are aquatic vampires
 ```
-The architect will ask you 6 questions (name, type, idea, level, tone, duration) and then generate the full campaign in batches:
+The architect will first ask you to pick your language (English or Spanish), then ask 6 more questions (name, type, idea, level, tone, duration) and then generate the full campaign in batches:
 - **Batch 1**: Lore, NPCs, bestiary, maps, setting guide, introduction
 - **Batch 2**: Quests, encounters, characters, appendices
 - **Batch 3**: Areas (chapter by chapter to avoid timeout)
@@ -134,12 +134,36 @@ grimorio update commands
 
 **See [docs/tts-experimental.md](docs/tts-experimental.md) for full setup, troubleshooting, and voice customization.**
 
-**3. Update Content** (after rule changes or edits)
+**3. Validate & Update Content** (after rule changes or edits)
 
-If you edit any markdown files manually, refresh the canon:
+Validate your campaign without compiling the PDF:
+```bash
+grimorio validate sunken-city                 # All checks, human output
+grimorio validate sunken-city --scope=wotc    # WotC format only
+grimorio validate sunken-city --scope=structure # Structure only
+grimorio validate sunken-city --json          # Machine-readable output
+```
+
+Refresh canon after manual edits:
 ```bash
 grimorio validate_canon --campaign sunken-city
 grimorio check_consistency --campaign sunken-city
+```
+
+**4. Export to Other Formats** (optional)
+
+In addition to PDF, export your campaign to:
+```bash
+grimorio export_campaign --campaign sunken-city --format=pdf       # Default
+grimorio export_campaign --campaign sunken-city --format=markdown  # Concatenated .md
+grimorio export_campaign --campaign sunken-city --format=epub      # EPUB 3
+```
+
+**5. Check Campaign Health** (optional)
+
+Get a 0-100 score across six axes of campaign quality:
+```
+Use the campaign_health_dashboard MCP tool from any agent.
 ```
 
 ### Advanced Install
@@ -160,23 +184,40 @@ make install
 
 | Topic | Description |
 |-------|-------------|
-| **[Getting Started](docs/getting-started.md)** | Installation, first campaign, brief template |
+| **[Getting Started](docs/getting-started.md)** | Installation, first campaign, brief template, `validate` CLI, exports |
 | **[Session Tutorial](docs/tutorials/session-tutorial.md)** | Run your first game (prep → play → post-session) |
 | **[Character Creation](docs/tutorials/character-creation.md)** | Generate PCs, pre-gens, character worksheets |
 | **[Session Generator](docs/tutorials/session-generator.md)** | Adapt sessions to specific characters |
 | **[PDF Compiler](docs/features/pdf-compiler.md)** | Customize PDF output, CSS styles, sections |
-| **[MCP Tools](docs/features/mcp-tools.md)** | Full tool reference (30+ tools) |
-| **[Architecture](docs/features/architecture.md)** | How Grimorio works internally |
+| **[MCP Tools](docs/features/mcp-tools.md)** | Full tool reference (40+ tools, including health, export, treasure) |
+| **[Architecture](docs/features/architecture.md)** | How Grimorio works internally (image cache, V2/V3 repos, compiler strategy) |
 | **[DM Guide](docs/dm-guide.md)** | General advice for running games |
 | **[DM Agent Guide](docs/dm-agent-guide.md)** | Running live sessions with the AI Dungeon Master |
-| **[Campaign Consistency](docs/campaign-consistency.md)** | **NEW**: Health monitoring, rollback, dynamic content, persistent consequences |
+| **[Campaign Consistency](docs/campaign-consistency.md)** | Health monitoring, rollback, dynamic content, persistent consequences |
+| **[Migration v2→v3](docs/migration-v2-to-v3.md)** | Migrate legacy `areas/` campaigns to `chapters/` |
+| **[Walkthrough: la-hoja-de-vlad](docs/walkthroughs/la-hoja-de-vlad.md)** | Annotated tour of the reference campaign |
 | **[Developer Guide](docs/developer-guide.md)** | Contributing to Grimorio |
 
 ### What's New
 
 See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 
-**v4.1.0 — Campaign Consistency & Dynamic Content (Latest)**
+**Latest — Quality, Performance & English-First Release (v5.0.0)**
+- **🌍 English-First with Language Selection** — All skills, agents, and templates are now in English by default. The `grimorio-architect` agent asks you to pick your language (English or Spanish) at the start of every campaign. Default is English.
+- **✅ `grimorio validate` CLI** — Validate any campaign without compiling the PDF. Scopes: `structure`, `wotc`, `references`, `all`. Outputs JSON for CI. The bash shim is kept as a deprecated wrapper.
+- **🖼️ Image Generation Cache** — Hash-based LRU(50) + on-disk sharded dedup at `~/.cache/grimorio/images/`. `force_regenerate` flag on `generate_image` MCP tool. Instant re-renders for repeated prompts.
+- **📚 Campaign Health Dashboard** — `campaign_health_dashboard` MCP tool scores your campaign 0-100 on six axes: canon completeness, narrative coherence, faction balance, WotC compliance, hook coverage, overall health.
+- **📦 Markdown & EPUB Export** — Export to raw Markdown (canonical concatenation) or EPUB 3 (valid e-reader format with OPF, NCX, XHTML). Strategy-pattern compiler.
+- **🎲 Loot/Treasure Generator** — SRD-compliant individual treasure and hoard generation. 4 CR tiers, magic items by rarity.
+- **🗺️ Campaign Templates** — 5 presets: Urban Fantasy, Gothic Horror, Maritime Adventure, Dungeon Crawl, Political Intrigue.
+- **🪟 Windows Support** — Stable (no longer experimental). PDF text extraction requires `poppler-utils` inside WSL. CI validates Windows builds on every PR.
+- **📖 `examples/la-hoja-de-vlad` Walkthrough** — Bilingual annotated walkthrough of the canonical reference campaign. See [docs/walkthroughs/la-hoja-de-vlad.md](docs/walkthroughs/la-hoja-de-vlad.md).
+- **🔧 Dev Tooling** — `make dev` (air hot-reload), `make fmt`, `make tidy`. E2E test framework (service-layer) with step executor and assertion engine.
+- **🛠️ Internal Quality** — Centralized error handling, structured `slog` logging, image HTTP coverage at 92%, repository V2/V3 alignment.
+
+See **[Getting Started](docs/getting-started.md)** for a quick tour of the new commands and tools.
+
+**v4.1.0 — Campaign Consistency & Dynamic Content**
 - **📊 Campaign Health Monitoring** — Automated detection of stale quests, faction contradictions, dead NPC mismatches, and lore drift
 - **🔄 Context Compression** — Rolling session summaries reduce DM payload >50% for 20+ session campaigns
 - **🎯 Dynamic Location Content** — Location-aware random tables with faction reputation weighting (±80%)
@@ -186,8 +227,6 @@ See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 - **📝 Audit Logging** — Append-only JSONL log of all consistency gate approvals (90-day auto-purge)
 - **🔍 Multi-Session Prep** — `Previously On` shows last 3 sessions + arc context
 - **🎭 Enriched Scenarios** — Session prep prioritizes pending effects, unresolved decisions, faction changes
-
-See **[Campaign Consistency Guide](docs/campaign-consistency.md)** for complete usage reference.
 
 **v4.0.10 — Update Commands & Campaign Template (Latest)**
 - **🤖 AI Dungeon Master** — `grimorio-dm` primary agent runs live D&D 5e sessions with narrative depth, strict information hiding, and canon compliance
@@ -266,7 +305,7 @@ En OpenCode, cambia al agente `grimorio-architect` y ejecuta:
 ```
 /grimorio Una ciudad hundida donde los nobles son vampiros acuáticos
 ```
-El architect te hará 6 preguntas (nombre, tipo, idea, nivel, tono, duración) y luego generará la campaña completa en batches:
+El architect primero te preguntará el idioma (inglés o español), luego te hará 6 preguntas más (nombre, tipo, idea, nivel, tono, duración) y luego generará la campaña completa en batches:
 - **Batch 1**: Trasfondo, NPCs, bestiario, mapas, guía de setting, introducción
 - **Batch 2**: Quests, encuentros, personajes, apéndices
 - **Batch 3**: Áreas (capítulo por capítulo para evitar timeout)
@@ -332,12 +371,36 @@ grimorio update commands
 
 **Ver [docs/tts-experimental.md](docs/tts-experimental.md) para configuración completa, solución de problemas y personalización de voces.**
 
-**3. Actualizar Contenido** (después de cambios manuales o ediciones)
+**3. Validar y Actualizar Contenido** (después de cambios manuales o ediciones)
 
-Si editas archivos markdown manualmente, refresca el canon:
+Valida tu campaña sin compilar el PDF:
+```bash
+grimorio validate ciudad-hundida                 # Todos los checks, salida humana
+grimorio validate ciudad-hundida --scope=wotc    # Solo formato WotC
+grimorio validate ciudad-hundida --scope=structure # Solo estructura
+grimorio validate ciudad-hundida --json          # Salida machine-readable
+```
+
+Refrescá el canon después de ediciones manuales:
 ```bash
 grimorio validate_canon --campaign ciudad-hundida
 grimorio check_consistency --campaign ciudad-hundida
+```
+
+**4. Exportar a Otros Formatos** (opcional)
+
+Además de PDF, exportá tu campaña a:
+```bash
+grimorio export_campaign --campaign ciudad-hundida --format=pdf       # Default
+grimorio export_campaign --campaign ciudad-hundida --format=markdown  # .md concatenado
+grimorio export_campaign --campaign ciudad-hundida --format=epub      # EPUB 3
+```
+
+**5. Chequear Salud de Campaña** (opcional)
+
+Obtené un puntaje 0-100 en seis ejes de calidad de campaña:
+```
+Usá la tool MCP campaign_health_dashboard desde cualquier agente.
 ```
 
 ### Instalación Avanzada
@@ -374,7 +437,22 @@ make install
 
 Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 
-**v4.1.0 — Consistencia de Campaña y Contenido Dinámico (Último)**
+**Último — Calidad, Rendimiento e Inglés-Primero (v5.0.0)**
+- **🌍 Inglés-Primero con Selección de Idioma** — Todas las skills, agents y templates ahora están en inglés por defecto. El agente `grimorio-architect` te pregunta el idioma (inglés o español) al inicio de cada campaña. Default es inglés.
+- **✅ CLI `grimorio validate`** — Valida cualquier campaña sin compilar el PDF. Scopes: `structure`, `wotc`, `references`, `all`. Salida JSON para CI. El shim bash se mantiene como wrapper deprecated.
+- **🖼️ Caché de Generación de Imágenes** — LRU(50) basado en hash + dedup sharded en disco en `~/.cache/grimorio/images/`. Flag `force_regenerate` en la tool MCP `generate_image`. Re-renders instantáneos para prompts repetidos.
+- **📚 Dashboard de Salud de Campaña** — Tool MCP `campaign_health_dashboard` puntúa tu campaña de 0-100 en seis ejes: completitud de canon, coherencia narrativa, balance de facciones, compliance WotC, cobertura de hooks, salud general.
+- **📦 Export a Markdown y EPUB** — Exportá a Markdown puro (concatenación canónica) o EPUB 3 (formato válido de e-reader con OPF, NCX, XHTML). Compiler con strategy pattern.
+- **🎲 Generador de Loot/Tesoro** — Tesoro individual y hoards SRD-compliant. 4 tiers de CR, objetos mágicos por rareza.
+- **🗺️ Templates de Campaña** — 5 presets: Urban Fantasy, Gothic Horror, Maritime Adventure, Dungeon Crawl, Political Intrigue.
+- **🪟 Soporte de Windows** — Estable (ya no es experimental). La extracción de texto PDF requiere `poppler-utils` dentro de WSL. CI valida builds de Windows en cada PR.
+- **📖 Walkthrough de `examples/la-hoja-de-vlad`** — Walkthrough anotado bilingüe de la campaña de referencia. Ver [docs/walkthroughs/la-hoja-de-vlad.md](docs/walkthroughs/la-hoja-de-vlad.md).
+- **🔧 Dev Tooling** — `make dev` (air hot-reload), `make fmt`, `make tidy`. Framework de tests E2E (service-layer) con step executor y assertion engine.
+- **🛠️ Calidad Interna** — Manejo de errores centralizado, logging estructurado con `slog`, cobertura HTTP de imágenes al 92%, alineación de repositorios V2/V3.
+
+Ver **[Empezando](docs/getting-started.md)** para un tour rápido de los nuevos comandos y herramientas.
+
+**v4.1.0 — Consistencia de Campaña y Contenido Dinámico**
 - **📊 Monitoreo de Salud** — Detección automática de quests estancadas, contradicciones de facciones, NPCs muertos inconsistentes, drift de lore
 - **🔄 Compresión de Contexto** — Resúmenes de sesiones reducen payload >50% en campañas de 20+ sesiones
 - **🎯 Contenido por Ubicación** — Tablas aleatorias location-aware con weighting por reputación (±80%)
@@ -594,6 +672,12 @@ irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 │  ├─ generate_flowchart                                      │
 │  ├─ dm_session_context  (v4.0)                              │
 │  └─ grimorio-dm agent (v4.0)                                │
+│                                                              │
+│  Quality & Health (v5.0):                                   │
+│  ├─ campaign_health_dashboard                               │
+│  ├─ export_campaign (pdf|markdown|epub)                     │
+│  ├─ generate_treasure                                       │
+│  └─ grimorio validate CLI                                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 

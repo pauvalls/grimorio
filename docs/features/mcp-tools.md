@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-Grimorio exposes 30+ MCP tools over the `mcp` stdio server. Each tool is
+Grimorio exposes 40+ MCP tools over the `mcp` stdio server. Each tool is
 documented in its corresponding agent prompt under `agents/grimorio-*.md`
 and in its handler file under `internal/mcp/handlers/`.
 
@@ -43,6 +43,15 @@ and in its handler file under `internal/mcp/handlers/`.
   `grimorio_list_tts_voices`, `grimorio_assign_npc_voice`,
   `grimorio_get_tts_status`
 
+### Quality & Health (v5.0)
+- `grimorio_campaign_health_dashboard` — 0-100 score across 6 axes
+- `grimorio_export_campaign` — export to `pdf` (default), `markdown`, or `epub`
+- `grimorio_generate_treasure` — SRD-compliant individual or hoard treasure
+
+### Image Generation (v5.0)
+- `grimorio_generate_image` — now accepts `force_regenerate` boolean to
+  bypass the LRU + on-disk image cache
+
 ## Where to Find Per-Tool Schemas
 
 The tool schemas (input/output JSON shape) live alongside the handlers:
@@ -52,8 +61,10 @@ internal/mcp/handlers/
   campaign.go      →  save_lore / save_npcs / save_areas / …
   canon.go         →  check_consistency / validate_canon
   dm_context.go    →  dm_session_context
+  export.go        →  export_campaign (pdf|markdown|epub)  (v5.0)
   faction.go       →  update_faction_reputation
   handout.go       →  generate_handouts / export_handout
+  health.go        →  campaign_health_dashboard           (v5.0)
   image.go         →  generate_image / generate_map / generate_divider
   narrative_state.go → update_narrative_state / session_timeline
   prologue.go      →  generate_prologue
@@ -61,6 +72,7 @@ internal/mcp/handlers/
   random_table.go  →  generate_random_tables
   session_prep.go  →  generate_session_prep
   tactics.go       →  generate_tactics / get_tactics
+  treasure.go      →  generate_treasure                    (v5.0)
   tts.go           →  tts_speak / tts_control / set_dm_mode
 ```
 

@@ -42,7 +42,8 @@ Once installed, type in your AI assistant chat:
 /grimorio A sunken city where the nobles are aquatic vampires
 ```
 
-The AI will ask you 5 questions:
+The `grimorio-architect` agent will first ask you to pick your language (English or Spanish), then ask 6 more questions:
+0. **Language** (English or Spanish, default English)
 1. Campaign name (kebab-case, e.g., "sunken-city")
 2. One-shot or full campaign?
 3. Player level range?
@@ -52,9 +53,13 @@ The AI will ask you 5 questions:
 Then it generates everything automatically:
 - Lore, NPCs, bestiary, encounters, maps
 - Acts with numbered areas (WotC format)
-- AI-generated cover art and illustrations
+- AI-generated cover art and illustrations (cached automatically)
 - Procedural battle maps (SVG)
 - Professional PDF (D&D-styled layout)
+
+### Campaign Templates
+
+You can also pre-fill the answers with a template: Urban Fantasy, Gothic Horror, Maritime Adventure, Dungeon Crawl, or Political Intrigue. The template sets sensible defaults for tone, level range, and game mode.
 
 ## Story Brief Template
 
@@ -100,6 +105,43 @@ grimorio validate --scope=all --json my-campaign > report.json
 
 For a real-world example of a full campaign going through the gate,
 read the **[La Hoja de Vlad walkthrough](walkthroughs/la-hoja-de-vlad.md)**.
+
+## Export to Other Formats
+
+In addition to PDF, you can export your campaign to:
+
+```bash
+# Concatenated Markdown (canonical file order)
+grimorio export_campaign --campaign my-campaign --format=markdown
+
+# EPUB 3 (valid e-reader format with OPF, NCX, XHTML)
+grimorio export_campaign --campaign my-campaign --format=epub
+```
+
+PDF remains the default and most-styled output. Markdown is great for sharing in version control or editing in Obsidian. EPUB is for e-readers and mobile reading.
+
+## Check Campaign Health
+
+Get a 0-100 score across six axes of campaign quality:
+
+```
+Use the campaign_health_dashboard MCP tool from any agent
+```
+
+The dashboard measures:
+
+| Axis | What it measures |
+|------|------------------|
+| **Overall Health** | Weighted average of all axes |
+| **Canon Completeness** | Are all referenced entities defined? |
+| **Narrative Coherence** | Are timeline + decisions consistent? |
+| **Faction Balance** | Are factions distributed sensibly? |
+| **WotC Compliance** | Do areas/hooks/box text meet WotC format? |
+| **Hook Coverage** | Are there enough character hooks per area? |
+
+## Image Generation Cache
+
+Generated images are cached automatically at `~/.cache/grimorio/images/` using a SHA-256 key derived from prompt + model + dimensions + provider. Re-running the same prompt returns instantly from the cache. The MCP `force_regenerate` parameter bypasses the cache when you need a fresh result.
 
 ## Campaign Storage
 
@@ -159,7 +201,8 @@ Una vez instalado, escribe en el chat de tu asistente IA:
 /grimorio Una ciudad hundida donde los nobles son vampiros acuáticos
 ```
 
-La IA te hará 5 preguntas:
+El agente `grimorio-architect` primero te preguntará el idioma (inglés o español), luego te hará 6 preguntas más:
+0. **Idioma** (inglés o español, default inglés)
 1. Nombre de campaña (kebab-case, ej. "ciudad-hundida")
 2. ¿One-shot o campaña completa?
 3. ¿Rango de nivel de jugadores?
@@ -169,9 +212,13 @@ La IA te hará 5 preguntas:
 Luego genera todo automáticamente:
 - Trasfondo, NPCs, bestiario, encuentros, mapas
 - Actos con áreas numeradas (formato WotC)
-- Portada e ilustraciones generadas por IA
+- Portada e ilustraciones generadas por IA (cacheadas automáticamente)
 - Mapas de batalla procedimentales (SVG)
 - PDF profesional (estilo D&D)
+
+### Templates de Campaña
+
+También podés pre-rellenar las respuestas con un template: Urban Fantasy, Gothic Horror, Maritime Adventure, Dungeon Crawl o Political Intrigue. El template setea defaults razonables para tono, rango de nivel y modo de juego.
 
 ## Plantilla de Brief de Historia
 
@@ -218,6 +265,43 @@ grimorio validate --scope=all --json mi-campana > report.json
 
 Para un ejemplo real de una campaña completa pasando por el gate, leé
 el **[walkthrough de La Hoja de Vlad](walkthroughs/la-hoja-de-vlad.md)**.
+
+## Exportá a Otros Formatos
+
+Además de PDF, podés exportar tu campaña a:
+
+```bash
+# Markdown concatenado (orden canónico de archivos)
+grimorio export_campaign --campaign mi-campana --format=markdown
+
+# EPUB 3 (formato válido de e-reader con OPF, NCX, XHTML)
+grimorio export_campaign --campaign mi-campana --format=epub
+```
+
+PDF sigue siendo el default y el más estilizado. Markdown es ideal para compartir en control de versiones o editar en Obsidian. EPUB es para e-readers y lectura móvil.
+
+## Chequeá la Salud de Campaña
+
+Obtené un puntaje 0-100 en seis ejes de calidad de campaña:
+
+```
+Usá la tool MCP campaign_health_dashboard desde cualquier agente
+```
+
+El dashboard mide:
+
+| Eje | Qué mide |
+|-----|----------|
+| **Overall Health** | Promedio ponderado de todos los ejes |
+| **Canon Completeness** | ¿Están definidas todas las entidades referenciadas? |
+| **Narrative Coherence** | ¿Son consistentes timeline + decisiones? |
+| **Faction Balance** | ¿Están las facciones distribuidas razonablemente? |
+| **WotC Compliance** | ¿Cumplen las áreas/hooks/box text el formato WotC? |
+| **Hook Coverage** | ¿Hay suficientes hooks de personaje por área? |
+
+## Caché de Generación de Imágenes
+
+Las imágenes generadas se cachean automáticamente en `~/.cache/grimorio/images/` usando una clave SHA-256 derivada de prompt + modelo + dimensiones + provider. Re-ejecutar el mismo prompt devuelve instantáneamente desde la caché. El parámetro MCP `force_regenerate` bypasea la caché cuando necesitás un resultado fresco.
 
 ## Almacenamiento de Campañas
 

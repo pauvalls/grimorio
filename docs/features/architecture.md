@@ -83,6 +83,43 @@ Append-only JSON state: `SessionLog`, `ActiveQuests`, `CompletedQuests`,
 The campaign's source-of-truth: `Facts`, `Entities`, `Rules`,
 `Timeline`, `Relationships`. Authored via `save_lore`, `save_npcs`, etc.
 
+### `ImageCache` (v5.0)
+Hash-based image generation cache. SHA-256 key derived from
+prompt + model + dimensions + provider. LRU(50) in memory + sharded
+on-disk dedup at `~/.cache/grimorio/images/v1/<hash[:2]>/<hash>.bin`.
+Integrated as a `CachingProvider` at the head of the provider chain.
+Bypassed via the `force_regenerate` MCP flag.
+
+### `Exporter` Strategy (v5.0)
+`internal/compiler` uses a strategy pattern for output formats.
+`Exporter` interface with three implementations:
+- `PDFExporter` — Markdown → HTML → PDF via Chromium/Chrome headless
+- `MarkdownExporter` — Concatenate canonical files with `---` separators
+- `EPUBExporter` — Markdown → XHTML → OPF + NCX → ZIP with `.epub` extension
+
+The `export_campaign` MCP tool and `compile_pdf` CLI both dispatch
+through the same exporter registry.
+
+### `CampaignHealthService` (v5.0)
+Aggregates `ValidationEngine`, `CanonService`, `FactionService`, and
+`NarrativeState` into a 0-100 health score across six axes. Exposed
+via the `campaign_health_dashboard` MCP tool. The scoring algorithm
+is documented in `internal/services/campaign_health_score.go`.
+
+### `TreasureService` (v5.0)
+SRD-compliant treasure generation. Two entry points:
+`GenerateIndividualTreasure(cr)` and `GenerateTreasureHoard(tier)`.
+4 CR tiers, magic items by rarity (Common → Legendary). Returns
+`domain.TreasureHoard` with coins, art objects, gems, and magic items.
+
+### `CampaignTemplate` (v5.0)
+Pre-defined campaign archetypes. 5 presets:
+Urban Fantasy, Gothic Horror, Maritime Adventure, Dungeon Crawl,
+Political Intrigue. Applied via the `template` field in
+`create_campaign` MCP tool or the `template` query param in
+`generate_adventure_bible`. Falls back to template defaults when
+the user leaves tone/themes empty.
+
 ## Storage
 
 - Campaigns live under `~/campaigns/<name>/` by default
@@ -101,3 +138,22 @@ The campaign's source-of-truth: `Facts`, `Entities`, `Rules`,
   checkpoints, rollback, dynamic content.
 - [PDF Compiler](pdf-compiler.md) — HTML/PDF pipeline internals.
 - [MCP Tools](mcp-tools.md) — full tool catalogue.
+
+## Internationalization (v5.0)
+
+Grimorio is **English-first by default**, with Spanish as a user-selectable
+alternative at session start:
+
+- All skills, agents, and templates in `skills/`, `agents/`, and
+  `internal/compiler/templates/` are written in English.
+- The `examples/la-hoja-de-vlad/` reference campaign stays in Spanish
+  on purpose — it's the WotC regression baseline.
+- The `grimorio-architect` agent prompts the user for language
+  preference at the start of every campaign and passes the choice
+  to all sub-agents via a `LANG:` preamble on each `delegate` call.
+- The `grimorio-dm` agent has the same language intake pattern (Section 10).
+- The `force_regenerate` MCP flag is documented in English with
+  parameter description in English.
+
+To add a third language, see the "Adding a language" section in the
+[Developer Guide](../developer-guide.md#internationalization).
