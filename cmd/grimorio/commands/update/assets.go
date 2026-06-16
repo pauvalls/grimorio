@@ -228,50 +228,83 @@ func updateCommands() error {
 		"subtask":     false,
 		"template": `Generate a D&D 5e campaign or one-shot from the user's idea.
 
+**Version:** 5.0.0 — Chapter-Sequential Pipeline
+
 ## IMPORTANT: Use the grimorio-architect agent. It handles everything end-to-end.
 
-## Workflow (followed by grimorio-architect)
+## 0. Language Intake (Mandatory, First Question)
 
-### Phase 1: Gather Requirements
-Ask the user these questions (one at a time, interactively):
-1. What's the campaign name? (kebab-case, e.g. "sunken-city")
-2. One-shot or full campaign?
-3. Campaign idea / brief description? (What story do you want to tell? 2-3 sentences)
-4. Player level? (1-3, 4-6, 7-10, 11-15, 16-20)
-5. Desired tone? (heroic, dark, humorous, political intrigue)
-6. Duration? (one-shot, 3-5 sessions, long campaign)
+Before any other question, ask the user:
 
-### Phase 2: Create Campaign Structure
-Use the grimorio MCP tool create_campaign to create the structure.
+> **¿En qué idioma prefieres jugar? / What language do you prefer to play in? [es/en]**
 
-### Phase 3-13: End-to-End Orchestration (sequential batches)
-The architect follows strict batch ordering — each batch waits for the previous:
+Default to "en" if the user skips. The architect stores this and propagates to all sub-agents via LANG: preamble on every delegate call.
 
-- **Batch 1** (parallel): lore, NPCs, bestiary, maps, setting guide, introduction
-  → Narrative validation (narrative-custodian)
-  → WotC validation
-- **Batch 2** (parallel): quests, encounters, characters, appendices
-  → Narrative validation (narrative-custodian)
-  → WotC validation
-  → Update Narrative State
-- **Batch 3** (sequential, 1 area at a time to avoid timeout):
-  - Chapter 1 areas → Narrative validation → WotC validation
-  - Chapter 2 areas → Narrative validation → WotC validation
-  - Chapter 3 areas → Narrative validation → WotC validation
-- **Phase 6**: Art generation — cover, NPC portraits, monster illustrations, scene artwork (batch-spec then generate)
-- **Phase 7**: Update ALL markdown references with generated images
-- **Phase 8**: Living World tools (factions, random tables, handouts, consequences) → Consistency Gate
-- **Phase 9**: Final validations — integration check, narrative coherence, macguffin consistency, random tables, character sheets
-- **Phase 10**: DM Experience tools (session prep, flowchart)
-- **Phase 11**: Compile PDF (embeds all images + flowchart + CSS styling)
-- **Phase 12**: Final report
+## 1. Workflow (5 Macro-Phases, chapter-sequential)
 
-The architect reports progress to the user after each phase.
+The architect follows this sequence with BLOCKING gates at each macro-phase.
 
-### Final: Report
+### Macro-Phase 1: Foundation
+- create_campaign(name, setting, title)
+- generate_adventure_bible(...) → canon.json
+- generate_names (all 7 categories: npc, monster, character, city, faction, tavern, item)
+- save_introduction
+- save_setting_guide
+- save_lore
+- GATE: validate_canon → approved (BLOCKING)
+
+### Macro-Phase 2: Chapters (sequential, 1 at a time)
+For each chapter (typically 3):
+- save_chapter(chapter_number, title, content) with WotC standards
+- generate_map + generate_divider for this chapter
+- GATE: narrative-custodian (BLOCKING)
+- GATE: WotC format validation (BLOCKING)
+
+**Why chapters first?** Chapters are the spatial and narrative skeleton. NPCs, bestiary, encounters, quests, and treasure all anchor to specific chapters and areas.
+
+### Macro-Phase 3: Bestiary & Characters (parallel, anchored to chapters)
+- save_npcs (anchored to chapter/area)
+- save_bestiary (creatures tied to chapter habitats)
+- save_encounters (per-chapter, with generate_treasure for hoards)
+- save_quests (main + side + personal)
+- save_characters (pre-gens + generate_character_hooks)
+- save_appendices (consolidated reference)
+- GATE: cross-reference validation (BLOCKING)
+
+### Macro-Phase 4: Art & Living World (parallel)
+- grimorio-artist → batch spec (cover + NPCs + scenes + monsters)
+- generate_image (sequential, 3s delay, force_regenerate=false to use cache)
+- Update markdown references with images
+- generate_random_tables (encounters, rumors, weather, treasure)
+- generate_handouts (summary, quest, lore, faction)
+- generate_treasure (per hoard, SRD-compliant)
+- update_faction_reputation (initial setup)
+- process_consistency_gate (living world batch)
+- GATE: campaign_health_dashboard (score ≥ 70 recommended)
+
+### Macro-Phase 5: Export & Deliver
+- grimorio validate {name} --scope=all (BLOCKING CLI gate)
+- export_campaign --format=pdf (default) | --format=markdown | --format=epub
+- generate_session_prep + generate_flowchart (optional)
+- Final report
+
+The architect reports progress to the user after each macro-phase.
+
+## 2. Available MCP Tools (v5.0)
+
+- Creation: create_campaign, generate_adventure_bible, generate_names
+- Save: save_introduction, save_setting_guide, save_lore, save_chapter, save_npcs, save_bestiary, save_encounters, save_maps, save_quests, save_characters, save_appendices
+- Assets: generate_image, generate_map, generate_divider, generate_flowchart, generate_random_tables, generate_handouts, generate_treasure, generate_session_prep
+- Validation: validate_canon, check_consistency, process_consistency_gate, evaluate_consequences
+- State: update_narrative_state, update_faction_reputation, update_quest_status
+- Quality (v5.0): campaign_health_dashboard, export_campaign
+- Compilation: compile_pdf
+
+## Final: Report
 After completion, report to the user:
 - Where the PDF was saved
 - What content was generated
+- Campaign health score
 - Any issues encountered
 
 **DO NOT launch subagents from the command thread — the architect manages all delegation internally.**`,
