@@ -46,8 +46,41 @@ func NewProvider(cfg Config) (Provider, error) {
 }
 
 // NewProviderChain creates a chain of fallback providers
-// Tries primary first, then falls back to alternatives
+// Tries primary first, then falls back to alternatives.
+// This is the un-cached chain; for caching use NewProviderChainWithCache.
 func NewProviderChain(cfg Config) []Provider {
+	inner := buildInnerChain(cfg)
+	return inner
+}
+
+// NewProviderChainWithCache wraps the inner chain in a CachingProvider
+// placed at index 0. All Generate() calls flow through the cache first;
+// on miss the inner chain is invoked via GenerateWithFallback.
+func NewProviderChainWithCache(cfg Config, c *ImageCache) []Provider {
+	inner := buildInnerChain(cfg)
+	if c == nil {
+		return inner
+	}
+	primaryName := cfg.Provider
+	if primaryName == "" {
+		primaryName = "pollinations"
+	}
+	model := cfg.DalleModel
+	if primaryName != "dalle" {
+		model = "flux" // Pollinations default
+	}
+	cp := NewCachingProvider(inner, c, CachingProviderConfig{
+		Provider: primaryName,
+		Model:    model,
+		Width:    cfg.Width,
+		Height:   cfg.Height,
+		Seed:     cfg.Seed,
+	})
+	return []Provider{cp}
+}
+
+// buildInnerChain constructs the fallback chain (primary + raphael + pollinations).
+func buildInnerChain(cfg Config) []Provider {
 	var providers []Provider
 
 	// Primary provider

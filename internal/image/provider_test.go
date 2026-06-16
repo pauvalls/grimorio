@@ -77,6 +77,43 @@ func TestNewProviderChain(t *testing.T) {
 	}
 }
 
+// TestNewProviderChain_WithCache verifies the CachingProvider is at index 0
+// of the chain when a cache is supplied, and that the inner chain still
+// includes raphael + pollinations as fallbacks.
+func TestNewProviderChain_WithCache(t *testing.T) {
+	dir := t.TempDir()
+	cache, err := NewImageCache(dir, 50)
+	if err != nil {
+		t.Fatalf("NewImageCache: %v", err)
+	}
+	cfg := DefaultConfig()
+	chain := NewProviderChainWithCache(cfg, cache)
+
+	if len(chain) != 1 {
+		t.Fatalf("chain length = %d, want 1 (the CachingProvider encapsulates the inner chain)", len(chain))
+	}
+	cp, ok := chain[0].(*CachingProvider)
+	if !ok {
+		t.Fatalf("chain[0] should be a *CachingProvider, got %T", chain[0])
+	}
+	// The CachingProvider's inner chain must include raphael and pollinations.
+	hasRaphael, hasPollinations := false, false
+	for _, p := range cp.inner {
+		switch p.Name() {
+		case "raphael":
+			hasRaphael = true
+		case "pollinations":
+			hasPollinations = true
+		}
+	}
+	if !hasRaphael {
+		t.Error("CachingProvider.inner must include 'raphael'")
+	}
+	if !hasPollinations {
+		t.Error("CachingProvider.inner must include 'pollinations'")
+	}
+}
+
 func TestGenerateWithFallback_Success(t *testing.T) {
 	p1 := &mockProvider{name: "primary", fail: true}
 	p2 := &mockProvider{name: "fallback", fail: false}

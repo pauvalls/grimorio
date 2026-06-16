@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pauvalls/grimorio/internal/config"
 	"github.com/pauvalls/grimorio/internal/domain"
+	"github.com/pauvalls/grimorio/internal/image"
 	"github.com/pauvalls/grimorio/internal/mcp/handlers"
 	"github.com/pauvalls/grimorio/internal/repository"
 	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
@@ -59,6 +61,14 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	characterService := services.NewCharacterService(charRepo)
 	questService := services.NewQuestService(questRepo)
 	assetService := services.NewAssetService(cfg.OutputDir, cfg.Config)
+	// Wire image-generation cache (Fase 4). The cache is best-effort:
+	// a failure here must not break MCP server startup, so we log and
+	// continue with an un-cached service.
+	if imgCache, err := image.NewImageCache(cfg.ImageCacheDir, cfg.ImageCacheSize); err == nil {
+		assetService = assetService.WithCache(imgCache)
+	} else {
+		fmt.Fprintf(os.Stderr, "warning: image cache disabled: %v\n", err)
+	}
 	canonService := services.NewCanonService(canonRepo, narrativeStateRepo, checkpointRepo)
 
 	// Initialize structured logger

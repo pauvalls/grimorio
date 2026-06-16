@@ -131,12 +131,19 @@ func (h *AssetHandlers) HandleGenerateImage() server.ToolHandlerFunc {
 		markdownFile := getStringArg(args, "markdown_file")
 		section := getStringArg(args, "section")
 		alt := getStringArg(args, "alt")
+		forceRegenerate := getBoolArg(args, "force_regenerate")
 
 		if campaign == "" || filename == "" || prompt == "" {
 			return mcp.NewToolResultError("campaign, filename, and prompt are required"), nil
 		}
 
-		path, err := h.service.GenerateImage(campaign, filename, prompt, imgType)
+		var path string
+		var err error
+		if forceRegenerate {
+			path, err = h.service.GenerateImageForce(campaign, filename, prompt, imgType, true)
+		} else {
+			path, err = h.service.GenerateImage(campaign, filename, prompt, imgType)
+		}
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -149,9 +156,15 @@ func (h *AssetHandlers) HandleGenerateImage() server.ToolHandlerFunc {
 			if err := h.service.InsertImageReference(campaign, markdownFile, section, alt, filename); err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("Image generated but failed to update markdown: %v", err)), nil
 			}
+			if forceRegenerate {
+				return mcp.NewToolResultText(fmt.Sprintf("Image force-regenerated: %s (type: %s) and linked to %s", path, imgType, markdownFile)), nil
+			}
 			return mcp.NewToolResultText(fmt.Sprintf("Image generated: %s (type: %s) and linked to %s", path, imgType, markdownFile)), nil
 		}
 
+		if forceRegenerate {
+			return mcp.NewToolResultText(fmt.Sprintf("Image force-regenerated: %s (type: %s)", path, imgType)), nil
+		}
 		return mcp.NewToolResultText(fmt.Sprintf("Image generated: %s (type: %s)", path, imgType)), nil
 	}
 }

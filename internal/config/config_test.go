@@ -28,6 +28,12 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.CompilerVersion != 2 {
 		t.Errorf("expected default CompilerVersion 2, got %d", cfg.CompilerVersion)
 	}
+	if cfg.ImageCacheDir == "" {
+		t.Error("expected default ImageCacheDir to be set")
+	}
+	if cfg.ImageCacheSize != 50 {
+		t.Errorf("expected default ImageCacheSize 50, got %d", cfg.ImageCacheSize)
+	}
 }
 
 func TestLoadConfig_FileNotExists(t *testing.T) {
