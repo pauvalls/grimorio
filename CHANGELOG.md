@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v5.0.0] - 2026-06-16
+
+### Docs
+
+- Update changelog for v4.2.0
+
+### Feat
+
+- Add syllable-based name generator for NPCs, characters, cities, and more 8)
+- Quality, Performance, English-First & Roadmap 9) (v5.0.0)
+
 ## [v4.2.0] - 2026-05-31
 
 ### Docs
