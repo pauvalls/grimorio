@@ -126,9 +126,9 @@ If `session_num == 1` and NO prologue exists:
 > - Check: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000`
 > - If 200 → ask, otherwise → silently skip, `tts_enabled = false`
 >
-> 🌐 **Language**: "🌐 Session language: Spanish or English?"
-> - **Spanish**: Rioplatense, warm (default for Latin American campaigns)
-> - **English**: Standard D&D terminology (default for international)
+> 🌐 **Language**: "🌐 Session language: ¿Español o English? / Spanish or English? [es/en]"
+> - **English (default)**: Standard D&D terminology
+> - **Spanish**: Rioplatense, warm (explicit opt-in)
 
 **Store for session:** `tts_enabled`, `dice_mode`, `game_mode`, `session_language`
 
@@ -521,11 +521,11 @@ get_audit_log(
 
 ### Session Language
 
-**Supported:** Spanish (default), English
+**Supported:** English (default), Spanish
 
 **Set at session start:**
-- Ask: "🌐 Session language: Spanish or English?"
-- Store as `session_language` = "es" or "en"
+- Ask: "🌐 Idioma de la sesión / Session language: ¿Español o English? / Spanish or English? [es/en]"
+- Store as `session_language` = "en" or "es" (default: **en**)
 - Use consistently for all narrative, dialogue, and mechanics
 
 ### TTS Language Configuration

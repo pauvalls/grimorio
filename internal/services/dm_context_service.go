@@ -512,7 +512,7 @@ func (s *DMContextService) GetContext(ctx context.Context, campaignID string, se
 				Parts: []domain.ProloguePartContext{
 					{
 						Order:       1,
-						Title:       "Prólogo",
+						Title:       "Prologue",
 						Content:     string(data),
 						IsReadAloud: true,
 					},
@@ -726,15 +726,15 @@ func (s *DMContextService) buildCondensedSummary(sessions []domain.SessionRecord
 	for _, session := range sessions {
 		for _, decision := range session.KeyDecisions {
 			if decision.ImpactScope == "campaign" {
-				fmt.Fprintf(&builder, "- %s (sesión %d)\n", decision.Description, session.SessionNum)
+				fmt.Fprintf(&builder, "- %s (session %d)\n", decision.Description, session.SessionNum)
 			}
 		}
 	}
 
 	// Add session summaries
-	builder.WriteString("\nResúmenes de Sesiones:\n")
+	builder.WriteString("\nSession Summaries:\n")
 	for _, session := range sessions {
-		fmt.Fprintf(&builder, "- Sesión %d: %s\n", session.SessionNum, session.Summary)
+		fmt.Fprintf(&builder, "- Session %d: %s\n", session.SessionNum, session.Summary)
 	}
 
 	return builder.String()

@@ -162,24 +162,24 @@ func (s *SessionGenerator) generateGenericEncounters(sessionNum int) []domain.En
 			Name:        "Encuentro de Combate",
 			CR:          fmt.Sprintf("%d-%d", sessionNum, sessionNum+1),
 			Type:        "combat",
-			Description: "Encuentro de combate balanceado para el nivel del partido.",
-			Context:     "Encuentro genérico - ajustar según la narrativa actual.",
+			Description: "Balanced combat encounter for the party's level.",
+			Context:     "Generic encounter - adjust to current narrative.",
 		},
 		{
 			Name:        "Encuentro Social",
 			CR:          "N/A",
 			Type:        "social",
-			Description: "Interacción con NPCs importantes o facciones.",
+			Description: "Interaction with important NPCs or factions.",
 			Context:     "Oportunidad para roleplay y desarrollo de la trama.",
 		},
 	}
 
 	if sessionNum >= 2 {
 		encounters = append(encounters, domain.EncounterRecommendation{
-			Name:        "Encuentro de Exploración",
+			Name:        "Exploration Encounter",
 			CR:          "N/A",
 			Type:        "exploration",
-			Description: "Descubrimiento de ubicación, trampa o misterio.",
+			Description: "Discovery of a location, trap, or mystery.",
 			Context:     "Momento para explorar el mundo y sus secretos.",
 		})
 	}
@@ -193,21 +193,21 @@ func (s *SessionGenerator) generateCombatEncounter(partyLevel, sessionNum int, d
 	// Try to find monsters in canon that match the CR
 	monsterName := s.findMonsterForCR(doc, cr)
 	if monsterName == "" {
-		monsterName = "Criaturas apropiadas"
+		monsterName = "Appropriate creatures"
 	}
 
 	return domain.EncounterRecommendation{
-		Name:        fmt.Sprintf("Combate: %s", monsterName),
+		Name:        fmt.Sprintf("Combat: %s", monsterName),
 		CR:          cr,
 		Type:        "combat",
-		Description: fmt.Sprintf("Encuentro de combate contra %s.", monsterName),
-		Context:     fmt.Sprintf("Encuentro balanceado para partido de nivel %d.", partyLevel),
+		Description: fmt.Sprintf("A combat encounter against %s.", monsterName),
+		Context:     fmt.Sprintf("Balanced encounter for a level %d.", partyLevel),
 	}
 }
 
 func (s *SessionGenerator) generateSocialEncounter(partyLevel, sessionNum int, state *domain.NarrativeState, doc *domain.CanonDocument) domain.EncounterRecommendation {
 	// Find an NPC from active quests or canon
-	npcName := "NPC Importante"
+	npcName := "Important NPC"
 	if len(state.ActiveQuests) > 0 && state.ActiveQuests[0].GiverNPC != "" {
 		npc := s.findNPCByID(doc, state.ActiveQuests[0].GiverNPC)
 		if npc != nil {
@@ -216,40 +216,40 @@ func (s *SessionGenerator) generateSocialEncounter(partyLevel, sessionNum int, s
 	}
 
 	return domain.EncounterRecommendation{
-		Name:        fmt.Sprintf("Social: Encuentro con %s", npcName),
+		Name:        fmt.Sprintf("Social: Encounter with %s", npcName),
 		CR:          "N/A",
 		Type:        "social",
-		Description: fmt.Sprintf("Interacción social con %s.", npcName),
-		Context:     "Oportunidad para obtener información, negociar o desarrollar relaciones.",
+		Description: fmt.Sprintf("Social interaction with %s.", npcName),
+		Context:     "Opportunity to gather information, negotiate, or develop relationships.",
 	}
 }
 
 func (s *SessionGenerator) generateExplorationEncounter(partyLevel, sessionNum int, doc *domain.CanonDocument) domain.EncounterRecommendation {
 	explorationTypes := []string{
-		"Descubrimiento de ruinas antiguas",
-		"Exploración de cueva misteriosa",
-		"Navegación por territorio peligroso",
-		"Investigación de fenómeno mágico",
+		"Discovery of ancient ruins",
+		"Exploration of a mysterious cave",
+		"Navigation through dangerous territory",
+		"Investigation of a magical phenomenon",
 	}
 
 	idx := rand.Intn(len(explorationTypes))
 
 	return domain.EncounterRecommendation{
-		Name:        fmt.Sprintf("Exploración: %s", explorationTypes[idx]),
+		Name:        fmt.Sprintf("Exploration: %s", explorationTypes[idx]),
 		CR:          "N/A",
 		Type:        "exploration",
-		Description: "Encuentro enfocado en exploración y descubrimiento.",
-		Context:     "Momento para que el partido explore y descubra secretos del mundo.",
+		Description: "Encounter focused on exploration and discovery.",
+		Context:     "Moment for the party to explore and uncover the world secrets.",
 	}
 }
 
 func (s *SessionGenerator) generateMixedEncounter(partyLevel, sessionNum int, state *domain.NarrativeState, doc *domain.CanonDocument) domain.EncounterRecommendation {
 	return domain.EncounterRecommendation{
-		Name:        "Encuentro Mixto: Combate + Social",
+		Name:        "Mixed Encounter: Combat + Social",
 		CR:          fmt.Sprintf("%d", partyLevel-1),
 		Type:        "mixed",
-		Description: "Encuentro que combina elementos de combate y interacción social.",
-		Context:     "Situación compleja que requiere tanto habilidades de combate como diplomacia.",
+		Description: "Encounter combining combat and social interaction elements.",
+		Context:     "Complex situation requiring both combat skills and diplomacy.",
 	}
 }
 
@@ -341,9 +341,9 @@ func (s *SessionGenerator) getRandomNPCs(doc *domain.CanonDocument, count int) [
 
 func (s *SessionGenerator) generateNPCContext(npc domain.CanonEntity, sessionNum int) string {
 	contexts := []string{
-		fmt.Sprintf("Aparece en la sesión %d proporcionando información o asistencia.", sessionNum),
-		fmt.Sprintf("Puede ser encontrado en su ubicación habitual durante la sesión %d.", sessionNum),
-		fmt.Sprintf("Posible encuentro casual durante la sesión %d.", sessionNum),
+		fmt.Sprintf("Appears in session %d providing information or assistance.", sessionNum),
+		fmt.Sprintf("Can be found in their usual location during session %d.", sessionNum),
+		fmt.Sprintf("Possible casual encounter during session %d.", sessionNum),
 	}
 
 	idx := rand.Intn(len(contexts))
@@ -363,16 +363,16 @@ func (s *SessionGenerator) generateGoldReward(tier int) domain.LootSuggestion {
 		Type:        "gold",
 		Rarity:      "common",
 		Description: fmt.Sprintf("Bolsa con %s", goldAmounts[tier]),
-		Context:     "Recompensa estándar por completar la sesión o derrotar enemigos.",
+		Context:     "Standard reward for completing the session or defeating enemies.",
 	}
 }
 
 func (s *SessionGenerator) generateMagicItem(tier int) domain.LootSuggestion {
 	items := map[int][]string{
-		1: {"Poción de Curación", "Pergamino de Hechizo (nivel 1)"},
-		2: {"Arma Mágica +1", "Armadura Mágica +1", "Anillo de Protección +1"},
-		3: {"Arma Mágica +2", "Objeto Maravilloso Mayor", "Pergamino de Hechizo (nivel 3-4)"},
-		4: {"Arma Mágica +3", "Objeto Maravilloso Legendario", "Artefacto Menor"},
+		1: {"Potion of Healing", "Spell Scroll (level 1)"},
+		2: {"Magic Weapon +1", "Magic Armor +1", "Ring of Protection +1"},
+		3: {"Magic Weapon +2", "Greater Wondrous Item", "Spell Scroll (level 3-4)"},
+		4: {"Magic Weapon +3", "Legendary Wondrous Item", "Minor Artifact"},
 	}
 
 	itemList := items[tier]
@@ -387,16 +387,16 @@ func (s *SessionGenerator) generateMagicItem(tier int) domain.LootSuggestion {
 		Name:        itemList[idx],
 		Type:        "magical",
 		Rarity:      rarity,
-		Description: fmt.Sprintf("Objeto mágico apropiado para tier %d.", tier),
+		Description: fmt.Sprintf("Magic item appropriate for tier %d.", tier),
 		Context:     "Recompensa significativa por logros importantes.",
 	}
 }
 
 func (s *SessionGenerator) generateConsumable(tier int) domain.LootSuggestion {
 	consumables := []string{
-		"Poción de Velocidad",
-		"Poción de Resistencia",
-		"Antídoto",
+		"Potion of Speed",
+		"Potion of Resistance",
+		"Antitoxin",
 		"Kit de Escalada",
 		"Raciones de Viaje",
 	}
@@ -411,17 +411,17 @@ func (s *SessionGenerator) generateConsumable(tier int) domain.LootSuggestion {
 		Name:        consumables[idx],
 		Type:        "consumable",
 		Rarity:      rarity,
-		Description: "Ítem consumible útil para la aventura.",
-		Context:     "Suministros o consumibles mágicos para el partido.",
+		Description: "Useful consumable item for the adventure.",
+		Context:     "Magical supplies or consumables for the party.",
 	}
 }
 
 func (s *SessionGenerator) generateRareItem(tier int) domain.LootSuggestion {
 	rareItems := []string{
-		"Objeto Maravilloso Raro",
-		"Armadura Mágica +2",
-		"Varita Mágica",
-		"Amuleto de Protección",
+		"Rare Wondrous Item",
+		"Magic Armor +2",
+		"Magic Wand",
+		"Amulet of Protection",
 	}
 
 	idx := rand.Intn(len(rareItems))
@@ -430,7 +430,7 @@ func (s *SessionGenerator) generateRareItem(tier int) domain.LootSuggestion {
 		Name:        rareItems[idx],
 		Type:        "magical",
 		Rarity:      "rare",
-		Description: "Objeto mágico raro de gran utilidad.",
+		Description: "Rare magic item of great utility.",
 		Context:     "Recompensa excepcional por logros extraordinarios.",
 	}
 }
