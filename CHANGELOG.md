@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v5.0.2] - 2026-06-16
+
+### Refactor
+
+- Rename `grimorio-areas` agent and skill to `grimorio-chapters` (v5.0 alignment)
+  - `agents/grimorio-areas.md` is now a deprecated stub pointing to chapters
+  - `agents/grimorio-chapters.md` is the new primary agent
+  - `scripts/validate-opencode.sh` and `patch-opencode-config.py` updated
+  - README architecture diagram updated
+
 ## [v5.0.1] - 2026-06-16
 
 ### Feat

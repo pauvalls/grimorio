@@ -645,7 +645,7 @@ irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 │  Content Sub-agents (delegated):                             │
 │  ├─ grimorio-lore       ├─ grimorio-npc                     │
 │  ├─ grimorio-bestiary   ├─ grimorio-encounters              │
-│  ├─ grimorio-maps       ├─ grimorio-areas (WotC format)     │
+│  ├─ grimorio-maps       ├─ grimorio-chapters (WotC format)  │
 │  ├─ grimorio-quests     ├─ grimorio-characters              │
 │  └─ grimorio-narrative-custodian (validation)               │
 │                              │                               │

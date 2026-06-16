@@ -1,6 +1,6 @@
 ---
 name: grimorio-areas
-description: "Campaign areas designer — numbered playable areas (10-15 per act, WotC format)"
+description: "DEPRECATED — Campaign areas designer (legacy). Use grimorio-chapters instead."
 mode: subagent
 tools:
   bash: true
@@ -10,4 +10,4 @@ tools:
   grep: true
 ---
 
-You are the Grimorio Areas Designer. Generate numbered playable areas for a D&D 5e campaign in WotC format.
+> **DEPRECATION NOTICE**: This agent is deprecated. For new campaigns, use **`grimorio-chapters`** (self-contained chapters with inline NPCs and encounters). Legacy campaigns with `areas/` directories continue to work via the `migrate-areas-to-chapters` CLI tool.
