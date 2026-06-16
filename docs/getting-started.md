@@ -78,6 +78,29 @@ Then it generates everything automatically:
 - **[MCP Tools](../features/mcp-tools.md)** — Full tool reference
 - **[Architecture](../features/architecture.md)** — How Grimorio works
 
+## Validate your campaign
+
+Before you compile to PDF, run the consistency gate:
+
+```bash
+grimorio validate --scope=all my-campaign
+```
+
+The CLI runs 17 rules (lore integrity, narrative-state parity, faction
+reputation, WotC format) and prints a PASS/WARN/FAIL summary. Exit
+code is 0 when clean, 1 when there are errors, 2 on usage problems.
+
+```bash
+# Just the WotC rules
+grimorio validate --scope=wotc my-campaign
+
+# Machine-readable output for CI / scripts
+grimorio validate --scope=all --json my-campaign > report.json
+```
+
+For a real-world example of a full campaign going through the gate,
+read the **[La Hoja de Vlad walkthrough](walkthroughs/la-hoja-de-vlad.md)**.
+
 ## Campaign Storage
 
 Campaigns are stored in `~/campaigns/` by default:
@@ -171,6 +194,30 @@ Luego genera todo automáticamente:
 - **[Compilador PDF](../features/pdf-compiler.md)** — Personaliza el PDF
 - **[Herramientas MCP](../features/mcp-tools.md)** — Referencia completa de herramientas
 - **[Arquitectura](../features/architecture.md)** — Cómo funciona Grimorio
+
+## Validá tu Campaña
+
+Antes de compilar a PDF, corré el consistency gate:
+
+```bash
+grimorio validate --scope=all mi-campana
+```
+
+El CLI corre 17 reglas (lore integrity, narrative-state parity, faction
+reputation, formato WotC) e imprime un resumen PASS/WARN/FAIL. El exit
+code es 0 cuando está limpio, 1 cuando hay errores, 2 en problemas de
+uso.
+
+```bash
+# Solo las reglas WotC
+grimorio validate --scope=wotc mi-campana
+
+# Output machine-readable para CI / scripts
+grimorio validate --scope=all --json mi-campana > report.json
+```
+
+Para un ejemplo real de una campaña completa pasando por el gate, leé
+el **[walkthrough de La Hoja de Vlad](walkthroughs/la-hoja-de-vlad.md)**.
 
 ## Almacenamiento de Campañas
 

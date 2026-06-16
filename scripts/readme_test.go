@@ -130,3 +130,48 @@ func TestREADME_DropsExperimentalWindowsLabel(t *testing.T) {
 		t.Error("README must not call Windows support 'experimental' (Spanish section)")
 	}
 }
+
+// TestREADME_DocLinksResolve walks every relative docs/ link in README.md
+// and asserts the file exists. Stubs were added for mcp-tools.md and
+// architecture.md so the table-of-contents rows resolve cleanly.
+func TestREADME_DocLinksResolve(t *testing.T) {
+	content, err := os.ReadFile(readmePath())
+	if err != nil {
+		t.Fatalf("failed to read README.md: %v", err)
+	}
+	c := string(content)
+
+	// Extract every relative docs/* and examples/* link target.
+	var targets []string
+	for _, line := range strings.Split(c, "\n") {
+		for _, needle := range []string{"](docs/", "](examples/"} {
+			idx := 0
+			for {
+				i := strings.Index(line[idx:], needle)
+				if i < 0 {
+					break
+				}
+				// needle is "](" + path-prefix; the path begins right after.
+				pathStart := idx + i + len("](")
+				rest := line[pathStart:]
+				j := strings.Index(rest, ")")
+				if j > 0 {
+					targets = append(targets, rest[:j])
+				}
+				idx = pathStart
+			}
+		}
+	}
+
+	if len(targets) == 0 {
+		t.Fatal("no docs/ or examples/ links found in README.md — did the parser break?")
+	}
+
+	root := repoRoot()
+	for _, path := range targets {
+		full := filepath.Join(root, path)
+		if _, err := os.Stat(full); err != nil {
+			t.Errorf("README link target does not exist: %s", path)
+		}
+	}
+}

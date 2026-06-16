@@ -599,6 +599,30 @@ irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 
 ---
 
+## Reference Campaigns / Campañas de Referencia
+
+**📚 [`examples/la-hoja-de-vlad/`](examples/la-hoja-de-vlad/)** — A complete 3-act gothic-political campaign (level 1–5) generated end-to-end with Grimorio: 12 NPCs, 28 files, a WotC-style compiled PDF, and 17 consistency rules passing. Use it as:
+
+- A learning artifact: read the [annotated walkthrough](docs/walkthroughs/la-hoja-de-vlad.md) to see how lore, NPCs, chapters, and handouts fit together.
+- A regression baseline: the validation engine's `wotc_*` rules are tested against this campaign.
+- A starting point: copy the directory to `~/campaigns/` and remix.
+
+> 🩸 **La Hoja de Vlad** is the campaign in this repo. It's the canonical answer to "what does a finished Grimorio campaign look like?".
+
+---
+
+## Campañas de Referencia
+
+**📚 [`examples/la-hoja-de-vlad/`](examples/la-hoja-de-vlad/)** — Una campaña gótico-política completa de 3 actos (nivel 1-5) generada end-to-end con Grimorio: 12 NPCs, 28 archivos, un PDF compilado estilo WotC y 17 reglas de consistencia pasando. Usala como:
+
+- Artefacto de aprendizaje: leé el [walkthrough anotado](docs/walkthroughs/la-hoja-de-vlad.md) para ver cómo encajan lore, NPCs, capítulos y handouts.
+- Baseline de regresión: las reglas `wotc_*` del motor de validación se prueban contra esta campaña.
+- Punto de partida: copiá el directorio a `~/campaigns/` y remixalo.
+
+> 🩸 **La Hoja de Vlad** es la campaña de este repo. Es la respuesta canónica a "¿cómo se ve una campaña de Grimorio terminada?".
+
+---
+
 ## License / Licencia
 
 **Mozilla Public License 2.0** — See [LICENSE](LICENSE) for details.

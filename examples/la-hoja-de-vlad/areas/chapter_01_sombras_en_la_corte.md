@@ -55,6 +55,7 @@ La noche cae sobre Vladgrad mientras los PJs se acercan a la mansión del Conde 
 Porteros silenciosos con librea negra toman las capas de los invitados sin decir palabra. Sus ojos están vacíos, como si estuvieran bajo algún tipo de influjo. Dentro, el sonido de un cuarteto de cuerdas toca una melodía menor que parece acelerar el ritmo cardíaco.
 
 > **Read-Aloud:** *Las puertas de roble se abren ante vosotros, revelando un vestíbulo iluminado por candelabros de plata. Las paredes están cubiertas de tapices que representan batallas antiguas, pero los rostros de los soldados han sido raspados, dejando solo siluetas fantasmales. El aire es frío, demasiado frío para una noche de primavera, y vuestro aliento se condensa en pequeñas nubes blancas. Un mayordomo pálido se acerca, sus movimientos fluidos como los de un depredador.*
+<!-- WOTC: boxed_text — 89 words; second person present tense (ves/abren/revelando); sensory details only (luz fría, tapices, aliento condensado). Validates grimorio-areas skill rule "wotc_boxed_text". -->
 
 ### El Vestíbulo de los Ancestros
 
@@ -65,6 +66,7 @@ Los retratos de los antepasados Dragomir cubren las paredes, pero cada rostro ha
 **Ganchos de Personaje:**
 - **Para personaje con trasfondo noble (Katarina):** Reconocés el escudo familiar de los Voronova en uno de los tapices. Alguien lo cosió aquí en secreto, una declaración de lealtad prohibida.
 - **Para personaje religioso (Ivan):** Los símbolos pintados sobre los retratos son marcas de protección contra no-muertos. Alguien en esta casa teme a los muertos vivientes.
+<!-- WOTC: character_hook — 2 hooks (noble + religious backgrounds). Each hook ties character identity to a discoverable detail in the room. Validates grimorio-areas skill rule "wotc_character_hooks". -->
 
 **Descripción para el DM:**
 El vestíbulo es una trampa psicológica. Los retratos están encantados con magia de adivinación menor—cualquiera que los observe por más de 1 minuto siente una presencia observándolo de vuelta.
@@ -78,6 +80,7 @@ El vestíbulo es una trampa psicológica. Los retratos están encantados con mag
 1. **Los PJs examinan los retratos:** Descubren que uno de los ancestros (el abuelo del Conde) fue miembro fundador del culto. *Recuperación:* Si no examinan, el Conde les muestra el retrato más tarde durante una conversación privada.
 2. **Los PJs encuentran el pergamino:** Contiene una lista de nombres tachados—las víctimas del culto. *Recuperación:* Si no lo encuentran, un NPC moribundo les susurra los nombres antes de morir en el Área 3.
 3. **Los PJs ignoran el vestíbulo:** Pierden ventaja en la primera tirada social del banquete. *Recuperación:* Pueden recuperar la ventaja gastando un recurso (inspiración, punto de ki, slot de conjuro).
+<!-- WOTC: development_branch — 3 IF-THEN branches (retratos / pergamino / ignoran), each with explicit Consecuencia and Recuperación paths. Validates grimorio-areas skill rule "wotc_developments". -->
 
 **Cómo Dirigir esta Escena:**
 1. **Preparación:** Tené listo el mapa del vestíbulo. Prepará la descripción de al menos 3 retratos específicos. Tené el pergamino oculto statteado.
