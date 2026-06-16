@@ -1,8 +1,15 @@
+---
+name: grimorio-architect
+version: "5.0.0"
+description: Orchestrate end-to-end D&D 5e campaign generation via delegate pattern. Chapter-sequential workflow, English-first with language intake, v5.0 features (health dashboard, validate CLI, exports, image cache, templates).
+---
+
 # Grimorio Architect Skill
 
-**Tipo:** orchestrator  
-**Dominio:** D&D 5e campaign generation  
-**Alcance:** End-to-end campaign creation via delegate pattern
+**Type:** orchestrator
+**Domain:** D&D 5e campaign generation
+**Scope:** End-to-end campaign creation via delegate pattern
+**Version:** 5.0.0
 
 ---
 
@@ -25,274 +32,103 @@ default to English if they skip:
   <original prompt body>
   ```
 
-  Sub-agent skills (e.g. `grimorio-npc`, `grimorio-areas`) read the `LANG:`
+  Sub-agent skills (e.g. `grimorio-npc`, `grimorio-chapters`) read the `LANG:`
   line from the prompt preamble and render their content in the requested
   language. If the preamble is missing, sub-agents default to English.
 
 ---
 
-## Descripción
+## Architecture: Chapter-Sequential (v5.0)
 
-Sos el **Grimorio Architect**, un agente experto en diseño de campañas de D&D 5e. Tu rol es **ORQUESTAR**, no ejecutar. Delegás TODO el contenido creativo a sub-agentes especializados y reportás progreso al usuario después de cada fase.
-
-## Nuevo: Flujo Chapter-Sequential (Recomendado)
-
-Para nuevas campañas, usá el flujo **chapter-sequential** en lugar del pipeline batch de 17 fases:
+The v5.0 workflow is **chapter-sequential** — chapters are the campaign's
+skeleton, and everything else (NPCs, bestiary, encounters, quests) anchors
+to them. This produces more coherent campaigns than the legacy batch pipeline.
 
 ```
-Fases 1-3: Requisitos, Bible, Intro (sin cambios)
-Fase 4+:   Para cada capítulo:
-           → grimorio-chapters → save_chapter
-           → Validación inmediata (blocking)
-           → Si pasa: continuar al siguiente capítulo
-           → Si falla: corregir y reintentar
-Fase N-1:  Appendices consolidados (bestiary, full NPCs)
-Fase N:    compile_pdf
+┌────────────────────────────────────────────────────────────────────┐
+│ MACRO-PHASE 1: FOUNDATION                                          │
+│   create_campaign → bible → name pool → introduction + setting    │
+│   GATE: validate_canon                                             │
+├────────────────────────────────────────────────────────────────────┤
+│ MACRO-PHASE 2: CHAPTERS (sequential, 1 at a time)                  │
+│   For each chapter:                                                │
+│     save_chapter → maps + dividers → narrative-custodian → WotC    │
+├────────────────────────────────────────────────────────────────────┤
+│ MACRO-PHASE 3: BESTIARY & CHARACTERS (parallel)                    │
+│   NPCs + bestiary + encounters + quests + characters + appendices  │
+│   GATE: narrative-custodian                                        │
+├────────────────────────────────────────────────────────────────────┤
+│ MACRO-PHASE 4: ART & LIVING WORLD (parallel)                       │
+│   Images → markdown refs → random tables → handouts → factions     │
+│   → treasure → health dashboard                                    │
+├────────────────────────────────────────────────────────────────────┤
+│ MACRO-PHASE 5: EXPORT & DELIVER                                    │
+│   grimorio validate (CLI) → export_campaign → final report         │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
-**Ventajas:**
-- Cada capítulo es auto-contenido (DM ejecuta con 1 archivo)
-- Validación per-chapter bloquea errores temprano
-- Menor contexto por llamada (mejor calidad)
-- NPCs inline condensados (150-300w) + perfiles completos en appendices
+**Why chapters first?**
+- Chapters define the **spatial and narrative skeleton**.
+- NPCs and monsters anchor to specific chapters and areas.
+- Encounters live in areas; quests unfold across chapters.
+- Treasure appears in hoards tied to specific encounters.
+- Cross-references resolve correctly because the destinations exist.
 
-**Herramienta nueva:** `save_chapter` (reemplaza `save_areas` para capítulos nuevos)
-**Skill nuevo:** `grimorio-chapters` (reemplaza `grimorio-areas` + `grimorio-encounters`)
-
-Las campañas existentes con `areas/` siguen funcionando (backwards compatibility).
+**Backwards compatibility:** Legacy `areas/` campaigns still work. Use the
+`migrate-areas-to-chapters` CLI to upgrade.
 
 ---
 
-## Configuración Requerida
+## Phase 1: Gather Requirements (Interactive)
 
-### 1. Verificación Inicial (OBLIGATORIO)
+Ask the user these questions **ONE AT A TIME** (do not batch):
 
-Antes de empezar, validá la configuración con:
+1. **Campaign name** (kebab-case, e.g. "sunken-city")
+2. **Type** — one-shot or full campaign?
+3. **Brief idea** — 2-3 sentence story description
+4. **Player level** — 1-3, 4-6, 7-10, 11-15, 16-20
+5. **Tone** — heroic, dark, humorous, political intrigue, horror, mystery
+6. **Duration** — one-shot, 3-5 sessions, long campaign
+
+**Optional templates** — offer 5 pre-filled archetypes:
+- Urban Fantasy (mystery tone, urban setting)
+- Gothic Horror (horror tone, dark setting)
+- Maritime Adventure (heroic tone, nautical setting)
+- Dungeon Crawl (grim tone, dungeon setting)
+- Political Intrigue (political tone, urban setting)
+
+If the user picks a template, populate the questions with template defaults
+and let them confirm or override.
+
+---
+
+## Phase 2: Initial Configuration Check
 
 ```bash
 ./scripts/validate-opencode.sh --check=all
 ```
 
-**Checks críticos:**
-- ✅ Todos los agentes grimorio-* definidos en opencode.json
-- ✅ Templates existen en `internal/compiler/templates/`
-- ✅ Script `validate-campaign.sh` existe y es ejecutable
-- ✅ Binario Grimorio compilado
-- ✅ Configuración SDD presente (delivery_strategy, chain_strategy)
+**Critical checks:**
+- ✅ All `grimorio-*` agents defined in `opencode.json`
+- ✅ Templates exist in `internal/compiler/templates/`
+- ✅ `grimorio` binary is built and runnable
+- ✅ SDD config present (`delivery_strategy`, `chain_strategy`)
 
-Si alguna validación falla, **NO procedas**. Informá al usuario y esperá que se corrija.
-
-### 2. Templates WotC (LEER ANTES DE GENERAR)
-
-Cada sub-agente DEBE leer su template correspondiente:
-
-| Agente | Template | Estándar WotC |
-|--------|----------|---------------|
-| grimorio-areas | `internal/compiler/templates/areas.md.tmpl` | Boxed text 100-600 palabras, ≥2 hooks/área, ≥3 developments con recovery, running guidance 150-400 palabras, ≥1 sidebar/acto |
-| grimorio-npc | `internal/compiler/templates/npc.md.tmpl` | 500-800 palabras/NPC, 6 secciones, reputación de facciones |
-| grimorio-bestiary | `internal/compiler/templates/monster.md.tmpl` | Stat blocks completos, tácticas, lore |
-| grimorio-encounters | `internal/compiler/templates/encounter.md.tmpl` | Balance CR, recompensas, escalado |
-| grimorio-lore | `internal/compiler/templates/lore.md.tmpl` | Historia del mundo, atmósfera, contexto |
-| grimorio-maps | `internal/compiler/templates/map.md.tmpl` | Descripciones de locaciones, zonas |
-| grimorio-setting-guide | `internal/compiler/templates/setting-guide.md.tmpl` | DM-only, spoilers, geografía, facciones |
-| grimorio-appendices | `internal/compiler/templates/appendices.md.tmpl` | Material de referencia consolidado |
-| grimorio-introduction | `internal/compiler/templates/introduction.md.tmpl` | Hooks para el DM, expectativas |
-
-### 3. Validación WotC (MANDATORIO ANTES DE PDF)
-
-El script `./scripts/validate-campaign.sh` DEBE pasar antes de compilar PDF:
-
-```bash
-./scripts/validate-campaign.sh {campaign_path} --check=all
-```
-
-**Thresholds:**
-- **Boxed Text:** 100-600 palabras por área (grep: `^>>`)
-- **Character Hooks:** ≥2 por área
-- **Developments:** ≥3 por área con 100% recovery paths
-- **Running Guidance:** 150-400 palabras por sección
-- **Sidebars:** ≥1 por acto (grep: `^> #####`)
-- **Cross-References:** 100% de criaturas/NPCs deben existir en archivos fuente
-
-**Blocking:** Si la validación falla, NO compilar PDF. Corregir issues y re-validar.
-
-### 3b. Validación Detallada de Estándares WotC
-
-**Boxed Text Validation:**
-```bash
-# Count boxed text sections
-boxed_count=$(grep -c '^>>' {campaign_path}/acts/*.md | awk -F: '{sum+=$2} END {print sum}')
-
-# Validate word count per boxed text section
-grep -A 20 '^>>' {campaign_path}/acts/*.md | while read -r line; do
-  if [[ $line == ">>"* ]]; then
-    word_count=$(echo "$boxed_text" | wc -w)
-    if [ $word_count -lt 100 ] || [ $word_count -gt 600 ]; then
-      echo "❌ Boxed Text: $word_count words (required: 100-600)"
-      exit 1
-    fi
-  fi
-done
-
-echo "✅ Boxed Text: $boxed_count sections (100-600 words each)"
-```
-**Threshold:** 100-600 words per boxed text section  
-**Recovery:** "Expand boxed text in {area} (add sensory details)" or "Condense boxed text in {area} (remove redundant descriptions)"
-
-**Character Hooks Validation:**
-```bash
-# Count character hooks per area
-for act_file in {campaign_path}/acts/*.md; do
-  area_count=$(grep -c '^## Area' "$act_file")
-  hook_count=$(grep -ci 'hook\|gancho' "$act_file")
-  hooks_per_area=$((hook_count / area_count))
-  
-  if [ $hooks_per_area -lt 2 ]; then
-    echo "❌ Character Hooks: $hooks_per_area per area (required: ≥2)"
-    echo "   Areas missing hooks: $(grep -B 5 -i 'hook\|gancho' "$act_file" | grep -v -i 'hook\|gancho' | grep '^## Area' | head -5)"
-    exit 1
-  fi
-done
-
-echo "✅ Character Hooks: $hooks_per_area per area (≥2 required)"
-```
-**Threshold:** ≥2 character hooks per area  
-**Recovery:** "Add character hooks to Areas {list} (tie to PC backgrounds/classes)"
-
-**Developments Validation:**
-```bash
-# Count developments per area
-for act_file in {campaign_path}/acts/*.md; do
-  dev_count=$(grep -ci 'development\|desarrollo' "$act_file")
-  area_count=$(grep -c '^## Area' "$act_file")
-  devs_per_area=$((dev_count / area_count))
-  
-  if [ $devs_per_area -lt 3 ]; then
-    echo "❌ Developments: $devs_per_area per area (required: ≥3)"
-    exit 1
-  fi
-  
-  # Check recovery paths
-  recovery_count=$(grep -ci 'if.*fail\|si.*fallan' "$act_file")
-  if [ $recovery_count -lt $dev_count ]; then
-    echo "❌ Recovery Paths: $recovery_count/$dev_count developments have recovery paths"
-    exit 1
-  fi
-done
-
-echo "✅ Developments: $devs_per_area per area with recovery paths (≥3 required)"
-```
-**Threshold:** ≥3 development branches per area, 100% with recovery paths  
-**Recovery:** "Add recovery paths to developments in {area} (add 'If PCs fail...' clause)"
-
-**Running Guidance Validation:**
-```bash
-# Count running guidance sections and validate word count
-guidance_count=$(grep -c '^### Cómo Dirigir esta Escena\|^### Running the Scene' {campaign_path}/acts/*.md | awk -F: '{sum+=$2} END {print sum}')
-
-for act_file in {campaign_path}/acts/*.md; do
-  word_count=$(awk '/^### Cómo Dirigir esta Escena/,/^### |^## /' "$act_file" | wc -w)
-  if [ $word_count -lt 150 ] || [ $word_count -gt 400 ]; then
-    echo "❌ Running Guidance: $word_count words (required: 150-400)"
-    exit 1
-  fi
-done
-
-echo "✅ Running Guidance: $guidance_count sections (150-400 words each)"
-```
-**Threshold:** 150-400 words per running guidance section  
-**Recovery:** "Expand running guidance in {area} (add Prep, Pacing, Signals, Improvisation, Script subsections)"
-
-**Sidebars Validation:**
-```bash
-# Count sidebars per act
-for act_file in {campaign_path}/acts/*.md; do
-  sidebar_count=$(grep -c '^> #####' "$act_file")
-  act_title=$(basename "$act_file")
-  
-  if [ $sidebar_count -lt 1 ]; then
-    echo "❌ Sidebars: $sidebar_count in $act_title (required: ≥1 per act)"
-    exit 1
-  fi
-done
-
-echo "✅ Sidebars: $(grep -c '^> #####') total (≥1 per act)"
-```
-**Threshold:** ≥1 sidebar per act  
-**Recovery:** "Add sidebar to {act} (rules clarification, DM tip, or lore excerpt)"
-
-**Cross-References Validation:**
-```bash
-# Check creature references exist in bestiary
-creature_refs=$(grep -oE '\[([A-Z][a-z]+ [A-Z][a-z]+)\]' {campaign_path}/acts/*.md | sort -u)
-for creature in $creature_refs; do
-  if ! grep -q "$creature" {campaign_path}/bestiary/bestiary.md; then
-    echo "❌ Creature reference: $creature not found in bestiary"
-    exit 1
-  fi
-done
-
-echo "✅ Creature References: All $(echo "$creature_refs" | wc -l) creatures exist in bestiary"
-
-# Check NPC references exist in npcs_and_factions.md
-npc_refs=$(grep -oE '\*([A-Z][a-z]+ [A-Z][a-z]+)\*' {campaign_path}/acts/*.md | sort -u)
-for npc in $npc_refs; do
-  if ! grep -q "$npc" {campaign_path}/npcs/npcs_and_factions.md; then
-    echo "❌ NPC reference: $npc not found in npcs_and_factions.md"
-    exit 1
-  fi
-done
-
-echo "✅ NPC References: All $(echo "$npc_refs" | wc -l) NPCs exist in npcs_and_factions.md"
-```
-**Threshold:** 100% of creature/NPC references must exist in source files  
-**Recovery:** "Add {creature/npc} to bestiary/npcs file OR fix reference in {area}"
-
-**Validation Failure Handling:**
-```markdown
-## Phase X: WotC Validation FAILED
-
-❌ Issues Found: {count}
-
-{Specific failures from validation script}
-
-**Remediation Steps:**
-1. {Step 1 from script output}
-2. {Step 2 from script output}
-3. {Step 3 from script output}
-
-**Next Action:**
-- Fix the issues above
-- Re-run: `./scripts/validate-campaign.sh {campaign_path}`
-- PDF compilation will proceed after validation passes
-```
-
-**DO NOT proceed to PDF Compilation until validation passes.**
+If any validation fails, **DO NOT proceed**. Report to the user and wait.
 
 ---
 
-## Workflow Secuencial (3 Capítulos, Nivel 1-5)
+## Macro-Phase 1: Foundation
 
-### Fase 1: Gather Requirements (INTERACTIVO)
-
-Hacé estas preguntas **UNA POR VEZ** (no todas juntas):
-
-1. ¿Nombre de la campaña? (kebab-case, ej: "sombra-heroica")
-2. ¿One-shot o campaña completa?
-3. ¿Idea de la campaña / descripción breve? (2-3 oraciones)
-4. ¿Rango de nivel? (1-3, 4-6, 7-10, 11-15, 16-20)
-5. ¿Tono deseado? (heroic, dark, humorous, political intrigue)
-6. ¿Duración? (one-shot, 3-5 sessions, long campaign)
-
-### Fase 2: Create Campaign Structure
+### Step 1.1: Create Campaign Structure
 
 ```
 MCP: create_campaign(name="{campaign-name}", setting="{setting}", title="{title}")
 ```
 
-Guardá el `campaign_path` retornado.
+Save the returned `campaign_path`.
 
-### Fase 2b: Generate Adventure Bible (Canon)
+### Step 1.2: Generate Adventure Bible (Canon)
 
 ```
 MCP: generate_adventure_bible(
@@ -308,47 +144,41 @@ MCP: generate_adventure_bible(
 )
 ```
 
-Esto crea `canon.json` — la fuente única de verdad.
+This creates `canon.json` — the single source of truth.
 
-### Fase 2c: Generate Name Pool (MCP)
+### Step 1.3: Generate Name Pool
 
-Generate culturally-consistent name pools BEFORE delegating content to sub-agents. This ensures cross-references use exact names and prevents duplicate or inconsistent naming.
-
-**Generate names for all content phases:**
+Generate culturally-consistent name pools BEFORE delegating content. This
+ensures cross-references use exact names and prevents duplicates.
 
 ```
-MCP: generate_names(category="npc", style="{dominant-style}", count=20)
-MCP: generate_names(category="monster", style="{dominant-style}", count=15)
-MCP: generate_names(category="character", style="{dominant-style}", count=10)
-MCP: generate_names(category="city", style="{dominant-style}", count=10)
-MCP: generate_names(category="faction", style="{dominant-style}", count=10)
-MCP: generate_names(category="tavern", style="{dominant-style}", count=8)
-MCP: generate_names(category="item", style="{dominant-style}", count=12)
+MCP: generate_names(category="npc", style="{style}", count=20)
+MCP: generate_names(category="monster", style="{style}", count=15)
+MCP: generate_names(category="character", style="{style}", count=10)
+MCP: generate_names(category="city", style="{style}", count=10)
+MCP: generate_names(category="faction", style="{style}", count=10)
+MCP: generate_names(category="tavern", style="{style}", count=8)
+MCP: generate_names(category="item", style="{style}", count=12)
 ```
 
 **Phase mapping for injection:**
-- Phase 4 (NPCs + Bestiary): inject `npc` and `monster` names
-- Phase 6 (Characters): inject `character` names
-- Phase 8 (Areas + Maps): inject `city` and `tavern` names
-- Phase 10 (Appendices): inject `item` and `faction` names
+- Macro-Phase 2 (Chapters): inject `city` and `tavern` names
+- Macro-Phase 3 (NPCs + Bestiary): inject `npc` and `monster` names
+- Macro-Phase 3 (Characters): inject `character` names
+- Macro-Phase 4 (Appendices): inject `item` and `faction` names
 
-**CRITICAL — USE THESE EXACT NAMES:**
-When delegating to ANY sub-agent that creates named entities, prepend the generated name pool to the prompt:
+**CRITICAL:** When delegating content creation, prepend the name pool:
 
 ```
 PRE-GENERATED NAME POOL (USE THESE EXACT NAMES — do NOT invent alternatives):
 - NPCs: {name1}, {name2}, {name3} ...
 - Monsters: {name1}, {name2}, {name3} ...
-- Characters: {name1}, {name2}, {name3} ...
-- Cities: {name1}, {name2}, {name3} ...
-- Factions: {name1}, {name2}, {name3} ...
-- Taverns: {name1}, {name2}, {name3} ...
-- Items: {name1}, {name2}, {name3} ...
+...
 
 INSTRUCTION: Use names from the pool above. Do NOT create new names.
 ```
 
-### Fase 3: Introduction
+### Step 1.4: Introduction (parallel with 1.5, 1.6)
 
 ```
 delegate(agent="grimorio-introduction", prompt="LANG: en
@@ -361,95 +191,21 @@ Brief: {brief-description}
 Template: internal/compiler/templates/introduction.md.tmpl")
 ```
 
-### Fase 4: Batch 1 — Contenido Base (PARALLEL)
-
-**NPCs:**
-```
-delegate(agent="grimorio-npc", prompt="LANG: en
-
-Generate NPCs for '{campaign-name}' at {campaign-path}.
-
-Setting: {setting}
-Tone: {tone}
-Level: {level-range}
-
-CRITICAL:
-1. Read template: internal/compiler/templates/npc.md.tmpl
-2. Follow WotC standard: 500-800 words per NPC, 6 sections
-3. Include faction reputation system with propagation
-4. Use exact names for cross-references")
-```
-
-**Bestiary:**
-```
-delegate(agent="grimorio-bestiary", prompt="LANG: en
-
-Generate BESTIARY for '{campaign-name}' at {campaign-path}.
-
-Setting: {setting}
-Tone: {tone}
-Level: {level-range}
-
-CRITICAL:
-1. Read template: internal/compiler/templates/monster.md.tmpl
-2. Include stat blocks, tactics, lore
-3. Balance CR for level-range")
-```
-
-**Maps:**
-```
-delegate(agent="grimorio-maps", prompt="LANG: en
-
-Generate MAP DESCRIPTIONS for '{campaign-name}' at {campaign-path}.
-
-Setting: {setting}
-Tone: {tone}
-Brief: {brief-description}
-
-CRITICAL: Read template: internal/compiler/templates/map.md.tmpl")
-```
-
-### Fase 4b: Register NPCs and Bestiary in Canon
-
-**CRITICAL:** After NPCs and Bestiary are generated, you MUST register them in canon.json.
+### Step 1.5: Setting Guide (DM-only, parallel)
 
 ```
-MCP: save_npcs(campaign="{campaign-name}", content={read npcs_and_factions.md})
-MCP: save_bestiary(campaign="{campaign-name}", content={read bestiary.md})
+delegate(agent="grimorio-setting-guide", prompt="LANG: en
+
+Generate SETTING GUIDE for '{campaign-name}' at {campaign-path}.
+
+Read canon.json. DM-only with spoilers.
+Template: internal/compiler/templates/setting-guide.md.tmpl
+
+Include: Geography, History, Culture, Factions, Secrets")
 ```
 
-**Why:** This syncs the markdown content with canon.json so `grimorio_dm_session_context` can load them.
+### Step 1.6: Lore (parallel)
 
-**Expected result:**
-- ✅ NPCs registered (count: X)
-- ✅ Monsters registered (count: Y)
-- ✅ No warnings in DM Context
-
-### Fase 5: Validate Batch 1 (CONSISTENCY GATE)
-
-```
-delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
-
-Validate Batch 1 for '{campaign-name}' at {campaign-path}.
-
-Read canon.json and narrative_state.json.
-
-Check:
-- Dead NPCs appearing alive
-- Missing entities
-- World rule violations
-- Level-appropriate encounters
-
-MCP: validate_canon
-
-Return: status (approved/rejected) + specific fixes")
-```
-
-**BLOCKING:** Si rejected después de 2 retries, PARÁ y reportá fallo.
-
-### Fase 6: Batch 2 — Lore + Quests + Encounters + Characters (PARALLEL)
-
-**Lore:**
 ```
 delegate(agent="grimorio-lore", prompt="LANG: en
 
@@ -462,32 +218,184 @@ Level: {level-range}
 CRITICAL: Read template: internal/compiler/templates/lore.md.tmpl")
 ```
 
-**Setting Guide:**
+### GATE 1: Canon Validation
+
 ```
-delegate(agent="grimorio-setting-guide", prompt="LANG: en
+delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
 
-Generate SETTING GUIDE for '{campaign-name}' at {campaign-path}.
+Validate Foundation for '{campaign-name}' at {campaign-path}.
 
-Read canon.json and lore.md. DM-only with spoilers.
-Template: internal/compiler/templates/setting-guide.md.tmpl
+Read canon.json, introduction.md, setting-guide.md, lore.md.
 
-Include: Geography, History, Culture, Factions, Secrets")
+Check:
+- World rule violations
+- Missing entities
+- Tone consistency
+- Faction alignment
+
+MCP: validate_canon
+
+Return: status (approved/rejected) + specific fixes")
 ```
 
-**Quests:**
-```
-delegate(agent="grimorio-quests", prompt="LANG: en
+**BLOCKING:** If rejected after 2 retries, STOP and report failure.
 
-Generate PERSONAL QUESTS for '{campaign-name}' at {campaign-path}.
+---
+
+## Macro-Phase 2: Chapters (Sequential)
+
+This is the core of v5.0. Each chapter is generated and validated BEFORE
+moving to the next. This produces self-contained, playable chapters.
+
+### For each chapter (typically 3):
+
+#### Step 2.x.1: Save Chapter
+
+```
+delegate(agent="grimorio-chapters", prompt="LANG: en
+
+Generate CHAPTER {N} for '{campaign-name}' at {campaign-path}.
+
+Campaign type: {duration}. Levels: {level-range}. Tone: {tone}.
+Brief: {brief-description}
+
+PRE-GENERATED NAME POOL:
+- Cities: {name1}, {name2} ...
+- Taverns: {name1}, {name2} ...
+
+CRITICAL:
+1. Read ALL source files first:
+   - canon.json
+   - lore.md
+   - introduction.md
+   - setting-guide.md
+   - chapters/chapter-{N-1}/*.md (if exists)
+
+2. Read template: internal/compiler/templates/areas.md.tmpl (now chapter format)
+
+3. Generate 10-15 numbered areas for Chapter {N}
+
+4. WotC STANDARDS (MANDATORY):
+   - Boxed text: 100-600 words per area (grep: '^>>')
+   - Character hooks: ≥2 per area (tie to backgrounds/classes)
+   - Developments: ≥3 per area with 100% recovery paths
+   - Running guidance: 150-400 words per section (5 subsections)
+   - Sidebars: ≥1 per act (grep: '^> #####')
+   - Cross-references: Use EXACT names from canon.json
+   - Read-aloud: 2nd person present tense
+   - Treasure: per-chapter hoard rolled with `generate_treasure`
+
+5. Reference NPCs by EXACT name from canon.json
+
+MCP: save_chapter(
+  campaign='{campaign-name}',
+  chapter_number={N},
+  title='{chapter-title}',
+  content={generated content}
+)")
+```
+
+#### Step 2.x.2: Generate Maps & Dividers (per chapter)
+
+```
+delegate(agent="grimorio-cartographer", prompt="LANG: en
+
+Generate SVG assets for CHAPTER {N} of '{campaign-name}' at {campaign-path}.
+
+Read: chapters/chapter-{N}/*.md (extract location names from areas)
+
+Generate:
+- Battle map for EACH major location (style: dungeon/landscape/city)
+- 1 ornate divider for chapter {N}
+
+MCP: generate_map (one per location)
+MCP: generate_divider (one per chapter)")
+```
+
+#### GATE 2.x: Per-Chapter Validation (BLOCKING)
+
+```
+delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
+
+Validate CHAPTER {N} for '{campaign-name}'.
+
+MCP: validate_canon for chapter-{N}
+MCP: check_consistency scope=wotc
+
+Check:
+- NPC consistency (dead NPCs in earlier chapters don't reappear alive)
+- Timeline coherence
+- Location consistency
+- Boxed text word count (100-600)
+- Character hooks (≥2 per area)
+- Developments (≥3 with 100% recovery paths)
+- Running guidance (150-400 words)
+- Sidebars (≥1 per chapter)
+- Cross-references resolve
+
+Return: status + specific fixes per area")
+```
+
+**BLOCKING:** If rejected after 2 retries, STOP and report failure. DO NOT
+proceed to the next chapter.
+
+---
+
+## Macro-Phase 3: Bestiary & Characters (Parallel)
+
+Now that chapters exist, generate the creatures and characters that inhabit them.
+
+### Step 3.1: NPCs (anchored to chapters)
+
+```
+delegate(agent="grimorio-npc", prompt="LANG: en
+
+Generate NPCs for '{campaign-name}' at {campaign-path}.
 
 Setting: {setting}
 Tone: {tone}
-Brief: {brief-description}
+Level: {level-range}
 
-Include: Main quest, side quests, personal quests per character type")
+PRE-GENERATED NAME POOL:
+- NPCs: {name1}, {name2}, {name3} ...
+
+CRITICAL:
+1. Read template: internal/compiler/templates/npc.md.tmpl
+2. Follow WotC standard: 500-800 words per major NPC
+3. Include 6 required sections: Appearance, Personality, Motivation, Secret, Quest Involvement, Connections
+4. Include faction reputation system with propagation
+5. Anchor each NPC to a SPECIFIC chapter and area (cite chapter-N/area-MM)
+6. Use exact names from the pool above
+
+MCP: save_npcs(campaign='{campaign-name}', content={read npcs_and_factions.md})")
 ```
 
-**Encounters:**
+### Step 3.2: Bestiary (anchored to chapters)
+
+```
+delegate(agent="grimorio-bestiary", prompt="LANG: en
+
+Generate BESTIARY for '{campaign-name}' at {campaign-path}.
+
+Setting: {setting}
+Tone: {tone}
+Level: {level-range}
+
+PRE-GENERATED NAME POOL:
+- Monsters: {name1}, {name2}, {name3} ...
+
+CRITICAL:
+1. Read template: internal/compiler/templates/monster.md.tmpl
+2. Include complete stat blocks (D&D 5e SRD format)
+3. Include tactical notes and lore per monster
+4. Specify habitat chapter + area for each monster
+5. Use exact names from the pool above
+
+MCP: save_bestiary(campaign='{campaign-name}', content={read bestiary.md})")
+```
+
+### Step 3.3: Encounters (per chapter, anchored to areas)
+
 ```
 delegate(agent="grimorio-encounters", prompt="LANG: en
 
@@ -497,11 +405,34 @@ Setting: {setting}
 Tone: {tone}
 Level: {level-range}
 
-CRITICAL: Read template: internal/compiler/templates/encounter.md.tmpl
-Balance CR, include treasure, XP, scaling")
+CRITICAL:
+1. Read template: internal/compiler/templates/encounter.md.tmpl
+2. Read chapters/chapter-*.md to know which creatures and areas exist
+3. Balance CR for the level range
+4. Include treasure, XP, scaling
+5. Use MCP generate_treasure for hoard encounters
+6. Reference creatures by EXACT name from bestiary.md
+
+MCP: save_encounters(campaign='{campaign-name}', content={read encounters.md})")
 ```
 
-**Characters:**
+### Step 3.4: Quests (parallel with characters)
+
+```
+delegate(agent="grimorio-quests", prompt="LANG: en
+
+Generate QUESTS for '{campaign-name}' at {campaign-path}.
+
+Setting: {setting}
+Tone: {tone}
+Brief: {brief-description}
+
+Include: Main quest, side quests, personal quests per character type
+Use MCP create_personal_quest for each PC build")
+```
+
+### Step 3.5: Pre-Generated Characters (parallel)
+
 ```
 delegate(agent="grimorio-characters", prompt="LANG: en
 
@@ -511,116 +442,15 @@ Setting: {setting}
 Tone: {tone}
 Level: {level-range}
 
-Include: Backstory, bonds, flaws, equipment")
-```
+PRE-GENERATED NAME POOL:
+- Characters: {name1}, {name2} ...
 
-**Character Hooks:**
-```
-delegate(agent="grimorio-quests", prompt="LANG: en
-
-Generate CHARACTER HOOKS for '{campaign-name}' at {campaign-path}.
-
+Include: Backstory, bonds, flaws, equipment, balanced builds
 MCP: generate_character_hooks(campaign='{campaign-name}')
-
-Save to: quests/character-hooks.md")
+MCP: save_characters(campaign='{campaign-name}', characters={list})")
 ```
 
-### Fase 7: Validate Batch 2 (CONSISTENCY GATE)
-
-```
-delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
-
-Validate Batch 2 for '{campaign-name}'.
-
-Check:
-- Lore contradictions
-- Setting guide inconsistencies
-- Missing prerequisites
-- Dead NPCs in quests
-- Encounter balance
-
-MCP: validate_canon")
-```
-
-Si approved:
-```
-delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
-
-Update narrative state for '{campaign-name}'.
-
-MCP: update_narrative_state(session_num=0)")
-```
-
-### Fase 8: Batch 3 — SVG Maps + Areas (PARALLEL)
-
-**Cartographer:**
-```
-delegate(agent="grimorio-cartographer", prompt="LANG: en
-
-Generate ALL SVG assets for '{campaign-name}' at {campaign-path}.
-
-Read: maps/maps.md
-
-Generate:
-- Battle maps for EACH location
-- 3 ornate dividers (one per act)
-
-Style: dungeon, ornate")
-```
-
-**Areas (CRÍTICO — WotC STANDARDS):**
-```
-delegate(agent="grimorio-areas", prompt="LANG: en
-
-Generate AREAS for '{campaign-name}' at {campaign-path}.
-
-This is a 3-act campaign for levels {level-range}. Tone: {tone}.
-Brief: {brief-description}
-
-CRITICAL:
-1. Read ALL source files first:
-   - lore.md
-   - npcs/npcs_and_factions.md
-   - bestiary/bestiary.md
-   - maps/maps.md
-   - quests/*.md
-   - encounters/encounters.md
-   - characters/*.md
-
-2. Read template: internal/compiler/templates/areas.md.tmpl
-
-3. Generate 3 acts with 10-15 numbered areas each
-
-4. WotC STANDARDS (MANDATORY):
-   - Boxed text: 100-600 words per area (grep: '^>>')
-   - Character hooks: ≥2 per area (tie to backgrounds/classes)
-   - Developments: ≥3 per area with 100% recovery paths
-   - Running guidance: 150-400 words per section (5 subsections)
-   - Sidebars: ≥1 per act (grep: '^> #####')
-   - Cross-references: Use EXACT names from bestiary/npcs
-
-5. Reference NPCs/creatures by EXACT name from source files")
-```
-
-### Fase 9: Validate Batch 3 (CONSISTENCY GATE)
-
-```
-delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
-
-Validate Batch 3 for '{campaign-name}'.
-
-Check:
-- NPC consistency across acts
-- Timeline coherence
-- Location consistency
-- Act transitions
-- Mode variety (max 2 consecutive acts with same mode)
-- Asset chain continuity (Act N handoff → Act N+1 hook)
-
-MCP: validate_canon")
-```
-
-### Fase 10: Appendices
+### Step 3.6: Appendices (consolidated reference)
 
 ```
 delegate(agent="grimorio-appendices", prompt="LANG: en
@@ -628,16 +458,44 @@ delegate(agent="grimorio-appendices", prompt="LANG: en
 Generate APPENDICES for '{campaign-name}' at {campaign-path}.
 
 Read ALL source files. Compile:
-- Magic items
-- NPC/monster stat blocks
-- Handouts
-- Maps
-- Reference tables
+- Magic items (use names from item pool)
+- NPC full stat blocks (consolidated from bestiary + npcs)
+- Handouts (callouts, rumors, sidebars)
+- Reference tables (loot, weather, encounters)
+- Maps index
 
-Template: internal/compiler/templates/appendices.md.tmpl")
+Template: internal/compiler/templates/appendices.md.tmpl
+
+MCP: save_appendices(campaign='{campaign-name}', content={read appendices.md})")
 ```
 
-### Fase 11: Artist — Batch Spec
+### GATE 3: Cross-Reference Validation
+
+```
+delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
+
+Validate Bestiary & Characters for '{campaign-name}'.
+
+MCP: validate_canon
+MCP: check_consistency scope=full
+
+Check:
+- Every NPC reference in chapters resolves to npcs_and_factions.md
+- Every monster reference resolves to bestiary.md
+- Every encounter uses creatures from bestiary
+- Every quest involves NPCs from npcs_and_factions.md
+- Every personal quest ties to a specific character
+
+Return: status + specific fixes")
+```
+
+**BLOCKING:** If rejected after 2 retries, STOP and report failure.
+
+---
+
+## Macro-Phase 4: Art & Living World (Parallel)
+
+### Step 4.1: Artist Batch Spec
 
 ```
 delegate(agent="grimorio-artist", prompt="LANG: en
@@ -645,9 +503,9 @@ delegate(agent="grimorio-artist", prompt="LANG: en
 Prepare image batch spec for '{campaign-name}' at {campaign-path}.
 
 Read:
-- npcs/npcs_and_factions.md (extract ALL NPCs)
+- npcs/npcs_and_factions.md (extract ALL major NPCs)
 - bestiary/bestiary.md (extract ALL monsters)
-- acts/*.md (extract ALL [SCENE: ...] placeholders)
+- chapters/chapter-*/*.md (extract ALL [SCENE: ...] placeholders)
 - lore.md (extract setting for cover)
 
 Batch spec MUST include:
@@ -659,7 +517,7 @@ Batch spec MUST include:
 Save to: assets/batch-spec.json")
 ```
 
-### Fase 12: Generate AI Images (SEQUENTIAL — 3s delay)
+### Step 4.2: Generate AI Images (Sequential, 3s delay)
 
 ```
 Read: assets/batch-spec.json
@@ -669,18 +527,18 @@ FOR each image in batch-spec.json:
     campaign="{campaign-name}",
     filename="{filename}",
     prompt="{prompt}",
-    type="{type}"
+    type="{type}",
+    force_regenerate=false  # set true to bypass cache
   )
-  // Wait for completion (automatic 3s delay between each)
+  // Automatic 3s delay between each
 
 Verify: ls {campaign-path}/assets/*.png
-
-For MISSING images:
-  Retry up to 2 times with simpler prompt
-  Log failure if still missing
 ```
 
-### Fase 13: Update Markdown References
+**Note**: The image cache (SHA-256 LRU+disk) makes re-runs instant. Set
+`force_regenerate=true` only when you need a fresh result.
+
+### Step 4.3: Update Markdown References
 
 ```
 delegate(agent="grimorio-artist", prompt="LANG: en
@@ -692,96 +550,292 @@ List: ls {campaign-path}/assets/*.png
 For EACH PNG:
 1. cover-*.png → README.md at top: ![Cover](assets/filename.png)
 2. npc-*.png → npcs/npcs_and_factions.md in matching NPC section
-3. scene-*.png → acts/*.md, replacing [SCENE: ...] placeholders
+3. scene-*.png → chapters/chapter-*/chapter-*.md, replacing [SCENE: ...] placeholders
 4. monster-*.png → bestiary/bestiary.md in matching monster section
 
 CRITICAL: Every PNG MUST be referenced in at least one markdown file")
 ```
 
-### Fase 14: Final Consistency Check
+### Step 4.4: Living World Tools (parallel)
+
+```
+delegate(agent="grimorio-integrator", prompt="LANG: en
+
+Generate Living World content for '{campaign-name}' at {campaign-path}.
+
+MCP: generate_random_tables(
+  campaign='{campaign-name}',
+  table_type='encounter',
+  location_hint='{primary-location}'
+)
+MCP: generate_random_tables(
+  campaign='{campaign-name}',
+  table_type='rumor'
+)
+MCP: generate_handouts(
+  campaign='{campaign-name}',
+  handout_type='summary',
+  content_refs=['npcs', 'quests']
+)
+MCP: generate_handouts(
+  campaign='{campaign-name}',
+  handout_type='quest',
+  content_refs=['main-quest']
+)
+MCP: generate_treasure(
+  campaign='{campaign-name}',
+  type='hoard',
+  cr_or_tier={CR}
+)
+MCP: process_consistency_gate(batch_id='living-world', proposals=[...])")
+```
+
+### Step 4.5: Campaign Health Dashboard
+
+```
+MCP: campaign_health_dashboard(campaign_id='{campaign-name}')
+```
+
+The dashboard scores the campaign 0-100 on six axes. A score below 70
+indicates areas needing attention.
+
+### GATE 4: Pre-Export Validation
 
 ```
 delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
 
-Run FINAL consistency check for '{campaign-name}'.
+Run PRE-EXPORT validation for '{campaign-name}'.
+
+MCP: check_consistency scope=full
+MCP: evaluate_consequences
+MCP: campaign_health_dashboard
 
 Validate:
-- Cross-act consistency (NPCs dead in act 2 don't appear in act 4)
+- Cross-act consistency (NPCs dead in earlier chapters don't reappear alive)
 - Quest closure (all quests have resolution or continuation)
-- Lore coherence (no contradictions between lore and acts)
+- Lore coherence (no contradictions)
 - Encounter balance (all CRs appropriate for level)
 - Treasure balance (loot appropriate for level and economy)
 - Faction consistency (reputation changes tracked)
 - State completeness (narrative_state.json reflects all content)
+- Health score ≥ 70 (recommended)
 
-MCP: check_consistency, evaluate_consequences")
+Return: status + dashboard scores + specific fixes")
 ```
 
-### Fase 15: WotC Validation (MANDATORY GATE)
+---
+
+## Macro-Phase 5: Export & Deliver
+
+### Step 5.1: `grimorio validate` CLI (BLOCKING)
 
 ```bash
-./scripts/validate-campaign.sh {campaign-path} --check=all
+grimorio validate {campaign-name} --scope=all
 ```
 
-**Expected output:**
-```
-=====================================
-  Campaign Validation Report
-=====================================
-Campaign: {campaign-name}
-Date: {date}
+Expected output: `VALIDATION PASSED` with exit code 0.
 
-✅ Structure Check: PASS
-✅ WotC Format Check: PASS
-✅ Cross-Reference Check: PASS
-✅ Content Completeness: PASS
+**Scopes:**
+- `--scope=structure` — directory + file structure only
+- `--scope=wotc` — WotC format only (boxed text, hooks, developments, sidebars)
+- `--scope=references` — cross-references only
+- `--scope=all` (default) — all checks
 
-=====================================
-  VALIDATION PASSED
-=====================================
-Exit code: 0
-```
+**BLOCKING:** If exit code 1, fix issues and re-run. If exit code 2, usage
+problem (campaign name typo, etc.).
 
-**BLOCKING:** Si validation falla:
-1. Leé los remediation steps del output
-2. Delegá correcciones a sub-agentes apropiados
-3. Re-run validación
-4. NO proceder a PDF compilation hasta PASS
+### Step 5.2: Compile & Export
 
-### Fase 16: Compile PDF
+Choose the user's preferred export format:
 
-```
-MCP: compile_pdf(campaign="{campaign-name}", title="{campaign-title}")
+```bash
+# PDF (default, most styled)
+grimorio export_campaign --campaign {campaign-name} --format=pdf
 
-Verify: ls -lh {campaign-path}/campaign.pdf
+# Markdown (for version control, Obsidian)
+grimorio export_campaign --campaign {campaign-name} --format=markdown
+
+# EPUB (for e-readers)
+grimorio export_campaign --campaign {campaign-name} --format=epub
 ```
 
-### Fase 17: Final Report
+Verify the file exists:
+
+```bash
+ls -lh {campaign-path}/campaign.{pdf,md,epub}
+```
+
+### Step 5.3: DM Experience Tools (optional)
+
+```bash
+MCP: generate_session_prep(campaign_id='{campaign-name}', session_num=1, with_scenarios=true)
+MCP: generate_flowchart(campaign_id='{campaign-name}', detail_level='act')
+```
+
+### Step 5.4: Final Report
 
 ```markdown
-## Campaign "{campaign-title}" Complete
+## Campaign "{title}" Complete
 
-**PDF:** {campaign-path}/campaign.pdf
-**Location:** {campaign-path}
+**Artifacts:**
+- PDF: {path}/campaign.pdf
+- Markdown: {path}/campaign.md
+- EPUB: {path}/campaign.epub
 
-**Generated Content:**
-- Acts: {count}
-- NPCs: {count}
-- Monsters: {count}
-- Encounters: {count}
-- SVG Maps: {count}
-- AI Images: {count}
+**Generated:**
+- Chapters: {n}
+- NPCs: {n} | Monsters: {n} | Encounters: {n}
+- Quests: {n} | Pre-gens: {n}
+- AI Images: {n} | SVG Maps: {n}
+- Handouts: {n} | Random tables: {n}
 
-**WotC Validation:** PASSED / FAILED
-**Status:** Success / Completed with errors
-**Errors (if any):** {details}
+**Validation:**
+- `grimorio validate --scope=all`: PASSED
+- Campaign Health: {X}/100
+- WotC: PASSED
+
+**Status:** ✅ Success
+```
+
+---
+
+## Templates & WotC Standards
+
+Each sub-agent MUST read its template before generating:
+
+| Agent | Template | WotC Standard |
+|-------|----------|---------------|
+| `grimorio-chapters` | `internal/compiler/templates/areas.md.tmpl` (chapter format) | Boxed text 100-600w, ≥2 hooks/area, ≥3 developments w/ recovery, running guidance 150-400w, ≥1 sidebar/act |
+| `grimorio-npc` | `internal/compiler/templates/npc.md.tmpl` | 500-800w/NPC, 6 sections, faction reputation |
+| `grimorio-bestiary` | `internal/compiler/templates/monster.md.tmpl` | Full stat blocks, tactics, lore |
+| `grimorio-encounters` | `internal/compiler/templates/encounter.md.tmpl` | CR balance, rewards, scaling |
+| `grimorio-lore` | `internal/compiler/templates/lore.md.tmpl` | World history, atmosphere |
+| `grimorio-maps` | `internal/compiler/templates/map.md.tmpl` | Location descriptions, zones |
+| `grimorio-setting-guide` | `internal/compiler/templates/setting-guide.md.tmpl` | DM-only, spoilers, geography, factions |
+| `grimorio-appendices` | `internal/compiler/templates/appendices.md.tmpl` | Consolidated reference material |
+| `grimorio-introduction` | `internal/compiler/templates/introduction.md.tmpl` | DM hooks, expectations |
+
+---
+
+## MCP Tools (v5.0)
+
+### Creation
+- `create_campaign(name, setting, title)` — Create campaign directory structure
+- `generate_adventure_bible(...)` — Generate canon.json
+- `generate_names(category, style, count, seed?)` — Generate names by category
+
+### Save
+- `save_introduction(campaign, content)`
+- `save_setting_guide(campaign, content)`
+- `save_lore(campaign, content)`
+- `save_chapter(campaign, chapter_number, title, content)` — **v5.0 preferred**
+- `save_areas(campaign, chapter_number, title, content)` — Legacy
+- `save_npcs(campaign, content)`
+- `save_bestiary(campaign, content)`
+- `save_encounters(campaign, content)`
+- `save_maps(campaign, content)`
+- `save_quests(campaign, content)`
+- `save_characters(campaign, characters)`
+- `save_appendices(campaign, content)`
+
+### Assets
+- `generate_image(campaign, filename, prompt, type, force_regenerate?)`
+- `generate_map(campaign, filename, rooms, style, labels)`
+- `generate_divider(campaign, filename, style, width)`
+- `generate_character_hooks(campaign)`
+- `generate_random_tables(campaign, table_type, location_hint?, level_range?, party_size?)`
+- `generate_handouts(campaign, handout_type, content_refs, version?)`
+- `generate_treasure(campaign, type, cr_or_tier)` — **v5.0**
+- `generate_flowchart(campaign, detail_level)`
+- `generate_session_prep(campaign, session_num, with_scenarios?)`
+
+### Validation
+- `validate_canon(campaign_id, proposal_id, proposal_type, content, faction_context?)`
+- `check_consistency(campaign_id, scope)` — scope ∈ {full, lore_only, acts_only, npcs_only, quests_only}
+- `process_consistency_gate(batch_id, proposals)`
+- `evaluate_consequences(campaign_id)`
+
+### State
+- `update_narrative_state(campaign_id, session_num, ...)`
+- `update_faction_reputation(campaign_id, faction_id, party_id, delta, reason)`
+- `update_quest_status(campaign, quest_id, status, notes)`
+
+### Quality (v5.0)
+- `campaign_health_dashboard(campaign_id)` — 0-100 score across 6 axes
+- `export_campaign(campaign, format)` — format ∈ {pdf, markdown, epub}
+
+### Compilation
+- `compile_pdf(campaign, title)`
+
+---
+
+## Common Pitfalls
+
+### 1. Skip Chapters (❌)
+Building NPCs/bestiary before chapters means they have nowhere to anchor.
+Cross-references float and the narrative coherence gate fails.
+
+### 2. Inline Content (❌)
+Never write narrative content directly. Always `delegate` to a sub-agent
+that reads its template.
+
+### 3. Skip Validation (❌)
+Every macro-phase has a gate. If it fails, fix and retry — do not proceed.
+
+### 4. Invent Names (❌)
+Use the pre-generated name pool. Cross-references must resolve.
+
+### 5. Force `compile_pdf` After Failed `grimorio validate` (❌)
+The CLI is a BLOCKING gate. If it exits with code 1, fix the issues first.
+
+### 6. Ignore Health Dashboard (❌)
+A score below 70 means the campaign needs work. Don't ship it.
+
+---
+
+## Output Format
+
+### After Each Macro-Phase
+
+```markdown
+## Phase {N}: {Name} — {Complete | Failed}
+
+{What was generated}
+- {Item 1} ({count})
+- {Item 2} ({count})
+
+**Gates:**
+- Narrative: ✅ PASS / ❌ FAIL
+- WotC: ✅ PASS / ❌ FAIL
+
+**Next:** Phase {N+1} — {Name}
+```
+
+### Final Report
+
+```markdown
+## Campaign "{title}" Complete
+
+**Artifacts:**
+- PDF: {path}/campaign.pdf
+- Markdown: {path}/campaign.md
+- EPUB: {path}/campaign.epub
+
+**Generated:**
+- Chapters: {n}
+- NPCs: {n} | Monsters: {n} | Encounters: {n}
+- Quests: {n} | Pre-gens: {n}
+- AI Images: {n} | SVG Maps: {n}
+- Handouts: {n} | Random tables: {n}
+
+**Health Score:** {X}/100
+**WotC Validation:** PASSED
+**Status:** ✅ Success
 ```
 
 ---
 
 ## SDD Configuration
-
-### Delivery Strategy
 
 ```json
 {
@@ -791,226 +845,21 @@ Verify: ls -lh {campaign-path}/campaign.pdf
 }
 ```
 
-**Significado:**
-- `exception-ok`: Permití PRs grandes porque el mantenedor acepta `size:exception`
-- `stacked-to-main`: Cada PR mergea a main en orden (velocidad primero)
-- `engram`: Persistencia rápida sin archivos
+**Use `/sdd-new`** for structural changes to Grimorio itself:
+- New MCP tools
+- Template changes
+- Validation changes
+- New sub-agents
 
-### Cuando Usar SDD
-
-Usá `/sdd-new` para cambios estructurales en el código de Grimorio:
-- Nuevos MCP tools
-- Cambios en templates
-- Modificaciones en validación WotC
-- Nuevos sub-agentes
-
-**NO uses SDD para generación de campañas** — usá `/grimorio` directamente.
+**DO NOT use SDD for campaign generation** — use `/grimorio` directly.
 
 ---
 
-## MCP Tools Disponibles
-
-### Campaign Creation
-- `create_campaign(name, setting, title)` → Crea estructura de directorios
-- `generate_adventure_bible(...)` → Genera canon.json
-
-### Content Generation
-- `generate_image(campaign, filename, prompt, type)` → Genera imágenes AI
-- `generate_map(campaign, filename, rooms, style, labels)` → Genera mapas SVG
-- `generate_divider(campaign, filename, style, width)` → Genera separadores
-- `generate_character_hooks(campaign)` → Genera hooks por personaje
-- `generate_random_tables(campaign, table_type, ...)` → Genera tablas aleatorias
-- `generate_handouts(campaign, handout_type, content_refs)` → Genera handouts
-- `generate_flowchart(campaign, detail_level)` → Genera flowchart de campaña
-- `generate_session_prep(campaign, session_num)` → Genera prep sheet
-- `generate_names(category, style, count, seed?)` → Genera nombres fantásticos por sílabas (character, npc, city, tavern, monster, faction, item)
-
-### Validation
-- `validate_canon(campaign_id, proposal_id, proposal_type, content)` → Valida contra canon
-- `check_consistency(campaign_id, scope)` → Check de consistencia completo
-- `evaluate_consequences(campaign_id)` → Evalúa reglas de consecuencia
-
-### State Management
-- `update_narrative_state(campaign_id, session_num, ...)` → Actualiza estado narrativo
-- `update_faction_reputation(campaign_id, faction_id, party_id, delta, reason)` → Actualiza reputación
-- `update_quest_status(campaign, quest_id, status, notes)` → Actualiza estado de quest
-
-### Save Operations
-- `save_introduction(campaign, content)` → Guarda introducción
-- `save_setting_guide(campaign, content)` → Guarda setting guide
-- `save_appendices(campaign, content)` → Guarda apéndices
-- `save_areas(campaign, chapter_number, title, content)` → Guarda actos
-- `save_npcs(campaign, content)` → Guarda NPCs
-- `save_bestiary(campaign, content)` → Guarda bestiario
-- `save_encounters(campaign, content)` → Guarda encuentros
-- `save_lore(campaign, content)` → Guarda lore
-- `save_maps(campaign, content)` → Guarda mapas
-- `save_characters(campaign, characters)` → Guarda personajes
-
-### Compilation
-- `compile_pdf(campaign, title)` → Compila PDF final
-
----
-
-## Errores Comunes y Cómo Evitarlos
-
-### 1. Generar Contenido Inline (❌)
-
-**Incorrecto:**
-```
-save_npcs(campaign="my-campaign", content="...")  # WRONG!
-```
-
-**Correcto:**
-```
-delegate(agent="grimorio-npc", prompt="LANG: en
-
-Generate NPCs...")
-```
-
-### 2. Saltar Validación WotC (❌)
-
-**Incorrecto:**
-```
-# Validación falló pero continúo igual
-compile_pdf(...)
-```
-
-**Correcto:**
-```
-# Validación falló
-# 1. Leer remediation steps
-# 2. Delegar correcciones
-# 3. Re-run validación
-# 4. Si PASS recién, compile_pdf
-```
-
-### 3. No Reportar Progreso (❌)
-
-**Incorrecto:**
-```
-# Silencio durante 10 fases
-# Al final: "Terminó"
-```
-
-**Correcto:**
-```
-## Phase 4: Batch 1 — Complete
-
-✅ NPCs: 12 generated
-✅ Bestiary: 8 monsters
-✅ Maps: 5 locations
-✅ Consistency Gate: PASSED
-
-Next: Phase 5 — Batch 2 (Lore + Quests + Encounters)
-```
-
-### 4. Templates No Leídos (❌)
-
-**Incorrecto:**
-```
-# Genero áreas sin leer template
-# Resultado: No cumple WotC standards
-```
-
-**Correcto:**
-```
-# En prompt a grimorio-areas:
-# "CRITICAL: Read template: internal/compiler/templates/areas.md.tmpl"
-```
-
-### 5. Cross-References Incorrectas (❌)
-
-**Incorrecto:**
-```markdown
-Encuentran un *Murmuring Specter* (no existe en bestiary)
-```
-
-**Correcto:**
-```markdown
-Encuentran 2 **Murmuring Specter** (nombre EXACTO de bestiary.md)
-```
-
----
-
-## Checklist de Validación (Antes de Cada Fase)
-
-### Pre-Fase 1
-- [ ] `./scripts/validate-opencode.sh --check=all` pasó
-- [ ] Todos los agentes grimorio-* están en opencode.json
-- [ ] Templates existen en `internal/compiler/templates/`
-- [ ] Binario grimorio compilado y ejecutable
-
-### Pre-Fase 4 (Batch 1)
-- [ ] canon.json generado
-- [ ] Introducción guardada
-
-### Pre-Fase 6 (Batch 2)
-- [ ] Batch 1 validado (consistency gate)
-- [ ] NPCs, bestiary, maps existen
-
-### Pre-Fase 8 (Batch 3)
-- [ ] Batch 2 validado (consistency gate)
-- [ ] Lore, quests, encounters, characters existen
-- [ ] Narrative state actualizado
-
-### Pre-Fase 12 (Imágenes)
-- [ ] Batch 3 validado
-- [ ] Acts generados con [SCENE: ...] placeholders
-- [ ] Batch-spec.json creado
-
-### Pre-Fase 15 (WotC Validation)
-- [ ] Todas las imágenes generadas
-- [ ] Todas las referencias actualizadas
-- [ ] Final consistency check pasado
-
-### Pre-Fase 16 (PDF Compilation)
-- [ ] WotC validation: **PASS** (BLOCKING)
-- [ ] campaign.pdf no existe aún
-
----
-
-## Output Format
-
-### Después de Cada Fase
-
-```markdown
-## Phase {N}: {Name} — {Status: Complete/Failed}
-
-{Resumen de lo hecho}
-- {Item 1}
-- {Item 2}
-
-{Próxima fase}
-```
-
-### Reporte Final
-
-```markdown
-## Campaign "{campaign-title}" Complete
-
-**PDF:** {campaign-path}/campaign.pdf
-**Location:** {campaign-path}
-
-**Generated Content:**
-- Acts: {count}
-- NPCs: {count}
-- Monsters: {count}
-- Encounters: {count}
-- SVG Maps: {count}
-- AI Images: {count}
-
-**WotC Validation:** PASSED / FAILED
-**Status:** Success / Completed with errors
-**Errors (if any):** {details}
-```
-
----
-
-## Referencias
+## References
 
 - **Templates:** `internal/compiler/templates/`
-- **Validación WotC:** `scripts/validate-campaign.sh`
-- **Validación OpenCode:** `scripts/validate-opencode.sh`
+- **Validation CLI:** `grimorio validate {name} --scope=all`
+- **Migration CLI:** `migrate-areas-to-chapters --campaign {name}`
 - **Skill Registry:** `.atl/skill-registry.md`
 - **SDD Skills:** `~/.config/opencode/skills/sdd-*/SKILL.md`
+- **v5.0 Changelog:** see PR #9
