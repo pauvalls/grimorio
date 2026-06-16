@@ -1,22 +1,22 @@
-# Hoja de Personaje: {{.Name}}
+# Character Sheet: {{.Name}}
 
-**{{.Race}} {{.Class}} Nivel {{.Level}}**  
-**Trasfondo:** {{.Background}} | **Alineamiento:** {{.Alignment}}  
-**Jugador:** {{.PlayerName}}
+**{{.Race}} {{.Class}} Level {{.Level}}**  
+**Background:** {{.Background}} | **Alignment:** {{.Alignment}}  
+**Player:** {{.PlayerName}}
 
 ---
 
-## Estadísticas
+## Statistics
 
 | STR | DEX | CON | INT | WIS | CHA |
 |-----|-----|-----|-----|-----|-----|
 | {{.Stats.STR}} (+{{printf "%d" (index (slice (add .Stats.STR 10) 2)}}) | {{.Stats.DEX}} (+{{printf "%d" (index (slice (add .Stats.DEX 10) 2)}}) | {{.Stats.CON}} (+{{printf "%d" (index (slice (add .Stats.CON 10) 2)}}) | {{.Stats.INT}} (+{{printf "%d" (index (slice (add .Stats.INT 10) 2)}}) | {{.Stats.WIS}} (+{{printf "%d" (index (slice (add .Stats.WIS 10) 2)}}) | {{.Stats.CHA}} (+{{printf "%d" (index (slice (add .Stats.CHA 10) 2)}}) |
 
-**HP:** {{.HP.Current}}/{{.HP.Maximum}} | **AC:** {{.AC}} | **Bonus de Competencia:** +{{.Proficiency}}
+**HP:** {{.HP.Current}}/{{.HP.Maximum}} | **AC:** {{.AC}} | **Proficiency Bonus:** +{{.Proficiency}}
 
 ---
 
-## Habilidades y Competencias
+## Skills and Proficiencies
 
 <div class="session-prep-card">
 <h3>Skills</h3>
@@ -29,7 +29,7 @@
 
 ---
 
-## Características de Clase y Raza
+## Class and Racial Features
 
 {{if .Features}}
 {{range .Features}}
@@ -41,11 +41,11 @@
 
 ---
 
-## Equipo
+## Inventory
 
 {{if .Inventory}}
 <div class="session-prep-card">
-<h3>Inventario</h3>
+<h3>Inventory</h3>
 {{range .Inventory}}
 <div class="prep-item">• {{.Name}} {{if .Quantity}}(x{{.Quantity}}){{end}} {{if .Type}}[{{.Type}}]{{end}}</div>
 {{end}}
@@ -54,7 +54,7 @@
 
 ---
 
-## Hechizos
+## Spells
 
 {{if .Spells}}
 {{range $spell := .Spells}}
@@ -62,9 +62,9 @@
 {{if eq $spell.Level 0}}
 <span class="cr-badge">Cantrip</span>
 {{else}}
-<span class="cr-badge">Nivel {{$spell.Level}}</span>
+<span class="cr-badge">Level {{$spell.Level}}</span>
 {{end}}
-<strong>{{$spell.Name}}</strong> {{if $spell.Prepared}}(Preparado){{end}}
+<strong>{{$spell.Name}}</strong> {{if $spell.Prepared}}(Prepared){{end}}
 {{if $spell.School}}<br><em>{{$spell.School}}</em>{{end}}
 </div>
 {{end}}
@@ -77,7 +77,7 @@
 {{if .Personality.Backstory}}
 <div class="character-worksheet">
 <div class="worksheet-section">
-<h4>Historia Personal</h4>
+<h4>Personal History</h4>
 <p>{{.Personality.Backstory}}</p>
 </div>
 </div>
@@ -86,7 +86,7 @@
 {{if .BackstoryHooks}}
 <div class="character-worksheet">
 <div class="worksheet-section">
-<h4>Ganchos de Historia</h4>
+<h4>Backstory Hooks</h4>
 {{range .BackstoryHooks}}
 <div class="prompt-box">• {{.}}</div>
 {{end}}
@@ -96,12 +96,12 @@
 
 ---
 
-## Personalidad
+## Personality
 
 <div class="character-worksheet">
 {{if .Personality.Traits}}
 <div class="worksheet-section">
-<h4>Rasgos</h4>
+<h4>Traits</h4>
 {{range .Personality.Traits}}
 <div class="prompt-box">• {{.}}</div>
 {{end}}
@@ -110,7 +110,7 @@
 
 {{if .Personality.Ideals}}
 <div class="worksheet-section">
-<h4>Ideales</h4>
+<h4>Ideals</h4>
 {{range .Personality.Ideals}}
 <div class="prompt-box">• {{.}}</div>
 {{end}}
@@ -119,7 +119,7 @@
 
 {{if .Personality.Bonds}}
 <div class="worksheet-section">
-<h4>Vínculos</h4>
+<h4>Bonds</h4>
 {{range .Personality.Bonds}}
 <div class="prompt-box">• {{.}}</div>
 {{end}}
@@ -128,7 +128,7 @@
 
 {{if .Personality.Flaws}}
 <div class="worksheet-section">
-<h4>Defectos</h4>
+<h4>Flaws</h4>
 {{range .Personality.Flaws}}
 <div class="prompt-box">• {{.}}</div>
 {{end}}
@@ -137,7 +137,7 @@
 
 {{if .Personality.Appearance}}
 <div class="worksheet-section">
-<h4>Apariencia</h4>
+<h4>Appearance</h4>
 <p>{{.Personality.Appearance}}</p>
 </div>
 {{end}}
@@ -145,12 +145,12 @@
 
 ---
 
-## Secretos y Metas
+## Secrets and Goals
 
 {{if .Secrets}}
 <div class="character-worksheet">
 <div class="worksheet-section">
-<h4>Secretos</h4>
+<h4>Secrets</h4>
 {{range .Secrets}}
 <div class="prompt-box">🤫 {{.}}</div>
 {{end}}
@@ -161,7 +161,7 @@
 {{if .Goals}}
 <div class="character-worksheet">
 <div class="worksheet-section">
-<h4>Metas</h4>
+<h4>Goals</h4>
 {{range .Goals}}
 <div class="prompt-box">🎯 {{.}}</div>
 {{end}}
@@ -171,11 +171,11 @@
 
 ---
 
-## Relaciones
+## Relationships
 
 {{if .Relationships}}
 <div class="session-prep-card">
-<h3>Relaciones</h3>
+<h3>Relationships</h3>
 {{range .Relationships}}
 <div class="prep-item">
 <strong>{{.EntityName}}</strong> ({{.Type}}, {{.Strength}})<br>
@@ -187,11 +187,11 @@
 
 ---
 
-## Notas de Sesión
+## Session Notes
 
 <div class="character-worksheet">
 <div class="worksheet-section">
-<h4>Progreso y Notas</h4>
-<div class="prompt-box">Espacio para anotar eventos importantes, cambios de nivel, nuevo equipo, y desarrollo del personaje durante las sesiones.</div>
+<h4>Progress and Notes</h4>
+<div class="prompt-box">Space to record important events, level changes, new equipment, and character development during sessions.</div>
 </div>
 </div>
