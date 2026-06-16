@@ -211,12 +211,6 @@ func (c *Compiler) Compile(ctx context.Context, title string) (string, error) {
 	return "", fmt.Errorf("PDF generation failed after %d attempts: images missing (expected %d, found %d)", maxRetries, lastExpected, lastFound)
 }
 
-// hasDir checks if a directory exists and is a directory.
-func hasDir(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
-}
-
 // generateHTML reads all markdown sources and generates the full HTML document.
 func (c *Compiler) generateHTML(title string) ([]string, error) {
 	// chapters/ is the only chapter source — grimorio-areas (legacy areas/
