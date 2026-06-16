@@ -126,19 +126,21 @@ func TestHandleSessionTimeline_NoSessions(t *testing.T) {
 	}
 }
 
-// TestRenderSessionTimeline_LangIsSpanish is a regression test for Fase 4 i18n:
-// visualization HTMLs must declare `lang="es"` for Spanish campaigns.
-func TestRenderSessionTimeline_LangIsSpanish(t *testing.T) {
+// TestRenderSessionTimeline_LangIsEnglish is a regression test for the
+// i18n-english-default change: visualization HTMLs MUST declare `lang="en"`
+// (English is the new default) and MUST NOT declare `lang="es"` (Spanish
+// is the explicit override, not the default).
+func TestRenderSessionTimeline_LangIsEnglish(t *testing.T) {
 	sessions := []domain.SessionRecord{
-		{SessionNum: 1, Summary: "Bienvenidos a Faerun"},
+		{SessionNum: 1, Summary: "Welcome to Faerun"},
 	}
 	html := renderSessionTimeline(sessions)
 
-	if !strings.Contains(html, `<html lang="es">`) {
-		t.Errorf("session timeline must declare lang=\"es\"; got:\n%s", html)
+	if !strings.Contains(html, `<html lang="en">`) {
+		t.Errorf("session timeline must declare lang=\"en\" (English default); got:\n%s", html)
 	}
-	if strings.Contains(html, `<html lang="en">`) {
-		t.Errorf("session timeline must NOT declare lang=\"en\"; got:\n%s", html)
+	if strings.Contains(html, `<html lang="es">`) {
+		t.Errorf("session timeline must NOT declare lang=\"es\" (Spanish is opt-in, not default); got:\n%s", html)
 	}
 }
 

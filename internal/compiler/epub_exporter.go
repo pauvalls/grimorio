@@ -174,7 +174,7 @@ func (e *EPUBExporter) writeEPUB(path, title string, chapters []epubChapter) err
 <package version="3.0" xmlns="http://www.idpf.org/2007/opf">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:title>%s</dc:title>
-    <dc:language>es</dc:language>
+    <dc:language>en</dc:language>
     <meta property="dcterms:modified">%s</meta>
   </metadata>
   <manifest>

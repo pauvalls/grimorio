@@ -92,7 +92,7 @@ func renderSessionTimeline(sessions []domain.SessionRecord) string {
 	}
 
 	return fmt.Sprintf(`<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head><meta charset="utf-8"><title>Session Timeline</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}

@@ -128,11 +128,13 @@ func TestRelationshipGraph_50PlusNodesFallback(t *testing.T) {
 	}
 }
 
-// TestRenderRelationshipGraph_LangIsSpanish is a regression test for Fase 4 i18n:
-// visualization HTMLs must declare `lang="es"` for Spanish campaigns.
-func TestRenderRelationshipGraph_LangIsSpanish(t *testing.T) {
+// TestRenderRelationshipGraph_LangIsEnglish is a regression test for the
+// i18n-english-default change: visualization HTMLs MUST declare `lang="en"`
+// (English is the new default) and MUST NOT declare `lang="es"` (Spanish
+// is the explicit override, not the default).
+func TestRenderRelationshipGraph_LangIsEnglish(t *testing.T) {
 	graph := &domain.RelationshipGraph{
-		CampaignID: "es-test",
+		CampaignID: "en-test",
 		Nodes: []domain.CanonEntity{
 			{ID: "npc1", Name: "Gandalf", Type: domain.EntityTypeNPC},
 		},
@@ -140,15 +142,15 @@ func TestRenderRelationshipGraph_LangIsSpanish(t *testing.T) {
 	}
 
 	d3 := renderRelationshipGraph(graph)
-	if !strings.Contains(d3, `<html lang="es">`) {
-		t.Errorf("D3 relationship graph must declare lang=\"es\"; got:\n%s", d3)
+	if !strings.Contains(d3, `<html lang="en">`) {
+		t.Errorf("D3 relationship graph must declare lang=\"en\" (English default); got:\n%s", d3)
 	}
-	if strings.Contains(d3, `<html lang="en">`) {
-		t.Errorf("D3 relationship graph must NOT declare lang=\"en\"; got:\n%s", d3)
+	if strings.Contains(d3, `<html lang="es">`) {
+		t.Errorf("D3 relationship graph must NOT declare lang=\"es\" (Spanish is opt-in, not default); got:\n%s", d3)
 	}
 
 	// 50+ nodes triggers the static SVG path — also a visualization HTML.
-	big := &domain.RelationshipGraph{CampaignID: "es-big"}
+	big := &domain.RelationshipGraph{CampaignID: "en-big"}
 	for i := 0; i < 55; i++ {
 		big.Nodes = append(big.Nodes, domain.CanonEntity{
 			ID:   string(rune('A' + i%26)),
@@ -157,11 +159,11 @@ func TestRenderRelationshipGraph_LangIsSpanish(t *testing.T) {
 		})
 	}
 	static := renderRelationshipGraph(big)
-	if !strings.Contains(static, `<html lang="es">`) {
-		t.Errorf("static SVG relationship graph must declare lang=\"es\"; got:\n%s", static)
+	if !strings.Contains(static, `<html lang="en">`) {
+		t.Errorf("static SVG relationship graph must declare lang=\"en\" (English default); got:\n%s", static)
 	}
-	if strings.Contains(static, `<html lang="en">`) {
-		t.Errorf("static SVG relationship graph must NOT declare lang=\"en\"; got:\n%s", static)
+	if strings.Contains(static, `<html lang="es">`) {
+		t.Errorf("static SVG relationship graph must NOT declare lang=\"es\" (Spanish is opt-in, not default); got:\n%s", static)
 	}
 }
 

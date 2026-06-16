@@ -115,7 +115,7 @@ func renderD3Graph(graph *domain.RelationshipGraph) string {
 	edgesJSON.WriteString("]")
 
 	return fmt.Sprintf(`<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head><meta charset="utf-8"><title>Relationship Graph</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -263,7 +263,7 @@ func renderStaticSVG(graph *domain.RelationshipGraph) string {
 	}
 
 	return fmt.Sprintf(`<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head><meta charset="utf-8"><title>Relationship Graph (Static)</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
