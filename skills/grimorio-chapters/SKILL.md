@@ -287,11 +287,11 @@ Cada capítulo cierra con un handoff explícito al siguiente:
 
 Cada área con secretos, trampas, o información crucial DEBE incluir un `##### DM Sidebar:` blockquote. El sidebar es el bloque que el DM lee en privado y que el jugador NO ve. Contiene:
 
-- Secretos del área que el DM conoce pero los PJs no
-- Motivaciones ocultas de NPCs
-- Trampas que se activan por condiciones específicas
-- Variaciones de dificultad según nivel del grupo
-- Conexiones a lore de campaña
+- Secrets the DM knows but the PCs do not
+- Hidden NPC motivations
+- Traps triggered by specific conditions
+- Difficulty variations by party level
+- Connections to campaign lore
 
 **Estructura obligatoria:**
 
