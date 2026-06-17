@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v5.1.0] - 2026-06-17
+
+### Docs
+
+- Update changelog for v5.0.3
+- Update README and docs for v5.1 sequential chapters + WotC fidelity
+
+### Feat
+
+- Add WotC fidelity gaps — bold-italic inline, General Features, What's Next prose (compiler)
+
+### Fix
+
+- Address verify warnings for sequential chapters SDD (validators)
+- Resolve lint issues — unused vars, Fprintf
+- Remaining lint issue — Fprintf in chapter_parts_test
+
 ## [v5.0.3] - 2026-06-16
 
 ### Docs
