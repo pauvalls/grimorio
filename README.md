@@ -202,7 +202,13 @@ make install
 
 See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 
-**Latest — WotC Fidelity & Sequential Chapters (v5.1.0)**
+**Latest — PDF Compiler Fixes (v5.1.2)**
+- **🔧 Fixed PDF Image Verification** — `countImagesInMarkdownSources()` now counts unique resolved paths instead of all references, aligning with `embedImage()` deduplication. Campaigns with duplicate image references (e.g., same SVG used 4 times) now compile successfully.
+- **📝 Error Message Preservation** — `classifyError()` now preserves original error messages as fallback instead of returning generic "an internal error occurred". PDF generation errors are now visible to users.
+- **⚠️ Advisory Image Verification** — `verifyImages()` is now advisory (warnings) instead of blocking. PDFs are generated even if image count mismatches occur, with warnings logged for debugging.
+- **🔄 Removed Retry Loop** — `Compile()` no longer retries 3 times on image verification failure. Single-pass compilation with advisory warnings.
+
+**v5.1.0–v5.1.1 — Sequential Chapters + WotC Fidelity + Prologue**
 - **📖 Sequential Chapter Generation** — Chapters are now generated part-by-part (7 parts: opener → general features → NPCs → encounters → areas-batch-1 → areas-batch-2 → closing) instead of a single monolithic block. New MCP tools: `save_chapter_part` + `finalize_chapter` with draft directory pattern.
 - **🌐 Bilingual Validators (ES/EN)** — All WotC format validators now accept both Spanish and English markers (`Texto para Leer` / `Read-Aloud Text`, `Consecuencia` / `Consequence`, etc.). Mixed-language detection rejects chapters that mix ES/EN.
 - **📝 WotC Word Count Calibration** — Area word counts relaxed to 150-600 (was 150-200), boxed text 50-400 (was 100-600), areas per chapter 7-15 (was 10-15). Matches real WotC adventure analysis.
@@ -447,7 +453,13 @@ make install
 
 Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 
-**Último — Fidelidad WotC y Capítulos Secuenciales (v5.1.0)**
+**Último — Fixes del Compilador PDF (v5.1.2)**
+- **🔧 Verificación de Imágenes Corregida** — `countImagesInMarkdownSources()` ahora cuenta paths únicos resueltos en vez de todas las referencias, alineándose con la deduplicación de `embedImage()`. Campañas con referencias de imágenes duplicadas (ej: mismo SVG usado 4 veces) ahora compilan exitosamente.
+- **📝 Preservación de Mensajes de Error** — `classifyError()` ahora preserva los mensajes de error originales como fallback en vez de devolver "an internal error occurred" genérico. Los errores de generación de PDF ahora son visibles para los usuarios.
+- **⚠️ Verificación de Imágenes Advisory** — `verifyImages()` ahora es advisory (warnings) en vez de blocking. Los PDFs se generan incluso si hay mismatch de conteo de imágenes, con warnings logueados para debugging.
+- **🔄 Loop de Reintentos Eliminado** — `Compile()` ya no reintenta 3 veces en fallo de verificación de imágenes. Compilación en un solo paso con warnings advisory.
+
+**v5.1.0–v5.1.1 — Capítulos Secuenciales + Fidelidad WotC + Prólogo**
 - **📖 Generación Secuencial de Capítulos** — Los capítulos ahora se generan parte por parte (7 partes: opener → general features → NPCs → encounters → areas-batch-1 → areas-batch-2 → closing) en vez de un solo bloque monolítico. Nuevas herramientas MCP: `save_chapter_part` + `finalize_chapter` con patrón de directorio draft.
 - **🌐 Validadores Bilingües (ES/EN)** — Todos los validadores de formato WotC ahora aceptan marcadores en español e inglés (`Texto para Leer` / `Read-Aloud Text`, `Consecuencia` / `Consequence`, etc.). Detección de lenguaje mixto rechaza capítulos que mezclan ES/EN.
 - **📝 Calibración de Word Count WotC** — Word counts de áreas relajados a 150-600 (era 150-200), boxed text 50-400 (era 100-600), áreas por capítulo 7-15 (era 10-15). Coincide con análisis real de aventuras WotC.

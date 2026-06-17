@@ -50,6 +50,13 @@ and in its handler file under `internal/mcp/handlers/`.
 - `grimorio_export_campaign` — export to `pdf` (default), `markdown`, or `epub`
 - `grimorio_generate_treasure` — SRD-compliant individual or hoard treasure
 
+### PDF Compilation (v5.1.2)
+- `grimorio_compile_pdf` — Markdown → styled PDF (Chromium or wkhtmltopdf)
+- **Advisory image verification** — warnings instead of blocking on image count mismatch
+- **Unique image dedup** — `countImagesInMarkdownSources()` counts unique resolved paths, aligned with `embedImage()` deduplication
+- **Error message preservation** — original error messages shown to users instead of generic fallback
+- **No retry loop** — single-pass compilation with advisory warnings
+
 ### Image Generation (v5.0)
 - `grimorio_generate_image` — now accepts `force_regenerate` boolean to
   bypass the LRU + on-disk image cache

@@ -32,6 +32,7 @@ for deep dives see the linked docs.
 │   *.go                       adapters                                │
 ├────────────────────────────────────────────────────────────────────┤
 │ internal/compiler/        Markdown → HTML → PDF pipeline            │
+│   v5.1.2: unique image dedup, advisory verify, no retry loop       │
 │ internal/validators/      WotC format validators (pure)             │
 │ internal/cache/           LRU cache                                 │
 │ internal/tts/piper/       Piper TTS client                           │
