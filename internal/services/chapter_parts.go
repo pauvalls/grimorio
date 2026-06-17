@@ -12,16 +12,17 @@ import (
 )
 
 // Valid chapter part names in order
-var validPartNames = []string{"opener", "npcs", "encounters", "areas-1", "areas-2", "closing"}
+var validPartNames = []string{"opener", "general-features", "npcs", "encounters", "areas-1", "areas-2", "closing"}
 
 // partOrder maps part name to its sort order
 var partOrder = map[string]int{
-	"opener":     1,
-	"npcs":       2,
-	"encounters": 3,
-	"areas-1":    4,
-	"areas-2":    5,
-	"closing":    6,
+	"opener":           1,
+	"general-features": 2,
+	"npcs":             3,
+	"encounters":       4,
+	"areas-1":          5,
+	"areas-2":          6,
+	"closing":          7,
 }
 
 // ChapterPartResult is returned by SaveChapterPart

@@ -692,6 +692,58 @@ func TestFormatInline_ThinSpaceBeforeNumber(t *testing.T) {
 	}
 }
 
+func TestFormatInline_BoldItalic(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "triple-star bold-italic",
+			input:    "***text***",
+			expected: "<strong><em>text</em></strong>",
+		},
+		{
+			name:     "triple-star with period (sub-feature)",
+			input:    "***Ceilings.*** 10 feet high.",
+			expected: "<strong><em>Ceilings.</em></strong> 10 feet high.",
+		},
+		{
+			name:     "mixed bold-italic bold and italic",
+			input:    "***bold-italic*** **bold** *italic*",
+			expected: "<strong><em>bold-italic</em></strong> <strong>bold</strong> <em>italic</em>",
+		},
+		{
+			name:     "sub-feature and bold in same paragraph",
+			input:    "***Walls.*** Stone. **Note:** Dangerous.",
+			expected: "<strong><em>Walls.</em></strong> Stone. <strong>Note:</strong> Dangerous.",
+		},
+		{
+			name:     "asymmetric stars graceful fallback no panic",
+			input:    "***text**",
+			expected: "<strong>*text</strong>",
+		},
+		{
+			name:     "existing bold unchanged",
+			input:    "**bold**",
+			expected: "<strong>bold</strong>",
+		},
+		{
+			name:     "existing italic unchanged",
+			input:    "*italic*",
+			expected: "<em>italic</em>",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatInline(tt.input)
+			if result != tt.expected {
+				t.Errorf("formatInline(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestMarkdownToHTML_StripsComments(t *testing.T) {
 	input := "Texto <!-- comentario --> más texto"
 	result := markdownToHTML(input, "")

@@ -899,6 +899,7 @@ func (c *Compiler) htmlToPDFWkhtmltopdf(ctx context.Context, htmlPath, pdfPath s
 }
 
 var (
+	boldItalicRegex   = regexp.MustCompile(`\*\*\*(.+?)\*\*\*`)
 	boldRegex         = regexp.MustCompile(`\*\*(.+?)\*\*`)
 	italicRegex       = regexp.MustCompile(`\*(.+?)\*`)
 	boldAdjacentRegex = regexp.MustCompile(`</strong>([^\s<:;,\.!?])`) // Exclude punctuation to prevent &thinsp; leak
@@ -926,6 +927,7 @@ var (
 
 // formatInline processes bold and italic markers, ensuring no word merging after </strong>
 func formatInline(text string) string {
+	text = boldItalicRegex.ReplaceAllString(text, "<strong><em>$1</em></strong>")
 	text = boldRegex.ReplaceAllString(text, "<strong>$1</strong>")
 	// Remove &thinsp; - it causes spacing issues like "sol , y" and "volvióazul"
 	text = boldAdjacentRegex.ReplaceAllString(text, "</strong>$1")

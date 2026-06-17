@@ -86,6 +86,38 @@ func TestSaveChapterPart_InvalidPartName(t *testing.T) {
 	}
 }
 
+func TestSaveChapterPart_GeneralFeatures(t *testing.T) {
+	svc, _ := setupChapterPartsTest(t)
+
+	content := "## General Features\n\n***Ceilings.*** 30 feet high.\n***Light.*** Dim torchlight."
+	result, err := svc.SaveChapterPart("test-campaign", 1, "general-features", content)
+	if err != nil {
+		t.Fatalf("SaveChapterPart(general-features) error: %v", err)
+	}
+	if result.Status != "ok" {
+		t.Errorf("Status = %q, want %q", result.Status, "ok")
+	}
+
+	// Verify the file was written with correct order prefix (02)
+	draftDir := filepath.Join(result.DraftPath)
+	entries, err := os.ReadDir(draftDir)
+	if err != nil {
+		t.Fatalf("ReadDir error: %v", err)
+	}
+	found := false
+	for _, e := range entries {
+		if strings.Contains(e.Name(), "general-features") {
+			found = true
+			if !strings.HasPrefix(e.Name(), "02-") {
+				t.Errorf("general-features file = %q, want prefix '02-'", e.Name())
+			}
+		}
+	}
+	if !found {
+		t.Error("general-features part file not found in draft directory")
+	}
+}
+
 func TestSaveChapterPart_InvalidCampaign(t *testing.T) {
 	svc, _ := setupChapterPartsTest(t)
 

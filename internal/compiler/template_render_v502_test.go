@@ -107,3 +107,60 @@ func TestChapterTemplateSevenPlaceholders(t *testing.T) {
 		t.Errorf("chapterTemplate missing placeholders: %v", missing)
 	}
 }
+
+// TestChapterTemplateGeneralFeaturesRendersSection asserts that when data
+// includes a non-nil GeneralFeatures with Content, the template renders a
+// "General Features" section with a <div class="general-features"> wrapper
+// before the Areas section.
+func TestChapterTemplateGeneralFeaturesRendersSection(t *testing.T) {
+	data := map[string]any{
+		"ChapterNumber": 1,
+		"Title":         "The Drowned Vault",
+		"GameMode":      "dungeon_lineal",
+		"Duration":      "1 session",
+		"LevelRange":    "3-5",
+		"Tone":          "mystery",
+		"GeneralFeatures": map[string]any{
+			"Content": "***Ceilings.*** 30 feet high, vaulted stone.\n***Light.*** Dim torchlight.",
+		},
+	}
+	out := executeChapterTemplate(t, data)
+
+	if !strings.Contains(out, "## General Features") {
+		t.Error("expected '## General Features' heading in output")
+	}
+	if !strings.Contains(out, `<div class="general-features">`) {
+		t.Error("expected '<div class=\"general-features\">' wrapper in output")
+	}
+	if !strings.Contains(out, "***Ceilings.***") {
+		t.Error("expected GeneralFeatures content in output")
+	}
+	// Verify General Features appears before Areas
+	gfIdx := strings.Index(out, "## General Features")
+	areasIdx := strings.Index(out, "## Areas")
+	if gfIdx >= 0 && areasIdx >= 0 && gfIdx >= areasIdx {
+		t.Error("General Features section must appear before Areas section")
+	}
+}
+
+// TestChapterTemplateGeneralFeaturesNilOmitsSection asserts that when
+// GeneralFeatures is nil (or absent), the template does NOT render any
+// "General Features" section (backward compatible).
+func TestChapterTemplateGeneralFeaturesNilOmitsSection(t *testing.T) {
+	data := map[string]any{
+		"ChapterNumber": 1,
+		"Title":         "The Drowned Vault",
+		"GameMode":      "dungeon_lineal",
+		"Duration":      "1 session",
+		"LevelRange":    "3-5",
+		"Tone":          "mystery",
+	}
+	out := executeChapterTemplate(t, data)
+
+	if strings.Contains(out, "## General Features") {
+		t.Error("nil GeneralFeatures should NOT produce '## General Features' section")
+	}
+	if strings.Contains(out, "general-features") {
+		t.Error("nil GeneralFeatures should NOT produce 'general-features' div")
+	}
+}

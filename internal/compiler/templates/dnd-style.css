@@ -194,6 +194,13 @@ em {
   font-style: italic;
 }
 
+/* WotC run-in heading style for ***bold-italic*** sub-features */
+strong em {
+  font-style: italic;
+  font-weight: 700;
+  color: #5a3d2b;
+}
+
 ul {
   margin: 4px 0;
   padding-left: 18px;
@@ -781,4 +788,16 @@ h3 .area-number {
 }
 .prologue .read-aloud {
     margin: 0.8em 0;
+}
+
+/* ==========================================
+   General Features - Shared environmental properties box
+   ========================================== */
+.general-features {
+  background: #f5f5dc;
+  padding: 1em;
+  border-left: 3px solid #5a3d2b;
+  margin: 10px 0;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
 }

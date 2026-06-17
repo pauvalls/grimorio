@@ -38,6 +38,7 @@ Generar capítulos parte por parte para mejor control de calidad y coherencia na
 | Parte | Nombre | Presupuesto | Contenido |
 |-------|--------|-------------|-----------|
 | 1 | opener | 500-800 | Header, game mode, objectives, adventure background |
+| 1.5 | general-features | 100-200 | Environmental properties (ceilings, doors, light, sound) con ***Name.*** inline |
 | 2 | npcs | 800-1500 | 2-5 inline NPC cards con roleplay cues |
 | 3 | encounters | 800-1500 | 2-4 encounter cards con XP, tactics, alternative resolution |
 | 4 | areas-1 | 1500-3000 | Áreas 1-7 (o 1-5 para capítulos pequeños) |
@@ -466,25 +467,59 @@ Cada capítulo con ≥ 2 facciones relevantes DEBE incluir una tabla de reputaci
 
 ### Regla 21: "What's Next?" Handoff (WotC Nueva 7)
 
-Cada capítulo cierra con un bloque `> What's Next?` (EN) o `> ¿Qué Sigue?` (ES) que materializa el handoff al siguiente capítulo. El bloque tiene 4 elementos:
+2-3 párrafos de prosa narrativa libre (100-400 palabras) que cierren el capítulo
+con guidance condicional. NO usar campos estructurados. Incluir de forma natural:
+- Qué tienen los PJs ahora (asset concreto)
+- Una pregunta abierta sin resolver
+- Lead al próximo capítulo (nombre/lugar/NPC)
+- Cambio de tono emocional
 
-1. **Asset transferido:** qué tienen los PJs que el siguiente capítulo necesita
-2. **Pregunta abierta:** una pregunta que el capítulo NO responde
-3. **Lead del próximo acto:** nombre / lugar / NPC que aparecerá
-4. **Cambio de tono:** qué cambia emocionalmente entre este capítulo y el siguiente
+**Ejemplo:**
+
+```markdown
+## What's Next?
+
+Los PJs llevan el mapa del naufragio y saben DÓNDE buscar la Perla.
+La tripulación del Diente de Tiburón los mira con recelo — algunos
+saben que Garra de Sal ocultó algo durante años.
+
+Pero ¿quién dentro de la tripulación está dispuesto a traicionar
+al capitán? La pregunta flota en el aire salado del puerto.
+
+En Puerto Salino, 'La Dama de las Olas' espera como contacto
+en la taberna del Muelle Roto. El tono cambia de investigación
+a confrontación directa — las espadas hablarán más que las palabras.
+```
+
+**Cantidad**: 1 al cierre de cada capítulo.
+
+### Regla 22: General Features (WotC Ambiental)
+
+Una sección `## General Features` por ubicación compleja, antes de las áreas.
+Usar `***Name.***` bold-italic inline para sub-features ambientales: ceilings,
+doors, light, sound, air, walls. Evita repetir info ambiental en cada área.
+
+Esta sección se guarda como parte `general-features` (entre opener y npcs) en
+el workflow secuencial.
 
 **Estructura obligatoria:**
 
 ```markdown
-> **What's Next?**
->
-> - **Asset transferido:** Mapa del naufragio + mapa de la Perla (los PJs ahora saben DÓNDE ir)
-> - **Pregunta abierta:** ¿Quién dentro de la Perla está dispuesto a traicionar a Veleron?
-> - **Lead del próximo acto:** "La Dama de las Olas" — contacto en Puerto Salino
-> - **Cambio de tono:** De investigativo (capítulo actual) → confrontacional (capítulo 3)
+## General Features
+
+***Ceilings.*** 30 feet high, vaulted stone with moss.
+***Doors.*** Heavy oak reinforced with iron bands.
+***Light.*** Dim torchlight every 30 feet.
+***Sound.*** Dripping water echoes from the east.
+***Air.*** Stale and cold, smells of copper.
+***Walls.*** Rough-hewn granite, slick with moisture.
 ```
 
-**Cantidad**: 1 al cierre de cada capítulo.
+**Referencia WotC:** LMoP Cragmaw Hideout — la entrada describe las
+características generales de la cueva antes de listar las áreas individuales.
+
+**Cantidad**: 1 por ubicación compleja (dungeon, edificio grande, complejo).
+Opcional para ubicaciones simples.
 
 ---
 
@@ -506,7 +541,8 @@ Antes de guardar, verificá que el capítulo tenga:
 - [ ] **Per-Encounter XP:** 1 por encuentro (Regla 18)
 - [ ] **Multi-DC Traps:** ≥ 1 si hay trampas (Regla 19)
 - [ ] **Faction Tracker:** ≥ 1 fila si hay facciones (Regla 20)
-- [ ] **What's Next? handoff:** 1 al cierre (Regla 21)
+- [ ] **General Features:** 1 por ubicación compleja, antes de áreas (Regla 22)
+- [ ] **What's Next? handoff:** 1 al cierre, prosa narrativa libre 100-400 palabras (Regla 21)
 - [ ] **Consecuencias y Transición:** Tres ramas (éxito, fallo, decisiones clave)
 - [ ] **Cross-References:** Todos los monstruos referenciados existen en bestiary
 - [ ] **Asset Handoff:** Concreto (objeto / información / aliado / base)
