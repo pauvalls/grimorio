@@ -67,12 +67,35 @@ The campaign is built in **5 macro-phases**. Each macro-phase has gates that BLO
 │  └── save_lore                                                       │
 │  GATE: validate_canon → approved                                    │
 ├────────────────────────────────────────────────────────────────────┤
-│  MACRO-PHASE 2: CHAPTERS (sequential, 1 chapter at a time)         │
-│  For each chapter (typically 3):                                     │
-│    ├── save_chapter (areas + read-aloud + hooks + developments)     │
-│    ├── generate_map + generate_divider (per chapter)                │
-│    ├── GATE: narrative-custodian (per chapter, BLOCKING)            │
-│    └── GATE: WotC validation (per chapter, BLOCKING)                │
+│  MACRO-PHASE 2: PROLOGUE + CHAPTERS (sequential, 1 at a time)      │
+│                                                                      │
+│  **ALWAYS generate Prologue (Chapter 0) first.**                     │
+│  The prologue is where the party meets, introduces characters,      │
+│  and begins the adventure. Social areas, NPC intros, roleplay cues. │
+│                                                                      │
+│  Chapter 0: Prologue (MANDATORY)                                     │
+│    ├── save_chapter_part(0, "opener", ...)                           │
+│    ├── save_chapter_part(0, "npcs", ...)                             │
+│    ├── save_chapter_part(0, "encounters", ...)                       │
+│    ├── save_chapter_part(0, "areas-1", ...)                          │
+│    ├── save_chapter_part(0, "closing", ...)                          │
+│    ├── finalize_chapter(0, title="Prologue", is_prologue=true)       │
+│    ├── generate_map + generate_divider                               │
+│    ├── GATE: narrative-custodian (BLOCKING)                          │
+│    └── GATE: WotC validation (BLOCKING)                              │
+│                                                                      │
+│  Chapters 1-N (typically 3 main chapters):                           │
+│    ├── save_chapter_part(N, "opener", ...)                           │
+│    ├── save_chapter_part(N, "general-features", ...)                 │
+│    ├── save_chapter_part(N, "npcs", ...)                             │
+│    ├── save_chapter_part(N, "encounters", ...)                       │
+│    ├── save_chapter_part(N, "areas-1", ...)                          │
+│    ├── save_chapter_part(N, "areas-2", ...) [if needed]              │
+│    ├── save_chapter_part(N, "closing", ...)                          │
+│    ├── finalize_chapter(N, title, ...)                               │
+│    ├── generate_map + generate_divider                               │
+│    ├── GATE: narrative-custodian (BLOCKING)                          │
+│    └── GATE: WotC validation (BLOCKING)                              │
 ├────────────────────────────────────────────────────────────────────┤
 │  MACRO-PHASE 3: BESTIARY & CHARACTERS (parallel)                   │
 │  ├── save_npcs + save_bestiary (anchored to chapters)               │
@@ -97,9 +120,9 @@ The campaign is built in **5 macro-phases**. Each macro-phase has gates that BLO
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-**Why chapters first?** Chapters define the spatial and narrative skeleton. NPCs,
-bestiary, encounters, quests, and treasure all anchor to specific chapters and
-areas. Building them after chapters ensures cross-references resolve.
+**Sequential generation (v5.1):** Each chapter is built part-by-part (7 parts) instead of monolithically. This maintains coherence and allows incremental validation. Each part is ~1000-2000 words.
+
+**Why prologue + chapters first?** The prologue establishes the party. Chapters define the spatial and narrative skeleton. NPCs, bestiary, encounters, quests, and treasure all anchor to specific chapters and areas. Building them after chapters ensures cross-references resolve.
 
 ## 3. Validation Strategy
 
@@ -124,12 +147,23 @@ report failure to the user.
 - `migrate-areas-to-chapters` CLI — migrate legacy `areas/` campaigns
 - `grimorio validate` CLI — pre-PDF validation with scope flags
 
+## 4.1. v5.1 Additions: Sequential Chapters + WotC Fidelity
+
+- `save_chapter_part` + `finalize_chapter` — sequential chapter generation (7 parts)
+- **Bilingual validators** — accept both Spanish and English markers
+- **WotC word counts** — area 150-600 words, boxed text 50-400, areas 7-15 per chapter
+- **Inline sub-features** — `***Name.***` bold-italic pattern for run-in headings
+- **General Features** — optional section before areas for shared environmental properties
+- **What's Next?** — free narrative prose (2-3 paragraphs), not structured fields
+- **Prologue chapter** — always generated as Chapter 0 with `is_prologue: true`
+
 ## 5. MCP Tools Reference (Quick)
 
 | Category | Tools |
 |----------|-------|
 | **Creation** | `create_campaign`, `generate_adventure_bible`, `generate_names` |
-| **Save** | `save_introduction`, `save_setting_guide`, `save_lore`, `save_chapter`, `save_areas`, `save_npcs`, `save_bestiary`, `save_encounters`, `save_maps`, `save_quests`, `save_characters`, `save_appendices` |
+| **Save (monolithic)** | `save_introduction`, `save_setting_guide`, `save_lore`, `save_chapter`, `save_npcs`, `save_bestiary`, `save_encounters`, `save_maps`, `save_quests`, `save_characters`, `save_appendices` |
+| **Save (sequential, v5.1)** | `save_chapter_part`, `finalize_chapter` — generate chapters part-by-part (7 parts: opener → general-features → npcs → encounters → areas-1 → areas-2 → closing) |
 | **Assets** | `generate_image`, `generate_map`, `generate_divider`, `generate_flowchart`, `generate_random_tables`, `generate_handouts`, `generate_treasure`, `generate_session_prep` |
 | **Validation** | `validate_canon`, `check_consistency`, `process_consistency_gate`, `evaluate_consequences` |
 | **State** | `update_narrative_state`, `update_faction_reputation`, `update_quest_status` |
@@ -164,6 +198,7 @@ Final report:
 - EPUB: {path}/campaign.epub
 
 **Generated:**
+- Prologue: ✅ (party introduction, social areas)
 - Chapters: {n}
 - NPCs: {n} | Monsters: {n} | Encounters: {n}
 - Quests: {n} | Pre-gens: {n}

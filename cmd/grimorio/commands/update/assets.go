@@ -228,7 +228,7 @@ func updateCommands() error {
 		"subtask":     false,
 		"template": `Generate a D&D 5e campaign or one-shot from the user's idea.
 
-**Version:** 5.0.0 — Chapter-Sequential Pipeline
+**Version:** 5.1.0 — Sequential Chapters + WotC Fidelity
 
 ## IMPORTANT: Use the grimorio-architect agent. It handles everything end-to-end.
 
@@ -253,14 +253,38 @@ The architect follows this sequence with BLOCKING gates at each macro-phase.
 - save_lore
 - GATE: validate_canon → approved (BLOCKING)
 
-### Macro-Phase 2: Chapters (sequential, 1 at a time)
-For each chapter (typically 3):
-- save_chapter(chapter_number, title, content) with WotC standards
+### Macro-Phase 2: Prologue + Chapters (sequential, 1 at a time)
+
+**ALWAYS generate a Prologue chapter first (Chapter 0).** The prologue is where the party meets, introduces their characters, and begins the adventure together. It includes social areas, NPC introductions, and roleplay cues.
+
+#### Chapter 0: Prologue (MANDATORY)
+- save_chapter_part(chapter_number=0, part_name="opener", ...) — prologue introduction
+- save_chapter_part(chapter_number=0, part_name="npcs", ...) — key NPCs for party meeting
+- save_chapter_part(chapter_number=0, part_name="encounters", ...) — social encounters
+- save_chapter_part(chapter_number=0, part_name="areas-1", ...) — 3-5 social areas (tavern, road, event)
+- save_chapter_part(chapter_number=0, part_name="closing", ...) — transition to Chapter 1
+- finalize_chapter(chapter_number=0, title="Prologue", is_prologue=true)
+- generate_map + generate_divider for prologue
+- GATE: narrative-custodian (BLOCKING)
+- GATE: WotC format validation (BLOCKING)
+
+#### Chapters 1-N (typically 3 main chapters)
+For each chapter:
+- save_chapter_part(chapter_number, part_name="opener", ...) — chapter introduction, game mode, objectives
+- save_chapter_part(chapter_number, part_name="general-features", ...) — shared environmental properties (ceilings, doors, light, sound)
+- save_chapter_part(chapter_number, part_name="npcs", ...) — chapter NPCs with structured profiles
+- save_chapter_part(chapter_number, part_name="encounters", ...) — combat/social/exploration encounters
+- save_chapter_part(chapter_number, part_name="areas-1", ...) — areas 1-7 (150-600 words each)
+- save_chapter_part(chapter_number, part_name="areas-2", ...) — areas 8-15 if needed
+- save_chapter_part(chapter_number, part_name="closing", ...) — consequences, faction tracker, What's Next? (free prose)
+- finalize_chapter(chapter_number, title, ...)
 - generate_map + generate_divider for this chapter
 - GATE: narrative-custodian (BLOCKING)
 - GATE: WotC format validation (BLOCKING)
 
-**Why chapters first?** Chapters are the spatial and narrative skeleton. NPCs, bestiary, encounters, quests, and treasure all anchor to specific chapters and areas.
+**Sequential generation:** Each chapter is built part-by-part (7 parts) instead of monolithically. This maintains coherence and allows incremental validation. Each part is ~1000-2000 words.
+
+**Why prologue + chapters first?** The prologue establishes the party. Chapters are the spatial and narrative skeleton. NPCs, bestiary, encounters, quests, and treasure all anchor to specific chapters and areas.
 
 ### Macro-Phase 3: Bestiary & Characters (parallel, anchored to chapters)
 - save_npcs (anchored to chapter/area)
@@ -290,20 +314,32 @@ For each chapter (typically 3):
 
 The architect reports progress to the user after each macro-phase.
 
-## 2. Available MCP Tools (v5.0)
+## 2. Available MCP Tools (v5.1)
 
 - Creation: create_campaign, generate_adventure_bible, generate_names
-- Save: save_introduction, save_setting_guide, save_lore, save_chapter, save_npcs, save_bestiary, save_encounters, save_maps, save_quests, save_characters, save_appendices
+- Save (monolithic): save_introduction, save_setting_guide, save_lore, save_chapter, save_npcs, save_bestiary, save_encounters, save_maps, save_quests, save_characters, save_appendices
+- Save (sequential, v5.1): save_chapter_part, finalize_chapter — generate chapters part-by-part
 - Assets: generate_image, generate_map, generate_divider, generate_flowchart, generate_random_tables, generate_handouts, generate_treasure, generate_session_prep
 - Validation: validate_canon, check_consistency, process_consistency_gate, evaluate_consequences
 - State: update_narrative_state, update_faction_reputation, update_quest_status
 - Quality (v5.0): campaign_health_dashboard, export_campaign
 - Compilation: compile_pdf
 
+## 3. WotC Fidelity Standards (v5.1)
+
+- **Area word count:** 150-600 words per area (WotC reality: avg 300-500)
+- **Boxed text:** 50-400 words (read-aloud text)
+- **Areas per chapter:** 7-15 (flexible, not rigidly 10-15)
+- **Chapter total:** 3000-16000 words
+- **General Features:** Optional section before areas for shared environmental properties (ceilings, doors, light, sound)
+- **Inline sub-features:** Use ***Name.*** bold-italic pattern for run-in headings
+- **What's Next?:** Free narrative prose (2-3 paragraphs, 100-400 words), not structured fields
+- **Bilingual:** Validators accept both Spanish and English markers
+
 ## Final: Report
 After completion, report to the user:
 - Where the PDF was saved
-- What content was generated
+- What content was generated (including prologue)
 - Campaign health score
 - Any issues encountered
 
