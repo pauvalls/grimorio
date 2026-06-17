@@ -285,7 +285,7 @@ func generateTestAreas(start, end, total int) string {
 		fmt.Fprintf(&sb, "**Description:** %s\n\n", filler)
 		sb.WriteString("**Creatures:**\n- 1 **Goblin**\n\n")
 		sb.WriteString("**Treasure:**\n- **XP:** 50 XP\n- **Coin:** 10 gp\n\n")
-		sb.WriteString(fmt.Sprintf("**Connections:**\n- → Area %d\n- ← Area %d\n\n", next, prev))
+		fmt.Fprintf(&sb, "**Connections:**\n- → Area %d\n- ← Area %d\n\n", next, prev)
 		sb.WriteString("**Secrets and Traps:**\n- **Detect:** Perception DC 12\n\n")
 		sb.WriteString("**Development:**\n- If they enter combat: they attack.\n\n")
 	}
