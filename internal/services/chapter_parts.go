@@ -266,7 +266,6 @@ func validationErrors(errs []validators.ValidationError) string {
 }
 
 var (
-	draftNPCHeadingRe    = regexp.MustCompile(`(?i)^#{2,3}\s+(.+?)\s*$`)
 	draftAreaHeadingRe   = regexp.MustCompile(`(?i)^#{3}\s+(?:Área|Area)\s+(\d+|[A-Z]\d*)[:\s]*(.+?)\s*$`)
 	draftEncounterRe     = regexp.MustCompile(`(?i)^#{3}\s+(?:Encuentro|Encounter)\s+(\d+)[:\s]*(.+?)\s*$`)
 )

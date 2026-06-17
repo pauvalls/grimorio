@@ -280,9 +280,9 @@ func generateTestAreas(start, end, total int) string {
 			prev = total
 		}
 
-		sb.WriteString(fmt.Sprintf("### Area %d: Room %d\n\n", i, i))
-		sb.WriteString(fmt.Sprintf("> **Read-Aloud Text:** *%s*\n\n", filler))
-		sb.WriteString(fmt.Sprintf("**Description:** %s\n\n", filler))
+		fmt.Fprintf(&sb, "### Area %d: Room %d\n\n", i, i)
+		fmt.Fprintf(&sb, "> **Read-Aloud Text:** *%s*\n\n", filler)
+		fmt.Fprintf(&sb, "**Description:** %s\n\n", filler)
 		sb.WriteString("**Creatures:**\n- 1 **Goblin**\n\n")
 		sb.WriteString("**Treasure:**\n- **XP:** 50 XP\n- **Coin:** 10 gp\n\n")
 		sb.WriteString(fmt.Sprintf("**Connections:**\n- → Area %d\n- ← Area %d\n\n", next, prev))

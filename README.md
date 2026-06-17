@@ -202,7 +202,17 @@ make install
 
 See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 
-**Latest — Quality, Performance & English-First Release (v5.0.0)**
+**Latest — WotC Fidelity & Sequential Chapters (v5.1.0)**
+- **📖 Sequential Chapter Generation** — Chapters are now generated part-by-part (7 parts: opener → general features → NPCs → encounters → areas-batch-1 → areas-batch-2 → closing) instead of a single monolithic block. New MCP tools: `save_chapter_part` + `finalize_chapter` with draft directory pattern.
+- **🌐 Bilingual Validators (ES/EN)** — All WotC format validators now accept both Spanish and English markers (`Texto para Leer` / `Read-Aloud Text`, `Consecuencia` / `Consequence`, etc.). Mixed-language detection rejects chapters that mix ES/EN.
+- **📝 WotC Word Count Calibration** — Area word counts relaxed to 150-600 (was 150-200), boxed text 50-400 (was 100-600), areas per chapter 7-15 (was 10-15). Matches real WotC adventure analysis.
+- **✨ Inline Sub-features (`***bold-italic***`)** — Compiler now correctly renders `***Feature Name.***` as `<strong><em>Feature Name.</em></strong>` run-in headings, matching WotC official adventure format. CSS `strong em` rule added.
+- **🏰 General Features Section** — New optional section before areas for shared environmental properties (ceilings, doors, light, sound). Uses `***Name.***` inline pattern. New `domain.GeneralFeatures` struct + template block + CSS `.general-features` class.
+- **📜 What's Next? Free Prose** — Replaced structured 4-field format with free narrative prose (2-3 paragraphs, 100-400 words), matching WotC official adventure style.
+- **🎭 Prologue as Chapter** — Prologue can now be generated as `chapter_00.md` with `is_prologue: true` frontmatter, including social areas, NPCs, and roleplay cues for party introduction. Appears in compiler TOC.
+- **🔧 7-Part Chapter Workflow** — `grimorio-chapters` skill and agent updated with sequential workflow: opener → general features → NPCs → encounters → areas-batch-1 → areas-batch-2 → closing. Each part ~1000-2000 words with accumulated context for coherence.
+
+**v5.0.0 — Quality, Performance & English-First Release**
 - **🌍 English-First with Language Selection** — All skills, agents, and templates are now in English by default. The `grimorio-architect` agent asks you to pick your language (English or Spanish) at the start of every campaign. Default is English.
 - **✅ `grimorio validate` CLI** — Validate any campaign without compiling the PDF. Scopes: `structure`, `wotc`, `references`, `all`. Outputs JSON for CI. The bash shim is kept as a deprecated wrapper.
 - **🖼️ Image Generation Cache** — Hash-based LRU(50) + on-disk sharded dedup at `~/.cache/grimorio/images/`. `force_regenerate` flag on `generate_image` MCP tool. Instant re-renders for repeated prompts.
@@ -437,7 +447,17 @@ make install
 
 Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 
-**Último — Calidad, Rendimiento e Inglés-Primero (v5.0.0)**
+**Último — Fidelidad WotC y Capítulos Secuenciales (v5.1.0)**
+- **📖 Generación Secuencial de Capítulos** — Los capítulos ahora se generan parte por parte (7 partes: opener → general features → NPCs → encounters → areas-batch-1 → areas-batch-2 → closing) en vez de un solo bloque monolítico. Nuevas herramientas MCP: `save_chapter_part` + `finalize_chapter` con patrón de directorio draft.
+- **🌐 Validadores Bilingües (ES/EN)** — Todos los validadores de formato WotC ahora aceptan marcadores en español e inglés (`Texto para Leer` / `Read-Aloud Text`, `Consecuencia` / `Consequence`, etc.). Detección de lenguaje mixto rechaza capítulos que mezclan ES/EN.
+- **📝 Calibración de Word Count WotC** — Word counts de áreas relajados a 150-600 (era 150-200), boxed text 50-400 (era 100-600), áreas por capítulo 7-15 (era 10-15). Coincide con análisis real de aventuras WotC.
+- **✨ Sub-features Inline (`***bold-italic***`)** — El compiler ahora renderiza correctamente `***Feature Name.***` como `<strong><em>Feature Name.</em></strong>` run-in headings, coincidiendo con el formato oficial de aventuras WotC. Regla CSS `strong em` agregada.
+- **🏰 Sección General Features** — Nueva sección opcional antes de las áreas para propiedades ambientales compartidas (ceilings, doors, light, sound). Usa patrón `***Name.***` inline. Nuevo struct `domain.GeneralFeatures` + bloque de template + clase CSS `.general-features`.
+- **📜 What's Next? Prosa Libre** — Reemplazado formato estructurado de 4 campos con prosa narrativa libre (2-3 párrafos, 100-400 palabras), coincidiendo con el estilo oficial de aventuras WotC.
+- **🎭 Prólogo como Capítulo** — El prólogo ahora puede generarse como `chapter_00.md` con frontmatter `is_prologue: true`, incluyendo áreas sociales, NPCs y cues de roleplay para presentación del grupo. Aparece en el TOC del compiler.
+- **🔧 Workflow de 7 Partes para Capítulos** — Skill y agent `grimorio-chapters` actualizados con workflow secuencial: opener → general features → NPCs → encounters → areas-batch-1 → areas-batch-2 → closing. Cada parte ~1000-2000 palabras con contexto acumulado para coherencia.
+
+**v5.0.0 — Calidad, Rendimiento e Inglés-Primero**
 - **🌍 Inglés-Primero con Selección de Idioma** — Todas las skills, agents y templates ahora están en inglés por defecto. El agente `grimorio-architect` te pregunta el idioma (inglés o español) al inicio de cada campaña. Default es inglés.
 - **✅ CLI `grimorio validate`** — Valida cualquier campaña sin compilar el PDF. Scopes: `structure`, `wotc`, `references`, `all`. Salida JSON para CI. El shim bash se mantiene como wrapper deprecated.
 - **🖼️ Caché de Generación de Imágenes** — LRU(50) basado en hash + dedup sharded en disco en `~/.cache/grimorio/images/`. Flag `force_regenerate` en la tool MCP `generate_image`. Re-renders instantáneos para prompts repetidos.
@@ -523,7 +543,10 @@ Ver **[Guía de Consistencia de Campaña](docs/campaign-consistency.md)** para r
     ├── campaign.pdf          # Final PDF / PDF final
     ├── campaign.html         # HTML version / versión HTML
     ├── lore.md               # World backstory / Trasfondo del mundo
-    ├── areas/                 # Chapters with areas / Capítulos con áreas
+    ├── chapters/              # Chapters with areas (WotC format) / Capítulos con áreas
+    │   ├── drafts/            # Sequential generation drafts / Borradores de generación secuencial
+    │   ├── chapter_00.md      # Prologue chapter (optional) / Capítulo de prólogo (opcional)
+    │   └── chapter_01.md      # Chapter 1 / Capítulo 1
     ├── npcs/                 # NPCs and factions / NPCs y facciones
     ├── bestiary/             # Monster stat blocks / Estadísticas de monstruos
     ├── encounters/           # Combat challenges / Desafíos de combate

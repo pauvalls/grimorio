@@ -287,24 +287,6 @@ func ValidateCharacterHooks(md string) ValidationResult {
 
 // Helper functions
 
-func extractSection(md, sectionName string) string {
-	// Find section heading
-	pattern := regexp.MustCompile(`(?i)###?\s*` + regexp.QuoteMeta(sectionName))
-	loc := pattern.FindStringIndex(md)
-	if loc == nil {
-		return ""
-	}
-	
-	// Extract from heading to next ### or end
-	start := loc[0]
-	nextSection := regexp.MustCompile(`(?m)^#{3,}`).FindStringIndex(md[start+1:])
-	if nextSection == nil {
-		return md[start:]
-	}
-	
-	return md[start : start+1+nextSection[0]]
-}
-
 // extractSectionRegex extracts a section using a pre-compiled regex pattern
 func extractSectionRegex(md string, pattern *regexp.Regexp) string {
 	loc := pattern.FindStringIndex(md)
