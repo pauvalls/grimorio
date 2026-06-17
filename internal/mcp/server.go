@@ -162,6 +162,7 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 
 	// Initialize handlers
 	campaignHandlers := handlers.NewCampaignHandlers(campaignService)
+	chapterPartHandlers := handlers.NewChapterPartHandlers(campaignService)
 	characterHandlers := handlers.NewCharacterHandlers(characterService)
 	questHandlers := handlers.NewQuestHandlers(questService)
 	assetHandlers := handlers.NewAssetHandlers(assetService)
@@ -211,6 +212,21 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithString("title", mcp.Required(), mcp.Description("Chapter title")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Full Markdown content with inline NPCs, encounters, and numbered areas (WotC format)")),
 	), campaignHandlers.HandleSaveChapter())
+
+	s.AddTool(mcp.NewTool("save_chapter_part",
+		mcp.WithDescription("Save a chapter part to draft directory for sequential generation. Call 6 times (opener, npcs, encounters, areas-1, areas-2, closing), then call finalize_chapter."),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithNumber("chapter_number", mcp.Required(), mcp.Description("Chapter number (0 for prologue, 1-N for chapters)")),
+		mcp.WithString("part_name", mcp.Required(), mcp.Description("Part name: opener, npcs, encounters, areas-1, areas-2, closing")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Markdown content for this part")),
+	), chapterPartHandlers.HandleSaveChapterPart())
+
+	s.AddTool(mcp.NewTool("finalize_chapter",
+		mcp.WithDescription("Assemble draft parts into final chapter, validate, and sync canon. Call after all save_chapter_part calls."),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithNumber("chapter_number", mcp.Required(), mcp.Description("Chapter number")),
+		mcp.WithString("title", mcp.Required(), mcp.Description("Chapter title")),
+	), chapterPartHandlers.HandleFinalizeChapter())
 
 	s.AddTool(mcp.NewTool("save_lore",
 		mcp.WithDescription("Save world lore and history for the campaign"),

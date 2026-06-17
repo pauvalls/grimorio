@@ -214,7 +214,7 @@ func (c *Compiler) Compile(ctx context.Context, title string) (string, error) {
 // generateHTML reads all markdown sources and generates the full HTML document.
 func (c *Compiler) generateHTML(title string) ([]string, error) {
 	// chapters/ is the only chapter source — grimorio-areas (legacy areas/
-	// directory + skill) was removed in v5.0.2 WU7.
+	// directory + skill) was removed in v5.0.2 WotC7.
 	chapterDir := filepath.Join(c.CampaignDir, "chapters")
 
 	sections := []struct {
@@ -224,6 +224,25 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 	}{
 		{"Introduction", filepath.Join(c.CampaignDir, "introduction.md"), false},
 		{"Lore y Ambientación", filepath.Join(c.CampaignDir, "lore.md"), false},
+	}
+
+	// Check for prologue chapter (chapter_00.md with is_prologue: true)
+	prologueChapterPath := filepath.Join(chapterDir, "chapter_00.md")
+	if data, err := os.ReadFile(prologueChapterPath); err == nil {
+		if hasPrologueFrontmatter(string(data)) {
+			sections = append(sections, struct {
+				name  string
+				path  string
+				isDir bool
+			}{"Prologue", prologueChapterPath, false})
+		}
+	}
+
+	sections = append(sections, []struct {
+		name  string
+		path  string
+		isDir bool
+	}{
 		{"Chapters", chapterDir, true},
 		{"Setting Guide", filepath.Join(c.CampaignDir, "setting-guide.md"), false},
 		{"Apéndice A: NPCs y Facciones", filepath.Join(c.CampaignDir, "npcs"), true},
@@ -233,7 +252,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 		{"Appendices", filepath.Join(c.CampaignDir, "appendices.md"), false},
 		{"Apéndice G: Character Sheets", filepath.Join(c.CampaignDir, "characters"), true},
 		{"Apéndice H: Quests", filepath.Join(c.CampaignDir, "quests"), true},
-	}
+	}...)
 
 	var htmlParts []string
 	headingCounter := 0
@@ -296,6 +315,9 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 				if strings.HasSuffix(f.Name(), ".md") {
 					content, err := os.ReadFile(filepath.Join(sec.path, f.Name()))
 					if err != nil {
+						continue
+					}
+					if f.Name() == "chapter_00.md" && hasPrologueFrontmatter(string(content)) {
 						continue
 					}
 					sectionID := "sec-" + sanitizeID(sec.name+"-"+f.Name())
@@ -424,6 +446,11 @@ func (c *Compiler) generateSessionZero() string {
 	}
 
 	return htmlResult // markdown already contains the heading with proper id
+}
+
+// hasPrologueFrontmatter checks if a markdown file has is_prologue: true in YAML frontmatter
+func hasPrologueFrontmatter(content string) bool {
+	return strings.Contains(content, "is_prologue: true")
 }
 
 // generatePrologue reads prologue.md and converts to HTML

@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -362,11 +363,11 @@ func (p *EntityParser) ParseEncounters(content string, campaignID string) ([]dom
 			continue
 		}
 
-		// Check for encounter heading (## Encuentro X: Nombre)
-		if matches := regexp.MustCompile(`^#{2}\s+(?:Encuentro\s+\d+[:\s]*)?(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
+		// Check for encounter heading (## Encuentro X: Nombre or ## Encounter X: Name)
+		if matches := regexp.MustCompile(`^#{2}\s+(?:(?:Encuentro|Encounter)\s+\d+[:\s]*)?(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
 			name := strings.TrimSpace(matches[1])
-			// Remove "Encuentro X:" prefix if present
-			name = regexp.MustCompile(`^Encuentro\s+\d+[:\s]*`).ReplaceAllString(name, "")
+			// Remove "Encuentro X:" or "Encounter X:" prefix if present
+			name = regexp.MustCompile(`^(?:Encuentro|Encounter)\s+\d+[:\s]*`).ReplaceAllString(name, "")
 			name = strings.TrimSpace(name)
 
 			if name == "" {
@@ -510,15 +511,15 @@ func (p *EntityParser) ParseChapter(content, campaignID string, chapterNum int) 
 
 		lower := strings.ToLower(trimmed)
 
-		// Detect section boundaries
+		// Detect section boundaries (bilingual ES|EN)
 		if strings.HasPrefix(lower, "## ") {
 			inNPCSection = false
 			inEncounterSection = false
 			inAreaSection = false
 
-			if strings.Contains(lower, "npc") {
+			if strings.Contains(lower, "npc") || strings.Contains(lower, "personaje") {
 				inNPCSection = true
-			} else if strings.Contains(lower, "encuentro") {
+			} else if strings.Contains(lower, "encuentro") || strings.Contains(lower, "encounter") {
 				inEncounterSection = true
 			} else if strings.Contains(lower, "área") || strings.Contains(lower, "area") {
 				inAreaSection = true
@@ -526,10 +527,14 @@ func (p *EntityParser) ParseChapter(content, campaignID string, chapterNum int) 
 			continue
 		}
 
-		// Parse area heading: ### Área N: Name
+		// Parse area heading: ### Área N: Name or ### Area N: Name (supports lettered)
 		if inAreaSection {
-			if matches := regexp.MustCompile(`^#{3}\s+(?:Área|Area)\s+(\d+)[:\s]*(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
-				areaNum := parseInt(matches[1])
+			if matches := regexp.MustCompile(`^#{3}\s+(?:Área|Area)\s+(\d+|[A-Z]\d*)[:\s]*(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
+				areaNum := 0
+				areaID := matches[1]
+				if n, err := strconv.Atoi(areaID); err == nil {
+					areaNum = n
+				}
 				name := strings.TrimSpace(matches[2])
 
 				if currentArea != nil {
@@ -568,9 +573,9 @@ func (p *EntityParser) ParseChapter(content, campaignID string, chapterNum int) 
 			}
 		}
 
-		// Parse encounter heading: ### Encuentro N: Name
+		// Parse encounter heading: ### Encuentro N: Name or ### Encounter N: Name
 		if inEncounterSection {
-			if matches := regexp.MustCompile(`^#{3}\s+Encuentro\s+(\d+)[:\s]*(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
+			if matches := regexp.MustCompile(`^#{3}\s+(?:Encuentro|Encounter)\s+(\d+)[:\s]*(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
 				name := strings.TrimSpace(matches[2])
 
 				if currentEncounter != nil {
@@ -800,9 +805,13 @@ func (p *EntityParser) ParseAreas(content string, campaignID string, chapterID s
 			continue
 		}
 
-		// Check for area heading (### Área X: Nombre or ### Area X: Name)
-		if matches := regexp.MustCompile(`^#{3}\s+(?:Área|Area)\s+(\d+)[:\s]*(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
-			areaNum := parseInt(matches[1])
+		// Check for area heading (### Área X: Nombre or ### Area X: Name, supports lettered)
+		if matches := regexp.MustCompile(`^#{3}\s+(?:Área|Area)\s+(\d+|[A-Z]\d*)[:\s]*(.+?)\s*$`).FindStringSubmatch(trimmed); matches != nil {
+			areaNum := 0
+			areaID := matches[1]
+			if n, err := strconv.Atoi(areaID); err == nil {
+				areaNum = n
+			}
 			name := strings.TrimSpace(matches[2])
 
 			// Save previous area

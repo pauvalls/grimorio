@@ -7,11 +7,11 @@ import (
 )
 
 var (
-	// Development branch patterns
-	developmentBranchPattern   = regexp.MustCompile(`(?i)###?\s*Developments?`)
-	ifThenPattern             = regexp.MustCompile(`(?i)\*\*Si\s+[^:]+:\*\*`)
-	consecuenciaPattern       = regexp.MustCompile(`(?i)\*\*Consecuencia\s+(inmediata|futura|a\s+largo\s+plazo):\*\*`)
-	recuperacionPattern       = regexp.MustCompile(`(?i)\*\*Recuperación:\*\*`)
+	// Development branch patterns (bilingual ES|EN)
+	developmentBranchPattern   = regexp.MustCompile(`(?i)###?\s*(?:Developments?|Desarrollo)`)
+	ifThenPattern             = regexp.MustCompile(`(?i)\*\*(?:Si|If)\s+(?:(?:the\s+)?PCs?\s+|los\s+PJs?\s+)?[^:]+:\*\*`)
+	consecuenciaPattern       = regexp.MustCompile(`(?i)\*\*(?:(?:Consecuencia|Consequence)\s+(?:inmediata|futura|a\s+largo\s+plazo|immediate|future|long-term)|(?:Immediate|Future|Long-term)\s+(?:consecuencia|consequence)):\*\*`)
+	recuperacionPattern       = regexp.MustCompile(`(?i)\*\*(?:Recuperación|Recovery):\*\*`)
 	ramasPattern              = regexp.MustCompile(`(?i)(?:rama|branch|opción|path|camino)\s*#?\d*`)
 	
 	// Solution path patterns
@@ -21,10 +21,10 @@ var (
 	socialDCPattern           = regexp.MustCompile(`(?i)(CD|DC)\s*\d+\s*(persuas|diplom|engañ|intimid)`)
 	combatSolutionPattern     = regexp.MustCompile(`(?i)(combate|atac|pele|fight|attack|enemig|criatura)`)
 	
-	// Boxed text patterns
-	boxedTextPattern          = regexp.MustCompile(`(?i)>>\s*\*\*Texto para Leer\*\*`)
-	secondPersonPattern       = regexp.MustCompile(`(?i)(ves|escuch|sient|percib|not|mir|huel)`)
-	presentTensePattern       = regexp.MustCompile(`(?i)(está|hay|son|encuentr|observ|aparec)`)
+	// Boxed text patterns (bilingual ES|EN, colon optional)
+	boxedTextPattern          = regexp.MustCompile(`(?i)>>\s*\*\*(?:Texto para Leer|Read-Aloud\s+Text):?\*\*`)
+	secondPersonPattern       = regexp.MustCompile(`(?i)(ves|escuch|sient|percib|not|mir|huel|you\s+see|you\s+hear|you\s+feel|you\s+notice|you\s+observe)`)
+	presentTensePattern       = regexp.MustCompile(`(?i)(está|hay|son|encuentr|observ|aparec|\bis\b|\bare\b|stands|appears|stretches|stretching|lies|glows|shimmers|echoes|fills|surrounds|rises|falls)`)
 )
 
 // DevelopmentBranch represents a decision branch in an area
@@ -40,17 +40,29 @@ type DevelopmentBranch struct {
 func ValidateDevelopments(md string) ValidationResult {
 	result := ValidationResult{Valid: true}
 	
+	// Check 0: Mixed language detection
+	_, langErr := DetectLanguage(md)
+	if langErr != nil {
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   "mixed_language",
+			Message: langErr.Error(),
+		})
+		result.Valid = false
+		return result
+	}
+
 	// Check 1: Has Developments section
 	if !developmentBranchPattern.MatchString(md) {
 		result.Errors = append(result.Errors, ValidationError{
 			Field:   "developments",
 			Message: "missing ### Developments section",
 		})
+		result.Valid = false
 		return result
 	}
 	
-	// Extract Developments section
-	developmentsSection := extractSection(md, "Developments")
+	// Extract Developments section (bilingual)
+	developmentsSection := extractSectionRegex(md, developmentBranchPattern)
 	
 	// Normalize for pattern matching
 	normalized := strings.ReplaceAll(developmentsSection, "\n", " ")
@@ -159,13 +171,26 @@ func ValidateMultipleSolutions(md string) ValidationResult {
 // ValidateBoxedText checks that boxed text follows WotC standards
 func ValidateBoxedText(md string) ValidationResult {
 	result := ValidationResult{Valid: true}
-	
+
+	// Check 0: Mixed language detection for boxed text labels
+	esBoxed := esBoxedText.MatchString(md)
+	enBoxed := enBoxedText.MatchString(md)
+	if esBoxed && enBoxed {
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   "mixed_language",
+			Message: "mixed language detected: both 'Texto para Leer' and 'Read-Aloud Text' in same chapter",
+		})
+		result.Valid = false
+		return result
+	}
+
 	// Check 1: Has boxed text
 	if !boxedTextPattern.MatchString(md) {
 		result.Errors = append(result.Errors, ValidationError{
 			Field:   "boxed_text",
-			Message: "missing >> **Texto para Leer** boxed text",
+			Message: "missing >> **Texto para Leer** / >> **Read-Aloud Text** boxed text",
 		})
+		result.Valid = false
 		return result
 	}
 	
@@ -175,17 +200,17 @@ func ValidateBoxedText(md string) ValidationResult {
 	for i, text := range boxedTextSections {
 		wordCount := CountWords(text)
 		
-		// Check 2: Word count 100-600
-		if wordCount < 100 {
+		// Check 2: Word count 50-400 (WotC calibrated)
+		if wordCount < 50 {
 			result.Errors = append(result.Errors, ValidationError{
 				Field:   "boxed_text_length",
-				Message: "boxed text #" + itoa(i+1) + " has " + itoa(wordCount) + " words, minimum is 100",
+				Message: "boxed text #" + itoa(i+1) + " has " + itoa(wordCount) + " words, minimum is 50",
 			})
 		}
-		if wordCount > 600 {
+		if wordCount > 400 {
 			result.Errors = append(result.Errors, ValidationError{
 				Field:   "boxed_text_length",
-				Message: "boxed text #" + itoa(i+1) + " has " + itoa(wordCount) + " words, maximum is 600",
+				Message: "boxed text #" + itoa(i+1) + " has " + itoa(wordCount) + " words, maximum is 400",
 			})
 		}
 		
@@ -265,6 +290,23 @@ func ValidateCharacterHooks(md string) ValidationResult {
 func extractSection(md, sectionName string) string {
 	// Find section heading
 	pattern := regexp.MustCompile(`(?i)###?\s*` + regexp.QuoteMeta(sectionName))
+	loc := pattern.FindStringIndex(md)
+	if loc == nil {
+		return ""
+	}
+	
+	// Extract from heading to next ### or end
+	start := loc[0]
+	nextSection := regexp.MustCompile(`(?m)^#{3,}`).FindStringIndex(md[start+1:])
+	if nextSection == nil {
+		return md[start:]
+	}
+	
+	return md[start : start+1+nextSection[0]]
+}
+
+// extractSectionRegex extracts a section using a pre-compiled regex pattern
+func extractSectionRegex(md string, pattern *regexp.Regexp) string {
 	loc := pattern.FindStringIndex(md)
 	if loc == nil {
 		return ""

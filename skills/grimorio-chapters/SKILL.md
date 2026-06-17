@@ -21,7 +21,9 @@ El template define el formato WotC obligatorio para capítulos auto-contenidos. 
 ## Herramientas Disponibles
 
 **MCP Tools (USAR para guardar contenido):**
-- `save_chapter` — Guardar capítulo completo (inline NPCs + encuentros + áreas)
+- `save_chapter_part` — Guardar una parte del capítulo (generación secuencial)
+- `finalize_chapter` — Ensamblar partes, validar y guardar capítulo final
+- `save_chapter` — Guardar capítulo completo (legacy, aún soportado)
 - `validate_canon` — Validar contra canon.json
 - `get_template` — Obtener template WotC
 - `check_consistency` — Chequeo de consistencia
@@ -29,7 +31,59 @@ El template define el formato WotC obligatorio para capítulos auto-contenidos. 
 
 **NO usar Write para contenido creativo** — El frontmatter del agente ya no incluye Write para forzar el uso de MCP save tools.
 
-## Workflow Obligatorio
+## Sequential Chapter Workflow (Recomendado)
+
+Generar capítulos parte por parte para mejor control de calidad y coherencia narrativa:
+
+| Parte | Nombre | Presupuesto | Contenido |
+|-------|--------|-------------|-----------|
+| 1 | opener | 500-800 | Header, game mode, objectives, adventure background |
+| 2 | npcs | 800-1500 | 2-5 inline NPC cards con roleplay cues |
+| 3 | encounters | 800-1500 | 2-4 encounter cards con XP, tactics, alternative resolution |
+| 4 | areas-1 | 1500-3000 | Áreas 1-7 (o 1-5 para capítulos pequeños) |
+| 5 | areas-2 | 1500-3000 | Áreas 8-15 (o 6-10) |
+| 6 | closing | 400-800 | Consequences, transition, faction tracker, What's Next |
+
+### Pasos
+
+```
+1. LEER contexto (canon, lore, capítulo anterior, narrative_state)
+2. LEER template: get_template(type="chapter")
+3. GENERAR cada parte secuencialmente:
+   - save_chapter_part(campaign, chapter_number, part_name, content)
+   - Usar parts_received y accumulated_words del response para trackear progreso
+   - Mantener continuidad narrativa (NPCs, áreas, encuentros de partes anteriores)
+4. finalize_chapter(campaign, chapter_number, title) → ensambla, valida, guarda
+```
+
+### Prologue Chapter (chapter_00)
+
+Para el prólogo, usar `chapter_number: 0` e incluir `is_prologue: true` en el frontmatter.
+Las áreas del prólogo son encuentros sociales (no requieren stat blocks de combate).
+Incluir 3-5 áreas sociales, introducción de NPCs, y presentación de character hooks.
+
+## Bilingual Support (ES/EN)
+
+Todos los validadores aceptan marcadores en español E inglés. NO mezclar idiomas en el mismo capítulo.
+
+| Patrón | Español | English |
+|--------|---------|---------|
+| Boxed text | Texto para Leer | Read-Aloud Text |
+| If-then | Si [condición] | If the PCs [condition] |
+| Consequence | Consecuencia | Consequence |
+| Recovery | Recuperación | Recovery |
+| Location | Ubicación | Location |
+| Combat Stats | Estadísticas de Combate | Combat Stats |
+
+## WotC Word Count Standards
+
+- Área: 150-600 palabras
+- Boxed text: 50-400 palabras
+- Total capítulo: 3000-16000 palabras
+- Áreas por capítulo: 7-15
+- Áreas con letras (A1-A7, E1-E7) soportadas para capítulos urbanos
+
+## Workflow Obligatorio (Legacy — aún soportado)
 
 ```
 1. LEER contexto:

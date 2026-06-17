@@ -194,3 +194,94 @@ Content.
 		t.Error("v1 should not have area-number highlighting")
 	}
 }
+
+func TestCompilerV2_PrologueChapterInTOC(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+
+	// Create prologue chapter with is_prologue frontmatter
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_00.md"), []byte(`---
+is_prologue: true
+---
+# Prologue: The Gathering Storm
+
+### Area 1: The Tavern
+
+The party meets at a tavern.
+
+### Area 2: The Road
+
+The party sets out on the road.
+`), 0644)
+
+	// Create a regular chapter
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01.md"), []byte(`# Chapter 1: The Journey Begins
+
+### Area 1: Forest Edge
+
+Content here.
+`), 0644)
+
+	c := NewWithVersion(tmpDir, "", 2)
+	htmlParts, err := c.generateHTML("Test Campaign")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	html := strings.Join(htmlParts, "\n")
+
+	// TOC should contain "Prologue" entry
+	if !strings.Contains(html, "Prologue") {
+		t.Error("TOC should contain 'Prologue' entry for chapter_00.md with is_prologue: true")
+	}
+
+	// Prologue should render before chapter_01
+	prologueIdx := strings.Index(html, "The Gathering Storm")
+	chapter1Idx := strings.Index(html, "The Journey Begins")
+	if prologueIdx < 0 {
+		t.Error("prologue content should be rendered")
+	}
+	if chapter1Idx < 0 {
+		t.Error("chapter 1 content should be rendered")
+	}
+	if prologueIdx >= chapter1Idx {
+		t.Error("prologue should render before chapter 1")
+	}
+}
+
+func TestCompilerV2_NoPrologueWithoutFrontmatter(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+
+	// Create chapter_00 WITHOUT is_prologue frontmatter
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_00.md"), []byte(`# Chapter 0: Regular Chapter
+
+### Area 1: Test
+
+Content.
+`), 0644)
+
+	c := NewWithVersion(tmpDir, "", 2)
+	htmlParts, err := c.generateHTML("Test Campaign")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	html := strings.Join(htmlParts, "\n")
+
+	// TOC should NOT have a separate "Prologue" entry
+	// (chapter_00 without frontmatter is just a regular chapter in the Chapters dir)
+	tocStart := strings.Index(html, `class="toc"`)
+	tocEnd := strings.Index(html[tocStart:], "</div>")
+	if tocStart >= 0 && tocEnd >= 0 {
+		toc := html[tocStart : tocStart+tocEnd]
+		// Check that "Prologue" is NOT a separate TOC entry
+		if strings.Contains(toc, ">Prologue<") {
+			t.Error("TOC should not have separate 'Prologue' entry without is_prologue frontmatter")
+		}
+	}
+}

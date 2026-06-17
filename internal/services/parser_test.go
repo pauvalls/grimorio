@@ -207,3 +207,113 @@ func TestEntityParser_ParseChapter_AreaValidation(t *testing.T) {
 	}
 }
 
+func TestEntityParser_ParseChapter_English(t *testing.T) {
+	parser := NewEntityParser()
+
+	sampleChapter := `# Chapter 1: The Beginning
+
+## Opening Narrative
+
+The heroes arrive at the village.
+
+## NPCs in this Chapter
+
+### Village Elder
+*Neutral human*
+
+An old leader of the village.
+
+**Stats:** AC 12, HP 15
+
+### Mysterious Merchant
+*Neutral good human*
+
+Sells rare magic items.
+
+## Encounters
+
+### Encounter 1: Ambush
+*Difficulty: Medium*
+
+Bandits attack from the shadows.
+
+**Monsters:**
+- 3x Bandit
+- 1x Bandit Leader
+
+**Rewards:**
+- 100 XP
+- 50 gold
+
+## Areas
+
+### Area 1: Village Entrance
+
+> The players see the village from the hill.
+
+A small village with stone houses.
+
+### Area 2: Town Square
+
+> A bustling square with a fountain.
+
+The center of village life.
+`
+
+	result, err := parser.ParseChapter(sampleChapter, "test-campaign", 1)
+	if err != nil {
+		t.Fatalf("ParseChapter() error: %v", err)
+	}
+
+	// Verify NPCs parsed
+	if len(result.NPCs) < 2 {
+		t.Errorf("ParseChapter() NPCs = %d, want >= 2", len(result.NPCs))
+	}
+
+	// Verify encounters parsed
+	if len(result.Encounters) < 1 {
+		t.Errorf("ParseChapter() Encounters = %d, want >= 1", len(result.Encounters))
+	}
+
+	// Verify areas parsed
+	if len(result.Areas) < 2 {
+		t.Errorf("ParseChapter() Areas = %d, want >= 2", len(result.Areas))
+	}
+}
+
+func TestEntityParser_ParseEncounters_English(t *testing.T) {
+	parser := NewEntityParser()
+
+	content := `## Encounter 1: Goblin Ambush
+*Difficulty: Hard*
+- **Location:** Dark Forest
+- **Monsters:** 3x Goblin, 1x Goblin Boss
+- **Reward:** 200 XP
+
+## Encounter 2: Dragon's Lair
+*Difficulty: Deadly*
+- **Location:** Mountain Cave
+- **Creatures:** 1x Young Dragon
+- **Reward:** 500 XP, 200 gold
+`
+
+	encounters, err := parser.ParseEncounters(content, "test-campaign")
+	if err != nil {
+		t.Fatalf("ParseEncounters() error: %v", err)
+	}
+
+	if len(encounters) != 2 {
+		t.Fatalf("ParseEncounters() encounters = %d, want 2", len(encounters))
+	}
+
+	if encounters[0].Name != "Goblin Ambush" {
+		t.Errorf("Encounter 1 name = %q, want %q", encounters[0].Name, "Goblin Ambush")
+	}
+	if encounters[0].Difficulty != "hard" {
+		t.Errorf("Encounter 1 difficulty = %q, want %q", encounters[0].Difficulty, "hard")
+	}
+	if encounters[1].Name != "Dragon's Lair" {
+		t.Errorf("Encounter 2 name = %q, want %q", encounters[1].Name, "Dragon's Lair")
+	}
+}
+

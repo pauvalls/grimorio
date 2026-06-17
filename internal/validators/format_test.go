@@ -12,7 +12,7 @@ func TestValidateNPCFormat(t *testing.T) {
 		checks  []string
 	}{
 		{
-			name: "valid npc with all v2 fields",
+			name: "valid npc with all v2 fields (Spanish)",
 			input: `# NPCs
 
 ## Test NPC
@@ -28,6 +28,27 @@ func TestValidateNPCFormat(t *testing.T) {
 - **Involucramiento en Quests:** Quest: "La Llave Perdida" — informante
 - **Conexiones:** Amigo de Eldrin
 - **Cita típica:** "Nunca retrocedo"
+`,
+			wantErr: false,
+			checks:  []string{"alignment", "location", "combat_stats", "quest_involvement", "secret"},
+		},
+		{
+			name: "valid npc with all v2 fields (English)",
+			input: `# NPCs
+
+## Test NPC
+
+- **Race/Class:** Human Fighter
+- **Alignment:** LG
+- **Location:** Area 3
+- **Combat Stats:** AC 12, HP 18 (3d8+3), Short sword +4 (1d6+2)
+- **Role in story:** Ally
+- **Personality:** Brave
+- **Motivation:** Protect the village
+- **Secret:** He is a spy
+- **Quest Involvement:** Quest: "The Lost Key" — informant
+- **Connections:** Friend of Eldrin
+- **Typical quote:** "I never retreat"
 `,
 			wantErr: false,
 			checks:  []string{"alignment", "location", "combat_stats", "quest_involvement", "secret"},
@@ -113,7 +134,7 @@ func TestValidateBestiaryFormat(t *testing.T) {
 		checks  []string
 	}{
 		{
-			name: "valid creature with all v2 fields",
+			name: "valid creature with all v2 fields (Spanish)",
 			input: `# Bestiario
 
 ## Test Monster
@@ -140,6 +161,38 @@ func TestValidateBestiaryFormat(t *testing.T) {
 - **Prioridades:** Atacar al más débil.
 - **Sinergia:** Recibe órdenes del líder.
 - **Retirada:** Huye al 25% HP.
+`,
+			wantErr: false,
+			checks:  []string{"role", "encounter_groups", "source", "tactics"},
+		},
+		{
+			name: "valid creature with all v2 fields (English)",
+			input: `# Bestiary
+
+## Test Monster
+
+*Medium undead, NE*
+
+- **Combat Role:** skirmisher
+- **Encounter Groups:** 2-3 with 1 leader
+- **Source/Reference:** Custom
+
+**Armor Class:** 12
+**Hit Points:** 22 (5d8)
+**Speed:** 30 ft
+
+| STR | DEX | CON | INT | WIS | CHA |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 10 (+0) | 14 (+2) | 12 (+1) | 6 (-2) | 10 (+0) | 6 (-2) |
+
+**Challenge:** 1/4 (50 XP)
+
+### Structured Tactics
+
+- **Opening:** Hides and waits.
+- **Priorities:** Attack the weakest.
+- **Synergy:** Takes orders from the leader.
+- **Retreat:** Flees at 25% HP.
 `,
 			wantErr: false,
 			checks:  []string{"role", "encounter_groups", "source", "tactics"},
@@ -213,7 +266,7 @@ func TestValidateEncounterFormat(t *testing.T) {
 		checks  []string
 	}{
 		{
-			name: "valid encounter with all v2 fields",
+			name: "valid encounter with all v2 fields (Spanish)",
 			input: `# Encuentros
 
 ## Encuentro 1: Test
@@ -242,6 +295,40 @@ Template: Ambush
 ### Resolución Alternativa
 - **Diplomacia:** Persuasión DC 12
 - **Sigilo:** Sigilo DC 14
+`,
+			wantErr: false,
+			checks:  []string{"tactical_map", "conditions", "round_by_round", "alternative_resolution", "template"},
+		},
+		{
+			name: "valid encounter with all v2 fields (English)",
+			input: `# Encounters
+
+## Encounter 1: Test
+
+**Difficulty:** Medium
+**Total XP:** 200
+**Setting:** Dark forest
+
+### Tactical Map
+- **Dimensions:** 30 × 30 ft
+- **Lighting:** Dim light
+
+### Conditions and Environmental Effects
+- **Initial conditions:** Dense fog
+
+### Round-by-Round Development
+
+#### Encounter Template
+Template: Ambush
+
+#### Rounds
+| Round | Enemies | Environmental Events | Victory Condition |
+|-------|---------|---------------------|-------------------|
+| 1 | 2 goblins | Fog | Survive |
+
+### Alternative Resolution
+- **Diplomacy:** Persuasion DC 12
+- **Stealth:** Stealth DC 14
 `,
 			wantErr: false,
 			checks:  []string{"tactical_map", "conditions", "round_by_round", "alternative_resolution", "template"},
