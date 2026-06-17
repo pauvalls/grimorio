@@ -174,41 +174,25 @@ func (c *Compiler) Compile(ctx context.Context, title string) (string, error) {
 
 	pdfPath := filepath.Join(c.CampaignDir, "campaign.pdf")
 
-	// Retry loop: verify images after PDF generation and retry if missing
-	maxRetries := 3
-	var lastExpected, lastFound int
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		if err := c.htmlToPDF(ctx, htmlPath, pdfPath); err != nil {
-			return "", fmt.Errorf("failed to convert to PDF (attempt %d): %w", attempt+1, err)
-		}
-
-		// Verify images are present in the generated HTML
-		expected, found, ok, err := c.verifyImages(htmlPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to verify images (attempt %d): %w", attempt+1, err)
-		}
-		lastExpected = expected
-		lastFound = found
-		if ok {
-			return pdfPath, nil
-		}
-
-		if attempt < maxRetries-1 {
-			// Regenerate HTML (images might need re-embedding)
-			// Clear seen images to allow re-embedding
-			c.seenImages = make(map[string]bool)
-			// Re-read source files and regenerate HTML
-			htmlParts, err = c.generateHTML(title)
-			if err != nil {
-				return "", fmt.Errorf("failed to regenerate HTML (attempt %d): %w", attempt+1, err)
-			}
-			if err := os.WriteFile(htmlPath, []byte(strings.Join(htmlParts, "\n")), 0644); err != nil {
-				return "", fmt.Errorf("failed to write regenerated HTML (attempt %d): %w", attempt+1, err)
-			}
-		}
+	// Single-pass: generate PDF, then verify images (advisory only)
+	if err := c.htmlToPDF(ctx, htmlPath, pdfPath); err != nil {
+		return "", fmt.Errorf("PDF generation failed: %w", err)
 	}
 
-	return "", fmt.Errorf("PDF generation failed after %d attempts: images missing (expected %d, found %d)", maxRetries, lastExpected, lastFound)
+	// Verify images are present in the generated HTML (advisory — warnings only)
+	expected, found, warnings, err := c.verifyImages(htmlPath)
+	if err != nil {
+		// I/O error during verification — log but don't discard the PDF
+		fmt.Fprintf(os.Stderr, "grimorio: image verification error: %v\n", err)
+	} else if len(warnings) > 0 {
+		for _, w := range warnings {
+			fmt.Fprintf(os.Stderr, "grimorio: warning: %s\n", w)
+		}
+		_ = expected
+		_ = found
+	}
+
+	return pdfPath, nil
 }
 
 // generateHTML reads all markdown sources and generates the full HTML document.
@@ -732,26 +716,32 @@ func extractRosterEntries(md string) (npcs, monsters, encounters []string) {
 
 // verifyImages compares the number of expected images in markdown sources
 // with the number of <img> tags in the generated HTML.
-// Returns (expected, found, ok, error).
-func (c *Compiler) verifyImages(htmlPath string) (int, int, bool, error) {
+// Returns (expected, found, warnings, error).
+// warnings is non-empty when found < expected (advisory — not a blocking error).
+// err is only returned for I/O failures.
+func (c *Compiler) verifyImages(htmlPath string) (int, int, []string, error) {
 	expected, err := c.countImagesInMarkdownSources()
 	if err != nil {
-		return 0, 0, false, err
+		return 0, 0, nil, err
 	}
 
 	found, err := countImagesInHTML(htmlPath)
 	if err != nil {
-		return expected, 0, false, err
+		return expected, 0, nil, err
 	}
 
-	// ok if found >= expected (some images might be deduplicated)
-	return expected, found, found >= expected, nil
+	var warnings []string
+	if found < expected {
+		warnings = append(warnings, fmt.Sprintf("image mismatch: expected %d, found %d", expected, found))
+	}
+	return expected, found, warnings, nil
 }
 
 // countImagesInMarkdownSources walks all markdown files in the campaign directory
-// and counts image references: markdown ![alt](path), <img> tags, and `assets/file` refs.
+// and counts UNIQUE image paths (deduplicated by resolved absolute path).
+// This aligns with embedImage()'s dedup behavior via seenImages.
 func (c *Compiler) countImagesInMarkdownSources() (int, error) {
-	count := 0
+	uniquePaths := make(map[string]bool)
 
 	// grimorio-areas (legacy areas/ dir) was removed in v5.0.2 WU7.
 	sections := []string{
@@ -780,7 +770,9 @@ func (c *Compiler) countImagesInMarkdownSources() (int, error) {
 					if err != nil {
 						continue
 					}
-					count += countImagesInMarkdown(string(content))
+					for _, p := range extractImagePaths(string(content)) {
+						uniquePaths[resolveImagePath(p, c.CampaignDir)] = true
+					}
 				}
 			}
 		} else {
@@ -788,23 +780,57 @@ func (c *Compiler) countImagesInMarkdownSources() (int, error) {
 			if err != nil {
 				continue
 			}
-			count += countImagesInMarkdown(string(content))
+			for _, p := range extractImagePaths(string(content)) {
+				uniquePaths[resolveImagePath(p, c.CampaignDir)] = true
+			}
 		}
 	}
 
-	return count, nil
+	return len(uniquePaths), nil
 }
 
-// countImagesInMarkdown counts image references in a single markdown string.
-func countImagesInMarkdown(md string) int {
-	count := 0
-	// Count markdown images: ![alt](path)
-	count += len(imageRegex.FindAllString(md, -1))
-	// Count raw <img> tags
-	count += len(imgTagRegex.FindAllString(md, -1))
-	// Count code asset refs: `assets/filename.ext`
-	count += len(codeAssetRegex.FindAllString(md, -1))
-	return count
+// extractImagePaths extracts all image path strings from a markdown document.
+// Returns raw paths (not resolved); the caller is responsible for resolution and dedup.
+func extractImagePaths(md string) []string {
+	var paths []string
+	// Markdown images: ![alt](path) — group 2 is the path
+	for _, m := range imageRegex.FindAllStringSubmatch(md, -1) {
+		if len(m) >= 3 {
+			paths = append(paths, m[2])
+		}
+	}
+	// Raw <img> tags: extract src attribute
+	for _, tag := range imgTagRegex.FindAllString(md, -1) {
+		if src := imgSrcRegex.FindStringSubmatch(tag); len(src) >= 2 {
+			paths = append(paths, src[1])
+		}
+	}
+	// Code asset refs: `assets/filename.ext` — group 1 is the filename
+	for _, m := range codeAssetRegex.FindAllStringSubmatch(md, -1) {
+		if len(m) >= 2 {
+			paths = append(paths, "assets/"+m[1])
+		}
+	}
+	return paths
+}
+
+// resolveImagePath resolves a relative image path to an absolute path,
+// matching the logic used by processImages/embedImage.
+func resolveImagePath(path, baseDir string) string {
+	for strings.HasPrefix(path, "../") {
+		path = strings.TrimPrefix(path, "../")
+	}
+	for strings.HasPrefix(path, "./") {
+		path = strings.TrimPrefix(path, "./")
+	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(baseDir, path)
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+	return abs
 }
 
 // countImagesInHTML counts <img> tags in the generated HTML file.
@@ -906,6 +932,7 @@ var (
 	htmlCommentRegex  = regexp.MustCompile(`<!--[\s\S]*?-->`)
 	imageRegex        = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	imgTagRegex       = regexp.MustCompile(`<img[^>]*(?:/\s*)?>`)
+	imgSrcRegex       = regexp.MustCompile(`src="([^"]*)"`)
 
 	htmlBlockPlaceholderRegex = regexp.MustCompile(`^\x00HTMLBLOCK\d+\x00$`)
 

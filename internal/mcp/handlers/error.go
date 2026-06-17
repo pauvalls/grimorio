@@ -79,6 +79,11 @@ func classifyError(err error) *HandlerError {
 		return NewHandlerError("already_exists", "resource already exists", err)
 	}
 
-	// Default: internal error
-	return NewHandlerError("internal_error", "an internal error occurred", err)
+	// PDF generation errors
+	if strings.Contains(errStr, "PDF generation") {
+		return NewHandlerError("pdf_generation_failed", "error: "+errStr, err)
+	}
+
+	// Default: internal error — preserve original message for debugging
+	return NewHandlerError("internal_error", "error: "+errStr, err)
 }

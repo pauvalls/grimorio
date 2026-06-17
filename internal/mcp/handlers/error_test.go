@@ -34,16 +34,28 @@ func TestClassifyError(t *testing.T) {
 			wantUserMessage: "campaign not found",
 		},
 		{
-			name:            "generic error maps to internal_error",
+			name:            "generic error preserves original message",
 			input:           errors.New("database connection failed"),
 			wantCode:        "internal_error",
-			wantUserMessage: "an internal error occurred",
+			wantUserMessage: "error: database connection failed",
 		},
 		{
 			name:            "nil error maps to internal_error",
 			input:           nil,
 			wantCode:        "internal_error",
 			wantUserMessage: "an internal error occurred",
+		},
+		{
+			name:            "PDF generation error maps to pdf_generation_failed",
+			input:           errors.New("PDF generation failed after 3 attempts: images missing"),
+			wantCode:        "pdf_generation_failed",
+			wantUserMessage: "error: PDF generation failed after 3 attempts: images missing",
+		},
+		{
+			name:            "unknown error preserves original text",
+			input:           errors.New("something completely unexpected happened"),
+			wantCode:        "internal_error",
+			wantUserMessage: "error: something completely unexpected happened",
 		},
 	}
 
@@ -111,8 +123,8 @@ func TestToToolResult_WithPlainError(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected TextContent, got %T", result.Content[0])
 	}
-	if textContent.Text != "an internal error occurred" {
-		t.Errorf("message = %q, want %q", textContent.Text, "an internal error occurred")
+	if textContent.Text != "error: something went wrong" {
+		t.Errorf("message = %q, want %q", textContent.Text, "error: something went wrong")
 	}
 }
 

@@ -208,20 +208,20 @@ func TestImageEmbedding_MixedMarkdownAndHTMLImg(t *testing.T) {
 	}
 }
 
-func TestCountImagesInMarkdown(t *testing.T) {
+func TestExtractImagePaths(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
-		want  int
+		want  int // number of paths extracted
 	}{
 		{
 			name:  "markdown image",
-			input: `![alt](path/to/img.png)`,
+			input: "![alt](assets/scene1.png)",
 			want:  1,
 		},
 		{
 			name:  "raw img tag",
-			input: `<img src="assets/img.png" alt="test">`,
+			input: `<img src="assets/map.svg" alt="Map">`,
 			want:  1,
 		},
 		{
@@ -231,7 +231,7 @@ func TestCountImagesInMarkdown(t *testing.T) {
 		},
 		{
 			name:  "mixed",
-			input: `![md](img.png) and <img src="a.svg"> and ` + "`assets/b.png`",
+			input: `![md](assets/a.png) and <img src="assets/b.svg"> and ` + "`assets/c.png`",
 			want:  3,
 		},
 		{
@@ -239,13 +239,88 @@ func TestCountImagesInMarkdown(t *testing.T) {
 			input: "just text **bold**",
 			want:  0,
 		},
+		{
+			name:  "duplicate same path",
+			input: "![a](assets/sep.svg) and ![b](assets/sep.svg)",
+			want:  2, // extraction returns all; dedup happens at caller
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := countImagesInMarkdown(tt.input)
+			got := extractImagePaths(tt.input)
+			if len(got) != tt.want {
+				t.Errorf("extractImagePaths() returned %d paths, want %d; paths=%v", len(got), tt.want, got)
+			}
+		})
+	}
+}
+
+func TestCountImagesInMarkdownSources_UniquePaths(t *testing.T) {
+	tests := []struct {
+		name  string
+		files map[string]string // relative path → content
+		want  int
+	}{
+		{
+			name: "same image in 2 files counts as 1",
+			files: map[string]string{
+				"chapters/ch1.md": "![Sep](assets/separator.svg)",
+				"lore.md":         "![Sep](assets/separator.svg)",
+			},
+			want: 1,
+		},
+		{
+			name: "3 distinct images",
+			files: map[string]string{
+				"chapters/ch1.md": "![A](assets/a.png)\n![B](assets/b.png)",
+				"lore.md":         "![C](assets/c.svg)",
+			},
+			want: 3,
+		},
+		{
+			name:  "no images",
+			files: map[string]string{"chapters/ch1.md": "just text"},
+			want:  0,
+		},
+		{
+			name: "mix of markdown/img-tag/code-asset to same path",
+			files: map[string]string{
+				"chapters/ch1.md": "![Sep](assets/separator.svg) and `assets/separator.svg`",
+				"lore.md":         `<img src="assets/separator.svg" alt="Sep">`,
+			},
+			want: 1,
+		},
+		{
+			name: "same image 4 times across 2 files",
+			files: map[string]string{
+				"chapters/ch1.md": "![Sep](assets/separator.svg)\n![Sep](assets/separator.svg)",
+				"lore.md":         "![Sep](assets/separator.svg)\n![Sep](assets/separator.svg)",
+			},
+			want: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			for relPath, content := range tt.files {
+				fullPath := filepath.Join(tmpDir, relPath)
+				if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			c := New(tmpDir, "")
+			got, err := c.countImagesInMarkdownSources()
+			if err != nil {
+				t.Fatal(err)
+			}
 			if got != tt.want {
-				t.Errorf("countImagesInMarkdown() = %d, want %d", got, tt.want)
+				t.Errorf("countImagesInMarkdownSources() = %d, want %d", got, tt.want)
 			}
 		})
 	}
@@ -307,7 +382,7 @@ Some text
 	}
 
 	c := New(tmpDir, "")
-	expected, found, ok, err := c.verifyImages(htmlPath)
+	expected, found, warnings, err := c.verifyImages(htmlPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,8 +392,8 @@ Some text
 	if found != 2 {
 		t.Errorf("found = %d, want 2", found)
 	}
-	if !ok {
-		t.Error("ok = false, want true")
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want empty", warnings)
 	}
 }
 
@@ -352,7 +427,7 @@ func TestVerifyImages_Mismatch(t *testing.T) {
 	}
 
 	c := New(tmpDir, "")
-	expected, found, ok, err := c.verifyImages(htmlPath)
+	expected, found, warnings, err := c.verifyImages(htmlPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -362,8 +437,67 @@ func TestVerifyImages_Mismatch(t *testing.T) {
 	if found != 1 {
 		t.Errorf("found = %d, want 1", found)
 	}
-	if ok {
-		t.Error("ok = true, want false")
+	if len(warnings) == 0 {
+		t.Error("warnings should be non-empty for mismatch")
+	}
+	// Warning should mention expected/found counts
+	foundWarning := false
+	for _, w := range warnings {
+		if strings.Contains(w, "expected 2, found 1") {
+			foundWarning = true
+			break
+		}
+	}
+	if !foundWarning {
+		t.Errorf("warnings should contain 'expected 2, found 1', got: %v", warnings)
+	}
+}
+
+func TestVerifyImages_Advisory(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create campaign structure with 2 images in markdown
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	if err := os.MkdirAll(chaptersDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	mdContent := `# Act 1
+![Scene 1](assets/scene1.png)
+![Scene 2](assets/scene2.png)
+`
+	mdPath := filepath.Join(chaptersDir, "chapter1.md")
+	if err := os.WriteFile(mdPath, []byte(mdContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// HTML has only 1 image — mismatch should produce warning, NOT error
+	htmlContent := `<html><body>
+		<img src="data:image/png;base64,abc" alt="Scene 1" class="campaign-image">
+	</body></html>`
+	htmlPath := filepath.Join(tmpDir, "campaign.html")
+	if err := os.WriteFile(htmlPath, []byte(htmlContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := New(tmpDir, "")
+	expected, found, warnings, err := c.verifyImages(htmlPath)
+	// Advisory: err should be nil even on mismatch
+	if err != nil {
+		t.Fatalf("verifyImages() should not return error on mismatch, got: %v", err)
+	}
+	if expected != 2 {
+		t.Errorf("expected = %d, want 2", expected)
+	}
+	if found != 1 {
+		t.Errorf("found = %d, want 1", found)
+	}
+	if len(warnings) == 0 {
+		t.Fatal("warnings should be non-empty for advisory mismatch")
+	}
+	// Verify warning text contains expected/found counts
+	if !strings.Contains(warnings[0], "expected 2, found 1") {
+		t.Errorf("warning = %q, should contain 'expected 2, found 1'", warnings[0])
 	}
 }
 

@@ -287,6 +287,60 @@ func TestCompileWithChapters(t *testing.T) {
 	}
 }
 
+// TestCompile_DuplicatedImagesAcrossFiles tests that compilation succeeds when
+// the same image is referenced multiple times across different markdown files.
+// This is the exact scenario from mareas-oscuras-v2 with separator.svg.
+func TestCompile_DuplicatedImagesAcrossFiles(t *testing.T) {
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping integration test")
+	}
+
+	tmpDir := t.TempDir()
+
+	// Create campaign structure
+	dirs := []string{"chapters", "npcs", "bestiary", "encounters", "maps", "assets"}
+	for _, d := range dirs {
+		if err := os.MkdirAll(filepath.Join(tmpDir, d), 0755); err != nil {
+			t.Fatalf("Failed to create directory %s: %v", d, err)
+		}
+	}
+
+	// Create a minimal SVG file
+	svgContent := `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="10"><rect width="100" height="10"/></svg>`
+	if err := os.WriteFile(filepath.Join(tmpDir, "assets", "separator.svg"), []byte(svgContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create lore.md referencing separator.svg twice
+	lore := "# Lore\n\n![Separador](assets/separator.svg)\n\nSome lore text.\n\n![Separador](assets/separator.svg)\n"
+	if err := os.WriteFile(filepath.Join(tmpDir, "lore.md"), []byte(lore), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create chapter1.md referencing separator.svg twice
+	chapter := "# Chapter 1\n\n![Separador](assets/separator.svg)\n\nChapter content.\n\n![Separador](assets/separator.svg)\n"
+	if err := os.WriteFile(filepath.Join(tmpDir, "chapters", "chapter1.md"), []byte(chapter), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := compiler.New(tmpDir, "")
+	pdfPath, err := c.Compile(context.Background(), "Test Duplicated Images")
+	if err != nil {
+		t.Fatalf("Compile() should succeed with duplicated images, got error: %v", err)
+	}
+	if pdfPath == "" {
+		t.Fatal("Compile() should return non-empty pdfPath")
+	}
+	if !strings.HasSuffix(pdfPath, "campaign.pdf") {
+		t.Errorf("pdfPath = %q, should end with campaign.pdf", pdfPath)
+	}
+
+	// Verify PDF file was actually created
+	if _, err := os.Stat(pdfPath); err != nil {
+		t.Errorf("PDF file should exist at %q: %v", pdfPath, err)
+	}
+}
+
 // Helper function to create minimal test campaign with chapters/ structure
 func createTestCampaignWithChapters(t *testing.T, dir, name string) {
 	t.Helper()
