@@ -14,6 +14,8 @@ and in its handler file under `internal/mcp/handlers/`.
   `grimorio_save_setting_guide`, `grimorio_save_appendices`,
   `grimorio_save_chapter`, `grimorio_save_areas`, `grimorio_save_maps`,
   `grimorio_save_characters`, `grimorio_save_quests`
+- `grimorio_save_chapter_part` — append a part to a draft chapter (sequential generation: opener, general-features, npcs, encounters, areas-1, areas-2, closing)
+- `grimorio_finalize_chapter` — validate all parts, move draft to final `chapters/chapter_NN.md`, sync canon
 - `grimorio_create_personal_quest` — character-driven quest hooks
 - `grimorio_generate_character` / `list_characters` / `get_character`
 
@@ -60,6 +62,7 @@ The tool schemas (input/output JSON shape) live alongside the handlers:
 internal/mcp/handlers/
   campaign.go      →  save_lore / save_npcs / save_areas / …
   canon.go         →  check_consistency / validate_canon
+  chapter_parts.go →  save_chapter_part / finalize_chapter  (v5.1)
   dm_context.go    →  dm_session_context
   export.go        →  export_campaign (pdf|markdown|epub)  (v5.0)
   faction.go       →  update_faction_reputation

@@ -71,21 +71,26 @@ O con título personalizado:
 3. Session Zero / Sesión Cero
    └─ Safety tools, house rules, character creation / Herramientas de seguridad, reglas de casa, creación de personajes
 
-4. Introduction / Introducción
+4. Prologue (optional) / Prólogo (opcional)
+   └─ Party introduction, social areas, roleplay cues / Presentación del grupo, áreas sociales, cues de roleplay
+
+5. Introduction / Introducción
    └─ Campaign overview, tone, summary / Resumen de campaña, tono, resumen
 
-5. Lore y Ambientación / Lore and Setting
+6. Lore y Ambientación / Lore and Setting
    └─ World backstory, history, conflicts / Trasfondo del mundo, historia, conflictos
 
-6. Chapters (Areas) / Capítulos (Áreas)
-   ├─ Act 1: 10-15 numbered areas / Acto 1: 10-15 áreas numeradas
-   ├─ Act 2: 10-15 numbered areas / Acto 2: 10-15 áreas numeradas
-   └─ Act 3: 10-15 numbered areas / Acto 3: 10-15 áreas numeradas
+7. Chapters (Areas) / Capítulos (Áreas)
+   ├─ General Features (optional) / Características Generales (opcional)
+   │  └─ Shared environmental properties / Propiedades ambientales compartidas
+   ├─ Act 1: 7-15 numbered areas / Acto 1: 7-15 áreas numeradas
+   ├─ Act 2: 7-15 numbered areas / Acto 2: 7-15 áreas numeradas
+   └─ Act 3: 7-15 numbered areas / Acto 3: 7-15 áreas numeradas
 
-7. Setting Guide (DM-Only) / Guía de Ambientación (Solo DM)
+8. Setting Guide (DM-Only) / Guía de Ambientación (Solo DM)
    └─ Spoilers, secrets, DM guidance / Spoilers, secretos, guía para DM
 
-8. Appendices / Apéndices
+9. Appendices / Apéndices
    ├─ Apéndice A: NPCs y Facciones / NPCs and Factions
    ├─ Apéndice B: Bestiario / Bestiary
    ├─ Apéndice C: Encuentros / Encounters
@@ -95,7 +100,7 @@ O con título personalizado:
    ├─ Apéndice G: Character Sheets / Hojas de Personaje
    └─ Apéndice H: Quests / Misiones
 
-9. Handouts (if generated) / Handouts (si se generaron)
+10. Handouts (if generated) / Handouts (si se generaron)
    └─ Player-facing and DM-only versions / Versiones para jugadores y solo DM
 ```
 
@@ -157,6 +162,44 @@ O con título personalizado:
 <div class="shock-point-intense">
 **Intense Shock (3 PS):** Direct contact with the Dark Witness
 </div>
+```
+
+#### General Features / Características Generales (v5.1)
+
+```css
+.general-features
+```
+
+**Usage / Uso:**
+```markdown
+#### General Features
+
+***Ceilings.*** Passages and chambers are 10 feet high unless otherwise indicated.
+***Doors.*** All doors are made of wood with iron handles and hinges.
+***Light.*** Most areas are brightly lit by oil lamps in wall sconces.
+```
+
+**Appearance / Apariencia:**
+- Parchment background (#f5f5dc) / Fondo pergamino (#f5f5dc)
+- Left border (3px solid brown) / Borde izquierdo (3px sólido marrón)
+- Padding 1em / Relleno 1em
+
+#### Inline Sub-features / Sub-features Inline (v5.1)
+
+```css
+strong em
+```
+
+**Usage / Uso:**
+```markdown
+***Ceilings.*** 10 feet high.
+***Doors.*** Made of wood with iron handles.
+```
+
+**Appearance / Apariencia:**
+- Bold italic text (700 weight, italic style) / Texto negrita cursiva (peso 700, estilo cursiva)
+- Brown color (#5a3d2b) / Color marrón (#5a3d2b)
+- Used as run-in headings within paragraphs / Usado como encabezados inline dentro de párrafos
 ```
 
 #### Session Prep Cards / Tarjetas de Preparación de Sesión

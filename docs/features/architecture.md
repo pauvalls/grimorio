@@ -18,6 +18,7 @@ for deep dives see the linked docs.
 │ internal/services/        Business logic                             │
 │   validation_engine.go     17 consistency rules                       │
 │   campaign_service.go      campaign CRUD + batches                   │
+│   chapter_parts.go         sequential chapter generation (v5.1)      │
 │   dm_context_service.go    DM session payload aggregation           │
 │   narrative_state_service.go session log + checkpoints              │
 │   consistency_gate.go      pre-merge gate                            │
@@ -25,6 +26,7 @@ for deep dives see the linked docs.
 ├────────────────────────────────────────────────────────────────────┤
 │ internal/domain/          Pure types, no I/O                        │
 │   campaign.go / canon.go / validation.go / narrative_state.go …     │
+│   general_features.go    optional shared environmental section (v5.1)│
 ├────────────────────────────────────────────────────────────────────┤
 │ internal/repository/      Storage interfaces + memory & filesystem  │
 │   *.go                       adapters                                │
@@ -115,6 +117,41 @@ SRD-compliant treasure generation. Two entry points:
 ### `CampaignTemplate` (v5.0)
 Pre-defined campaign archetypes. 5 presets:
 Urban Fantasy, Gothic Horror, Maritime Adventure, Dungeon Crawl,
+Political Intrigue. Each preset defines tone, themes, level range,
+and suggested content structure.
+
+### `BilingualValidators` (v5.1)
+All WotC format validators accept both Spanish and English markers.
+`internal/validators/bilingual.go` provides `DetectLanguage()` and
+`BilingualPattern()` helpers. Regex patterns use `(ES|EN)` paired
+alternatives. Mixed-language detection rejects chapters that mix
+ES/EN markers. Key patterns:
+
+| Spanish | English |
+|---------|---------|
+| `Texto para Leer` | `Read-Aloud Text` |
+| `Consecuencia inmediata/futura` | `Immediate/Future consequence` |
+| `Recuperación` | `Recovery` |
+| `Ubicación` | `Location` |
+| `Estadísticas de Combate` | `Combat Stats` |
+
+### `SequentialChapterGeneration` (v5.1)
+Chapters are generated part-by-part instead of monolithically.
+`internal/services/chapter_parts.go` manages a draft directory
+(`chapters/drafts/`) where parts accumulate. Seven parts:
+opener → general-features → npcs → encounters → areas-1 → areas-2 → closing.
+Each part is ~1000-2000 words. `FinalizeChapter` validates all parts,
+assembles the final markdown, syncs canon, and atomically moves to
+`chapters/chapter_NN.md`. Exposed via `save_chapter_part` and
+`finalize_chapter` MCP tools.
+
+### `GeneralFeatures` (v5.1)
+Optional shared environmental section rendered before areas in a chapter.
+`domain.GeneralFeatures` struct with a `Content string` field. Rendered
+in `chapter.md.tmpl` via `{{if .GeneralFeatures}}` block. Uses
+`***Name.***` inline bold-italic pattern for sub-features (ceilings,
+doors, light, sound). CSS `.general-features` class applies a
+parchment-style background with left border.
 Political Intrigue. Applied via the `template` field in
 `create_campaign` MCP tool or the `template` query param in
 `generate_adventure_bible`. Falls back to template defaults when
