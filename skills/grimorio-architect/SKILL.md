@@ -863,3 +863,4 @@ A score below 70 means the campaign needs work. Don't ship it.
 - **Skill Registry:** `.atl/skill-registry.md`
 - **SDD Skills:** `~/.config/opencode/skills/sdd-*/SKILL.md`
 - **v5.0 Changelog:** see PR #9
+- **Consolidator skill:** `skills/grimorio-consolidator/SKILL.md` (runs after macro-phase 4, before macro-phase 5)
