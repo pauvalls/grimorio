@@ -228,7 +228,7 @@ func updateCommands() error {
 		"subtask":     false,
 		"template": `Generate a D&D 5e campaign or one-shot from the user's idea.
 
-**Version:** 5.1.0 — Sequential Chapters + WotC Fidelity
+**Version:** 5.2.0 — Sequential Chapters + WotC Fidelity + Consolidation
 
 ## IMPORTANT: Use the grimorio-architect agent. It handles everything end-to-end.
 
@@ -240,7 +240,7 @@ Before any other question, ask the user:
 
 Default to "en" if the user skips. The architect stores this and propagates to all sub-agents via LANG: preamble on every delegate call.
 
-## 1. Workflow (5 Macro-Phases, chapter-sequential)
+## 1. Workflow (5+ Macro-Phases, chapter-sequential, with consolidation)
 
 The architect follows this sequence with BLOCKING gates at each macro-phase.
 
@@ -306,6 +306,18 @@ For each chapter:
 - process_consistency_gate (living world batch)
 - GATE: campaign_health_dashboard (score ≥ 70 recommended)
 
+### Macro-Phase 4.5: Consolidation (cross-file coherence) — v5.2
+After Art & Living World, run the consolidator to detect and fix cross-file inconsistencies:
+- delegate(agent=grimorio-consolidator, prompt=...)
+  - detect_inconsistencies (read-only scan)
+  - consolidate_campaign(auto_fix=true) — applies safe fixes (exact duplicate deletion, markdown renames, INDEX link updates)
+  - resolve_ambiguity per open question — user/agent decision
+  - regenerate_index — INDEX.md with breadcrumbs and verified links
+  - verify_campaign_freshness — compare campaign.md against sources
+- GATE: consolidation_report.clean (no critical issues, no open questions)
+
+Safe fixes are auto-applied. Anything ambiguous becomes an AmbiguityQuestion that the user resolves. Everything else (entity name variants, stat block drift, lore contradictions) is normalized before export.
+
 ### Macro-Phase 5: Export & Deliver
 - grimorio validate {name} --scope=all (BLOCKING CLI gate)
 - export_campaign --format=pdf (default) | --format=markdown | --format=epub
@@ -314,13 +326,14 @@ For each chapter:
 
 The architect reports progress to the user after each macro-phase.
 
-## 2. Available MCP Tools (v5.1)
+## 2. Available MCP Tools (v5.2)
 
 - Creation: create_campaign, generate_adventure_bible, generate_names
 - Save (monolithic): save_introduction, save_setting_guide, save_lore, save_chapter, save_npcs, save_bestiary, save_encounters, save_maps, save_quests, save_characters, save_appendices
 - Save (sequential, v5.1): save_chapter_part, finalize_chapter — generate chapters part-by-part
 - Assets: generate_image, generate_map, generate_divider, generate_flowchart, generate_random_tables, generate_handouts, generate_treasure, generate_session_prep
 - Validation: validate_canon, check_consistency, process_consistency_gate, evaluate_consequences
+- Consolidation (v5.2): detect_inconsistencies, consolidate_campaign, resolve_ambiguity, regenerate_index, verify_campaign_freshness
 - State: update_narrative_state, update_faction_reputation, update_quest_status
 - Quality (v5.0): campaign_health_dashboard, export_campaign
 - Compilation: compile_pdf
@@ -331,7 +344,7 @@ The architect reports progress to the user after each macro-phase.
 - **Boxed text:** 50-400 words (read-aloud text)
 - **Areas per chapter:** 7-15 (flexible, not rigidly 10-15)
 - **Chapter total:** 3000-16000 words
-- **General Features:** Optional section before areas for shared environmental properties (ceilings, doors, light, sound)
+- **General Features:** Optional section before areas for shared environmental properties
 - **Inline sub-features:** Use ***Name.*** bold-italic pattern for run-in headings
 - **What's Next?:** Free narrative prose (2-3 paragraphs, 100-400 words), not structured fields
 - **Bilingual:** Validators accept both Spanish and English markers
@@ -341,6 +354,7 @@ After completion, report to the user:
 - Where the PDF was saved
 - What content was generated (including prologue)
 - Campaign health score
+- **Consolidation:** N issues fixed, K questions resolved, INDEX.md regenerated
 - Any issues encountered
 
 **DO NOT launch subagents from the command thread — the architect manages all delegation internally.**`,
