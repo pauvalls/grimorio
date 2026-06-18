@@ -47,7 +47,7 @@ func main() {
 				update.NewUpdateSkillsCommand(),
 				update.NewUpdateAgentsCommand(),
 				update.NewUpdateCommandsCommand(),
-				update.NewUpdateAllCommand(),
+				update.NewUpdateAllCommand(version),
 			}
 			return cmd
 		}(),

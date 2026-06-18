@@ -375,9 +375,15 @@ After completion, report to the user:
 	return nil
 }
 
-// updateAll runs all three asset updates sequentially: skills, agents, commands.
-func updateAll() error {
+// updateAll runs all four updates sequentially: binary, skills, agents, commands.
+func updateAll(currentVersion string) error {
 	fmt.Println("=== Grimorio Full Update ===")
+
+	// Update the binary itself first so the rest of the update uses the new version.
+	fmt.Println("\n--- Updating binary ---")
+	if err := runBinaryUpdate(currentVersion, false); err != nil {
+		return fmt.Errorf("binary update failed: %w", err)
+	}
 
 	fmt.Println("\n--- Updating skills ---")
 	if err := updateAssets("skills"); err != nil {
@@ -396,6 +402,34 @@ func updateAll() error {
 
 	fmt.Println("\n=== All updates completed successfully! ===")
 	return nil
+}
+
+// runBinaryUpdate runs the binary self-update. Extracted so updateAll can reuse
+// the same logic that powers `grimorio update`.
+func runBinaryUpdate(currentVersion string, dryRun bool) error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("finding current executable: %w", err)
+	}
+	exePath, err = filepath.EvalSymlinks(exePath)
+	if err != nil {
+		return fmt.Errorf("resolving executable path: %w", err)
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("finding home directory: %w", err)
+	}
+
+	u := &updater{
+		repoOwner:      "pauvalls",
+		repoName:       "grimorio",
+		installDir:     filepath.Dir(exePath),
+		backupDir:      filepath.Join(home, ".grimorio"),
+		currentVersion: currentVersion,
+		httpClient:     nil,
+	}
+	return u.runUpdate(dryRun)
 }
 
 // NewUpdateCommandsCommand returns the "update commands" CLI command.
@@ -439,12 +473,12 @@ func findAssetSourceDir(extractDir, assetType string) (string, error) {
 }
 
 // NewUpdateAllCommand returns the "update all" CLI command.
-func NewUpdateAllCommand() *cli.Command {
+func NewUpdateAllCommand(currentVersion string) *cli.Command {
 	return &cli.Command{
 		Name:  "all",
-		Usage: "Update all Grimorio assets: skills, agents, and commands",
+		Usage: "Update all Grimorio assets: binary, skills, agents, and commands",
 		Action: func(cCtx *cli.Context) error {
-			return updateAll()
+			return updateAll(currentVersion)
 		},
 	}
 }

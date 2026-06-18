@@ -755,7 +755,7 @@ func TestNewUpdateCommandsCommand(t *testing.T) {
 }
 
 func TestNewUpdateAllCommand(t *testing.T) {
-	cmd := NewUpdateAllCommand()
+	cmd := NewUpdateAllCommand("v1.2.3")
 	if cmd == nil {
 		t.Fatal("NewUpdateAllCommand() returned nil")
 	}
