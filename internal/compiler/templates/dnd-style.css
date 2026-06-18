@@ -14,6 +14,7 @@ body {
 
 /* Cover — full page */
 .cover-wrapper {
+  box-sizing: border-box;
   column-span: all;
   page-break-after: always;
   page-break-inside: avoid;
@@ -24,7 +25,6 @@ body {
   text-align: center;
   padding: 0;
   overflow: hidden;
-  min-height: 297mm;
   height: 297mm;
   display: flex;
   flex-direction: column;
@@ -43,12 +43,12 @@ body {
   z-index: 10;
 }
 
-.cover-wrapper .subtitle {
+.cover-footer {
   font-family: 'Lora', serif;
-  font-style: italic;
-  font-size: 10pt;
+  font-size: 9pt;
   color: #c9ad6a;
-  margin: 0 0 20px 0;
+  text-align: center;
+  margin: 0 0 12mm 0;
   z-index: 10;
 }
 
@@ -517,6 +517,22 @@ h3 .area-number {
   color: #1a1a1a;
 }
 
+.chapter-summary {
+  background: #f0e6d3;
+  border-left: 4px solid #5a3d2b;
+  padding: 10px 12px;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.introduction-sidebar {
+  background: #f5f0e6;
+  border-left: 4px solid #8b0000;
+  padding: 10px 12px;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 /* ==========================================
    DM Sidebar - DM-only content (tips, secrets)
    ========================================== */
@@ -669,6 +685,7 @@ h3 .area-number {
    Character Worksheet - Structured layout for character creation
    ========================================== */
 .character-worksheet {
+  display: none;
   background: #faf8f3;
   border: 2px dashed #c9ad6a;
   padding: 16px;

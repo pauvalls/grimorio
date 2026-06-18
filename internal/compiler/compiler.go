@@ -65,6 +65,19 @@ type Compiler struct {
 	handoutRendererImpl HandoutRenderer
 }
 
+// blockquoteClass classifies the semantic role of a markdown blockquote.
+type blockquoteClass int
+
+const (
+	bqReadAloud blockquoteClass = iota
+	bqDMSidebar
+	bqChapterSummary
+	bqIntroductionSidebar
+)
+
+// anchorRegistry maps a requested link fragment to the element ID emitted in the HTML.
+type anchorRegistry map[string]string
+
 // pdfEnginePriority defines the preferred order of PDF engines.
 var pdfEnginePriority = []string{
 	"chromium",
@@ -196,47 +209,151 @@ func (c *Compiler) Compile(ctx context.Context, title string) (string, error) {
 }
 
 // generateHTML reads all markdown sources and generates the full HTML document.
-func (c *Compiler) generateHTML(title string) ([]string, error) {
-	// chapters/ is the only chapter source — grimorio-areas (legacy areas/
-	// directory + skill) was removed in v5.0.2 WotC7.
-	chapterDir := filepath.Join(c.CampaignDir, "chapters")
+type campaignSection struct {
+	name  string
+	path  string
+	isDir bool
+}
 
-	sections := []struct {
-		name  string
-		path  string
-		isDir bool
-	}{
-		{"Introduction", filepath.Join(c.CampaignDir, "introduction.md"), false},
-		{"Lore y Ambientación", filepath.Join(c.CampaignDir, "lore.md"), false},
+// campaignSections returns the ordered list of markdown sources for a campaign.
+// It mirrors the source order used by generateHTML.
+func campaignSections(campaignDir string) []campaignSection {
+	chapterDir := filepath.Join(campaignDir, "chapters")
+
+	sections := []campaignSection{
+		{"Introduction", filepath.Join(campaignDir, "introduction.md"), false},
+		{"Lore y Ambientación", filepath.Join(campaignDir, "lore.md"), false},
 	}
 
-	// Check for prologue chapter (chapter_00.md with is_prologue: true)
 	prologueChapterPath := filepath.Join(chapterDir, "chapter_00.md")
 	if data, err := os.ReadFile(prologueChapterPath); err == nil {
 		if hasPrologueFrontmatter(string(data)) {
-			sections = append(sections, struct {
-				name  string
-				path  string
-				isDir bool
-			}{"Prologue", prologueChapterPath, false})
+			sections = append(sections, campaignSection{"Prologue", prologueChapterPath, false})
 		}
 	}
 
-	sections = append(sections, []struct {
-		name  string
-		path  string
-		isDir bool
-	}{
+	sections = append(sections, []campaignSection{
 		{"Chapters", chapterDir, true},
-		{"Setting Guide", filepath.Join(c.CampaignDir, "setting-guide.md"), false},
-		{"Apéndice A: NPCs y Facciones", filepath.Join(c.CampaignDir, "npcs"), true},
-		{"Apéndice B: Bestiario", filepath.Join(c.CampaignDir, "bestiary"), true},
-		{"Apéndice C: Encuentros", filepath.Join(c.CampaignDir, "encounters"), true},
-		{"Apéndice D: Mapas de Referencia", filepath.Join(c.CampaignDir, "maps"), true},
-		{"Appendices", filepath.Join(c.CampaignDir, "appendices.md"), false},
-		{"Apéndice G: Character Sheets", filepath.Join(c.CampaignDir, "characters"), true},
-		{"Apéndice H: Quests", filepath.Join(c.CampaignDir, "quests"), true},
+		{"Setting Guide", filepath.Join(campaignDir, "setting-guide.md"), false},
+		{"Apéndice A: NPCs y Facciones", filepath.Join(campaignDir, "npcs"), true},
+		{"Apéndice B: Bestiario", filepath.Join(campaignDir, "bestiary"), true},
+		{"Apéndice C: Encuentros", filepath.Join(campaignDir, "encounters"), true},
+		{"Apéndice D: Mapas de Referencia", filepath.Join(campaignDir, "maps"), true},
+		{"Appendices", filepath.Join(campaignDir, "appendices.md"), false},
+		{"Apéndice G: Character Sheets", filepath.Join(campaignDir, "characters"), true},
+		{"Apéndice H: Quests", filepath.Join(campaignDir, "quests"), true},
 	}...)
+
+	return sections
+}
+
+// buildAnchorRegistry scans all campaign markdown sources and maps link fragments
+// to the emitted element IDs used in the generated HTML.
+func buildAnchorRegistry(campaignDir string) anchorRegistry {
+	reg := make(anchorRegistry)
+	sections := campaignSections(campaignDir)
+
+	for _, sec := range sections {
+		paths := sourcePathsForSection(sec)
+		for _, path := range paths {
+			content, err := os.ReadFile(path)
+			if err != nil {
+				continue
+			}
+			md := string(content)
+
+			// Compute sectionID the same way generateHTML does.
+			sectionID := "sec-" + sanitizeID(sec.name)
+			if sec.isDir {
+				sectionID = "sec-" + sanitizeID(sec.name+"-"+filepath.Base(path))
+			}
+
+			// Explicit anchors take precedence.
+			for _, m := range explicitAnchorPattern.FindAllStringSubmatch(md, -1) {
+				if len(m) >= 2 && m[1] != "" {
+					reg[m[1]] = m[1]
+				}
+			}
+
+			// Area headings.
+			for _, m := range areaHeadingLinePattern.FindAllStringSubmatch(md, -1) {
+				if len(m) >= 2 {
+					areaID := "area-" + m[1]
+					reg[areaID] = areaID
+				}
+			}
+
+			// Other headings: register slug -> sectionID-slug for the first occurrence.
+			for _, m := range markdownHeadingPattern.FindAllStringSubmatch(md, -1) {
+				if len(m) >= 3 {
+					text := strings.TrimSpace(m[2])
+					slug := slugify(text)
+					if slug == "" {
+						continue
+					}
+					emittedID := sectionID + "-" + slug
+					if _, exists := reg[slug]; !exists {
+						reg[slug] = emittedID
+					}
+				}
+			}
+		}
+	}
+
+	return reg
+}
+
+// sourcePathsForSection returns the markdown file paths for a campaign section.
+func sourcePathsForSection(sec campaignSection) []string {
+	info, err := os.Stat(sec.path)
+	if err != nil {
+		return nil
+	}
+	if !info.IsDir() {
+		return []string{sec.path}
+	}
+
+	entries, err := os.ReadDir(sec.path)
+	if err != nil {
+		return nil
+	}
+	var paths []string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".md") {
+			paths = append(paths, filepath.Join(sec.path, e.Name()))
+		}
+	}
+	return paths
+}
+
+// slugify converts heading text to a stable URL-friendly identifier.
+func slugify(text string) string {
+	text = strings.ToLower(text)
+	var result strings.Builder
+	for _, r := range text {
+		switch {
+		case r >= 'a' && r <= 'z':
+			result.WriteRune(r)
+		case r >= '0' && r <= '9':
+			result.WriteRune(r)
+		default:
+			if result.Len() > 0 && result.String()[result.Len()-1] != '-' {
+				result.WriteRune('-')
+			}
+		}
+	}
+	s := strings.Trim(result.String(), "-")
+	return s
+}
+
+func (c *Compiler) generateHTML(title string) ([]string, error) {
+	sections := campaignSections(c.CampaignDir)
+
+	// Two-pass anchor registry for v2: first pass maps fragments to emitted IDs.
+	var reg anchorRegistry
+	if c.CompilerVersion == 2 {
+		reg = buildAnchorRegistry(c.CampaignDir)
+	}
 
 	var htmlParts []string
 	headingCounter := 0
@@ -247,7 +364,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 	htmlParts = append(htmlParts, "</head><body>")
 
 	// Cover page — single page, no split
-	htmlParts = append(htmlParts, fmt.Sprintf(`<div class="cover-wrapper" id="cover"><h1>%s</h1><p class="subtitle">Generated by Grimorio</p>`, html.EscapeString(title)))
+	htmlParts = append(htmlParts, fmt.Sprintf(`<div class="cover-wrapper" id="cover"><h1>%s</h1>`, html.EscapeString(title)))
 
 	// Insert cover art if exists — search for cover.* or cover-*.*
 	coverPath := findCoverImage(c.CampaignDir)
@@ -255,7 +372,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 		htmlParts = append(htmlParts, fmt.Sprintf(`<div class="cover-image">%s</div>`, embedImage(coverPath, "Cover Art", c.CampaignDir, c.seenImages)))
 	}
 
-	htmlParts = append(htmlParts, `</div>`)
+	htmlParts = append(htmlParts, `<p class="cover-footer">Generated by Grimorio</p></div>`)
 
 	// Session Zero guidance (if available)
 	sessionZeroHTML := c.generateSessionZero()
@@ -305,7 +422,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 						continue
 					}
 					sectionID := "sec-" + sanitizeID(sec.name+"-"+f.Name())
-					htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages)
+					htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages, reg)
 					htmlResult = postProcessHTML(htmlResult, c.CompilerVersion)
 					if strings.TrimSpace(htmlResult) != "" {
 						htmlParts = append(htmlParts, htmlResult)
@@ -322,7 +439,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 				continue
 			}
 			sectionID := "sec-" + sanitizeID(sec.name)
-			htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages)
+			htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages, reg)
 			htmlResult = postProcessHTML(htmlResult, c.CompilerVersion)
 			if strings.TrimSpace(htmlResult) != "" {
 				htmlParts = append(htmlParts, htmlResult)
@@ -359,11 +476,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 }
 
 // generateTOC creates a hierarchical table of contents
-func (c *Compiler) generateTOC(sections []struct {
-	name  string
-	path  string
-	isDir bool
-}) string {
+func (c *Compiler) generateTOC(sections []campaignSection) string {
 	var b strings.Builder
 	b.WriteString(`<div class="toc" id="toc"><h2>Table of Contents</h2><ul>`)
 
@@ -424,7 +537,7 @@ func (c *Compiler) generateSessionZero() string {
 		return "" // no session zero, skip
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-session-zero", new(int), c.seenImages, c.CompilerVersion)
+	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-session-zero", new(int), c.seenImages, c.CompilerVersion, nil)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -445,7 +558,7 @@ func (c *Compiler) generatePrologue() string {
 		return "" // no prologue, skip
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-prologue", new(int), c.seenImages, c.CompilerVersion)
+	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-prologue", new(int), c.seenImages, c.CompilerVersion, nil)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -503,7 +616,7 @@ func (c *Compiler) generateSessionPrepHTML(sessionNum int) string {
 		}
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, fmt.Sprintf("sec-session-prep-%d", sessionNum), new(int), c.seenImages, c.CompilerVersion)
+	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, fmt.Sprintf("sec-session-prep-%d", sessionNum), new(int), c.seenImages, c.CompilerVersion, nil)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -521,7 +634,7 @@ func (c *Compiler) generateCharacterSheetHTML(characterID string) string {
 		return ""
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, fmt.Sprintf("sec-character-%s", characterID), new(int), c.seenImages, c.CompilerVersion)
+	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, fmt.Sprintf("sec-character-%s", characterID), new(int), c.seenImages, c.CompilerVersion, nil)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -745,7 +858,11 @@ func (c *Compiler) countImagesInMarkdownSources() (int, error) {
 
 	// grimorio-areas (legacy areas/ dir) was removed in v5.0.2 WU7.
 	sections := []string{
+		filepath.Join(c.CampaignDir, "session-zero.md"),
+		filepath.Join(c.CampaignDir, "introduction.md"),
 		filepath.Join(c.CampaignDir, "lore.md"),
+		filepath.Join(c.CampaignDir, "setting-guide.md"),
+		filepath.Join(c.CampaignDir, "appendices.md"),
 		filepath.Join(c.CampaignDir, "chapters"),
 		filepath.Join(c.CampaignDir, "npcs"),
 		filepath.Join(c.CampaignDir, "bestiary"),
@@ -936,9 +1053,21 @@ var (
 
 	htmlBlockPlaceholderRegex = regexp.MustCompile(`^\x00HTMLBLOCK\d+\x00$`)
 
-	// readAloudPrefixRe strips **Read-Aloud:** or **Para Leer en Voz Alta:** labels from blockquote text
+	// readAloudPrefixRe strips **Read-Aloud Text:**, **Read-Aloud:** or **Para Leer en Voz Alta:** labels from blockquote text
 	// (CSS .read-aloud::before pseudo-element provides the visual label, so the inline text would duplicate it)
-	readAloudPrefixRe = regexp.MustCompile(`^\*{2}(?:Read-Aloud|Para Leer en Voz Alta)\*{2}:\s*`)
+	readAloudPrefixRe = regexp.MustCompile(`^\*{0,2}(?:Read-Aloud(?:\s+Text)?|Para Leer en Voz Alta)\*{0,2}:\s*\*{0,2}\s*`)
+
+	// dmSidebarPrefixRe strips DM Sidebar labels from blockquote text.
+	dmSidebarPrefixRe = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar:\s*\*{0,2}\s*`)
+
+	// linkRegex matches markdown links [text](href).
+	linkRegex = regexp.MustCompile(`\[(?P<text>[^\]]+)\]\((?P<href>[^)]+)\)`)
+
+	// aTagRegex matches existing HTML anchor tags.
+	aTagRegex = regexp.MustCompile(`<a[^>]*>.*?</a>`)
+
+	// worksheetDivRe matches the opening tag of a character-worksheet div block.
+	worksheetDivRe = regexp.MustCompile(`<div[^>]*\bclass="character-worksheet"[^>]*>`)
 
 	// rawTagRe strips raw HTML tags (e.g. <div>, <span>) — <img> tags are preserved via stash/restore
 	rawTagRe = regexp.MustCompile(`<[^>]+>`)
@@ -947,9 +1076,15 @@ var (
 	codeAssetRegex = regexp.MustCompile("`assets/([\\w\\-]+\\.(svg|png|jpg|jpeg|gif|webp))`")
 	sceneRegex     = regexp.MustCompile(`\[SCENE:\s*(.*?)\]`)
 
+	// introductionSidebarMarkerRegex matches an HTML comment used to mark the next blockquote as an introduction sidebar.
+	introductionSidebarMarkerRegex = regexp.MustCompile(`^\s*<!--\s*introduction-sidebar\s*-->\s*$`)
+
 	// v2 patterns
-	areaHeadingPattern     = regexp.MustCompile(`^[Áa]rea\s+(\d+):\s*(.+)$`)
+	areaHeadingPattern     = regexp.MustCompile(`^[AaÁá]rea\s+(\d+):\s*(.+)$`)
+	areaHeadingLinePattern = regexp.MustCompile(`(?m)^###\s+[AaÁá]rea\s+(\d+):\s*(.+)$`)
 	areaRefPattern         = regexp.MustCompile(`(?i)\b[Áa]rea\s+(\d+)\b`)
+	markdownHeadingPattern = regexp.MustCompile(`(?m)^(#{1,6})\s+(.+)$`)
+	explicitAnchorPattern  = regexp.MustCompile(`<a\s+id=["']([^"']+)["'][^>]*>.*?</a>`)
 )
 
 // formatInline processes bold and italic markers, ensuring no word merging after </strong>
@@ -962,29 +1097,112 @@ func formatInline(text string) string {
 }
 
 // processInlineText processes markdown images, escapes HTML, formats inline,
-// and preserves existing <img> tags so they are not escaped.
-func processInlineText(text string, baseDir string, seenImages map[string]bool) string {
+// converts markdown links, and preserves existing <img> and <a> tags so they are not escaped.
+func processInlineText(text string, baseDir string, seenImages map[string]bool, reg anchorRegistry) string {
 	// 1. Process markdown images first
 	text = processImages(text, baseDir, seenImages)
 
-	// 2. Extract and preserve existing <img> tags
+	// 2. Convert markdown links to anchors before escaping
+	text = processLinks(text, "", reg)
+
+	// 3. Extract and preserve existing <img> and <a> tags
 	var imgTags []string
+	var linkTags []string
 	text = imgTagRegex.ReplaceAllStringFunc(text, func(match string) string {
 		imgTags = append(imgTags, match)
 		return "\x00IMG\x00"
 	})
+	text = aTagRegex.ReplaceAllStringFunc(text, func(match string) string {
+		linkTags = append(linkTags, match)
+		return "\x00LINK\x00"
+	})
 
-	// 3. Escape HTML
+	// 4. Escape HTML
 	text = html.EscapeString(text)
 
-	// 4. Format inline (bold, italic)
+	// 5. Format inline (bold, italic)
 	text = formatInline(text)
 
-	// 5. Restore <img> tags
+	// 6. Restore <a> tags
+	for _, link := range linkTags {
+		text = strings.Replace(text, "\x00LINK\x00", link, 1)
+	}
+
+	// 7. Restore <img> tags
 	for _, img := range imgTags {
 		text = strings.Replace(text, "\x00IMG\x00", img, 1)
 	}
 
+	return text
+}
+
+// stripCharacterWorksheets removes <div class="character-worksheet"> blocks from markdown.
+// It reuses extractBalancedDivs so nested divs are handled correctly, and restores
+// any non-worksheet blocks so surrounding HTML is preserved.
+func stripCharacterWorksheets(md string) string {
+	md, blocks := extractBalancedDivs(md)
+	for i, block := range blocks {
+		placeholder := fmt.Sprintf("\x00HTMLBLOCK%d\x00", i)
+		if worksheetDivRe.MatchString(block) {
+			md = strings.Replace(md, placeholder, "", 1)
+		} else {
+			md = strings.Replace(md, placeholder, block, 1)
+		}
+	}
+	return md
+}
+
+// classifyBlockquote determines the semantic role of a blockquote and returns the
+// class along with lines that have the class-identifying marker removed.
+func classifyBlockquote(lines []string, sectionID string) (blockquoteClass, []string) {
+	if len(lines) == 0 {
+		return bqReadAloud, lines
+	}
+
+	first := lines[0]
+	cleaned := make([]string, len(lines))
+	copy(cleaned, lines)
+
+	// DM Sidebar detection takes precedence.
+	if dmSidebarPrefixRe.MatchString(first) {
+		cleaned[0] = dmSidebarPrefixRe.ReplaceAllString(first, "")
+		return bqDMSidebar, cleaned
+	}
+
+	// Read-Aloud detection.
+	if readAloudPrefixRe.MatchString(first) {
+		cleaned[0] = readAloudPrefixRe.ReplaceAllString(first, "")
+		return bqReadAloud, cleaned
+	}
+
+	// Introduction sidebar: introduction section with a heading-like first line.
+	if strings.Contains(sectionID, "introduction") && headingMarkerRe.MatchString(first) {
+		return bqIntroductionSidebar, cleaned
+	}
+
+	// Chapter summary: chapter section containing list items.
+	if strings.Contains(sectionID, "chapter") {
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
+				return bqChapterSummary, cleaned
+			}
+		}
+	}
+
+	return bqReadAloud, cleaned
+}
+
+// headingMarkerRe matches markdown heading markers (##### to #) at the start of a line.
+var headingMarkerRe = regexp.MustCompile(`^#{1,5}\s+`)
+
+// stripBlockquotePrefix removes remaining section/heading markers from blockquote
+// text so that CSS pseudo-elements can provide the visible label.
+func stripBlockquotePrefix(text string, class blockquoteClass) string {
+	switch class {
+	case bqDMSidebar, bqIntroductionSidebar:
+		text = headingMarkerRe.ReplaceAllString(text, "")
+	}
 	return text
 }
 
@@ -1031,18 +1249,18 @@ func extractBalancedDivs(md string) (string, []string) {
 				j++
 			}
 
-		// If we reached end without closing, auto-close remaining divs
-		if depth > 0 {
-			block := md[start:j]
-			// Append closing tags for remaining depth
-			for d := 0; d < depth; d++ {
-				block += "</div>"
+			// If we reached end without closing, auto-close remaining divs
+			if depth > 0 {
+				block := md[start:j]
+				// Append closing tags for remaining depth
+				for d := 0; d < depth; d++ {
+					block += "</div>"
+				}
+				placeholder := fmt.Sprintf("\x00HTMLBLOCK%d\x00", len(blocks))
+				result.WriteString(placeholder)
+				blocks = append(blocks, block)
+				i = j
 			}
-			placeholder := fmt.Sprintf("\x00HTMLBLOCK%d\x00", len(blocks))
-			result.WriteString(placeholder)
-			blocks = append(blocks, block)
-			i = j
-		}
 		} else {
 			result.WriteByte(md[i])
 			i++
@@ -1052,17 +1270,38 @@ func extractBalancedDivs(md string) (string, []string) {
 	return result.String(), blocks
 }
 
-func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool) string {
-	return markdownToHTMLWithID(md, baseDir, sectionID, headingCounter, seenImages, c.CompilerVersion)
+func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, reg anchorRegistry) string {
+	return markdownToHTMLWithID(md, baseDir, sectionID, headingCounter, seenImages, c.CompilerVersion, reg)
 }
 
-func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int) string {
-	// Strip HTML comments before processing to prevent artifacts in PDF
-	md = htmlCommentRegex.ReplaceAllString(md, "")
+func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry) string {
+	// Strip character-worksheet div blocks before further processing (v2 only)
+	if compilerVersion == 2 {
+		md = stripCharacterWorksheets(md)
+	}
+
+	// Strip HTML comments before processing to prevent artifacts in PDF, but preserve
+	// introduction-sidebar markers so they can disambiguate blockquotes.
+	md = htmlCommentRegex.ReplaceAllStringFunc(md, func(match string) string {
+		inner := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(match, "<!--"), "-->"))
+		if inner == "introduction-sidebar" {
+			return match
+		}
+		return ""
+	})
 
 	// Extract HTML blocks (like <div>...</div>) before processing to preserve them
 	// Uses depth-tracking to handle nested divs correctly
 	md, htmlBlocks := extractBalancedDivs(md)
+
+	// Extract and preserve explicit anchor tags so they survive raw tag stripping.
+	anchorPlaceholder := "\x00ANCHOR%d\x00"
+	var anchorTags []string
+	md = explicitAnchorPattern.ReplaceAllStringFunc(md, func(match string) string {
+		placeholder := fmt.Sprintf(anchorPlaceholder, len(anchorTags))
+		anchorTags = append(anchorTags, match)
+		return placeholder
+	})
 
 	// Strip raw HTML tags (except <img>) that would be escaped and rendered as visible text.
 	// Stash <img> tags, strip all remaining HTML tags, then restore <img> tags.
@@ -1072,6 +1311,11 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 	md = rawTagRe.ReplaceAllString(md, "")
 	for _, imgTag := range imgStash {
 		md = strings.Replace(md, imgPlaceholder, imgTag, 1)
+	}
+
+	// Restore explicit anchor tags now that raw tags have been stripped.
+	for i, anchor := range anchorTags {
+		md = strings.Replace(md, fmt.Sprintf(anchorPlaceholder, i), anchor, 1)
 	}
 
 	lines := strings.Split(md, "\n")
@@ -1087,6 +1331,8 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 	// Blockquote state (read-aloud)
 	inBlockquote := false
 	var blockquoteLines []string
+	introSidebarPending := false
+	var blockquoteClassOverride blockquoteClass = -1
 
 	// Code block state
 	inCodeBlock := false
@@ -1109,15 +1355,39 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		if len(blockquoteLines) == 0 {
 			return
 		}
-		text := strings.Join(blockquoteLines, " ")
+		originalLines := blockquoteLines
 		blockquoteLines = nil
+		text := strings.Join(originalLines, " ")
 		if text == "" {
 			return
 		}
-		// Strip **Read-Aloud:** or **Para Leer en Voz Alta:** label (CSS ::before provides it)
-		text = readAloudPrefixRe.ReplaceAllString(text, "")
-		escaped := processInlineText(text, baseDir, seenImages)
-		out = append(out, fmt.Sprintf(`<div class="read-aloud">%s</div>`, escaped))
+
+		var className string
+		if compilerVersion == 2 {
+			class, cleanedLines := classifyBlockquote(originalLines, sectionID)
+			if blockquoteClassOverride >= 0 {
+				class = blockquoteClassOverride
+			}
+			text = strings.Join(cleanedLines, " ")
+			text = stripBlockquotePrefix(text, class)
+			switch class {
+			case bqDMSidebar:
+				className = "dm-sidebar"
+			case bqChapterSummary:
+				className = "chapter-summary"
+			case bqIntroductionSidebar:
+				className = "introduction-sidebar"
+			default:
+				className = "read-aloud"
+			}
+		} else {
+			// Legacy v1 / helper behavior: all blockquotes are read-aloud.
+			text = readAloudPrefixRe.ReplaceAllString(text, "")
+			className = "read-aloud"
+		}
+
+		escaped := processInlineText(text, baseDir, seenImages, reg)
+		out = append(out, fmt.Sprintf(`<div class="%s">%s</div>`, className, escaped))
 	}
 
 	flushParagraph := func() {
@@ -1129,7 +1399,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		if text == "" {
 			return
 		}
-		escaped := processInlineText(text, baseDir, seenImages)
+		escaped := processInlineText(text, baseDir, seenImages, reg)
 		out = append(out, fmt.Sprintf("<p>%s</p>", escaped))
 	}
 
@@ -1138,7 +1408,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			// Not a valid table, treat rows as paragraphs
 			for _, row := range tableRows {
 				if strings.TrimSpace(row) != "" {
-					escaped := processInlineText(strings.TrimSpace(row), baseDir, seenImages)
+					escaped := processInlineText(strings.TrimSpace(row), baseDir, seenImages, reg)
 					out = append(out, fmt.Sprintf("<p>%s</p>", escaped))
 				}
 			}
@@ -1169,7 +1439,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				if i < len(alignments) {
 					align = alignments[i]
 				}
-				cellEsc := processInlineText(cell, baseDir, seenImages)
+				cellEsc := processInlineText(cell, baseDir, seenImages, reg)
 				if align != "" {
 					fmt.Fprintf(&htmlOut, `<td style="text-align:%s">%s</td>`, align, cellEsc)
 				} else {
@@ -1188,6 +1458,12 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 
 		// Skip horizontal rules (---, ***, ___, - - -)
 		if trimmed == "---" || trimmed == "***" || trimmed == "___" || trimmed == "- - -" {
+			continue
+		}
+
+		// Preserve introduction-sidebar marker comments for blockquote disambiguation.
+		if compilerVersion == 2 && introductionSidebarMarkerRegex.MatchString(trimmed) {
+			introSidebarPending = true
 			continue
 		}
 
@@ -1278,6 +1554,10 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				inList = false
 			}
 			inBlockquote = true
+			if compilerVersion == 2 && introSidebarPending {
+				blockquoteClassOverride = bqIntroductionSidebar
+				introSidebarPending = false
+			}
 			blockquoteLines = append(blockquoteLines, bqMatch[1])
 			continue
 		}
@@ -1286,6 +1566,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		if inBlockquote {
 			flushBlockquote()
 			inBlockquote = false
+			blockquoteClassOverride = -1
 		}
 
 		// Handle headings
@@ -1296,8 +1577,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				inList = false
 			}
 			text := strings.TrimPrefix(trimmed, "##### ")
-			*headingCounter++
-			id := sectionID + "-h" + strconv.Itoa(*headingCounter)
+			id := headingID(text, sectionID, compilerVersion, headingCounter, reg)
 			out = append(out, fmt.Sprintf(`<h5 id="%s">%s</h5>`, id, html.EscapeString(text)))
 		} else if strings.HasPrefix(trimmed, "#### ") {
 			flushParagraph()
@@ -1306,8 +1586,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				inList = false
 			}
 			text := strings.TrimPrefix(trimmed, "#### ")
-			*headingCounter++
-			id := sectionID + "-h" + strconv.Itoa(*headingCounter)
+			id := headingID(text, sectionID, compilerVersion, headingCounter, reg)
 			out = append(out, fmt.Sprintf(`<h4 id="%s">%s</h4>`, id, html.EscapeString(text)))
 		} else if strings.HasPrefix(trimmed, "### ") {
 			flushParagraph()
@@ -1316,12 +1595,11 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				inList = false
 			}
 			text := strings.TrimPrefix(trimmed, "### ")
-			*headingCounter++
-			id := sectionID + "-h" + strconv.Itoa(*headingCounter)
 
 			// v2: Area number highlighting and cross-reference IDs
 			if compilerVersion == 2 {
 				if areaMatch := areaHeadingPattern.FindStringSubmatch(text); areaMatch != nil {
+					(*headingCounter)++
 					areaNum := areaMatch[1]
 					areaName := strings.TrimSpace(areaMatch[2])
 					areaID := "area-" + areaNum
@@ -1331,6 +1609,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				}
 			}
 
+			id := headingID(text, sectionID, compilerVersion, headingCounter, reg)
 			out = append(out, fmt.Sprintf(`<h3 id="%s">%s</h3>`, id, html.EscapeString(text)))
 		} else if strings.HasPrefix(trimmed, "## ") {
 			flushParagraph()
@@ -1339,8 +1618,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				inList = false
 			}
 			text := strings.TrimPrefix(trimmed, "## ")
-			*headingCounter++
-			id := sectionID + "-h" + strconv.Itoa(*headingCounter)
+			id := headingID(text, sectionID, compilerVersion, headingCounter, reg)
 			out = append(out, fmt.Sprintf(`<h2 id="%s">%s</h2>`, id, html.EscapeString(text)))
 		} else if strings.HasPrefix(trimmed, "# ") {
 			flushParagraph()
@@ -1349,8 +1627,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				inList = false
 			}
 			text := strings.TrimPrefix(trimmed, "# ")
-			*headingCounter++
-			id := sectionID + "-h" + strconv.Itoa(*headingCounter)
+			id := headingID(text, sectionID, compilerVersion, headingCounter, reg)
 			out = append(out, fmt.Sprintf(`<h1 id="%s">%s</h1>`, id, html.EscapeString(text)))
 		} else if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
 			flushParagraph()
@@ -1362,7 +1639,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			if strings.HasPrefix(trimmed, "* ") {
 				text = strings.TrimPrefix(trimmed, "* ")
 			}
-			escaped := processInlineText(text, baseDir, seenImages)
+			escaped := processInlineText(text, baseDir, seenImages, reg)
 			out = append(out, fmt.Sprintf("<li>%s</li>", escaped))
 		} else if trimmed == "" {
 			flushParagraph()
@@ -1409,6 +1686,28 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 	}
 
 	return result
+}
+
+// headingID returns the emitted id for a heading. In v2 it prefers a stable
+// slug-based ID from the registry when it matches the current section; otherwise
+// it falls back to the legacy counter-based ID.
+func headingID(text, sectionID string, compilerVersion int, headingCounter *int, reg anchorRegistry) string {
+	*headingCounter++
+	counterID := sectionID + "-h" + strconv.Itoa(*headingCounter)
+
+	if compilerVersion != 2 || reg == nil {
+		return counterID
+	}
+
+	slug := slugify(text)
+	if slug == "" {
+		return counterID
+	}
+	stableID := sectionID + "-" + slug
+	if reg[slug] == stableID {
+		return stableID
+	}
+	return counterID
 }
 
 func isTableRow(line string) bool {
@@ -1466,7 +1765,7 @@ func parseTableAlign(row string) []string {
 func markdownToHTML(md string, baseDir string) string {
 	counter := 0
 	seen := make(map[string]bool)
-	return markdownToHTMLWithID(md, baseDir, "content", &counter, seen, 0)
+	return markdownToHTMLWithID(md, baseDir, "content", &counter, seen, 0, nil)
 }
 
 // postProcessHTML applies v2 cross-reference links and other transformations
@@ -1486,6 +1785,37 @@ func postProcessHTML(html string, compilerVersion int) string {
 	})
 
 	return html
+}
+
+func processLinks(text, sectionID string, reg anchorRegistry) string {
+	return linkRegex.ReplaceAllStringFunc(text, func(match string) string {
+		matches := linkRegex.FindStringSubmatch(match)
+		if len(matches) < 3 {
+			return match
+		}
+		linkText := matches[1]
+		href := matches[2]
+
+		resolved := href
+		if strings.Contains(href, ".md#") {
+			parts := strings.SplitN(href, "#", 2)
+			if len(parts) == 2 {
+				frag := parts[1]
+				if reg != nil && reg[frag] != "" {
+					resolved = "#" + reg[frag]
+				} else {
+					resolved = "#" + frag
+				}
+			}
+		} else if strings.HasPrefix(href, "#") {
+			frag := href[1:]
+			if reg != nil && reg[frag] != "" {
+				resolved = "#" + reg[frag]
+			}
+		}
+
+		return fmt.Sprintf(`<a href="%s">%s</a>`, html.EscapeString(resolved), html.EscapeString(linkText))
+	})
 }
 
 func processImages(text string, baseDir string, seenImages map[string]bool) string {

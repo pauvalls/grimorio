@@ -435,3 +435,240 @@ Apéndices de la campaña.
 `
 	_ = os.WriteFile(filepath.Join(dir, "appendices.md"), []byte(appendices), 0644)
 }
+
+func TestCompile_BlockquoteClassification(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestCampaign(t, tmpDir, "BQ Test")
+
+	intro := `# Introduction
+
+<!-- introduction-sidebar -->
+> ##### Sidebar Name
+> Optional rules detail.
+
+> *Read this aloud.*
+`
+	_ = os.WriteFile(filepath.Join(tmpDir, "introduction.md"), []byte(intro), 0644)
+
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+	chapter := `# Chapter 1
+
+> - Level 1-2
+> - 2-3 hours
+
+### Area 1: Entrance
+
+> **Read-Aloud Text:** The door creaks open.
+
+> ##### DM Sidebar: Traps
+> The floor is trapped.
+`
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01.md"), []byte(chapter), 0644)
+
+	c := compiler.New(tmpDir, "")
+	_, err := c.Compile(context.Background(), "BQ Test")
+	if err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	htmlPath := filepath.Join(tmpDir, "campaign.html")
+	htmlBytes, err := os.ReadFile(htmlPath)
+	if err != nil {
+		t.Fatalf("Failed to read HTML: %v", err)
+	}
+	htmlStr := string(htmlBytes)
+
+	checks := []struct {
+		class   string
+		content string
+	}{
+		{"chapter-summary", "Level 1-2"},
+		{"read-aloud", "The door creaks open"},
+		{"dm-sidebar", "The floor is trapped"},
+		{"introduction-sidebar", "Optional rules detail"},
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(htmlStr, `class="`+check.class+`"`) {
+			t.Errorf("HTML missing %s block", check.class)
+		}
+		if !strings.Contains(htmlStr, check.content) {
+			t.Errorf("HTML missing content %q for %s", check.content, check.class)
+		}
+	}
+
+	// Prefix labels should be stripped.
+	if strings.Contains(htmlStr, "Read-Aloud Text:") {
+		t.Error("Read-Aloud Text prefix should be stripped")
+	}
+	if strings.Contains(htmlStr, "DM Sidebar:") {
+		t.Error("DM Sidebar prefix should be stripped")
+	}
+}
+
+func TestCompile_MarkdownLinks(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestCampaign(t, tmpDir, "Link Test")
+
+	appendices := `# Appendices
+
+<a id="appendix-a-magic-items"></a>
+## Appendix A: Magic Items
+
+*Magic items.*
+`
+	_ = os.WriteFile(filepath.Join(tmpDir, "appendices.md"), []byte(appendices), 0644)
+
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+	chapter := `# Chapter 1
+
+### Area 1: Entrance
+
+See [Background](#adventure-background) and [Appendix A](appendices.md#appendix-a-magic-items).
+`
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01.md"), []byte(chapter), 0644)
+
+	c := compiler.New(tmpDir, "")
+	_, err := c.Compile(context.Background(), "Link Test")
+	if err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	htmlPath := filepath.Join(tmpDir, "campaign.html")
+	htmlBytes, _ := os.ReadFile(htmlPath)
+	htmlStr := string(htmlBytes)
+
+	if !strings.Contains(htmlStr, `<a href="#adventure-background">Background</a>`) {
+		t.Errorf("internal link not converted, got: %s", htmlStr)
+	}
+	if !strings.Contains(htmlStr, `<a href="#appendix-a-magic-items">Appendix A</a>`) {
+		t.Errorf("cross-file link not rewritten, got: %s", htmlStr)
+	}
+}
+
+func TestCompile_WorksheetSuppression(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestCampaign(t, tmpDir, "Worksheet Test")
+
+	sessionZero := `# Session Zero
+
+<div class="character-worksheet">
+<div class="worksheet-section">
+<h4>Prompt</h4>
+<div class="prompt-box">Question?</div>
+</div>
+</div>
+`
+	_ = os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte(sessionZero), 0644)
+
+	c := compiler.New(tmpDir, "")
+	_, err := c.Compile(context.Background(), "Worksheet Test")
+	if err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	htmlPath := filepath.Join(tmpDir, "campaign.html")
+	htmlBytes, _ := os.ReadFile(htmlPath)
+	htmlStr := string(htmlBytes)
+
+	if strings.Contains(htmlStr, `class="character-worksheet"`) {
+		t.Error("character-worksheet block should be suppressed in PDF output")
+	}
+}
+
+func TestCompile_ImageCoverage(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestCampaign(t, tmpDir, "Image Test")
+
+	_ = os.MkdirAll(filepath.Join(tmpDir, "assets"), 0755)
+	for _, name := range []string{"sz.png", "intro.png", "setting.png", "appendix.png"} {
+		_ = os.WriteFile(filepath.Join(tmpDir, "assets", name), []byte("fake"), 0644)
+	}
+
+	_ = os.WriteFile(filepath.Join(tmpDir, "session-zero.md"), []byte("# SZ\n\n![SZ](assets/sz.png)"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "introduction.md"), []byte("# Intro\n\n![Intro](assets/intro.png)"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "setting-guide.md"), []byte("# Setting\n\n![Setting](assets/setting.png)"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "appendices.md"), []byte("# Appendices\n\n![Appendix](assets/appendix.png)"), 0644)
+
+	c := compiler.New(tmpDir, "")
+	_, err := c.Compile(context.Background(), "Image Test")
+	if err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	htmlPath := filepath.Join(tmpDir, "campaign.html")
+	htmlBytes, _ := os.ReadFile(htmlPath)
+	htmlStr := string(htmlBytes)
+
+	for _, alt := range []string{"SZ", "Intro", "Setting", "Appendix"} {
+		if !strings.Contains(htmlStr, `alt="`+alt+`"`) {
+			t.Errorf("image %q missing from HTML", alt)
+		}
+	}
+}
+
+func TestCompile_CrossReferenceAnchors(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestCampaign(t, tmpDir, "Anchor Test")
+
+	appendices := `# Appendices
+
+<a id="appendix-a-magic-items"></a>
+## Appendix A: Magic Items
+
+*Magic items.*
+`
+	_ = os.WriteFile(filepath.Join(tmpDir, "appendices.md"), []byte(appendices), 0644)
+
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	_ = os.MkdirAll(chaptersDir, 0755)
+	chapter := `# Chapter 1
+
+### Area 5: The Crypt
+
+Content.
+`
+	_ = os.WriteFile(filepath.Join(chaptersDir, "chapter_01.md"), []byte(chapter), 0644)
+
+	c := compiler.New(tmpDir, "")
+	_, err := c.Compile(context.Background(), "Anchor Test")
+	if err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	htmlPath := filepath.Join(tmpDir, "campaign.html")
+	htmlBytes, _ := os.ReadFile(htmlPath)
+	htmlStr := string(htmlBytes)
+
+	if !strings.Contains(htmlStr, `id="area-5"`) {
+		t.Error("area heading missing stable area-5 id")
+	}
+	if !strings.Contains(htmlStr, `id="appendix-a-magic-items"`) {
+		t.Error("explicit appendix anchor missing")
+	}
+}
+
+func TestCompile_PDFEngineAgnostic(t *testing.T) {
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping engine smoke test")
+	}
+
+	tmpDir := t.TempDir()
+	createTestCampaign(t, tmpDir, "PDF Smoke Test")
+
+	c := compiler.New(tmpDir, "")
+	pdfPath, err := c.Compile(context.Background(), "PDF Smoke Test")
+	if err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	info, err := os.Stat(pdfPath)
+	if err != nil {
+		t.Fatalf("PDF file not created: %v", err)
+	}
+	if info.Size() == 0 {
+		t.Error("PDF file is empty")
+	}
+}
