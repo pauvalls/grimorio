@@ -51,6 +51,13 @@ func (c *CampaignConsolidator) Detect(ctx context.Context, campaignID string) (*
 	return c.Consolidate(ctx, campaignID, domain.ConsolidationOptions{AutoFix: false})
 }
 
+// ReadFiles returns the campaign markdown files without running any analyzer.
+// Useful for callers that want to dispatch to a specific analyzer (e.g. the
+// ValidationEngine and CampaignHealthCheck integration layer).
+func (c *CampaignConsolidator) ReadFiles(ctx context.Context, campaignID string) ([]CampaignFile, error) {
+	return c.reader.ReadCampaign(ctx, campaignID)
+}
+
 // Consolidate runs analyzers and applies safe fixes when AutoFix is enabled.
 func (c *CampaignConsolidator) Consolidate(ctx context.Context, campaignID string, opts domain.ConsolidationOptions) (*domain.ConsolidationReport, error) {
 	files, err := c.reader.ReadCampaign(ctx, campaignID)

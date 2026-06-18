@@ -11,15 +11,17 @@ import (
 
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
+	"github.com/pauvalls/grimorio/internal/services/consolidation"
 	"github.com/pauvalls/grimorio/internal/validators"
 )
 
 // ValidationEngine performs rule-based validation of content proposals and campaign consistency
 type ValidationEngine struct {
-	canonService *CanonService
-	stateService *NarrativeStateService
-	factionRepo  repository.FactionReputationRepository
-	campaignDir  string // base directory where campaign subdirs live (e.g. ~/campaigns)
+	canonService  *CanonService
+	stateService  *NarrativeStateService
+	factionRepo   repository.FactionReputationRepository
+	campaignDir   string // base directory where campaign subdirs live (e.g. ~/campaigns)
+	consolidator  *ConsolidationAdapter
 }
 
 // NewValidationEngine creates a new validation engine
@@ -29,6 +31,7 @@ func NewValidationEngine(canonService *CanonService, stateService *NarrativeStat
 		stateService: stateService,
 		factionRepo:  factionRepo,
 		campaignDir:  campaignDir,
+		consolidator: NewConsolidationAdapter(campaignDir),
 	}
 }
 
@@ -223,6 +226,9 @@ func (e *ValidationEngine) CheckConsistency(ctx context.Context, campaignID stri
 
 		// Integration cross-reference: act <-> bestiary <-> npcs
 		e.runIntegrationChecks(report, campaignID)
+
+		// Consolidation checks: cross-file coherence via the consolidation engine
+		e.runConsolidationChecks(ctx, report, campaignID)
 	}
 
 	// Compute report statistics
@@ -1050,5 +1056,160 @@ func isHelpfulReaction(reaction string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// runConsolidationChecks dispatches the seven cross-file validation methods
+// that delegate to the consolidation engine. They run only inside the
+// ConsistencyScopeFull branch.
+func (e *ValidationEngine) runConsolidationChecks(ctx context.Context, report *domain.ConsistencyReport, campaignID string) {
+	if e.consolidator == nil {
+		return
+	}
+	e.validateLoreCoherence(ctx, campaignID, report)
+	e.validateEntityUniqueness(ctx, campaignID, report)
+	e.validateEventCanonicalLocations(ctx, campaignID, report)
+	e.validateStatBlockConsistency(ctx, campaignID, report)
+	e.validateMapAssetsExist(ctx, campaignID, report)
+	e.validateGeneratedFileFreshness(ctx, campaignID, report)
+	e.validateNoDuplicateFiles(ctx, campaignID, report)
+}
+
+// emitConsolidationCheck writes a single summary CheckResult and one
+// per-issue CheckResult. severityDefault applies when the analyzer didn't
+// tag an issue with a severity. issues can be nil.
+func (e *ValidationEngine) emitConsolidationCheck(report *domain.ConsistencyReport, rule string, res *consolidation.AnalysisResult, severityDefault string) {
+	if res == nil {
+		return
+	}
+	if !res.Passed {
+		report.Issues = append(report.Issues, domain.CheckResult{
+			Rule:     rule,
+			Passed:   false,
+			Severity: severityDefault,
+			Message:  res.Message,
+			Location: joinLocations(res.Locations),
+		})
+	}
+	for _, issue := range res.Issues {
+		sev := issue.Severity
+		if sev == "" {
+			sev = severityDefault
+		}
+		report.Issues = append(report.Issues, domain.CheckResult{
+			Rule:     rule,
+			Passed:   false,
+			Severity: sev,
+			Message:  issue.Message,
+			Location: joinLocations(issue.Locations),
+		})
+	}
+}
+
+// validateLoreCoherence runs the LoreCoherence analyzer and surfaces
+// treaty/event/primordial contradictions as critical CheckResults.
+func (e *ValidationEngine) validateLoreCoherence(ctx context.Context, campaignID string, report *domain.ConsistencyReport) {
+	res, err := e.consolidator.RunAnalyzer(ctx, campaignID, consolidation.NewLoreCoherence())
+	if err != nil || res == nil {
+		return
+	}
+	// Lore contradictions are canon-breaking → critical. The analyzer's
+	// Issues carry their own severity, so we override to "critical" unless
+	// it was already "warning" (event placement is less severe).
+	original := res.Issues
+	for i := range original {
+		if original[i].Severity != "warning" {
+			original[i].Severity = "critical"
+		}
+	}
+	e.emitConsolidationCheck(report, "consolidation_lore_coherence", res, "critical")
+}
+
+// validateEntityUniqueness surfaces entity name collisions.
+func (e *ValidationEngine) validateEntityUniqueness(ctx context.Context, campaignID string, report *domain.ConsistencyReport) {
+	res, err := e.consolidator.RunAnalyzer(ctx, campaignID, consolidation.NewEntityResolver(0.85))
+	if err != nil || res == nil {
+		return
+	}
+	e.emitConsolidationCheck(report, "consolidation_entity_uniqueness", res, "warning")
+}
+
+// validateEventCanonicalLocations detects events placed in multiple files.
+func (e *ValidationEngine) validateEventCanonicalLocations(ctx context.Context, campaignID string, report *domain.ConsistencyReport) {
+	res, err := e.consolidator.RunAnalyzer(ctx, campaignID, consolidation.NewEventCanonizer())
+	if err != nil || res == nil {
+		return
+	}
+	e.emitConsolidationCheck(report, "consolidation_event_canonical_location", res, "error")
+}
+
+// validateStatBlockConsistency detects conflicting boss CR values.
+func (e *ValidationEngine) validateStatBlockConsistency(ctx context.Context, campaignID string, report *domain.ConsistencyReport) {
+	res, err := e.consolidator.RunAnalyzer(ctx, campaignID, consolidation.NewStatBlockResolver())
+	if err != nil || res == nil {
+		return
+	}
+	e.emitConsolidationCheck(report, "consolidation_stat_block_consistency", res, "error")
+}
+
+// validateMapAssetsExist checks for missing map/asset references.
+func (e *ValidationEngine) validateMapAssetsExist(ctx context.Context, campaignID string, report *domain.ConsistencyReport) {
+	campaignDir := filepath.Join(e.campaignDir, campaignID)
+	res, err := e.consolidator.RunAnalyzer(ctx, campaignID, consolidation.NewMapReferenceChecker(campaignDir))
+	if err != nil || res == nil {
+		return
+	}
+	e.emitConsolidationCheck(report, "consolidation_map_assets_exist", res, "error")
+}
+
+// validateGeneratedFileFreshness reports stale campaign.md/INDEX.md.
+func (e *ValidationEngine) validateGeneratedFileFreshness(ctx context.Context, campaignID string, report *domain.ConsistencyReport) {
+	freshness, err := e.consolidator.VerifyFreshness(ctx, campaignID)
+	if err != nil || freshness == nil {
+		return
+	}
+	if freshness.CampaignMDStale {
+		report.Issues = append(report.Issues, domain.CheckResult{
+			Rule:     "consolidation_generated_file_freshness",
+			Passed:   false,
+			Severity: "warning",
+			Message:  fmt.Sprintf("campaign.md is stale relative to sources (sources newest: %s)", freshness.SourcesNewest.Format("2006-01-02")),
+			Location: "campaign.md",
+		})
+	}
+	if freshness.IndexStale {
+		report.Issues = append(report.Issues, domain.CheckResult{
+			Rule:     "consolidation_generated_file_freshness",
+			Passed:   false,
+			Severity: "warning",
+			Message:  fmt.Sprintf("INDEX.md is stale relative to sources (sources newest: %s)", freshness.SourcesNewest.Format("2006-01-02")),
+			Location: "INDEX.md",
+		})
+	}
+}
+
+// validateNoDuplicateFiles detects identical-content files.
+func (e *ValidationEngine) validateNoDuplicateFiles(ctx context.Context, campaignID string, report *domain.ConsistencyReport) {
+	res, err := e.consolidator.RunAnalyzer(ctx, campaignID, consolidation.NewFileConsolidator())
+	if err != nil || res == nil {
+		return
+	}
+	// Only surface duplicate_file issues (stale_generated_file belongs
+	// to validateGeneratedFileFreshness).
+	filtered := &consolidation.AnalysisResult{
+		Rule:      res.Rule,
+		Passed:    res.Passed,
+		Severity:  res.Severity,
+		Message:   res.Message,
+		Locations: res.Locations,
+	}
+	for _, issue := range res.Issues {
+		if issue.Rule == "duplicate_file" {
+			filtered.Issues = append(filtered.Issues, issue)
+		}
+	}
+	if !res.Passed && len(filtered.Issues) > 0 {
+		// Keep the global Passed signal only if duplicates were detected.
+		e.emitConsolidationCheck(report, "consolidation_no_duplicate_files", filtered, "warning")
 	}
 }
