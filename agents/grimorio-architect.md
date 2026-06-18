@@ -112,6 +112,15 @@ The campaign is built in **5 macro-phases**. Each macro-phase has gates that BLO
 │  ├── generate_treasure (per hoard)                                  │
 │  └── GATE: campaign_health_dashboard                                │
 ├────────────────────────────────────────────────────────────────────┤
+│  MACRO-PHASE 4.5: CONSOLIDATION (cross-file coherence)             │
+│  ├── delegate(agent=grimorio-consolidator, prompt=...)             │
+│  │   → detect_inconsistencies                                      │
+│  │   → consolidate_campaign(auto_fix=true)                          │
+│  │   → resolve_ambiguity per open question                          │
+│  │   → regenerate_index                                             │
+│  │   → verify_campaign_freshness                                    │
+│  └── GATE: consolidation_report.clean (no critical, no open Qs)    │
+├────────────────────────────────────────────────────────────────────┤
 │  MACRO-PHASE 5: EXPORT & DELIVER                                    │
 │  ├── grimorio validate {campaign} --scope=all (BLOCKING)           │
 │  ├── export_campaign --format=pdf (default)                         │
@@ -166,6 +175,7 @@ report failure to the user.
 | **Save (sequential, v5.1)** | `save_chapter_part`, `finalize_chapter` — generate chapters part-by-part (7 parts: opener → general-features → npcs → encounters → areas-1 → areas-2 → closing) |
 | **Assets** | `generate_image`, `generate_map`, `generate_divider`, `generate_flowchart`, `generate_random_tables`, `generate_handouts`, `generate_treasure`, `generate_session_prep` |
 | **Validation** | `validate_canon`, `check_consistency`, `process_consistency_gate`, `evaluate_consequences` |
+| **Consolidation** | `detect_inconsistencies`, `consolidate_campaign`, `resolve_ambiguity`, `regenerate_index`, `verify_campaign_freshness` |
 | **State** | `update_narrative_state`, `update_faction_reputation`, `update_quest_status` |
 | **Quality** | `campaign_health_dashboard`, `export_campaign` |
 
@@ -207,6 +217,7 @@ Final report:
 
 **Health Score:** {X}/100 (Canon's overall)
 **WotC Validation:** PASSED
+**Consolidation:** {N} issues fixed, {K} questions resolved, INDEX.md regenerated
 **Status:** ✅ Success
 ```
 

@@ -13,16 +13,18 @@ import (
 
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
+	consolidationPkg "github.com/pauvalls/grimorio/internal/services/consolidation"
 )
 
 // CampaignHealthCheck executes automated health checks on a campaign
 type CampaignHealthCheck struct {
-	canonRepo   repository.CanonRepository
-	stateRepo   repository.NarrativeStateRepository
-	questRepo   repository.QuestRepository
-	factionRepo repository.FactionReputationRepository
-	npcRepo     repository.NPCRepository
-	baseDir     string
+	canonRepo    repository.CanonRepository
+	stateRepo    repository.NarrativeStateRepository
+	questRepo    repository.QuestRepository
+	factionRepo  repository.FactionReputationRepository
+	npcRepo      repository.NPCRepository
+	baseDir      string
+	consolidator *ConsolidationAdapter
 }
 
 // HealthReport represents the output of a health check
@@ -65,12 +67,13 @@ func NewCampaignHealthCheck(
 	baseDir string,
 ) *CampaignHealthCheck {
 	return &CampaignHealthCheck{
-		canonRepo:   canonRepo,
-		stateRepo:   stateRepo,
-		questRepo:   questRepo,
-		factionRepo: factionRepo,
-		npcRepo:     npcRepo,
-		baseDir:     baseDir,
+		canonRepo:    canonRepo,
+		stateRepo:    stateRepo,
+		questRepo:    questRepo,
+		factionRepo:  factionRepo,
+		npcRepo:      npcRepo,
+		baseDir:      baseDir,
+		consolidator: NewConsolidationAdapter(baseDir),
 	}
 }
 
@@ -103,6 +106,14 @@ func (s *CampaignHealthCheck) RunHealthCheck(ctx context.Context, campaignID str
 	s.checkOrphanedClues(state, report)
 	s.checkDeadNPCMismatch(canon, state, report)
 	s.checkMcGuffinDrift(canon, state, report)
+
+	// Consolidation-driven health findings (cross-file coherence).
+	s.checkDuplicateFiles(ctx, campaignID, report)
+	s.checkStaleGeneratedFiles(ctx, campaignID, report)
+	s.checkMissingMaps(ctx, campaignID, report)
+	s.checkLoreContradictions(ctx, campaignID, report)
+	s.checkEntityNameCollisions(ctx, campaignID, report)
+	s.checkBossStatBlockDrift(ctx, campaignID, report)
 
 	// Sort findings by severity, rule, entity_id
 	sortFindings(report.Findings)
@@ -452,4 +463,195 @@ func computeCheckpointHash(checkpoint *domain.PipelineCheckpoint) (string, error
 	}
 
 	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+// ----- Consolidation-driven health findings -----
+
+// checkDuplicateFiles emits a warning for each set of identical-content files.
+func (s *CampaignHealthCheck) checkDuplicateFiles(ctx context.Context, campaignID string, report *HealthReport) {
+	res, err := s.consolidator.RunAnalyzer(ctx, campaignID, consolidationPkg.NewFileConsolidator())
+	if err != nil || res == nil {
+		return
+	}
+	hasDuplicates := false
+	for _, issue := range res.Issues {
+		if issue.Rule != "duplicate_file" {
+			continue
+		}
+		hasDuplicates = true
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "duplicate_file",
+			Severity:       domain.SeverityWarning,
+			Message:        issue.Message,
+			EntityID:       campaignID,
+			EntityType:     "file",
+			Recommendation: issue.Suggestion,
+		})
+	}
+	if hasDuplicates && res.Passed {
+		// Defensive: in practice Passed will already be false, but emit
+		// a summary finding if the analyzer's internal state diverges.
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "duplicate_file",
+			Severity:       domain.SeverityWarning,
+			Message:        res.Message,
+			EntityID:       campaignID,
+			EntityType:     "file",
+			Recommendation: "Remove duplicate files, keeping the canonical copy.",
+		})
+	}
+}
+
+// checkStaleGeneratedFiles reports campaign.md/INDEX.md older than sources.
+func (s *CampaignHealthCheck) checkStaleGeneratedFiles(ctx context.Context, campaignID string, report *HealthReport) {
+	freshness, err := s.consolidator.VerifyFreshness(ctx, campaignID)
+	if err != nil || freshness == nil {
+		return
+	}
+	if freshness.CampaignMDStale {
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "stale_generated_file",
+			Severity:       domain.SeverityWarning,
+			Message:        "campaign.md is stale relative to sources",
+			EntityID:       "campaign.md",
+			EntityType:     "file",
+			Recommendation: "Regenerate campaign.md to reflect current sources.",
+		})
+	}
+	if freshness.IndexStale {
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "stale_generated_file",
+			Severity:       domain.SeverityWarning,
+			Message:        "INDEX.md is stale relative to sources",
+			EntityID:       "INDEX.md",
+			EntityType:     "file",
+			Recommendation: "Run regenerate_index to refresh the breadcrumb index.",
+		})
+	}
+}
+
+// checkMissingMaps reports broken map/asset references.
+func (s *CampaignHealthCheck) checkMissingMaps(ctx context.Context, campaignID string, report *HealthReport) {
+	campaignDir := filepath.Join(s.baseDir, campaignID)
+	res, err := s.consolidator.RunAnalyzer(ctx, campaignID, consolidationPkg.NewMapReferenceChecker(campaignDir))
+	if err != nil || res == nil {
+		return
+	}
+	if !res.Passed {
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "missing_map",
+			Severity:       domain.SeverityCritical,
+			Message:        res.Message,
+			EntityType:     "asset",
+			Recommendation: "Generate the missing map/asset or remove the broken reference.",
+			Metadata: map[string]any{
+				"locations": res.Locations,
+			},
+		})
+	}
+	for _, issue := range res.Issues {
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "missing_map",
+			Severity:       domain.SeverityCritical,
+			Message:        issue.Message,
+			EntityType:     "asset",
+			Recommendation: issue.Suggestion,
+		})
+	}
+}
+
+// checkLoreContradictions surfaces treaty/event/primordial contradictions.
+func (s *CampaignHealthCheck) checkLoreContradictions(ctx context.Context, campaignID string, report *HealthReport) {
+	res, err := s.consolidator.RunAnalyzer(ctx, campaignID, consolidationPkg.NewLoreCoherence())
+	if err != nil || res == nil {
+		return
+	}
+	// Single overall finding for the check, then per-issue findings.
+	if !res.Passed {
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "lore_contradiction",
+			Severity:       domain.SeverityCritical,
+			Message:        res.Message,
+			EntityType:     "lore",
+			Recommendation: "Resolve treaty dates and event placement before exporting.",
+			Metadata: map[string]any{
+				"locations": res.Locations,
+			},
+		})
+	}
+	for _, issue := range res.Issues {
+		// Treaty date contradictions are canon-breaking; treat as critical.
+		severity := domain.SeverityCritical
+		if issue.Severity == "warning" {
+			severity = domain.SeverityWarning
+		}
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "lore_contradiction",
+			Severity:       severity,
+			Message:        issue.Message,
+			EntityType:     "lore",
+			Recommendation: issue.Suggestion,
+		})
+	}
+}
+
+// checkEntityNameCollisions surfaces near-duplicate entity names.
+func (s *CampaignHealthCheck) checkEntityNameCollisions(ctx context.Context, campaignID string, report *HealthReport) {
+	res, err := s.consolidator.RunAnalyzer(ctx, campaignID, consolidationPkg.NewEntityResolver(0.85))
+	if err != nil || res == nil {
+		return
+	}
+	// Emit a single finding for the overall check when collisions exist —
+	// high-similarity matches become auto-fixes in the consolidator, so
+	// the issues slice may be empty even when Passed=false.
+	if !res.Passed {
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "entity_name_collision",
+			Severity:       domain.SeverityWarning,
+			Message:        res.Message,
+			EntityType:     "entity",
+			Recommendation: "Review the candidate collisions and resolve any ambiguity via resolve_ambiguity.",
+			Metadata: map[string]any{
+				"locations": res.Locations,
+			},
+		})
+	}
+	for _, issue := range res.Issues {
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "entity_name_collision",
+			Severity:       domain.SeverityWarning,
+			Message:        issue.Message,
+			EntityType:     "entity",
+			Recommendation: issue.Suggestion,
+		})
+	}
+}
+
+// checkBossStatBlockDrift reports conflicting CR values for the same boss.
+func (s *CampaignHealthCheck) checkBossStatBlockDrift(ctx context.Context, campaignID string, report *HealthReport) {
+	res, err := s.consolidator.RunAnalyzer(ctx, campaignID, consolidationPkg.NewStatBlockResolver())
+	if err != nil || res == nil {
+		return
+	}
+	if !res.Passed {
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "boss_stat_block_drift",
+			Severity:       domain.SeverityCritical,
+			Message:        res.Message,
+			EntityType:     "monster",
+			Recommendation: "Adopt the bestiary CR as canonical.",
+			Metadata: map[string]any{
+				"locations": res.Locations,
+			},
+		})
+	}
+	for _, issue := range res.Issues {
+		report.Findings = append(report.Findings, HealthFinding{
+			Rule:           "boss_stat_block_drift",
+			Severity:       domain.SeverityCritical,
+			Message:        issue.Message,
+			EntityType:     "monster",
+			Recommendation: issue.Suggestion,
+		})
+	}
 }

@@ -117,6 +117,11 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	campaignHealthScore := services.NewCampaignHealthScore(campaignHealthCheck, validationEngine)
 	exportHandlers := handlers.NewExportHandlers(cfg.OutputDir, cfg.PDFEngine)
 
+	// Consolidation: the cross-file consistency engine that wires into
+	// validation_engine, campaign_health, and the MCP consolidation tools.
+	consolidationAdapter := services.NewConsolidationAdapter(cfg.OutputDir)
+	consolidationHandlers := handlers.NewConsolidationHandlers(consolidationAdapter)
+
 	// TTS initialization
 	var ttsService *services.TTSService
 	var ttsHandlers *handlers.TTSHandlers
@@ -594,6 +599,37 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithString("format", mcp.Description("Export format: pdf, markdown, epub"), mcp.DefaultString("pdf")),
 		mcp.WithString("title", mcp.Description("Export title (defaults to campaign name)")),
 	), exportHandlers.HandleExportCampaign())
+
+	// Consolidation tools — cross-file consistency engine
+	s.AddTool(mcp.NewTool("consolidate_campaign",
+		mcp.WithDescription("Run the full consolidation engine: detect entity, lore, stat-block, event, file, and map drift; apply safe fixes; return a ConsolidationReport."),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithBoolean("auto_fix", mcp.Description("Apply safe fixes automatically (default: false)"), mcp.DefaultBool(false)),
+		mcp.WithNumber("similarity_threshold", mcp.Description("Entity merge threshold (0.0-1.0, default 0.85)"), mcp.DefaultNumber(0.85)),
+		mcp.WithString("backup_dir", mcp.Description("Override backup directory (default: .consolidation/backups/<timestamp>)")),
+	), consolidationHandlers.HandleConsolidateCampaign())
+
+	s.AddTool(mcp.NewTool("detect_inconsistencies",
+		mcp.WithDescription("Read-only drift detection across all campaign markdown files. Returns a ConsolidationReport without mutating files."),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+	), consolidationHandlers.HandleDetectInconsistencies())
+
+	s.AddTool(mcp.NewTool("resolve_ambiguity",
+		mcp.WithDescription("Resolve a specific AmbiguityQuestion by ID with a user/agent decision."),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+		mcp.WithString("question_id", mcp.Required(), mcp.Description("AmbiguityQuestion.ID from a prior detect_inconsistencies or consolidate_campaign report")),
+		mcp.WithString("decision", mcp.Required(), mcp.Description("Resolution: one of the question's Options")),
+	), consolidationHandlers.HandleResolveAmbiguity())
+
+	s.AddTool(mcp.NewTool("regenerate_index",
+		mcp.WithDescription("Generate or refresh INDEX.md with breadcrumbs and verified links to every source file in the campaign."),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+	), consolidationHandlers.HandleRegenerateIndex())
+
+	s.AddTool(mcp.NewTool("verify_campaign_freshness",
+		mcp.WithDescription("Compare campaign.md and INDEX.md against source files and report whether they are stale."),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign name (kebab-case)")),
+	), consolidationHandlers.HandleVerifyCampaignFreshness())
 
 	// TTS tools
 	s.AddTool(mcp.NewTool("set_dm_mode",
