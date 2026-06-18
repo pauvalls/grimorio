@@ -148,12 +148,12 @@ func (c *CampaignConsolidator) RegenerateIndex(ctx context.Context, campaignID s
 	sort.Strings(sources)
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("# %s — Campaign Index\n\n", campaignID))
+	fmt.Fprintf(&b, "# %s — Campaign Index\n\n", campaignID)
 	b.WriteString("## Breadcrumbs\n\n")
-	b.WriteString(fmt.Sprintf("Campaigns / %s / INDEX\n\n", campaignID))
+	fmt.Fprintf(&b, "Campaigns / %s / INDEX\n\n", campaignID)
 	b.WriteString("## Verified Links\n\n")
 	for _, src := range sources {
-		b.WriteString(fmt.Sprintf("- [%s](%s)\n", src, src))
+		fmt.Fprintf(&b, "- [%s](%s)\n", src, src)
 	}
 
 	if err := os.MkdirAll(campaignDir, 0755); err != nil {
@@ -358,7 +358,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
@@ -367,7 +367,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	_, err = io.Copy(out, in)
 	return err

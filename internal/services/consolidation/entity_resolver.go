@@ -297,7 +297,7 @@ func tokenJaccard(a, b string) float64 {
 func tokenSet(s string) map[string]bool {
 	set := make(map[string]bool)
 	for _, f := range strings.Fields(strings.ToLower(s)) {
-		f = strings.TrimFunc(f, func(r rune) bool { return !('a' <= r && r <= 'z' || '0' <= r && r <= '9') })
+		f = strings.TrimFunc(f, func(r rune) bool { return r < 'a' || r > 'z' && (r < '0' || r > '9') })
 		if len(f) >= 2 {
 			set[f] = true
 		}
