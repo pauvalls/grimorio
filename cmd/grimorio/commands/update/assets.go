@@ -435,10 +435,19 @@ func runBinaryUpdate(currentVersion string, dryRun bool) error {
 		return fmt.Errorf("finding home directory: %w", err)
 	}
 
+	// Detect ALL install dirs (CLI + MCP). The MCP binary lives at
+	// $HOME/.grimorio/grimorio and is the one the opencode MCP server
+	// runs (per `~/.config/opencode/plugins/grimorio/.mcp.json`). Without
+	// this, the MCP server stays on the old version after `grimorio update`.
+	installDirs, err := discoverInstallDirs(exePath, home)
+	if err != nil {
+		return fmt.Errorf("discovering install dirs: %w", err)
+	}
+
 	u := &updater{
 		repoOwner:      "pauvalls",
 		repoName:       "grimorio",
-		installDir:     filepath.Dir(exePath),
+		installDirs:    installDirs,
 		backupDir:      filepath.Join(home, ".grimorio"),
 		currentVersion: currentVersion,
 		httpClient:     nil,
