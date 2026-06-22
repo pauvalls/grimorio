@@ -17,6 +17,7 @@ import (
 	"github.com/pauvalls/grimorio/internal/repository"
 	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
 	"github.com/pauvalls/grimorio/internal/services"
+	"github.com/pauvalls/grimorio/internal/services/monster"
 	"github.com/pauvalls/grimorio/internal/tts/piper"
 )
 
@@ -73,6 +74,15 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 
 	// Initialize structured logger
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+
+	// Wire the advisory CR audit hook. The hook is strictly
+	// advisory: it logs at WARN for major drift and never
+	// blocks the save or the chapter finalize. The audit goes
+	// through the same structured logger so DMs can grep the
+	// MCP stderr for "cr audit" findings.
+	campaignService.SetBestiaryAuditor(
+		monster.NewBestiaryAuditor(monster.NewMonsterCRDriftAnalyzer(), logger),
+	)
 
 	// Degraded mode: if CANON_LEGACY_MODE is set or repo initialization fails
 	if os.Getenv("CANON_LEGACY_MODE") == "1" {
@@ -727,4 +737,3 @@ func (w *monsterRepoWrapper) List(campaignID string) ([]domain.Monster, error) {
 func (w *monsterRepoWrapper) Delete(campaignID, name string) error {
 	return w.fs.Delete(context.Background(), campaignID, name)
 }
-
