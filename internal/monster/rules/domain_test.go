@@ -145,11 +145,11 @@ func TestDamageTypeConstants(t *testing.T) {
 	want := map[DamageType]string{
 		DmgAcid: "acid", DmgBludgeon: "bludgeoning", DmgCold: "cold",
 		DmgFire: "fire", DmgForce: "force", DmgLightning: "lightning",
-		DmgNecrotic: "necrotic", DmgPierce: "piercing", DmgPsychic: "psychic",
-		DmgRadiant: "radiant", DmgSlash: "slashing", DmgThunder: "thunder",
+		DmgNecrotic: "necrotic", DmgPierce: "piercing", DmgPoison: "poison",
+		DmgPsychic: "psychic", DmgRadiant: "radiant", DmgSlash: "slashing", DmgThunder: "thunder",
 	}
-	if len(want) != 12 {
-		t.Errorf("expected 12 damage types, got %d", len(want))
+	if len(want) != 13 {
+		t.Errorf("expected 13 damage types, got %d", len(want))
 	}
 	for dt, label := range want {
 		if string(dt) != label {

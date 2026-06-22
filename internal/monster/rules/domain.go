@@ -75,6 +75,7 @@ const (
 	DmgLightning DamageType = "lightning"
 	DmgNecrotic  DamageType = "necrotic"
 	DmgPierce    DamageType = "piercing"
+	DmgPoison    DamageType = "poison"
 	DmgPsychic   DamageType = "psychic"
 	DmgRadiant   DamageType = "radiant"
 	DmgSlash     DamageType = "slashing"
