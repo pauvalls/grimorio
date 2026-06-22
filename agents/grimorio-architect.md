@@ -228,3 +228,7 @@ Final report:
 - **WotC standards**: documented in the templates
 - **Validation CLI**: `grimorio validate {name} --scope=all`
 - **SDD skills**: `~/.config/opencode/skills/sdd-*/SKILL.md`
+
+## 8. Reference skills
+
+- `monster-design-rules` — the D&D 5e monster design spec (CR calculation, stat block format, modifiers). When orchestrating any agent that generates or validates monsters, this skill is authoritative.
