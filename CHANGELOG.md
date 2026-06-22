@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v5.3.0] - 2026-06-22
+
+### Docs
+
+- Update changelog for v5.2.0
+
+### Feat
+
+- Integrate D&D 5e monster design rules (DMG cap. 9 + MM 2025) 13) (monster-engine)
+
+### Fix
+
+- Rewrite release-tag recipe to use shell-native variable assignment (makefile)
+
 ## [v5.2.0] - 2026-06-18
 
 ### Docs
