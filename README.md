@@ -202,7 +202,13 @@ make install
 
 See the [CHANGELOG](CHANGELOG.md) for the full list of changes by version.
 
-**Latest — PDF Compiler Fixes (v5.1.2)**
+**Latest — Monster CR Validation (v5.2)**
+- **🎯 Validate Monster** — New MCP tool `validate_monster` validates a monster (by name or markdown) against DMG cap. 9 and returns `{ official_cr, calculated_cr, delta, severity, suggestions }`. Severity is `ok`, `minor`, or `major`.
+- **🦴 Suggest CR** — `suggest_monster_cr(target_cr, concept)` returns a 2025-MM-format stat-block skeleton whose values fall within the canonical range of the target CR.
+- **🔍 Audit Monster CR** — `audit_monster_cr(campaign)` audits a full campaign's bestiary and returns a per-monster CR drift report. Wired into the validation engine via `MonsterCRDriftAnalyzer` (advisory — never blocks save).
+- **📚 New `monster-design-rules` skill** — `skills/monster-design-rules/SKILL.md` documents the spec (defensive/offensive/final CR algorithm, modifiers, hard rules). The `grimorio-bestiary`, `grimorio-encounters`, and `grimorio-narrative-custodian` skills all invoke the new tools.
+
+**v5.1.2 — PDF Compiler Fixes**
 - **🔧 Fixed PDF Image Verification** — `countImagesInMarkdownSources()` now counts unique resolved paths instead of all references, aligning with `embedImage()` deduplication. Campaigns with duplicate image references (e.g., same SVG used 4 times) now compile successfully.
 - **📝 Error Message Preservation** — `classifyError()` now preserves original error messages as fallback instead of returning generic "an internal error occurred". PDF generation errors are now visible to users.
 - **⚠️ Advisory Image Verification** — `verifyImages()` is now advisory (warnings) instead of blocking. PDFs are generated even if image count mismatches occur, with warnings logged for debugging.
@@ -453,7 +459,13 @@ make install
 
 Ver el [CHANGELOG](CHANGELOG.md) para la lista completa de cambios por versión.
 
-**Último — Fixes del Compilador PDF (v5.1.2)**
+**Último — Validación de CR de Monstruos (v5.2)**
+- **🎯 Validación de Monstruo** — Nueva herramienta MCP `validate_monster` que valida un monstruo (por nombre o markdown) contra las reglas del DMG cap. 9 y devuelve `{ official_cr, calculated_cr, delta, severity, suggestions }`.
+- **🦴 Sugerir VD** — `suggest_monster_cr(target_cr, concept)` devuelve un esqueleto de stat block 2025 con valores dentro del rango canónico del VD objetivo.
+- **🔍 Auditoría de VD de Monstruos** — `audit_monster_cr(campaign)` audita el bestiario completo de una campaña y devuelve un reporte de drift de VD por monstruo. Se integra con el `MonsterCRDriftAnalyzer` (advisory, nunca bloquea el guardado).
+- **📚 Nueva skill `monster-design-rules`** — `skills/monster-design-rules/SKILL.md` documenta el spec completo (algoritmo Defensive/Offensive/Final CR, modificadores, reglas duras). Las skills `grimorio-bestiary`, `grimorio-encounters` y `grimorio-narrative-custodian` invocan las nuevas herramientas.
+
+**v5.1.2 — Fixes del Compilador PDF**
 - **🔧 Verificación de Imágenes Corregida** — `countImagesInMarkdownSources()` ahora cuenta paths únicos resueltos en vez de todas las referencias, alineándose con la deduplicación de `embedImage()`. Campañas con referencias de imágenes duplicadas (ej: mismo SVG usado 4 veces) ahora compilan exitosamente.
 - **📝 Preservación de Mensajes de Error** — `classifyError()` ahora preserva los mensajes de error originales como fallback en vez de devolver "an internal error occurred" genérico. Los errores de generación de PDF ahora son visibles para los usuarios.
 - **⚠️ Verificación de Imágenes Advisory** — `verifyImages()` ahora es advisory (warnings) en vez de blocking. Los PDFs se generan incluso si hay mismatch de conteo de imágenes, con warnings logueados para debugging.
@@ -713,6 +725,11 @@ irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 │  ├─ export_campaign (pdf|markdown|epub)                     │
 │  ├─ generate_treasure                                       │
 │  └─ grimorio validate CLI                                   │
+│                                                              │
+│  Monster CR Validation (v5.2):                              │
+│  ├─ validate_monster  (CR vs DMG cap. 9)                    │
+│  ├─ suggest_monster_cr  (skeleton for target CR)            │
+│  └─ audit_monster_cr  (full bestiary CR drift)               │
 └─────────────────────────────────────────────────────────────┘
 ```
 

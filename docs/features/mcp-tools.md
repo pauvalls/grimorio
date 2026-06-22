@@ -31,6 +31,11 @@ and in its handler file under `internal/mcp/handlers/`.
 - `grimorio_validate_canon` — `domain.ValidationReport`
 - `grimorio_visualize_relationship_graph` — D3 entity graph
 
+### Monster CR Validation (v5.2)
+- `grimorio_validate_monster` — validate a monster (by name or markdown) against DMG cap. 9, returns `{ official_cr, calculated_cr, delta, severity, suggestions }`
+- `grimorio_suggest_monster_cr` — given a target CR (and optional concept), return a 2025-MM stat-block skeleton within the canonical range
+- `grimorio_audit_monster_cr` — audit a full campaign's bestiary and return a per-monster CR drift report; integrated with `MonsterCRDriftAnalyzer` (advisory)
+
 ### Live Session (`grimorio-dm`)
 - `grimorio_dm_session_context` — aggregate campaign payload
 - `grimorio_update_narrative_state` — append session log
@@ -76,6 +81,7 @@ internal/mcp/handlers/
   handout.go       →  generate_handouts / export_handout
   health.go        →  campaign_health_dashboard           (v5.0)
   image.go         →  generate_image / generate_map / generate_divider
+  monster_validation.go → validate_monster / suggest_monster_cr / audit_monster_cr  (v5.2)
   narrative_state.go → update_narrative_state / session_timeline
   prologue.go      →  generate_prologue
   quest.go         →  save_quests / list_quests / update_quest_status
