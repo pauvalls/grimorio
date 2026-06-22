@@ -228,7 +228,7 @@ func updateCommands() error {
 		"subtask":     false,
 		"template": `Generate a D&D 5e campaign or one-shot from the user's idea.
 
-**Version:** 5.2.0 — Sequential Chapters + WotC Fidelity + Consolidation
+**Version:** 5.3.0 — Sequential Chapters + WotC Fidelity + Consolidation + Monster Engine
 
 ## IMPORTANT: Use the grimorio-architect agent. It handles everything end-to-end.
 
@@ -240,7 +240,7 @@ Before any other question, ask the user:
 
 Default to "en" if the user skips. The architect stores this and propagates to all sub-agents via LANG: preamble on every delegate call.
 
-## 1. Workflow (5+ Macro-Phases, chapter-sequential, with consolidation)
+## 1. Workflow (5+ Macro-Phases, chapter-sequential, with consolidation + monster engine)
 
 The architect follows this sequence with BLOCKING gates at each macro-phase.
 
@@ -289,6 +289,9 @@ For each chapter:
 ### Macro-Phase 3: Bestiary & Characters (parallel, anchored to chapters)
 - save_npcs (anchored to chapter/area)
 - save_bestiary (creatures tied to chapter habitats)
+  - **validate_monster** per creature (CR/VD vs DMG cap. 9 + MM 2025) — BLOCKING
+  - **audit_monster_cr(campaign)** whole-bestiary audit — BLOCKING before Macro-Phase 4
+  - For novel creatures: **suggest_monster_cr(target_cr, concept)** → skeleton → flesh out → validate
 - save_encounters (per-chapter, with generate_treasure for hoards)
 - save_quests (main + side + personal)
 - save_characters (pre-gens + generate_character_hooks)
@@ -326,14 +329,15 @@ Safe fixes are auto-applied. Anything ambiguous becomes an AmbiguityQuestion tha
 
 The architect reports progress to the user after each macro-phase.
 
-## 2. Available MCP Tools (v5.2)
+## 2. Available MCP Tools (v5.3)
 
 - Creation: create_campaign, generate_adventure_bible, generate_names
 - Save (monolithic): save_introduction, save_setting_guide, save_lore, save_chapter, save_npcs, save_bestiary, save_encounters, save_maps, save_quests, save_characters, save_appendices
-- Save (sequential, v5.1): save_chapter_part, finalize_chapter — generate chapters part-by-part
+- Save (sequential, v5.1): save_chapter_part, finalize_chapter — generate chapters part-by-part (7 parts: opener → general-features → npcs → encounters → areas-1 → areas-2 → closing)
 - Assets: generate_image, generate_map, generate_divider, generate_flowchart, generate_random_tables, generate_handouts, generate_treasure, generate_session_prep
 - Validation: validate_canon, check_consistency, process_consistency_gate, evaluate_consequences
 - Consolidation (v5.2): detect_inconsistencies, consolidate_campaign, resolve_ambiguity, regenerate_index, verify_campaign_freshness
+- **Monster engine (v5.3)**: validate_monster, suggest_monster_cr, audit_monster_cr
 - State: update_narrative_state, update_faction_reputation, update_quest_status
 - Quality (v5.0): campaign_health_dashboard, export_campaign
 - Compilation: compile_pdf
@@ -355,7 +359,11 @@ After completion, report to the user:
 - What content was generated (including prologue)
 - Campaign health score
 - **Consolidation:** N issues fixed, K questions resolved, INDEX.md regenerated
+- **Monster engine:** N monsters validated, M CR/VD issues fixed by audit
 - Any issues encountered
+
+**DO NOT launch subagents from the command thread — the architect manages all delegation internally.**
+
 
 **DO NOT launch subagents from the command thread — the architect manages all delegation internally.**`,
 	}
