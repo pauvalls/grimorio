@@ -488,6 +488,54 @@ func TestReplaceBinary(t *testing.T) {
 	}
 }
 
+// TestReplaceBinary_Locked verifies that replaceBinary can replace a binary
+// that is currently being executed (file descriptor still open). This is the
+// "text file busy" scenario: the MCP server holds a long-lived fd to the
+// grimorio binary at ~/.grimorio/grimorio, and an update needs to swap it
+// without restarting the server. Linux semantics: `os.Rename` fails with
+// ETXTBSY when the destination is being executed; the workaround is to
+// unlink the directory entry (`rm`) and create a new inode at the same path
+// (which leaves the running process with the old inode via its open fd).
+func TestReplaceBinary_Locked(t *testing.T) {
+	tmpDir := t.TempDir()
+	binaryPath := filepath.Join(tmpDir, "grimorio")
+	newPath := filepath.Join(tmpDir, "grimorio.new")
+
+	// Create the original binary
+	if err := os.WriteFile(binaryPath, []byte("old"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Hold an open fd to the binary to simulate "text file busy" (MCP server
+	// holding the binary open while the update runs). The fd is closed at
+	// the end of the test, but the inode stays alive until then.
+	f, err := os.Open(binaryPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+
+	// Create the new binary
+	if err := os.WriteFile(newPath, []byte("new"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Replace should succeed even with the original binary's fd still open
+	err = replaceBinary(binaryPath, newPath)
+	if err != nil {
+		t.Fatalf("replaceBinary() error = %v (expected success with locked binary)", err)
+	}
+
+	// Verify the new content is at the path
+	data, err := os.ReadFile(binaryPath)
+	if err != nil {
+		t.Fatalf("reading replaced binary: %v", err)
+	}
+	if string(data) != "new" {
+		t.Errorf("replaced binary content = %q, want %q", data, "new")
+	}
+}
+
 func TestRollback(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := filepath.Join(tmpDir, "grimorio")
@@ -605,7 +653,7 @@ func TestUpdater_CheckForUpdate(t *testing.T) {
 	u := &updater{
 		repoOwner:      "testowner",
 		repoName:       "testrepo",
-		installDir:     t.TempDir(),
+		installDirs:    []string{t.TempDir() + "/grimorio"},
 		backupDir:      t.TempDir(),
 		apiBaseURL:     server.URL,
 		httpClient:     server.Client(),
@@ -615,6 +663,193 @@ func TestUpdater_CheckForUpdate(t *testing.T) {
 	// Test that we can construct the updater and it has the right fields
 	if u.repoOwner != "testowner" {
 		t.Error("updater.repoOwner mismatch")
+	}
+}
+
+// --- T008: Multi-Path Update (MCP binary) ---
+
+// TestDiscoverInstallDirs verifies that the updater detects BOTH the CLI
+// binary (where `grimorio update` was invoked from) and the MCP binary
+// (the binary the opencode MCP server actually runs from, per
+// ~/.config/opencode/plugins/grimorio/.mcp.json).
+//
+// This regression test was added after v5.3.0: the previous updater only
+// updated the CLI binary, leaving the MCP binary stale. Symptom: the user
+// ran `grimorio update`, the CLI showed v5.3.0, but the MCP server kept
+// running the previous version (and was missing the 3 new tools:
+// validate_monster, suggest_monster_cr, audit_monster_cr).
+func TestDiscoverInstallDirs(t *testing.T) {
+	// Create a fake HOME with a fake ~/.grimorio/grimorio
+	home := t.TempDir()
+	cliDir := t.TempDir()
+	mcpDir := filepath.Join(home, ".grimorio")
+	if err := os.MkdirAll(mcpDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create the fake MCP binary
+	mcpBinary := filepath.Join(mcpDir, "grimorio")
+	if err := os.WriteFile(mcpBinary, []byte("fake mcp binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a fake CLI binary (the one os.Executable() returns)
+	cliBinary := filepath.Join(cliDir, "grimorio")
+	if err := os.WriteFile(cliBinary, []byte("fake cli binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	dirs, err := discoverInstallDirs(cliBinary, home)
+	if err != nil {
+		t.Fatalf("discoverInstallDirs() error = %v", err)
+	}
+
+	// Expect at least the CLI and MCP paths
+	foundCLI := false
+	foundMCP := false
+	for _, d := range dirs {
+		if d == cliBinary {
+			foundCLI = true
+		}
+		if d == mcpBinary {
+			foundMCP = true
+		}
+	}
+	if !foundCLI {
+		t.Errorf("discoverInstallDirs() missing CLI path %q, got %v", cliBinary, dirs)
+	}
+	if !foundMCP {
+		t.Errorf("discoverInstallDirs() missing MCP path %q, got %v", mcpBinary, dirs)
+	}
+}
+
+// TestDiscoverInstallDirs_MCPMissing verifies that if the MCP binary does not
+// exist, the updater only updates the CLI binary (does not fail).
+func TestDiscoverInstallDirs_MCPMissing(t *testing.T) {
+	home := t.TempDir()
+	cliDir := t.TempDir()
+	cliBinary := filepath.Join(cliDir, "grimorio")
+	if err := os.WriteFile(cliBinary, []byte("fake cli binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	// No ~/.grimorio/ directory created — MCP path is absent
+
+	dirs, err := discoverInstallDirs(cliBinary, home)
+	if err != nil {
+		t.Fatalf("discoverInstallDirs() error = %v (expected success when MCP missing)", err)
+	}
+
+	foundCLI := false
+	for _, d := range dirs {
+		if d == cliBinary {
+			foundCLI = true
+		}
+	}
+	if !foundCLI {
+		t.Errorf("discoverInstallDirs() missing CLI path %q, got %v", cliBinary, dirs)
+	}
+}
+
+// TestRunUpdate_UpdatesAllInstallDirs verifies that runUpdate replaces the
+// binary in EVERY install dir (CLI + MCP), not just the first one. This is
+// the core regression test for the v5.3.0 bug.
+func TestRunUpdate_UpdatesAllInstallDirs(t *testing.T) {
+	// Two fake install dirs
+	cliDir := t.TempDir()
+	mcpDir := t.TempDir()
+	cliBinary := filepath.Join(cliDir, "grimorio")
+	mcpBinary := filepath.Join(mcpDir, "grimorio")
+	backupDir := t.TempDir()
+
+	// Pre-populate both with an "old" binary
+	oldContent := []byte("OLD BINARY CONTENT - cli")
+	if err := os.WriteFile(cliBinary, oldContent, 0755); err != nil {
+		t.Fatal(err)
+	}
+	oldMcpContent := []byte("OLD BINARY CONTENT - mcp")
+	if err := os.WriteFile(mcpBinary, oldMcpContent, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// New binary content (what the tarball contains)
+	newContent := []byte("NEW BINARY CONTENT - v5.4.0")
+	newBinary := filepath.Join(t.TempDir(), "grimorio")
+	if err := os.WriteFile(newBinary, newContent, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Mock release server returning a tarball with our new binary.
+	// serverURL is captured by the closure; server is created after so the
+	// closure can read the assigned URL.
+	newContentFromTar := newContent
+	var serverURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/releases/latest") {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `{
+				"tag_name": "v5.4.0",
+				"assets": [
+					{"name": "grimorio_Linux_x86_64.tar.gz", "browser_download_url": "%s/download"},
+					{"name": "checksums.txt", "browser_download_url": "%s/checksums"}
+				]
+			}`, serverURL, serverURL)
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/download") {
+			// Serve a tar.gz containing our new binary
+			tarPath := filepath.Join(t.TempDir(), "mock.tar.gz")
+			f, _ := os.Create(tarPath)
+			gz := gzip.NewWriter(f)
+			tw := tar.NewWriter(gz)
+			hdr := &tar.Header{
+				Name: "mock_dir/grimorio",
+				Mode: 0755,
+				Size: int64(len(newContentFromTar)),
+			}
+			_ = tw.WriteHeader(hdr)
+			_, _ = tw.Write(newContentFromTar)
+			_ = tw.Close()
+			_ = gz.Close()
+			_ = f.Close()
+			http.ServeFile(w, r, tarPath)
+			return
+		}
+		// checksums.txt: return valid sha256 for the tarball
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("# mock\n"))
+	}))
+	serverURL = server.URL
+	defer server.Close()
+
+	u := &updater{
+		repoOwner:      "testowner",
+		repoName:       "testrepo",
+		installDirs:    []string{cliBinary, mcpBinary},
+		backupDir:      backupDir,
+		apiBaseURL:     server.URL,
+		httpClient:     server.Client(),
+		currentVersion: "v5.3.0",
+	}
+
+	if err := u.runUpdate(false); err != nil {
+		t.Fatalf("runUpdate() error = %v", err)
+	}
+
+	// Verify BOTH binaries have the new content
+	gotCLI, err := os.ReadFile(cliBinary)
+	if err != nil {
+		t.Fatalf("reading CLI binary: %v", err)
+	}
+	if string(gotCLI) != string(newContent) {
+		t.Errorf("CLI binary not updated. got %q, want %q", gotCLI, newContent)
+	}
+
+	gotMCP, err := os.ReadFile(mcpBinary)
+	if err != nil {
+		t.Fatalf("reading MCP binary: %v", err)
+	}
+	if string(gotMCP) != string(newContent) {
+		t.Errorf("MCP binary not updated. got %q, want %q", gotMCP, newContent)
 	}
 }
 

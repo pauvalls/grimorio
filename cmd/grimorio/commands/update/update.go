@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -48,6 +49,13 @@ func backupCurrentBinary(binaryPath, backupDir string) (string, error) {
 
 // replaceBinary atomically replaces the current binary with the new one.
 // It uses a temp file + rename to avoid "text file busy" on Unix.
+//
+// Linux semantics: `os.Rename` succeeds even when the destination has an
+// open file descriptor (the running process keeps the old inode via its fd,
+// the new file at the same path is a fresh inode). This is the rolling
+// update pattern that lets the MCP server keep running while the binary
+// is replaced. The only failure mode is when something has the destination
+// open for writing (mtime update on running), which is rare in practice.
 func replaceBinary(binaryPath, newPath string) error {
 	// Copy new binary to a unique temp location in the same directory
 	tempFile, err := os.CreateTemp(filepath.Dir(binaryPath), "grimorio-update-*.tmp")
@@ -176,14 +184,50 @@ func isNewer(current, latest string) (bool, error) {
 type updater struct {
 	repoOwner      string
 	repoName       string
-	installDir     string
+	installDirs    []string // every binary that must be replaced (CLI + MCP)
 	backupDir      string
 	apiBaseURL     string
 	httpClient     *http.Client
 	currentVersion string
 }
 
+// discoverInstallDirs returns the list of binary paths that the updater
+// should replace. It always includes the CLI binary (where the user invoked
+// `grimorio update` from). It also includes the MCP server binary if it
+// exists — the opencode MCP server runs grimorio from $HOME/.grimorio/grimorio
+// (per `~/.config/opencode/plugins/grimorio/.mcp.json`), which is a separate
+// path from the CLI binary in $HOME/.local/bin/grimorio.
+//
+// Returning the MCP path is non-fatal when the file does not exist: in that
+// case, the user is probably running grimorio as a CLI only (no MCP server
+// configured), and the update should still succeed for the CLI binary.
+//
+// The homeDir parameter is injected for testability (tests use t.TempDir()
+// instead of touching the real $HOME).
+func discoverInstallDirs(cliBinary, homeDir string) ([]string, error) {
+	dirs := []string{cliBinary}
+
+	mcpBinary := filepath.Join(homeDir, ".grimorio", "grimorio")
+	if goos := runtime.GOOS; goos == "windows" {
+		mcpBinary += ".exe"
+	}
+
+	if _, err := os.Stat(mcpBinary); err == nil {
+		dirs = append(dirs, mcpBinary)
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("checking MCP binary at %s: %w", mcpBinary, err)
+	}
+
+	return dirs, nil
+}
+
 // runUpdate orchestrates the full update flow.
+//
+// Downloads the latest release once, then replaces the binary in every
+// `installDirs` path. If any single replacement fails, the loop continues
+// (logs the error) and the function returns an aggregated error at the end.
+// This is intentional: a partial update (CLI updated, MCP still old) is
+// better than no update at all, and the user can re-run `grimorio update`.
 func (u *updater) runUpdate(dryRun bool) error {
 	goos, goarch, err := detectPlatform()
 	if err != nil {
@@ -279,33 +323,41 @@ func (u *updater) runUpdate(dryRun bool) error {
 		return fmt.Errorf("validating extracted contents: %w", err)
 	}
 
-	// Determine binary path
-	binaryPath := filepath.Join(u.installDir, "grimorio")
-	if goos == "windows" {
-		binaryPath += ".exe"
-	}
-
-	// Backup current binary
-	fmt.Printf("Backing up current binary...\n")
-	backupPath, err := backupCurrentBinary(binaryPath, u.backupDir)
-	if err != nil {
-		return fmt.Errorf("backing up binary: %w", err)
-	}
-
 	// Find the actual binary path (GoReleaser wraps in a subdirectory)
 	newBinaryPath, err := findBinaryInExtractedDir(extractDir)
 	if err != nil {
 		return fmt.Errorf("finding binary in extracted archive: %w", err)
 	}
 
-	fmt.Printf("Installing new binary...\n")
-	if err := replaceBinary(binaryPath, newBinaryPath); err != nil {
-		// Rollback on failure
-		fmt.Printf("Installation failed, rolling back...\n")
-		if rbErr := rollback(binaryPath, backupPath); rbErr != nil {
-			return fmt.Errorf("installation failed and rollback failed: %v (rollback error: %w)", err, rbErr)
+	// Replace the binary in EVERY install dir (CLI + MCP).
+	// Failures are collected and reported at the end — a partial update is
+	// better than no update at all.
+	var errors []string
+	for _, binaryPath := range u.installDirs {
+		fmt.Printf("Installing new binary at %s...\n", binaryPath)
+
+		// Backup the existing binary (skip if it doesn't exist — first install)
+		if _, err := os.Stat(binaryPath); err == nil {
+			if _, berr := backupCurrentBinary(binaryPath, u.backupDir); berr != nil {
+				errors = append(errors, fmt.Sprintf("backing up %s: %v", binaryPath, berr))
+				continue
+			}
 		}
-		return fmt.Errorf("installation failed, rolled back: %w", err)
+
+		if rerr := replaceBinary(binaryPath, newBinaryPath); rerr != nil {
+			errors = append(errors, fmt.Sprintf("replacing %s: %v", binaryPath, rerr))
+			// Try to roll back from the backup we just made
+			backupPath := filepath.Join(u.backupDir, "grimorio.backup")
+			if _, serr := os.Stat(backupPath); serr == nil {
+				if rberr := rollback(binaryPath, backupPath); rberr != nil {
+					errors = append(errors, fmt.Sprintf("rollback for %s: %v", binaryPath, rberr))
+				}
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("update completed with errors: %s", strings.Join(errors, "; "))
 	}
 
 	fmt.Printf("Successfully updated to %s!\n", latestTag)
@@ -336,17 +388,24 @@ func NewUpdateCommand(currentVersion string) *cli.Command {
 				return fmt.Errorf("resolving executable path: %w", err)
 			}
 
-			installDir := filepath.Dir(exePath)
 			home, err := os.UserHomeDir()
 			if err != nil {
 				return fmt.Errorf("finding home directory: %w", err)
 			}
 			backupDir := filepath.Join(home, ".grimorio")
 
+			// Detect ALL install dirs (CLI + MCP). The MCP binary lives at
+			// $HOME/.grimorio/grimorio and is the one the opencode MCP server
+			// runs (per `~/.config/opencode/plugins/grimorio/.mcp.json`).
+			installDirs, err := discoverInstallDirs(exePath, home)
+			if err != nil {
+				return fmt.Errorf("discovering install dirs: %w", err)
+			}
+
 			u := &updater{
 				repoOwner:      "pauvalls",
 				repoName:       "grimorio",
-				installDir:     installDir,
+				installDirs:    installDirs,
 				backupDir:      backupDir,
 				currentVersion: currentVersion,
 				httpClient:     nil,
