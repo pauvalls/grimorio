@@ -1,7 +1,7 @@
 ---
 name: grimorio-architect
-version: "5.0.0"
-description: Orchestrate end-to-end D&D 5e campaign generation via delegate pattern. Chapter-sequential workflow, English-first with language intake, v5.0 features (health dashboard, validate CLI, exports, image cache, templates).
+version: "5.3.0"
+description: Orchestrate end-to-end D&D 5e campaign generation via delegate pattern. Chapter-sequential workflow with prologue, sequential parts, consolidation phase, and monster design engine.
 ---
 
 # Grimorio Architect Skill
@@ -9,7 +9,16 @@ description: Orchestrate end-to-end D&D 5e campaign generation via delegate patt
 **Type:** orchestrator
 **Domain:** D&D 5e campaign generation
 **Scope:** End-to-end campaign creation via delegate pattern
-**Version:** 5.0.0
+**Version:** 5.3.0
+
+> This is the **detailed reference**. The shorter agent prompt at
+> `agents/grimorio-architect.md` is the version OpenCode actually loads —
+> the frontmatter `version: 5.3.0` on both files is the source of truth.
+
+**What changed in v5.3 vs v5.0:**
+- **v5.1**: prologue chapter + 7-part sequential chapter generation + bilingual validators + WotC word counts
+- **v5.2**: consolidation phase (Macro-Phase 4.5) — `detect_inconsistencies`, `consolidate_campaign`, `resolve_ambiguity`, `regenerate_index`, `verify_campaign_freshness`
+- **v5.3**: monster design engine — `validate_monster`, `suggest_monster_cr`, `audit_monster_cr` (DMG cap. 9 + MM 2025). Bestiary generation now BLOCKING-gated by CR/VD validation.
 
 ---
 
@@ -864,3 +873,98 @@ A score below 70 means the campaign needs work. Don't ship it.
 - **SDD Skills:** `~/.config/opencode/skills/sdd-*/SKILL.md`
 - **v5.0 Changelog:** see PR #9
 - **Consolidator skill:** `skills/grimorio-consolidator/SKILL.md` (runs after macro-phase 4, before macro-phase 5)
+
+---
+
+## v5.1 Addendum: Sequential Chapters + Prologue
+
+**Prologue (Chapter 0) is MANDATORY.** Generated before Chapter 1 with these parts:
+- `save_chapter_part(0, "opener")` — prologue intro
+- `save_chapter_part(0, "npcs")` — party-meeting NPCs
+- `save_chapter_part(0, "encounters")` — social encounters
+- `save_chapter_part(0, "areas-1")` — 3-5 social areas (tavern, road, event)
+- `save_chapter_part(0, "closing")` — transition to Chapter 1
+- `finalize_chapter(0, title="Prologue", is_prologue=true)`
+
+**Chapters 1-N use 7 parts** (not monolithic `save_chapter`):
+- `opener` → `general-features` → `npcs` → `encounters` → `areas-1` → `areas-2` → `closing` → `finalize_chapter`
+
+**WotC word counts** (validated by bilingual validators):
+- Area: 150-600 words
+- Boxed text: 50-400 words
+- Areas per chapter: 7-15
+- Chapter total: 3000-16000 words
+- Inline sub-features: `***Name.***` bold-italic
+- "What's Next?": free narrative prose (2-3 paragraphs, 100-400 words)
+
+---
+
+## v5.2 Addendum: Consolidation Phase (Macro-Phase 4.5)
+
+Runs after Art & Living World, before Export:
+
+```
+delegate(agent="grimorio-consolidator", prompt="LANG: en
+
+Run consolidation for '{campaign-name}' at {campaign-path}.
+
+  1. detect_inconsistencies(campaign='{campaign-name}')  # read-only scan
+  2. consolidate_campaign(campaign='{campaign-name}', auto_fix=true)
+     # safe fixes only: exact-duplicate deletion, markdown renames, INDEX link updates
+  3. resolve_ambiguity(campaign='{campaign-name}', question_id=..., decision=...)
+     # per open question
+  4. regenerate_index(campaign='{campaign-name}')
+     # INDEX.md with breadcrumbs and verified links
+  5. verify_campaign_freshness(campaign='{campaign-name}')
+     # compare campaign.md against sources
+
+BLOCKING GATE: consolidation_report.clean == true
+  (no critical issues, no open questions)")
+```
+
+---
+
+## v5.3 Addendum: Monster Design Engine
+
+Three MCP tools implement DMG 5e cap. 9 + MM 2025 + SRD 5.1 as an engine-level
+guard. Reference: `docs/dnd-monster-design-rules.md` (authoritative).
+
+### `validate_monster(markdown, campaign?)` and `validate_monster(monster_name, campaign)`
+
+Validates a single monster stat block against:
+- **Stat block format** (MM 2025): required fields, ordering, line conventions
+- **Ability scores** (DMG cap. 9): point-buy limits vs CR
+- **Hit points** (DMG cap. 9): Hit Dice by Size table
+- **Armor Class** (DMG cap. 9): expected AC vs CR
+- **Proficiency bonus** (DMG cap. 9): CR → PB table
+- **Damage output / Offensive CR** (DMG cap. 9)
+- **Defensive CR** (DMG cap. 9)
+
+Returns a `ValidationResult` with `valid: bool` and a list of issues.
+
+**Use after each creature in `save_bestiary` flow. BLOCKING on `valid: false` (max 2 retries).**
+
+### `suggest_monster_cr(target_cr, concept?)`
+
+Returns a balanced stat-block skeleton for a given target CR (0-30, including
+sub-integers 0.125, 0.25, 0.5). Optionally biased by `concept` (e.g.
+"fire-breathing dragon"). Format: markdown by default; pass `output="json"`
+for machine-readable.
+
+**Use during bestiary planning to seed novel creatures.**
+
+### `audit_monster_cr(campaign)`
+
+Scans the entire campaign bestiary. Returns:
+- `summary`: total monsters, monsters by CR bucket, violations count
+- `per_monster`: per-monster validation status with specific issues
+
+**Use as the FINAL gate of Macro-Phase 3.2 (Bestiary) before Macro-Phase 4 (Art).**
+
+### Integration in Macro-Phase 3.2
+
+For each creature the bestiary agent drafts:
+1. `validate_monster` on the draft (BLOCKING on failure — fix and retry, max 2)
+2. Append to bestiary.md
+3. After all creatures saved: `audit_monster_cr(campaign)` (BLOCKING on any CR/VD violation)
+4. For novel creatures not in canon: `suggest_monster_cr` first → skeleton → flesh out → `validate_monster`
