@@ -84,7 +84,7 @@ func (l *LoreCoherence) Analyze(ctx context.Context, files []CampaignFile) (*Ana
 		if len(ys) > 1 {
 			result.Passed = false
 			result.Severity = "error"
-			result.Issues = append(result.Issues, domainIssue{
+			result.Issues = append(result.Issues, DomainIssue{
 				Rule:      result.Rule,
 				Severity:  "error",
 				Message:   fmt.Sprintf("Treaty of %s has contradictory dates: %v", treatyDisplay[treaty], ys),
@@ -100,7 +100,7 @@ func (l *LoreCoherence) Analyze(ctx context.Context, files []CampaignFile) (*Ana
 			if result.Severity == "" {
 				result.Severity = "warning"
 			}
-			result.Issues = append(result.Issues, domainIssue{
+			result.Issues = append(result.Issues, DomainIssue{
 				Rule:      "event_placement",
 				Severity:  "warning",
 				Message:   fmt.Sprintf("Event '%s' is described in multiple locations", eventDisplay[event]),
@@ -116,7 +116,7 @@ func (l *LoreCoherence) Analyze(ctx context.Context, files []CampaignFile) (*Ana
 			if result.Severity == "" {
 				result.Severity = "warning"
 			}
-			result.Issues = append(result.Issues, domainIssue{
+			result.Issues = append(result.Issues, DomainIssue{
 				Rule:      "primordial_entity",
 				Severity:  "warning",
 				Message:   fmt.Sprintf("Primordial entity '%s' referenced in multiple contexts", primordialDisplay[entity]),

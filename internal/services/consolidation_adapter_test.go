@@ -127,8 +127,8 @@ func TestConsolidationAdapter_RunAllAnalyzersWithFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunAllAnalyzers: %v", err)
 	}
-	if len(results) != 6 {
-		t.Errorf("expected 6 analyzers, got %d", len(results))
+	if len(results) != 7 {
+		t.Errorf("expected 7 analyzers, got %d", len(results))
 	}
 }
 

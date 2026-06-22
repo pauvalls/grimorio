@@ -63,7 +63,7 @@ func (e *EventCanonizer) Analyze(ctx context.Context, files []CampaignFile) (*An
 				"locations": strings.Join(locations, ", "),
 			},
 		})
-		result.Issues = append(result.Issues, domainIssue{
+		result.Issues = append(result.Issues, DomainIssue{
 			Rule:       result.Rule,
 			Severity:   "error",
 			Message:    fmt.Sprintf("Event '%s' appears in multiple acts/files", label),

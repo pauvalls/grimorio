@@ -7,6 +7,7 @@ import (
 
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/services/consolidation"
+	"github.com/pauvalls/grimorio/internal/services/monster"
 )
 
 // ConsolidationAdapter bridges the internal/services/consolidation engine
@@ -90,6 +91,7 @@ func (a *ConsolidationAdapter) RunAllAnalyzers(ctx context.Context, campaignID s
 		consolidation.NewEventCanonizer(),
 		consolidation.NewFileConsolidator(),
 		consolidation.NewMapReferenceChecker(filepath.Join(a.baseDir, campaignID)),
+		monster.NewMonsterCRDriftAnalyzer(),
 	}
 	results := make(map[string]*consolidation.AnalysisResult, len(analyzers))
 	for _, an := range analyzers {

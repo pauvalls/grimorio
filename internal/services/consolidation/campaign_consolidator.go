@@ -238,7 +238,7 @@ func (c *CampaignConsolidator) toDomainCheck(name string, res *AnalysisResult) d
 	}
 }
 
-func (c *CampaignConsolidator) toDomainIssue(issue domainIssue) domain.ConsolidationIssue {
+func (c *CampaignConsolidator) toDomainIssue(issue DomainIssue) domain.ConsolidationIssue {
 	return domain.ConsolidationIssue{
 		Rule:       issue.Rule,
 		Severity:   issue.Severity,

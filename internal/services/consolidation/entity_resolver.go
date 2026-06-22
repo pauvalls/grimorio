@@ -56,7 +56,7 @@ func (r *EntityResolver) Analyze(ctx context.Context, files []CampaignFile) (*An
 
 		if score < 0.6 {
 			// Too dissimilar to even ask — keep as issue only.
-			result.Issues = append(result.Issues, domainIssue{
+			result.Issues = append(result.Issues, DomainIssue{
 				Rule:       result.Rule,
 				Severity:   "warning",
 				Message:    msg,

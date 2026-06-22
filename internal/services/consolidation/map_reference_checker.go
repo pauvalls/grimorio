@@ -45,7 +45,7 @@ func (m *MapReferenceChecker) Analyze(ctx context.Context, files []CampaignFile)
 			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 				result.Passed = false
 				result.Severity = "error"
-				result.Issues = append(result.Issues, domainIssue{
+				result.Issues = append(result.Issues, DomainIssue{
 					Rule:      result.Rule,
 					Severity:  "error",
 					Message:   fmt.Sprintf("Missing map/asset reference: %s", clean),

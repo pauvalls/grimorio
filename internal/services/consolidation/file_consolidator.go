@@ -52,7 +52,7 @@ func (f *FileConsolidator) Analyze(ctx context.Context, files []CampaignFile) (*
 			paths = append(paths, f.RelPath)
 		}
 		sort.Strings(paths)
-		result.Issues = append(result.Issues, domainIssue{
+		result.Issues = append(result.Issues, DomainIssue{
 			Rule:      "duplicate_file",
 			Severity:  "warning",
 			Message:   fmt.Sprintf("Duplicate file content found in %s", strings.Join(paths, ", ")),
@@ -88,7 +88,7 @@ func (f *FileConsolidator) Analyze(ctx context.Context, files []CampaignFile) (*
 			if result.Severity == "" {
 				result.Severity = "warning"
 			}
-			result.Issues = append(result.Issues, domainIssue{
+			result.Issues = append(result.Issues, DomainIssue{
 				Rule:      "stale_generated_file",
 				Severity:  "warning",
 				Message:   fmt.Sprintf("Generated file '%s' is older than the newest source (%s)", file.RelPath, sourceNewest.Format(time.RFC3339)),
