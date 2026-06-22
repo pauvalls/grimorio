@@ -45,6 +45,7 @@ The template defines the WotC mandatory format for monster stat blocks.
 4. VALIDATE before saving:
    - validate_canon() with entity_references
    - process_consistency_gate() for batch validation
+   - **validate_monster(markdown=<each creature>)** — CR check vs DMG cap. 9
    - Maximum 3 retries on failure
 
 5. SAVE only if validation passes:
@@ -52,6 +53,23 @@ The template defines the WotC mandatory format for monster stat blocks.
 
 6. REPORT to the architect
 ```
+
+## Validate before saving (CR — mandatory)
+
+Every monster MUST be validated against the DMG cap. 9 rules before being saved
+to the bestiary. Use the new MCP tools from the `monster-design-rules` skill:
+
+1. **Plan**: pick a target CR based on the encounter level.
+2. **Suggest**: call `suggest_monster_cr(target_cr, concept)` to get a skeleton.
+3. **Customize**: fill in narrative, traits, actions.
+4. **Validate**: call `validate_monster(markdown=<your monster>)`.
+   - `severity=ok` → save.
+   - `severity=minor` → save with a comment in the changelog.
+   - `severity=major` → regenerate; do NOT save.
+5. **Save**: call `save_bestiary` only after the validation passes.
+
+The full spec lives in `skills/monster-design-rules/SKILL.md` and
+`docs/dnd-monster-design-rules.md`.
 
 ## Mandatory WotC Format
 

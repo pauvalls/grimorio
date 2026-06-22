@@ -31,6 +31,9 @@ Actuar como guardián de la consistencia de la campaña. **NUNCA genera contenid
 - `generate_handouts` — Generar handouts player/DM
 - `generate_session_prep` — Generar DM prep sheet
 - `generate_flowchart` — Generar campaign flowchart
+- `validate_monster` — Validar un monstruo (CR vs DMG cap. 9)
+- `suggest_monster_cr` — Devolver esqueleto para un VD objetivo
+- `audit_monster_cr` — Auditar bestiario completo de una campaña (CR drift)
 
 **System Tools:**
 - `Read` — Leer canon.json, narrative_state.json, contenido a validar
@@ -281,6 +284,15 @@ update_narrative_state(
     session_summary="Batch X approved: NPCs, lore, quests validated"
 )
 ```
+
+## CR audit (advisory)
+
+Add `audit_monster_cr` to the validation script: run it after the other
+narrative-coherence analyzers. CR drift findings are advisory (info / warning /
+critical) and never block the save. The 6 existing narrative-coherence analyzers
+plus the new `MonsterCRDriftAnalyzer` form the full canon-validation pipeline.
+
+See `skills/monster-design-rules/SKILL.md` for the spec.
 
 ## Validation Rules Reference
 

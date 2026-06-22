@@ -33,6 +33,7 @@ See `_shared/skill-resolver.md` for the full resolution protocol.
 |---------|-------|------|
 | D&D 5e campaign design, encounter balance, narrative coherence, SRD rules | dnd-5e-srd | ~/.config/opencode/skills/dnd-5e-srd/SKILL.md |
 | Generate D&D 5e campaigns end-to-end via delegate pattern, WotC standards | grimorio-architect | ~/.config/opencode/skills/grimorio-architect/SKILL.md |
+| Monster design rules, CR validation, encounter balance, D&D 5e stat blocks | monster-design-rules | skills/monster-design-rules/SKILL.md |
 | Consolidate campaign reference material — magic items, stat blocks, handouts, maps, tables | grimorio-appendices | ~/.config/opencode/skills/grimorio-appendices/SKILL.md |
 | Generate numbered playable areas (10-15 per act) with WotC format validation | grimorio-areas | ~/.config/opencode/skills/grimorio-areas/SKILL.md |
 | Prepare AI image specifications and update markdown references for artwork | grimorio-artist | ~/.config/opencode/skills/grimorio-artist/SKILL.md |
@@ -127,6 +128,15 @@ Pre-digested rules per skill. Delegators copy matching blocks into sub-agent pro
 - Read templates before generating: areas.md.tmpl, npc.md.tmpl, monster.md.tmpl, etc.
 - Run `./scripts/validate-campaign.sh --check=all` before PDF compilation (BLOCKING GATE)
 - WotC standards: boxed text 100-600 words, ≥2 hooks/area, ≥3 developments with recovery, running guidance 150-400 words, ≥1 sidebar/act
+
+### monster-design-rules
+- Source of truth: `docs/dnd-monster-design-rules.md` (DMG 5e cap. 9 + MM 2025)
+- HP, AC, attack bonus, save DC, DPR must fall within ±1 band of the canonical CR range
+- Ability scores must be in [1, 30]
+- Damage notation: number OR dice, never both
+- Initiative in 2025 format: `+X (+Y)`
+- Omit empty sections (no "None" entries)
+- Use `validate_monster`, `suggest_monster_cr`, `audit_monster_cr` — do not write your own
 
 ### grimorio-areas
 - Read template: `internal/compiler/templates/areas.md.tmpl` BEFORE generating
