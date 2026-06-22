@@ -18,17 +18,36 @@ import (
 	"github.com/pauvalls/grimorio/internal/repository"
 )
 
+// BestiaryAuditorHook is the small surface of *monster.BestiaryAuditor
+// that CampaignService needs. It is an interface so tests can
+// inject a spy/mock without depending on the real analyzer
+// implementation. The hook is strictly advisory — implementations
+// must NEVER return an error to the caller.
+type BestiaryAuditorHook interface {
+	AuditBestiarySave(ctx context.Context, content string, campaignID string)
+	AuditChapterFinalize(ctx context.Context, chapterContent string, campaignID string)
+}
+
 // CampaignService handles campaign business logic
 type CampaignService struct {
-	canonRepo    repository.CanonRepository
-	campaignRepo repository.CampaignRepository
-	actRepo      repository.ActRepository
-	charRepo     repository.CharacterRepository
-	npcRepo      repository.NPCRepository
-	questRepo    repository.QuestRepository
-	monsterRepo  repository.MonsterRepository
-	baseDir      string
-	pdfEngine    string
+	canonRepo       repository.CanonRepository
+	campaignRepo    repository.CampaignRepository
+	actRepo         repository.ActRepository
+	charRepo        repository.CharacterRepository
+	npcRepo         repository.NPCRepository
+	questRepo       repository.QuestRepository
+	monsterRepo     repository.MonsterRepository
+	baseDir         string
+	pdfEngine       string
+	bestiaryAuditor BestiaryAuditorHook // optional; nil = no advisory audit
+}
+
+// SetBestiaryAuditor wires an advisory CR audit hook into the
+// save and finalize paths. The hook is called AFTER the persist
+// step and is strictly advisory — it never blocks the save.
+// Passing nil removes the hook (legacy behavior).
+func (s *CampaignService) SetBestiaryAuditor(auditor BestiaryAuditorHook) {
+	s.bestiaryAuditor = auditor
 }
 
 // NewCampaignService creates a new campaign service
@@ -317,6 +336,15 @@ func (s *CampaignService) SaveBestiary(campaignID, content string) error {
 		return fmt.Errorf("failed to finalize markdown write: %w", err)
 	}
 
+	// 6. Advisory CR audit (bestiary-scoped). The hook is
+	// strictly advisory: it never returns an error and never
+	// blocks the save. It is also nil-tolerant so legacy
+	// callers that don't wire the hook keep working.
+	//
+	// SaveBestiary does not take a context.Context; the audit
+	// is advisory and short, so we use context.Background().
+	s.invokeBestiaryAudit(context.Background(), content, campaignID)
+
 	return nil
 }
 
@@ -360,7 +388,32 @@ func (s *CampaignService) saveMarkdownFile(campaignID, subdir, filename, content
 	return nil
 }
 
-// SaveChapter saves a self-contained chapter to a campaign.
+// invokeBestiaryAudit calls the bestiary auditor if it is wired.
+// It catches every error and panic so the save path is never
+// affected by an audit failure.
+func (s *CampaignService) invokeBestiaryAudit(ctx context.Context, content string, campaignID string) {
+	if s.bestiaryAuditor == nil {
+		return
+	}
+	defer func() {
+		_ = recover() // never let a panicking auditor crash the save
+	}()
+	s.bestiaryAuditor.AuditBestiarySave(ctx, content, campaignID)
+}
+
+// invokeChapterAudit calls the chapter auditor if it is wired.
+// It catches every error and panic so the finalize path is never
+// affected by an audit failure.
+func (s *CampaignService) invokeChapterAudit(ctx context.Context, chapterContent string, campaignID string) {
+	if s.bestiaryAuditor == nil {
+		return
+	}
+	defer func() {
+		_ = recover()
+	}()
+	s.bestiaryAuditor.AuditChapterFinalize(ctx, chapterContent, campaignID)
+}
+
 // Writes to campaigns/{id}/chapters/chapter_{NN}.md
 func (s *CampaignService) SaveChapter(campaignID string, chapterNum int, title, content string) error {
 	if !s.campaignRepo.Exists(campaignID) {

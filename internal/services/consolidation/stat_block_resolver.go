@@ -94,7 +94,7 @@ func (s *StatBlockResolver) Analyze(ctx context.Context, files []CampaignFile) (
 		if len(conflicting) > 0 {
 			result.Passed = false
 			result.Severity = "error"
-			result.Issues = append(result.Issues, domainIssue{
+			result.Issues = append(result.Issues, DomainIssue{
 				Rule:      result.Rule,
 				Severity:  "error",
 				Message:   fmt.Sprintf("Boss '%s' has conflicting CR values; bestiary CR %d is canonical. Conflicts: %s", name, canonicalCR, strings.Join(conflicting, "; ")),

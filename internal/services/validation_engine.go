@@ -12,6 +12,7 @@ import (
 	"github.com/pauvalls/grimorio/internal/domain"
 	"github.com/pauvalls/grimorio/internal/repository"
 	"github.com/pauvalls/grimorio/internal/services/consolidation"
+	"github.com/pauvalls/grimorio/internal/services/monster"
 	"github.com/pauvalls/grimorio/internal/validators"
 )
 
@@ -1073,6 +1074,7 @@ func (e *ValidationEngine) runConsolidationChecks(ctx context.Context, report *d
 	e.validateMapAssetsExist(ctx, campaignID, report)
 	e.validateGeneratedFileFreshness(ctx, campaignID, report)
 	e.validateNoDuplicateFiles(ctx, campaignID, report)
+	e.validateMonsterCRDrift(ctx, campaignID, report)
 }
 
 // emitConsolidationCheck writes a single summary CheckResult and one
@@ -1212,4 +1214,18 @@ func (e *ValidationEngine) validateNoDuplicateFiles(ctx context.Context, campaig
 		// Keep the global Passed signal only if duplicates were detected.
 		e.emitConsolidationCheck(report, "consolidation_no_duplicate_files", filtered, "warning")
 	}
+}
+
+// validateMonsterCRDrift runs the MonsterCRDriftAnalyzer on the
+// campaign's bestiary and surfaces CR drift as CheckResults. The
+// analyzer is advisory only — the report may record warnings and
+// criticals, but the analyzer never returns an error that blocks a
+// save. The validation engine mirrors that by mapping the analyzer's
+// severities (info/warning/critical) to its own bucket.
+func (e *ValidationEngine) validateMonsterCRDrift(ctx context.Context, campaignID string, report *domain.ConsistencyReport) {
+	res, err := e.consolidator.RunAnalyzer(ctx, campaignID, monster.NewMonsterCRDriftAnalyzer())
+	if err != nil || res == nil {
+		return
+	}
+	e.emitConsolidationCheck(report, "consolidation_monster_cr_drift", res, "warning")
 }

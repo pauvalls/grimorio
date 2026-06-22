@@ -37,7 +37,7 @@ type AnalysisResult struct {
 	Message   string
 	Locations []string
 	Fixes     []domainFix
-	Issues    []domainIssue
+	Issues    []DomainIssue
 	Questions []domainQuestion
 }
 
@@ -50,13 +50,28 @@ type domainFix struct {
 	Locations []string
 }
 
-// domainIssue is the internal issue representation.
-type domainIssue struct {
+// DomainIssue is the public issue representation. Exported so
+// analyzers living outside this package (e.g. services/monster)
+// can construct issues through the public API.
+type DomainIssue struct {
 	Rule       string
 	Severity   string
 	Message    string
 	Locations  []string
 	Suggestion string
+}
+
+// NewIssue builds a DomainIssue. Exported so analyzers living
+// outside this package (e.g. services/monster) can construct
+// issues through the public API.
+func NewIssue(rule, severity, message string, locations []string, suggestion string) DomainIssue {
+	return DomainIssue{
+		Rule:       rule,
+		Severity:   severity,
+		Message:    message,
+		Locations:  locations,
+		Suggestion: suggestion,
+	}
 }
 
 // domainQuestion is the internal ambiguity representation.

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,12 +28,12 @@ var partOrder = map[string]int{
 
 // ChapterPartResult is returned by SaveChapterPart
 type ChapterPartResult struct {
-	Status           string          `json:"status"`
-	PartsSaved       int             `json:"parts_saved"`
-	DraftPath        string          `json:"draft_path"`
-	AccumulatedWords int             `json:"accumulated_words"`
-	PartsReceived    []string        `json:"parts_received"`
-	Context          *DraftContext    `json:"context,omitempty"`
+	Status           string        `json:"status"`
+	PartsSaved       int           `json:"parts_saved"`
+	DraftPath        string        `json:"draft_path"`
+	AccumulatedWords int           `json:"accumulated_words"`
+	PartsReceived    []string      `json:"parts_received"`
+	Context          *DraftContext `json:"context,omitempty"`
 }
 
 // DraftContext holds structured entity references extracted from accumulated draft content
@@ -177,6 +178,12 @@ func (s *CampaignService) FinalizeChapter(campaignID string, chapterNum int, tit
 		_ = err
 	}
 
+	// Advisory CR audit on the chapter content. The hook is
+	// strictly advisory: it never returns an error and never
+	// blocks the finalize. It is also nil-tolerant so legacy
+	// callers that don't wire the hook keep working.
+	s.invokeChapterAudit(context.Background(), content, campaignID)
+
 	return &FinalizeResult{
 		Status:     "ok",
 		Chapter:    filename,
@@ -266,8 +273,8 @@ func validationErrors(errs []validators.ValidationError) string {
 }
 
 var (
-	draftAreaHeadingRe   = regexp.MustCompile(`(?i)^#{3}\s+(?:Área|Area)\s+(\d+|[A-Z]\d*)[:\s]*(.+?)\s*$`)
-	draftEncounterRe     = regexp.MustCompile(`(?i)^#{3}\s+(?:Encuentro|Encounter)\s+(\d+)[:\s]*(.+?)\s*$`)
+	draftAreaHeadingRe = regexp.MustCompile(`(?i)^#{3}\s+(?:Área|Area)\s+(\d+|[A-Z]\d*)[:\s]*(.+?)\s*$`)
+	draftEncounterRe   = regexp.MustCompile(`(?i)^#{3}\s+(?:Encuentro|Encounter)\s+(\d+)[:\s]*(.+?)\s*$`)
 )
 
 // extractDraftContext parses accumulated draft content to extract NPC names, area numbers, and encounter names

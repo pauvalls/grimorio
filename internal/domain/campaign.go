@@ -158,6 +158,14 @@ type Monster struct {
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+
+	// Computed-CR fields, populated by the monster validator
+	// (internal/services/monster). Optional and additive — existing
+	// bestiary files that lack these fields deserialize unchanged.
+	CRDefensive float64 `json:"cr_defensive,omitempty"`
+	CROffensive float64 `json:"cr_offensive,omitempty"`
+	EffectiveHP int     `json:"effective_hp,omitempty"`
+	InitScore   int     `json:"init_score,omitempty"`
 }
 
 // Encounter represents a combat encounter or challenge

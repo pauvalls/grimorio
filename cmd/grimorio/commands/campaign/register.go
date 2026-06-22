@@ -2,13 +2,15 @@ package campaign
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
 	"github.com/pauvalls/grimorio/internal/config"
-	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
 	"github.com/pauvalls/grimorio/internal/repository"
+	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
 	"github.com/pauvalls/grimorio/internal/services"
+	"github.com/pauvalls/grimorio/internal/services/monster"
 	"github.com/urfave/cli/v2"
 )
 
@@ -74,6 +76,13 @@ func runRegister(cCtx *cli.Context) error {
 		canonRepo,
 		&monsterRepoWrapper{fs: fsMonsterRepo},
 		baseDir, cfg.PDFEngine,
+	)
+
+	// Wire the advisory CR audit hook. The hook runs inline at
+	// SaveBestiary and FinalizeChapter. It is strictly advisory:
+	// it logs at WARN for major drift and never blocks the save.
+	service.SetBestiaryAuditor(
+		monster.NewBestiaryAuditor(monster.NewMonsterCRDriftAnalyzer(), slog.Default()),
 	)
 
 	// Register NPCs

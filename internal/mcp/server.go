@@ -17,6 +17,7 @@ import (
 	"github.com/pauvalls/grimorio/internal/repository"
 	fsrepo "github.com/pauvalls/grimorio/internal/repository/fs"
 	"github.com/pauvalls/grimorio/internal/services"
+	"github.com/pauvalls/grimorio/internal/services/monster"
 	"github.com/pauvalls/grimorio/internal/tts/piper"
 )
 
@@ -73,6 +74,15 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 
 	// Initialize structured logger
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+
+	// Wire the advisory CR audit hook. The hook is strictly
+	// advisory: it logs at WARN for major drift and never
+	// blocks the save or the chapter finalize. The audit goes
+	// through the same structured logger so DMs can grep the
+	// MCP stderr for "cr audit" findings.
+	campaignService.SetBestiaryAuditor(
+		monster.NewBestiaryAuditor(monster.NewMonsterCRDriftAnalyzer(), logger),
+	)
 
 	// Degraded mode: if CANON_LEGACY_MODE is set or repo initialization fails
 	if os.Getenv("CANON_LEGACY_MODE") == "1" {
@@ -199,6 +209,10 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	// Fase 3 handlers
 	healthHandlers := handlers.NewHealthHandlers(campaignHealthScore)
 	treasureHandlers := handlers.NewTreasureHandlers(treasureService)
+
+	// Monster design engine (mde-004) — 3 tools for CR validation,
+	// suggestion, and campaign-wide audit.
+	monsterValidationHandlers := handlers.NewMonsterValidationHandlers(cfg.OutputDir)
 
 	// Register tools
 	// Campaign management
@@ -600,6 +614,26 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithString("title", mcp.Description("Export title (defaults to campaign name)")),
 	), exportHandlers.HandleExportCampaign())
 
+	// Monster design engine tools (mde-004)
+	s.AddTool(mcp.NewTool("validate_monster",
+		mcp.WithDescription("Validate a monster (by name from a campaign, or by raw markdown) and return a ValidationResult"),
+		mcp.WithString("monster_name", mcp.Description("Name of a monster in the campaign bestiary (optional if markdown is provided)")),
+		mcp.WithString("markdown", mcp.Description("Raw markdown stat block to validate (optional if monster_name is provided)")),
+		mcp.WithString("campaign", mcp.Description("Campaign ID (required if monster_name is provided)")),
+	), monsterValidationHandlers.HandleValidateMonster())
+
+	s.AddTool(mcp.NewTool("suggest_monster_cr",
+		mcp.WithDescription("Given a target CR and an optional concept, return a Monster skeleton (as markdown or JSON)"),
+		mcp.WithNumber("target_cr", mcp.Required(), mcp.Description("Target CR (0-30, including sub-integers 0.125, 0.25, 0.5)")),
+		mcp.WithString("concept", mcp.Description("Optional concept (e.g. 'fire-breathing dragon')")),
+		mcp.WithString("output", mcp.Description("Output format: markdown, json (default: markdown)")),
+	), monsterValidationHandlers.HandleSuggestMonsterCR())
+
+	s.AddTool(mcp.NewTool("audit_monster_cr",
+		mcp.WithDescription("Audit an entire campaign's bestiary and return a summary + per-monster validation"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign ID")),
+	), monsterValidationHandlers.HandleAuditMonsterCR())
+
 	// Consolidation tools — cross-file consistency engine
 	s.AddTool(mcp.NewTool("consolidate_campaign",
 		mcp.WithDescription("Run the full consolidation engine: detect entity, lore, stat-block, event, file, and map drift; apply safe fixes; return a ConsolidationReport."),
@@ -703,4 +737,3 @@ func (w *monsterRepoWrapper) List(campaignID string) ([]domain.Monster, error) {
 func (w *monsterRepoWrapper) Delete(campaignID, name string) error {
 	return w.fs.Delete(context.Background(), campaignID, name)
 }
-

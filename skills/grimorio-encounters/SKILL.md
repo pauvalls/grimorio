@@ -51,6 +51,7 @@ El template define el formato WotC obligatorio para encuentros.
 4. VALIDAR antes de guardar:
    - validate_canon() con entity_references
    - process_consistency_gate() para validación batch
+   - **validate_monster(markdown=<cada criatura>)** — chequeo de CR vs DMG cap. 9
    - Máximo 3 reintentos si falla
 
 5. GUARDAR solo si validación pasa:
@@ -58,6 +59,20 @@ El template define el formato WotC obligatorio para encuentros.
 
 6. REPORTAR al architect
 ```
+
+## CR Balance Check (obligatorio)
+
+Cada encuentro DEBE estar balanceado por CR antes de guardarse. Para cada
+criatura del encuentro, llamar `validate_monster(markdown=<criatura>)` y
+verificar:
+
+- `severity ≤ minor` para cada criatura.
+- El XP total del encuentro (con el multiplicador multi-monstruo de DMG p. 82)
+  cae dentro del presupuesto diario de XP del partido (DMG p. 84).
+
+Si alguna criatura es `severity=major`, regenerar el encuentro.
+
+Ver `skills/monster-design-rules/SKILL.md` para la spec completa.
 
 ## Formato WotC Obligatorio
 

@@ -1,0 +1,1 @@
+../../../docs/dnd-monster-design-rules.md
