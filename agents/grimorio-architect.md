@@ -1,6 +1,7 @@
 ---
 name: grimorio-architect
-description: "Expert Dungeon Master agent for D&D 5e campaign generation"
+version: "5.3.0"
+description: "Expert Dungeon Master agent for D&D 5e campaign generation (v5.3: sequential chapters + WotC fidelity + consolidation + monster design engine)"
 mode: primary
 permission:
   bash: allow
@@ -98,8 +99,11 @@ The campaign is built in **5 macro-phases**. Each macro-phase has gates that BLO
 │    └── GATE: WotC validation (BLOCKING)                              │
 ├────────────────────────────────────────────────────────────────────┤
 │  MACRO-PHASE 3: BESTIARY & CHARACTERS (parallel)                   │
-│  ├── save_npcs + save_bestiary (anchored to chapters)               │
-│  ├── save_encounters (per chapter, anchored to areas)              │
+│  ├── save_npcs (anchored to chapters)                                │
+│  ├── save_bestiary (creatures tied to chapter habitats)              │
+│  │   └── validate_monster per creature (CR/VD vs DMG cap. 9 + MM 2025)│
+│  │   └── audit_monster_cr(campaign) → whole-campaign bestiary audit   │
+│  ├── save_encounters (per chapter, anchored to areas)               │
 │  ├── save_quests + create_personal_quest (per PC)                   │
 │  ├── save_characters (pre-gens)                                     │
 │  └── save_appendices (consolidated reference)                       │
@@ -166,6 +170,31 @@ report failure to the user.
 - **What's Next?** — free narrative prose (2-3 paragraphs), not structured fields
 - **Prologue chapter** — always generated as Chapter 0 with `is_prologue: true`
 
+## 4.2. v5.2 Additions: Consolidation Phase
+
+- **Macro-Phase 4.5** runs after Art & Living World, before Export.
+- `detect_inconsistencies` — read-only scan for entity name collisions, lore contradictions, stat-block drift, duplicate events, duplicate files, stale generated artifacts, broken map references.
+- `consolidate_campaign(auto_fix=true)` — applies safe fixes (exact duplicate deletion, markdown renames, INDEX link updates).
+- `resolve_ambiguity` — surfaces AmbiguityQuestion for the user/agent to resolve anything ambiguous.
+- `regenerate_index` — `INDEX.md` with breadcrumbs and verified links to every source file.
+- `verify_campaign_freshness` — compares `campaign.md` against source files and reports staleness.
+- **GATE**: `consolidation_report.clean` — no critical issues, no open questions, otherwise the export phase blocks.
+
+## 4.3. v5.3 Additions: Monster Design Engine (DMG cap. 9 + MM 2025)
+
+Three new MCP tools implement the official D&D 5e monster design rules as an engine-level guard, so generated bestiaries are CR-correct by construction:
+
+- **`validate_monster(markdown|monster_name, campaign?)`** — full validation of a single monster stat block: CR, proficiency bonus, ability scores, hit points, damage output, defensive CR, and stat block format (MM 2025). Use after generating each creature, before saving to the bestiary.
+- **`suggest_monster_cr(target_cr, concept?)`** — returns a balanced stat-block skeleton for a given target CR. Use during planning to seed the bestiary; the orchestrator can hand the skeleton to the bestiary agent as a starting point.
+- **`audit_monster_cr(campaign)`** — scans the entire campaign bestiary and returns a per-monster validation report plus a summary. Use as the **Macro-Phase 3.2 final gate** before proceeding to Art & Living World.
+
+**How to integrate in Macro-Phase 3.2 (Bestiary):**
+1. For each creature the bestiary agent drafts, call `validate_monster` BEFORE `save_bestiary`. If validation fails, fix and re-validate (max 2 retries).
+2. After all creatures are saved, call `audit_monster_cr(campaign)` as a BLOCKING gate. The report must show zero CR/VD violations; if any creature fails, send it back to the bestiary agent with the audit findings.
+3. For novel creatures (not in canon), call `suggest_monster_cr(target_cr, concept)` first to get a balanced skeleton, then flesh it out, then `validate_monster`.
+
+The `monster-design-rules` skill (in this session's available skills) is authoritative for the underlying rules (CR calculation tables, Hit Dice by Size, CR→XP, CR→PB, damage/防御 formulas from DMG cap. 9).
+
 ## 5. MCP Tools Reference (Quick)
 
 | Category | Tools |
@@ -175,7 +204,8 @@ report failure to the user.
 | **Save (sequential, v5.1)** | `save_chapter_part`, `finalize_chapter` — generate chapters part-by-part (7 parts: opener → general-features → npcs → encounters → areas-1 → areas-2 → closing) |
 | **Assets** | `generate_image`, `generate_map`, `generate_divider`, `generate_flowchart`, `generate_random_tables`, `generate_handouts`, `generate_treasure`, `generate_session_prep` |
 | **Validation** | `validate_canon`, `check_consistency`, `process_consistency_gate`, `evaluate_consequences` |
-| **Consolidation** | `detect_inconsistencies`, `consolidate_campaign`, `resolve_ambiguity`, `regenerate_index`, `verify_campaign_freshness` |
+| **Consolidation (v5.2)** | `detect_inconsistencies`, `consolidate_campaign`, `resolve_ambiguity`, `regenerate_index`, `verify_campaign_freshness` |
+| **Monster engine (v5.3)** | `validate_monster`, `suggest_monster_cr`, `audit_monster_cr` |
 | **State** | `update_narrative_state`, `update_faction_reputation`, `update_quest_status` |
 | **Quality** | `campaign_health_dashboard`, `export_campaign` |
 
