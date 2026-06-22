@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -1122,6 +1123,305 @@ func TestCopyDir(t *testing.T) {
 	}
 	if string(content) != "test content" {
 		t.Errorf("copied content = %q, want %q", string(content), "test content")
+	}
+}
+
+// --- T009: Per-Install-Dir Version Detection ---
+//
+// Regression tests for the v5.3.1 bug: `grimorio update` early-exited with
+// "Already up to date" when the invoking CLI binary was at the latest tag,
+// even if a separate MCP install dir (e.g. $HOME/.grimorio/grimorio) was
+// still on an older version. The fix detects the version of EACH install
+// dir by executing it with --version, then compares the MIN across dirs
+// against the latest release tag. If the min < latest, ALL dirs are
+// replaced (the working ones are backed up first and replaced with the
+// same new content — idempotent and safe).
+
+// createFakeVersionBinary writes a tiny shell script that, when executed
+// with --version, prints the format that the real grimorio binary uses:
+//
+//	grimorio version vX.Y.Z (commit: ..., build date: ..., go: ...)
+//
+// We use this to simulate install dirs at arbitrary versions without
+// actually building N copies of the binary.
+func createFakeVersionBinary(t *testing.T, dir, version string) string {
+	t.Helper()
+	path := filepath.Join(dir, "grimorio")
+	script := fmt.Sprintf("#!/bin/sh\necho 'grimorio version %s (commit: deadbeef, build date: 2026-01-01T00:00:00Z, go: go1.24.0)'\n", version)
+	if err := os.WriteFile(path, []byte(script), 0755); err != nil {
+		t.Fatalf("writing fake version binary: %v", err)
+	}
+	return path
+}
+
+// TestDetectInstallDirVersion verifies the helper that reads the version
+// reported by an installed grimorio binary.
+func TestDetectInstallDirVersion(t *testing.T) {
+	dir := t.TempDir()
+	bin := createFakeVersionBinary(t, dir, "v5.3.1")
+
+	got, err := detectInstallDirVersion(bin)
+	if err != nil {
+		t.Fatalf("detectInstallDirVersion() error = %v", err)
+	}
+	if got != "v5.3.1" {
+		t.Errorf("detectInstallDirVersion() = %q, want %q", got, "v5.3.1")
+	}
+}
+
+// TestDetectInstallDirVersion_BinaryMissing ensures we get a clear error
+// when the path does not exist.
+func TestDetectInstallDirVersion_BinaryMissing(t *testing.T) {
+	_, err := detectInstallDirVersion(filepath.Join(t.TempDir(), "does-not-exist"))
+	if err == nil {
+		t.Fatal("detectInstallDirVersion() expected error for missing binary")
+	}
+}
+
+// TestDetectInstallDirVersion_ParseError ensures non-grimorio output
+// surfaces as a parse error rather than a silent empty version.
+func TestDetectInstallDirVersion_ParseError(t *testing.T) {
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "grimorio")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\necho 'not a grimorio binary'\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	_, err := detectInstallDirVersion(bin)
+	if err == nil {
+		t.Fatal("detectInstallDirVersion() expected error for unparseable output")
+	}
+	if !strings.Contains(err.Error(), "parsing") {
+		t.Errorf("error should mention parsing, got: %v", err)
+	}
+}
+
+// mockTarballServer returns an httptest server that mimics the GitHub
+// release API: GET /releases/latest → JSON, GET /download → tarball
+// containing `newBinaryContent` as `mock_dir/grimorio`.
+//
+// `latestTag` is what the API advertises as the current latest release.
+func mockTarballServer(t *testing.T, latestTag string, newBinaryContent []byte) (string, *httptest.Server) {
+	t.Helper()
+	var serverURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/releases/latest") {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `{
+				"tag_name": %q,
+				"assets": [
+					{"name": "grimorio_Linux_x86_64.tar.gz", "browser_download_url": "%s/download"},
+					{"name": "checksums.txt", "browser_download_url": "%s/checksums"}
+				]
+			}`, latestTag, serverURL, serverURL)
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/download") {
+			tarPath := filepath.Join(t.TempDir(), "mock.tar.gz")
+			f, _ := os.Create(tarPath)
+			gz := gzip.NewWriter(f)
+			tw := tar.NewWriter(gz)
+			hdr := &tar.Header{
+				Name: "mock_dir/grimorio",
+				Mode: 0755,
+				Size: int64(len(newBinaryContent)),
+			}
+			_ = tw.WriteHeader(hdr)
+			_, _ = tw.Write(newBinaryContent)
+			_ = tw.Close()
+			_ = gz.Close()
+			_ = f.Close()
+			http.ServeFile(w, r, tarPath)
+			return
+		}
+		// checksums.txt — return a stub; the updater falls back to a warning
+		// if it can't parse, so we don't need a real checksum here.
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("# mock checksums (test only)\n"))
+	}))
+	serverURL = server.URL
+	return serverURL, server
+}
+
+// TestRunUpdate_DetectsStaleMCPAndUpdatesAll is the v5.3.1 regression test.
+//
+// Scenario: CLI binary is at v5.3.1 (matches latest tag), but the MCP
+// binary is stuck at v5.2.0. The OLD updater saw "CLI is current" and
+// exited with "Already up to date", leaving the MCP binary stale and
+// missing the monster-engine MCP tools (validate_monster,
+// suggest_monster_cr, audit_monster_cr).
+//
+// Expected: updater detects the stale MCP via per-dir version detection
+// and replaces BOTH binaries with the new content.
+func TestRunUpdate_DetectsStaleMCPAndUpdatesAll(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script fake binaries not portable to Windows")
+	}
+
+	cliDir := t.TempDir()
+	mcpDir := t.TempDir()
+	backupDir := t.TempDir()
+
+	// CLI binary is already at the latest tag; MCP is one version behind.
+	cliBin := createFakeVersionBinary(t, cliDir, "v5.3.1")
+	mcpBin := createFakeVersionBinary(t, mcpDir, "v5.2.0")
+
+	newContent := []byte("NEW BINARY CONTENT - v5.3.1")
+	serverURL, server := mockTarballServer(t, "v5.3.1", newContent)
+	defer server.Close()
+
+	u := &updater{
+		repoOwner:      "testowner",
+		repoName:       "testrepo",
+		installDirs:    []string{cliBin, mcpBin},
+		backupDir:      backupDir,
+		apiBaseURL:     serverURL,
+		httpClient:     server.Client(),
+		currentVersion: "v5.3.1", // CLI matches latest — OLD code would early-exit
+	}
+
+	if err := u.runUpdate(false); err != nil {
+		t.Fatalf("runUpdate() error = %v", err)
+	}
+
+	// BOTH binaries should now contain the new content.
+	gotCLI, err := os.ReadFile(cliBin)
+	if err != nil {
+		t.Fatalf("reading CLI binary: %v", err)
+	}
+	if string(gotCLI) != string(newContent) {
+		t.Errorf("CLI binary not updated. got %q, want %q", gotCLI, newContent)
+	}
+
+	gotMCP, err := os.ReadFile(mcpBin)
+	if err != nil {
+		t.Fatalf("reading MCP binary: %v", err)
+	}
+	if string(gotMCP) != string(newContent) {
+		t.Errorf("MCP binary not updated (the v5.3.1 bug). got %q, want %q", gotMCP, newContent)
+	}
+}
+
+// TestRunUpdate_AllUpToDate_NoDownload is the happy path: every install
+// dir is at the same version as the latest release tag. The updater must
+// contact the API (to learn the latest tag) but must short-circuit BEFORE
+// downloading the release archive. We assert: the JSON endpoint is hit
+// (proves we didn't break the API call), but the /download tarball
+// endpoint is NEVER hit (proves we don't waste bandwidth on a no-op).
+func TestRunUpdate_AllUpToDate_NoDownload(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script fake binaries not portable to Windows")
+	}
+
+	cliDir := t.TempDir()
+	mcpDir := t.TempDir()
+	backupDir := t.TempDir()
+
+	// BOTH binaries at v5.3.1; remote release advertises the same tag.
+	cliBin := createFakeVersionBinary(t, cliDir, "v5.3.1")
+	mcpBin := createFakeVersionBinary(t, mcpDir, "v5.3.1")
+
+	var apiHits, downloadHits int
+	var serverURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/releases/latest") {
+			apiHits++
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `{
+				"tag_name": "v5.3.1",
+				"assets": [
+					{"name": "grimorio_Linux_x86_64.tar.gz", "browser_download_url": "%s/download"}
+				]
+			}`, serverURL)
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/download") {
+			downloadHits++
+			http.Error(w, "tarball should not be downloaded when all dirs are current", http.StatusInternalServerError)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	serverURL = server.URL
+	defer server.Close()
+
+	u := &updater{
+		repoOwner:      "testowner",
+		repoName:       "testrepo",
+		installDirs:    []string{cliBin, mcpBin},
+		backupDir:      backupDir,
+		apiBaseURL:     server.URL,
+		httpClient:     server.Client(),
+		currentVersion: "v5.3.1",
+	}
+
+	if err := u.runUpdate(false); err != nil {
+		t.Fatalf("runUpdate() error = %v (expected 'Already up to date' success)", err)
+	}
+	if apiHits != 1 {
+		t.Errorf("expected exactly 1 API call to /releases/latest, got %d", apiHits)
+	}
+	if downloadHits != 0 {
+		t.Errorf("expected zero tarball downloads when all dirs current, got %d", downloadHits)
+	}
+}
+
+// TestRunUpdate_StaleMCPBehindMultipleVersions covers the more extreme
+// case: CLI is current (v5.3.1), MCP is several versions behind (v5.1.0).
+// This is the realistic scenario after a user upgrades the CLI manually
+// (or via a different package manager) without touching the MCP binary.
+func TestRunUpdate_StaleMCPBehindMultipleVersions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script fake binaries not portable to Windows")
+	}
+
+	cliDir := t.TempDir()
+	mcpDir := t.TempDir()
+	backupDir := t.TempDir()
+
+	cliBin := createFakeVersionBinary(t, cliDir, "v5.3.1")
+	mcpBin := createFakeVersionBinary(t, mcpDir, "v5.1.0")
+
+	newContent := []byte("NEW BINARY CONTENT - v5.3.1")
+	serverURL, server := mockTarballServer(t, "v5.3.1", newContent)
+	defer server.Close()
+
+	u := &updater{
+		repoOwner:      "testowner",
+		repoName:       "testrepo",
+		installDirs:    []string{cliBin, mcpBin},
+		backupDir:      backupDir,
+		apiBaseURL:     serverURL,
+		httpClient:     server.Client(),
+		currentVersion: "v5.3.1",
+	}
+
+	if err := u.runUpdate(false); err != nil {
+		t.Fatalf("runUpdate() error = %v", err)
+	}
+
+	gotMCP, err := os.ReadFile(mcpBin)
+	if err != nil {
+		t.Fatalf("reading MCP binary: %v", err)
+	}
+	if string(gotMCP) != string(newContent) {
+		t.Errorf("MCP binary not updated from v5.1.0 to v5.3.1. got %q, want %q", gotMCP, newContent)
+	}
+}
+
+// Sanity check that createFakeVersionBinary actually works the way the
+// other tests assume (so a failure here points at the helper, not at the
+// bug under test).
+func TestCreateFakeVersionBinary_Smoke(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script fake binaries not portable to Windows")
+	}
+	bin := createFakeVersionBinary(t, t.TempDir(), "v9.9.9")
+	out, err := exec.Command(bin, "--version").Output()
+	if err != nil {
+		t.Fatalf("executing fake binary: %v", err)
+	}
+	if !strings.Contains(string(out), "v9.9.9") {
+		t.Errorf("fake binary output missing version. got: %q", out)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -221,6 +222,102 @@ func discoverInstallDirs(cliBinary, homeDir string) ([]string, error) {
 	return dirs, nil
 }
 
+// --- T009: Per-Install-Dir Version Detection ---
+//
+// v5.3.1 regression: `grimorio update` previously only compared the
+// invoking CLI binary's version (`u.currentVersion`) against the latest
+// release tag. If the CLI was up to date but the MCP binary
+// ($HOME/.grimorio/grimorio) was older, the updater exited with
+// "Already up to date" and never touched the stale MCP binary.
+//
+// The fix detects the version reported by EVERY install dir and uses the
+// MIN of those versions as the "current" baseline. If the min is older
+// than the latest tag, we update ALL dirs (the ones that are already
+// current get backed up and replaced with the same new content — safe
+// and idempotent).
+
+// detectInstallDirVersion runs `binaryPath --version` and extracts the
+// semver tag from the output. The real grimorio binary prints:
+//
+//	grimorio version vX.Y.Z (commit: ..., build date: ..., go: ...)
+//
+// We anchor on the `version vX.Y.Z` token so a future change to the
+// trailing fields (e.g. swapping `build date` for `built`) doesn't
+// silently break detection.
+func detectInstallDirVersion(binaryPath string) (string, error) {
+	cmd := exec.Command(binaryPath, "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("executing %s --version: %w", binaryPath, err)
+	}
+	return parseBinaryVersionOutput(string(output))
+}
+
+// parseBinaryVersionOutput extracts the vX.Y.Z token from grimorio's
+// --version output. Returns an error if the output does not look like
+// a grimorio version banner.
+func parseBinaryVersionOutput(output string) (string, error) {
+	// Expect the literal prefix "grimorio version " — this is the only
+	// thing we anchor on, so trailing fields are free to change.
+	const prefix = "grimorio version "
+	idx := strings.Index(output, prefix)
+	if idx < 0 {
+		return "", fmt.Errorf("parsing version output: missing %q in %q", prefix, strings.TrimSpace(output))
+	}
+	rest := output[idx+len(prefix):]
+	// The version is everything up to the first whitespace, '(', or end
+	// of string. vX.Y.Z is enough — we deliberately don't try to parse
+	// prerelease suffixes here; isNewer handles those.
+	end := len(rest)
+	for i, r := range rest {
+		if r == ' ' || r == '\t' || r == '(' || r == '\n' || r == '\r' {
+			end = i
+			break
+		}
+	}
+	version := strings.TrimSpace(rest[:end])
+	if version == "" {
+		return "", fmt.Errorf("parsing version output: empty version in %q", strings.TrimSpace(output))
+	}
+	return version, nil
+}
+
+// detectCurrentVersion returns the lowest version reported by any of the
+// install dirs. If detection fails for a dir (e.g. the binary is missing
+// or corrupted), we fall back to `u.currentVersion` for that dir — this
+// keeps the updater robust against weird states (broken symlink, partial
+// install) without silently skipping a needed update.
+//
+// Returns a human-readable summary for the user-facing log line.
+func (u *updater) detectCurrentVersion() (string, map[string]string) {
+	versions := make(map[string]string, len(u.installDirs))
+	for _, dir := range u.installDirs {
+		v, err := detectInstallDirVersion(dir)
+		if err != nil {
+			// Fall back to the invoking binary's reported version. This
+			// is intentionally non-fatal: a corrupt binary in one dir
+			// shouldn't block updates to the others.
+			fmt.Printf("Warning: could not detect version of %s (%v); assuming %s\n", dir, err, u.currentVersion)
+			v = u.currentVersion
+		}
+		versions[dir] = v
+	}
+	minVersion := u.currentVersion
+	for _, v := range versions {
+		older, err := isNewer(v, minVersion)
+		if err != nil {
+			// Unparseable version from one dir — keep the running
+			// baseline. Don't fail the whole update over it.
+			fmt.Printf("Warning: could not compare version %q against %q: %v\n", v, minVersion, err)
+			continue
+		}
+		if older {
+			minVersion = v
+		}
+	}
+	return minVersion, versions
+}
+
 // runUpdate orchestrates the full update flow.
 //
 // Downloads the latest release once, then replaces the binary in every
@@ -234,9 +331,33 @@ func (u *updater) runUpdate(dryRun bool) error {
 		return fmt.Errorf("detecting platform: %w", err)
 	}
 
-	fmt.Printf("Checking for updates (current: %s, platform: %s/%s)...\n", u.currentVersion, goos, goarch)
+	fmt.Printf("Checking for updates (platform: %s/%s)...\n", goos, goarch)
 
-	// Fetch latest release
+	// Detect the actual version of each install dir (v5.3.1 fix). The
+	// invoking binary's `u.currentVersion` is no longer sufficient: the
+	// MCP binary at $HOME/.grimorio/grimorio can be at a different
+	// version and must be considered independently.
+	//
+	// We do this BEFORE hitting the GitHub API so that an "all up to
+	// date" check costs zero network traffic.
+	currentBaseline, perDirVersions := u.detectCurrentVersion()
+	if len(perDirVersions) > 0 {
+		fmt.Printf("Detected versions: ")
+		first := true
+		for dir, v := range perDirVersions {
+			if !first {
+				fmt.Print(", ")
+			}
+			fmt.Printf("%s=%s", filepath.Base(filepath.Dir(dir))+"/"+filepath.Base(dir), v)
+			first = false
+		}
+		fmt.Println()
+	}
+	fmt.Printf("Current baseline: %s\n", currentBaseline)
+
+	// Fetch latest release. We always need the tag so we know what
+	// "up to date" means — even if the baseline looks old locally, we
+	// must compare against the actual latest release.
 	release, err := fetchLatestRelease(u.repoOwner, u.repoName, u.httpClient, u.apiBaseURL)
 	if err != nil {
 		return fmt.Errorf("fetching latest release: %w", err)
@@ -244,8 +365,9 @@ func (u *updater) runUpdate(dryRun bool) error {
 
 	latestTag := release.TagName
 
-	// Compare versions
-	needsUpdate, err := isNewer(u.currentVersion, latestTag)
+	// Compare the MIN of all install-dir versions against the latest tag.
+	// If any one dir is older than the latest, we update ALL of them.
+	needsUpdate, err := isNewer(currentBaseline, latestTag)
 	if err != nil {
 		return fmt.Errorf("comparing versions: %w", err)
 	}
@@ -255,7 +377,7 @@ func (u *updater) runUpdate(dryRun bool) error {
 		return nil
 	}
 
-	fmt.Printf("Update available: %s → %s\n", u.currentVersion, latestTag)
+	fmt.Printf("Update available: %s → %s\n", currentBaseline, latestTag)
 
 	if dryRun {
 		fmt.Println("Dry run: would download and install", latestTag)
