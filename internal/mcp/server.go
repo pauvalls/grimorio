@@ -200,6 +200,10 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 	healthHandlers := handlers.NewHealthHandlers(campaignHealthScore)
 	treasureHandlers := handlers.NewTreasureHandlers(treasureService)
 
+	// Monster design engine (mde-004) — 3 tools for CR validation,
+	// suggestion, and campaign-wide audit.
+	monsterValidationHandlers := handlers.NewMonsterValidationHandlers(cfg.OutputDir)
+
 	// Register tools
 	// Campaign management
 	s.AddTool(mcp.NewTool("create_campaign",
@@ -599,6 +603,26 @@ func NewServer(cfg *config.Config) (*server.MCPServer, func() error) {
 		mcp.WithString("format", mcp.Description("Export format: pdf, markdown, epub"), mcp.DefaultString("pdf")),
 		mcp.WithString("title", mcp.Description("Export title (defaults to campaign name)")),
 	), exportHandlers.HandleExportCampaign())
+
+	// Monster design engine tools (mde-004)
+	s.AddTool(mcp.NewTool("validate_monster",
+		mcp.WithDescription("Validate a monster (by name from a campaign, or by raw markdown) and return a ValidationResult"),
+		mcp.WithString("monster_name", mcp.Description("Name of a monster in the campaign bestiary (optional if markdown is provided)")),
+		mcp.WithString("markdown", mcp.Description("Raw markdown stat block to validate (optional if monster_name is provided)")),
+		mcp.WithString("campaign", mcp.Description("Campaign ID (required if monster_name is provided)")),
+	), monsterValidationHandlers.HandleValidateMonster())
+
+	s.AddTool(mcp.NewTool("suggest_monster_cr",
+		mcp.WithDescription("Given a target CR and an optional concept, return a Monster skeleton (as markdown or JSON)"),
+		mcp.WithNumber("target_cr", mcp.Required(), mcp.Description("Target CR (0-30, including sub-integers 0.125, 0.25, 0.5)")),
+		mcp.WithString("concept", mcp.Description("Optional concept (e.g. 'fire-breathing dragon')")),
+		mcp.WithString("output", mcp.Description("Output format: markdown, json (default: markdown)")),
+	), monsterValidationHandlers.HandleSuggestMonsterCR())
+
+	s.AddTool(mcp.NewTool("audit_monster_cr",
+		mcp.WithDescription("Audit an entire campaign's bestiary and return a summary + per-monster validation"),
+		mcp.WithString("campaign", mcp.Required(), mcp.Description("Campaign ID")),
+	), monsterValidationHandlers.HandleAuditMonsterCR())
 
 	// Consolidation tools — cross-file consistency engine
 	s.AddTool(mcp.NewTool("consolidate_campaign",

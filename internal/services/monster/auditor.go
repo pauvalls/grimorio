@@ -140,3 +140,32 @@ var statBlockMarker = regexp.MustCompile(`(?i)\*\*\s*(?:Armor Class|Class\s*de\s
 func looksLikeStatBlock(s string) bool {
 	return statBlockMarker.MatchString(s)
 }
+
+// FindMonsterMarkdown returns the raw markdown block for the named
+// monster in the campaign's bestiary. The lookup matches the H2
+// heading (case-insensitive, trimmed). Returns ErrNotFound if no
+// bestiary exists or no monster with that name is found.
+func (a *MonsterAuditor) FindMonsterMarkdown(campaignID, monsterName string) (string, error) {
+	bestiaryPath := filepath.Join(a.BaseDir, campaignID, "bestiary", "bestiary.md")
+	bytes, err := os.ReadFile(bestiaryPath)
+	if err != nil {
+		return "", fmt.Errorf("%w: %s", ErrNotFound, err.Error())
+	}
+	content := string(bytes)
+	blocks := splitMonsters(content)
+	target := strings.ToLower(strings.TrimSpace(monsterName))
+	for _, blk := range blocks {
+		// Extract the H2 heading.
+		for _, l := range strings.Split(blk, "\n") {
+			t := strings.TrimSpace(l)
+			if strings.HasPrefix(t, "## ") && !strings.HasPrefix(t, "### ") {
+				heading := strings.TrimSpace(strings.TrimPrefix(t, "## "))
+				if strings.ToLower(heading) == target {
+					return blk, nil
+				}
+				break
+			}
+		}
+	}
+	return "", fmt.Errorf("%w: monster %q not in %s", ErrNotFound, monsterName, bestiaryPath)
+}

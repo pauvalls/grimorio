@@ -25,27 +25,27 @@ const (
 // Finding is a single advisory reported by the validator. It is
 // non-blocking — the engine never fails a save because of a Finding.
 type Finding struct {
-	Field      string
-	Expected   string
-	Actual     string
-	Severity   Severity
-	Suggestion string
+	Field      string   `json:"field"`
+	Expected   string   `json:"expected,omitempty"`
+	Actual     string   `json:"actual,omitempty"`
+	Severity   Severity `json:"severity"`
+	Suggestion string   `json:"suggestion,omitempty"`
 }
 
 // ValidationResult is the full output of ValidateMonster for one
 // monster. The engine never modifies the input monster; it only
 // reports.
 type ValidationResult struct {
-	Monster       *rules.Monster
-	OfficialCR    float64
-	CalculatedCR  float64
-	DefensiveCR   float64
-	OffensiveCR   float64
-	Delta         float64
-	Severity      Severity
-	EffectiveHP   int
-	Findings      []Finding
-	Suggestions   []string
+	Monster      *rules.Monster `json:"monster,omitempty"`
+	OfficialCR   float64        `json:"official_cr"`
+	CalculatedCR float64        `json:"calculated_cr"`
+	DefensiveCR  float64        `json:"defensive_cr"`
+	OffensiveCR  float64        `json:"offensive_cr"`
+	Delta        float64        `json:"delta"`
+	Severity     Severity       `json:"severity"`
+	EffectiveHP  int            `json:"effective_hp"`
+	Findings     []Finding      `json:"findings"`
+	Suggestions  []string       `json:"suggestions"`
 }
 
 // MonsterValidator computes the expected CR for a parsed monster
