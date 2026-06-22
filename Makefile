@@ -99,21 +99,22 @@ changelog-all: ## Regenerate full changelog from all tags
 
 release-tag: ## Auto-detect next version and create/push tag
 	@echo "Determining next version from conventional commits..."
-	$(eval LATEST_TAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"))
-	$(eval MAJOR := $(shell echo "$(LATEST_TAG)" | sed 's/v//' | cut -d. -f1))
-	$(eval MINOR := $(shell echo "$(LATEST_TAG)" | sed 's/v//' | cut -d. -f2))
-	$(eval PATCH := $(shell echo "$(LATEST_TAG)" | sed 's/v//' | cut -d. -f3))
-	$(eval HAS_BREAKING := $(shell git log "$(LATEST_TAG)..HEAD" --oneline | grep -c "!:" 2>/dev/null || echo 0))
-	$(eval HAS_FEAT := $(shell git log "$(LATEST_TAG)..HEAD" --oneline | grep -c "feat" 2>/dev/null || echo 0))
-	@if [ "$(HAS_BREAKING)" -gt 0 ]; then \
-		MAJOR=$$(($(MAJOR) + 1)); \
-		NEW_TAG="v$${MAJOR}.0.0"; \
-	elif [ "$(HAS_FEAT)" -gt 0 ]; then \
-		MINOR=$$(($(MINOR) + 1)); \
-		NEW_TAG="v$(MAJOR).$${MINOR}.0"; \
+	@LATEST_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"); \
+	MAJOR=$$(echo "$$LATEST_TAG" | sed 's/v//' | cut -d. -f1); \
+	MINOR=$$(echo "$$LATEST_TAG" | sed 's/v//' | cut -d. -f2); \
+	PATCH=$$(echo "$$LATEST_TAG" | sed 's/v//' | cut -d. -f3); \
+	HAS_BREAKING=$$(git log "$$LATEST_TAG..HEAD" --oneline | grep -c "!:" 2>/dev/null || echo 0); \
+	HAS_FEAT=$$(git log "$$LATEST_TAG..HEAD" --oneline | grep -c "feat" 2>/dev/null || echo 0); \
+	echo "Latest: $$LATEST_TAG  Breaking: $$HAS_BREAKING  Feat: $$HAS_FEAT"; \
+	if [ "$$HAS_BREAKING" -gt 0 ]; then \
+		MAJOR=$$((MAJOR + 1)); \
+		NEW_TAG="v$$MAJOR.0.0"; \
+	elif [ "$$HAS_FEAT" -gt 0 ]; then \
+		MINOR=$$((MINOR + 1)); \
+		NEW_TAG="v$$MAJOR.$$MINOR.0"; \
 	else \
-		PATCH=$$(($(PATCH) + 1)); \
-		NEW_TAG="v$(MAJOR).$(MINOR).$${PATCH}"; \
+		PATCH=$$((PATCH + 1)); \
+		NEW_TAG="v$$MAJOR.$$MINOR.$$PATCH"; \
 	fi; \
 	echo "Creating tag: $$NEW_TAG"; \
 	git tag -a "$$NEW_TAG" -m "Release $$NEW_TAG"; \
