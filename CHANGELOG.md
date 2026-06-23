@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Docs
 
 - Update changelog for v5.4.2
+- Update changelog for v5.4.3
+
+### Fix
+
+- Stat block inline flow + cover absolute box + monster image hoisting 18) (compiler)
+
+## [v5.4.3] - 2026-06-23
+
+### Docs
+
+- Update changelog for v5.4.2
 
 ### Fix
 
