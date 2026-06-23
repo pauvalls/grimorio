@@ -212,6 +212,173 @@ func TestDetectMimeType(t *testing.T) {
 	}
 }
 
+func TestStatBlockParser_DoesNotTriggerOnChapterHeading(t *testing.T) {
+	// Negative lock: a `## ` heading NOT followed by an italic size+type line
+	// must NOT be wrapped in `.stat-block` (REQ-2.10, 2.11, 4.5).
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name: "chapter heading with chapter summary",
+			input: `# Capítulo 1: La Llegada
+
+> **Nivel:** 1-2 | **Duración:** 2-3 horas
+
+## Resumen
+
+Los personajes llegan al pueblo y aceptan su primera misión.
+
+### Área 1: La Entrada del Pueblo
+
+> **Read-Aloud:** *El camino costero termina en un pueblo pequeño.*
+`,
+		},
+		{
+			name: "NPC heading without italic size line",
+			input: `## Beroldo
+
+Beroldo es un herrero local. Tiene una barba canosa y siempre está
+trabajando en su fragua. Sabe más de lo que dice.
+
+### Apariencia
+
+Un hombre de unos cincuenta años, con delantal de cuero.
+`,
+		},
+		{
+			name: "h3 sub-section must stay h3 (not promoted to h2)",
+			input: `## Description narrativa
+
+Some narrative text.
+
+### Fase 1: Despierto
+
+El Rayo ataca desde la distancia.
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := markdownToHTML(tt.input, "/tmp")
+			if strings.Contains(result, `<div class="stat-block"`) {
+				t.Errorf("expected NO .stat-block wrapper, but found one in:\n%s", result)
+			}
+		})
+	}
+}
+
+func TestStatBlockParser_DetectsElRayo(t *testing.T) {
+	// El Rayo markdown from el-exiliado-de-las-tierras-marchitas/bestiary.md
+	// lines 876-893. Verifies the WotC stat block parser produces
+	// <div class="stat-block" data-monster="El Rayo"> wrapper,
+	// exactly 3 .stat-line divs (AC/HP/Speed), <h2>El Rayo</h2> preserved,
+	// and <p class="monster-type"> present (REQ-2.1, 2.2, 4.4).
+	elRayoMD := `## El Rayo
+*Mediano incorpóreo, caótico neutro*
+
+**Armor Class** 14
+**Hit Points** 82 (11d10 + 22)
+**Speed** 0 ft., fly 50 ft. (hover)
+
+| STR | DEX | CON | INT | WIS | CHA |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1 (-5) | 18 (+4) | 14 (+2) | 16 (+3) | 14 (+2) | 18 (+4) |
+
+**Saving Throws** Dex +8, Con +6
+**Challenge** 5 (1,800 XP)
+
+**Incorpóreo y luminoso.** El Rayo no tiene cuerpo físico.
+
+**Actions**
+
+**Toque del Rayo.** *Melee Spell Attack:* +8 to hit.
+`
+
+	result := markdownToHTML(elRayoMD, "/tmp")
+
+	// 1. Wrapper div with data-monster attribute
+	if !strings.Contains(result, `<div class="stat-block" data-monster="El Rayo">`) {
+		t.Errorf("expected stat-block wrapper with data-monster attribute, got:\n%s", result)
+	}
+
+	// 2. h2 preserved (not downgraded to h3)
+	if !strings.Contains(result, `<h2>El Rayo</h2>`) {
+		t.Errorf("expected <h2>El Rayo</h2> preserved, got:\n%s", result)
+	}
+
+	// 3. monster-type paragraph for the italic line
+	if !strings.Contains(result, `<p class="monster-type">`) {
+		t.Errorf("expected <p class=\"monster-type\"> for the italic line, got:\n%s", result)
+	}
+
+	// 4. exactly 3 .stat-line divs (AC, HP, Speed)
+	statLineCount := strings.Count(result, `<div class="stat-line">`)
+	if statLineCount != 3 {
+		t.Errorf("expected 3 .stat-line divs (AC/HP/Speed), got %d in:\n%s", statLineCount, result)
+	}
+
+	// 5. stat-label and stat-value present
+	if !strings.Contains(result, `class="stat-label"`) {
+		t.Errorf("expected stat-label spans, got:\n%s", result)
+	}
+	if !strings.Contains(result, `class="stat-value"`) {
+		t.Errorf("expected stat-value spans, got:\n%s", result)
+	}
+
+	// 6. Labels for AC, HP, Speed
+	for _, want := range []string{"Armor Class", "Hit Points", "Speed"} {
+		if !strings.Contains(result, want) {
+			t.Errorf("expected stat label %q in output, got:\n%s", want, result)
+		}
+	}
+
+	// 7. closing div
+	if !strings.Contains(result, `</div>`) {
+		t.Errorf("expected closing </div>, got:\n%s", result)
+	}
+}
+
+func TestStatBlockParser_SplitsMultiPropertyLine(t *testing.T) {
+	// REQ-2.3, 4.6: a line with multiple **Label** groups must split into
+	// one .property-line per group.
+	multiPropMD := `## Test Monster
+*Medium humanoid, neutral*
+
+**Armor Class** 14
+**Hit Points** 82 (11d10 + 22)
+**Speed** 0 ft., fly 50 ft. (hover)
+
+| STR | DEX | CON | INT | WIS | CHA |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 10 | 10 | 10 | 10 | 10 | 10 |
+
+**Saving Throws** Dex +8, Con +6 **Damage Vulnerabilities** radiant **Damage Immunities** poison **Condition Immunities** charmed **Challenge** 5 (1,800 XP)
+`
+
+	result := markdownToHTML(multiPropMD, "/tmp")
+
+	// Should contain the stat-block wrapper
+	if !strings.Contains(result, `<div class="stat-block" data-monster="Test Monster">`) {
+		t.Errorf("expected stat-block wrapper, got:\n%s", result)
+	}
+
+	// 5 .property-line divs (Saving Throws, Damage Vulnerabilities, Damage
+	// Immunities, Condition Immunities, Challenge).
+	propLineCount := strings.Count(result, `<p class="property-line">`)
+	if propLineCount != 5 {
+		t.Errorf("expected 5 .property-line divs, got %d in:\n%s", propLineCount, result)
+	}
+
+	// Each label should appear
+	for _, want := range []string{"Saving Throws", "Damage Vulnerabilities", "Damage Immunities", "Condition Immunities", "Challenge"} {
+		if !strings.Contains(result, want) {
+			t.Errorf("expected label %q in output, got:\n%s", want, result)
+		}
+	}
+}
+
 func TestImageEmbedding_CodeAssetRef(t *testing.T) {
 	tmpDir := t.TempDir()
 	imgDir := filepath.Join(tmpDir, "assets")
