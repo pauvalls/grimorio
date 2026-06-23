@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Docs
 
 - Update changelog for v5.4.1
+- Update changelog for v5.4.2
+
+### Fix
+
+- Cover image + bestiary WotC stat blocks 17) (compiler)
+
+## [v5.4.2] - 2026-06-23
+
+### Docs
+
+- Update changelog for v5.4.1
 
 ### Fix
 
