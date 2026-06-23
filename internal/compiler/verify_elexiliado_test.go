@@ -63,6 +63,48 @@ func TestVerifyElExiliado_CoverAndBestiary(t *testing.T) {
 	}
 	t.Logf("Found %d stat-block wrappers (target: >= 4 named)", statBlockCount)
 
+	// REQ (fix-statblock-layout-and-cover-overflow): El Rayo's hero image
+	// must be hoisted INSIDE the .stat-block div (Bug C from PR #17).
+	// Grep the El Rayo stat-block for an <img> tag; the image is embedded
+	// as a base64 data URI by the existing processImages flow, so the
+	// source filename is not present in the compiled HTML.
+	elRayoOpenIdx := strings.Index(html, `<div class="stat-block" data-monster="El Rayo">`)
+	if elRayoOpenIdx != -1 {
+		// Walk the div nesting to find the matching </div>.
+		depth := 0
+		elRayoEnd := -1
+		for j := elRayoOpenIdx; j < len(html); {
+			switch {
+			case strings.HasPrefix(html[j:], `<div`):
+				depth++
+				j += len("<div")
+			case strings.HasPrefix(html[j:], `</div>`):
+				depth--
+				if depth == 0 {
+					elRayoEnd = j + len("</div>")
+					j = elRayoEnd
+					break
+				}
+				j += len("</div>")
+			default:
+				j++
+			}
+			if elRayoEnd != -1 {
+				break
+			}
+		}
+		if elRayoEnd == -1 {
+			t.Error("could not find matching </div> for El Rayo stat-block")
+		} else {
+			elRayoBlock := html[elRayoOpenIdx:elRayoEnd]
+			if !strings.Contains(elRayoBlock, `<img`) {
+				t.Error("El Rayo stat-block does NOT contain the hoisted hero image (Bug C is back)")
+			} else {
+				t.Logf("El Rayo stat-block contains the hoisted hero image (Bug C fixed)")
+			}
+		}
+	}
+
 	// REQ-3.1, 3.2, 3.3: Cover page CSS hardening must be present.
 	// UPDATED for fix-statblock-layout-and-cover-overflow: the new contract
 	// is `height: 297mm` (exact) + `max-height: 297mm` + `overflow: hidden`,

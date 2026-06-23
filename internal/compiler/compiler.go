@@ -1271,28 +1271,40 @@ func detectTraitLine(line string) bool {
 	return strings.HasSuffix(firstLabel, ".")
 }
 
-// peekHoistableMonsterImage scans forward from startIdx, skipping blank lines
-// and horizontal rules (---, ***, ___, - - -), looking for a markdown image
-// whose path's basename starts with `monster-`. If found, returns the
-// rendered <img> HTML and the index of the line AFTER the image. Otherwise
-// returns ("", 0). This is the convention guard for image hoisting: only
-// files explicitly named `monster-*.png` (and similar) are hoisted into
-// the just-emitted .stat-block; scene, NPC, and cover illustrations keep
-// their normal top-level rendering.
+// peekHoistableMonsterImage scans forward from startIdx looking for a
+// markdown image whose path's basename starts with `monster-`. If found,
+// returns the rendered <img> HTML and the index of the line AFTER the
+// image. Otherwise returns ("", 0). This is the convention guard for
+// image hoisting: only files explicitly named `monster-*.png` (and
+// similar) are hoisted into the just-emitted .stat-block; scene, NPC,
+// and cover illustrations keep their normal top-level rendering.
 //
-// The skip-horizontal-rule behavior matches the real bestiary layout:
-//   ## Monster
-//   *<size> <type>*
-//   ... stat block content ...
-//
-//   ---                        ← horizontal rule
-//
-//   ![…](assets/monster-x.png) ← hero image, hoisted
+// The scan is permissive: it skips blank lines and horizontal rules
+// (---, ***, ___, - - -), but it does NOT stop at intermediate text /
+// h3 / paragraphs. The real el-exiliado bestiary places the hero image
+// AFTER the monster's tactical-phases section (which has its own ---,
+// ### heading, and several trait paragraphs before the image). The
+// only hard stop is the next `## ` heading — we never cross into the
+// next monster's section, even though we scan past any in-section
+// content.
 //
 // REQ (fix-statblock-layout-and-cover-overflow), Decision §Image hoisting.
 func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, seenImages map[string]bool) (string, int) {
 	for peek := startIdx; peek < len(lines); peek++ {
 		t := strings.TrimSpace(lines[peek])
+		// Hard stop: next H2 heading (the next monster's section).
+		// We must not cross this boundary, even though we skip blanks
+		// and horizontal rules.
+		if strings.HasPrefix(t, "## ") {
+			return "", 0
+		}
+		// Skip: blank lines, horizontal rules, and any non-image content.
+		// (Tactical phases, h3 sub-headings, and trait paragraphs inside
+		// the monster section are all kept as-is in the stat block by
+		// parseStatBlock when they appear BEFORE the closing ---; the
+		// peek only runs AFTER parseStatBlock returns. Content after
+		// the closing --- is conventionally the hero image, possibly
+		// interleaved with commentary that the author placed between.)
 		if t == "" || t == "---" || t == "***" || t == "___" || t == "- - -" {
 			continue
 		}
@@ -1313,8 +1325,11 @@ func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, see
 				return img, peek + 1
 			}
 		}
-		// Anything else (heading, text, list, etc.) — stop peeking.
-		return "", 0
+		// Non-image, non-skip content. Keep scanning — the image may be
+		// a few lines further (the el-exiliado convention is "monster
+		// image goes after the LAST --- rule, just before the next
+		// ## section, regardless of intermediate commentary").
+		continue
 	}
 	return "", 0
 }
