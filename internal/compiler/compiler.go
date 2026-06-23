@@ -1195,8 +1195,12 @@ func classifyBlockquote(lines []string, sectionID string) (blockquoteClass, []st
 }
 
 // statBlockSizeRegex matches the WotC size word at the start of an italic
-// type line that opens a monster stat block. Bilingual: 6 EN + 6 ES sizes.
-var statBlockSizeRegex = regexp.MustCompile(`^\*(Tiny|Small|Medium|Large|Huge|Gargantuan|Minusculo|Pequeño|Mediano|Grande|Enorme|Colosal)\s+\S`)
+// type line that opens a monster stat block. Bilingual, both masculine and
+// feminine Spanish forms are covered (the el-exiliado bestiary uses
+// Diminuta, Pequeña, Mediana — not just the masculine forms).
+var statBlockSizeRegex = regexp.MustCompile(
+	`^\*(Tiny|Small|Medium|Large|Huge|Gargantuan|` +
+		`Diminut[oa]|Minuscul[oa]|Pequeñ[oa]|Median[oa]|Grand[ea]|Enorme[ns]?|Colosal)\s+\S`)
 
 // statBlockPropertyRegex finds a single **Label** in a stat block line. Go
 // regexp does not support lookahead, so the value is extracted separately
@@ -1866,7 +1870,9 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			// line is "*<Size> <Type>*", enter the stat block sub-parser.
 			if sb, consumed := tryStatBlock(text, lines, i, baseDir, seenImages, reg); consumed > 0 {
 				out = append(out, sb)
-				i += consumed - 1 // -1 because the loop's own i++ will advance
+				// Parser returns the absolute index of the line AFTER the block.
+				// Set i = consumed - 1 so the loop's own i++ lands on `consumed`.
+				i = consumed - 1
 				continue
 			}
 
