@@ -478,6 +478,124 @@ func TestStatBlockParser_SplitsMultiPropertyLine(t *testing.T) {
 	}
 }
 
+func TestStatBlockParser_HoistsMonsterImage(t *testing.T) {
+	// REQ (fix-statblock-layout-and-cover-overflow): when a
+	// `## Monster` section is followed by `---` and then a
+	// `![…](assets/monster-X.png)` image, the image must be embedded
+	// INSIDE the just-emitted <div class="stat-block"> as a hero
+	// illustration, not as a free-floating <img> after the stat block.
+	//
+	// v5.4.2 (PR #17) put the image after the closing </div>, so the
+	// bestiary ended with a stack of detached monster illustrations at
+	// the bottom (e.g. El Rayo at bestiary.md line 932).
+	//
+	// The fixture mirrors the real el-exiliado bestiary layout:
+	//   ## My Monster
+	//   *<size> <type>*
+	//   **Armor Class** 10
+	//   ...
+	//
+	//   ---                          ← horizontal rule (signals end of stat block)
+	//
+	//   ![…](assets/monster-foo.png) ← hero image, hoisted
+	//
+	//   ## Next Section
+	tmpDir := t.TempDir()
+	imgDir := filepath.Join(tmpDir, "assets")
+	if err := os.MkdirAll(imgDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	imgPath := filepath.Join(imgDir, "monster-foo.png")
+	if err := os.WriteFile(imgPath, []byte("fake-png-bytes"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	monsterMD := `## My Monster
+*Mediana bestia, sin alineamiento*
+
+**Armor Class** 10
+**Hit Points** 22 (4d8 + 4)
+**Speed** 40 ft.
+
+---
+
+` + "![My Monster illustration](assets/monster-foo.png)" + `
+
+## Next Section
+
+Body of the next section.
+`
+
+	result := markdownToHTML(monsterMD, tmpDir)
+
+	// 1. The stat-block wrapper must be present.
+	if !strings.Contains(result, `<div class="stat-block" data-monster="My Monster">`) {
+		t.Fatalf("expected stat-block wrapper, got:\n%s", result)
+	}
+
+	// 2. The image must be INSIDE the stat-block, not after it.
+	//    The hoisted image gets the <img ... class="campaign-image"> tag.
+	statBlockOpen := strings.Index(result, `<div class="stat-block" data-monster="My Monster">`)
+	if statBlockOpen == -1 {
+		t.Fatal("stat-block open tag not found")
+	}
+	// Find the matching close </div> by counting nesting depth from the
+	// stat-block open tag (the stat-block has 3 inner .stat-line divs
+	// inside, so the first </div> is the inner close, not the outer).
+	statBlockEnd := -1
+	depth := 0
+	for j := statBlockOpen; j < len(result); {
+		switch {
+		case strings.HasPrefix(result[j:], `<div`):
+			depth++
+			j += len("<div")
+		case strings.HasPrefix(result[j:], `</div>`):
+			depth--
+			if depth == 0 {
+				statBlockEnd = j + len("</div>")
+				j = statBlockEnd
+				break
+			}
+			j += len("</div>")
+		default:
+			j++
+		}
+		if statBlockEnd != -1 {
+			break
+		}
+	}
+	if statBlockEnd == -1 {
+		t.Fatal("could not find matching </div> for stat-block")
+	}
+	statBlockHTML := result[statBlockOpen:statBlockEnd]
+
+	if !strings.Contains(statBlockHTML, `<img`) {
+		t.Errorf("expected <img> tag inside the stat-block, got stat-block HTML:\n%s", statBlockHTML)
+	}
+
+	// 3. The hero image must be at the stat-block's top level (NOT wrapped
+	//    in <p>…</p> like a free-floating image). After hoisting, the
+	//    <img> should appear right before the closing </div> at top level.
+	if !strings.Contains(statBlockHTML, `class="campaign-image"`) {
+		t.Errorf("expected campaign-image class on the hoisted image, got:\n%s", statBlockHTML)
+	}
+
+	// 4. The hoisted image is embedded as a data URI (base64 PNG), not as
+	//    a relative path. So we check the base64 of "fake-png-bytes".
+	if !strings.Contains(statBlockHTML, "ZmFrZS1wbmctYnl0ZXM=") {
+		t.Errorf("expected hoisted image's base64 data URI, got:\n%s", statBlockHTML)
+	}
+
+	// 5. Negative: the image must NOT appear AFTER the stat-block close.
+	afterStatBlock := result[statBlockEnd:]
+	imgAfterIdx := strings.Index(afterStatBlock, `<img`)
+	if imgAfterIdx != -1 {
+		// The image appearing after </div> would mean hoisting failed.
+		t.Errorf("image appeared as a top-level element AFTER the stat-block, got:\n%s",
+			afterStatBlock[:min(imgAfterIdx+200, len(afterStatBlock))])
+	}
+}
+
 func TestImageEmbedding_CodeAssetRef(t *testing.T) {
 	tmpDir := t.TempDir()
 	imgDir := filepath.Join(tmpDir, "assets")

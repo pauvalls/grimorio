@@ -1271,6 +1271,54 @@ func detectTraitLine(line string) bool {
 	return strings.HasSuffix(firstLabel, ".")
 }
 
+// peekHoistableMonsterImage scans forward from startIdx, skipping blank lines
+// and horizontal rules (---, ***, ___, - - -), looking for a markdown image
+// whose path's basename starts with `monster-`. If found, returns the
+// rendered <img> HTML and the index of the line AFTER the image. Otherwise
+// returns ("", 0). This is the convention guard for image hoisting: only
+// files explicitly named `monster-*.png` (and similar) are hoisted into
+// the just-emitted .stat-block; scene, NPC, and cover illustrations keep
+// their normal top-level rendering.
+//
+// The skip-horizontal-rule behavior matches the real bestiary layout:
+//   ## Monster
+//   *<size> <type>*
+//   ... stat block content ...
+//
+//   ---                        ← horizontal rule
+//
+//   ![…](assets/monster-x.png) ← hero image, hoisted
+//
+// REQ (fix-statblock-layout-and-cover-overflow), Decision §Image hoisting.
+func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, seenImages map[string]bool) (string, int) {
+	for peek := startIdx; peek < len(lines); peek++ {
+		t := strings.TrimSpace(lines[peek])
+		if t == "" || t == "---" || t == "***" || t == "___" || t == "- - -" {
+			continue
+		}
+		if imageRegex.MatchString(t) {
+			m := imageRegex.FindStringSubmatch(t)
+			if m == nil || len(m) < 3 {
+				return "", 0
+			}
+			imgPath := m[2] // group 1 is alt text, group 2 is the path
+			base := filepath.Base(imgPath)
+			if strings.HasPrefix(base, "monster-") {
+				img := processImages(t, baseDir, seenImages)
+				if img == "" {
+					// Image was already seen (dedup) or unreadable; advance
+					// past it so the main loop doesn't emit a duplicate.
+					return "", peek + 1
+				}
+				return img, peek + 1
+			}
+		}
+		// Anything else (heading, text, list, etc.) — stop peeking.
+		return "", 0
+	}
+	return "", 0
+}
+
 // tryStatBlock peeks ahead from a `## ` heading. If the next non-blank line
 // matches the WotC size+type italic pattern, it renders a full stat block
 // and returns the rendered HTML + the number of lines consumed. Otherwise
@@ -1925,6 +1973,22 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			// line is "*<Size> <Type>*", enter the stat block sub-parser.
 			if sb, consumed := tryStatBlock(text, lines, i, baseDir, seenImages, reg); consumed > 0 {
 				out = append(out, sb)
+
+				// REQ (fix-statblock-layout-and-cover-overflow): after a
+				// stat block, peek for a `monster-{name}.png` hero image
+				// and hoist it inside the just-emitted <div class="stat-block">.
+				// Convention: any author adding a monster image should name
+				// the file `monster-{name}.png` and place it directly after
+				// the stat block (typically after the closing --- rule). The
+				// convention guard (`monster-` prefix) prevents scene / npc /
+				// cover images from being hoisted into the wrong block.
+				if imgHTML, newConsumed := peekHoistableMonsterImage(consumed, lines, baseDir, seenImages); imgHTML != "" {
+					if len(out) > 0 && strings.HasSuffix(out[len(out)-1], "</div>") {
+						out[len(out)-1] = strings.TrimSuffix(out[len(out)-1], "</div>") + imgHTML + "</div>"
+						consumed = newConsumed
+					}
+				}
+
 				// Parser returns the absolute index of the line AFTER the block.
 				// Set i = consumed - 1 so the loop's own i++ lands on `consumed`.
 				i = consumed - 1
