@@ -269,6 +269,75 @@ El Rayo ataca desde la distancia.
 	}
 }
 
+func TestStatBlockParser_TraitWithInnerBold(t *testing.T) {
+	// REQ (fix-statblock-layout-and-cover-overflow): a WotC trait line
+	// with inner **bold** spans (e.g. Serpiente Ciega de Calor's
+	// "Radiación Distorsionante (pasiva).") must render as a single
+	// <p class="trait"> element, not be split into 3 .property-line divs.
+	// v5.4.2 split the line because it counted 3 **…** groups and emitted
+	// one property-line per group, which broke the WotC look and triggered
+	// the flexbox column bug in the stat-line CSS.
+	serpienteMD := `## Serpiente Ciega de Calor
+*Pequeña bestia, sin alineamiento*
+
+**Armor Class** 12
+**Hit Points** 7 (2d6)
+**Speed** 30 ft., swim 20 ft.
+
+| STR | DEX | CON | INT | WIS | CHA |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 8 (-1) | 14 (+2) | 10 (+0) | 1 (-5) | 12 (+1) | 4 (-3) |
+
+**Senses** blindsight 10 ft. (thermal), passive Perception 11
+**Challenge** 1/4 (50 XP)
+
+**Radiación Distorsionante (pasiva).** La serpiente tiene **inmunidad** al daño de Radiación Arcana y **ventaja** en salvaciones de Constitución contra frío.
+`
+
+	result := markdownToHTML(serpienteMD, "/tmp")
+
+	// 1. The wrapper must still be present (we are inside a stat block).
+	if !strings.Contains(result, `<div class="stat-block" data-monster="Serpiente Ciega de Calor">`) {
+		t.Fatalf("expected stat-block wrapper, got:\n%s", result)
+	}
+
+	// 2. The trait line must be a single <p class="trait">.
+	traitCount := strings.Count(result, `<p class="trait">`)
+	if traitCount != 1 {
+		t.Errorf("expected exactly 1 <p class=\"trait\">, got %d in:\n%s", traitCount, result)
+	}
+
+	// 3. The trait must contain the label and the inner bolds.
+	if !strings.Contains(result, `<strong>Radiación Distorsionante (pasiva).</strong>`) {
+		t.Errorf("expected trait label as <strong>…</strong>, got:\n%s", result)
+	}
+	if !strings.Contains(result, `<strong>inmunidad</strong>`) {
+		t.Errorf("expected inner bold 'inmunidad' preserved, got:\n%s", result)
+	}
+	if !strings.Contains(result, `<strong>ventaja</strong>`) {
+		t.Errorf("expected inner bold 'ventaja' preserved, got:\n%s", result)
+	}
+
+	// 4. None of the trait's labels should be promoted to .stat-line
+	// (.stat-line is still legitimate for AC/HP/Speed, but trait labels
+	// must not appear inside a <span class="stat-label">). The fixture
+	// has 3 .stat-line divs (Armor Class, Hit Points, Speed) and 0 trait
+	// labels in any of them.
+	statLineCount := strings.Count(result, `<div class="stat-line">`)
+	if statLineCount != 3 {
+		t.Errorf("expected 3 .stat-line divs (AC/HP/Speed only), got %d (trait labels leaked into .stat-line?):\n%s",
+			statLineCount, result)
+	}
+	for _, traitLabel := range []string{"Radiación Distorsionante", "inmunidad", "ventaja"} {
+		// If any of these appear inside a stat-label span, the trait
+		// was split and the bug is back.
+		if strings.Contains(result, `<span class="stat-label">`+traitLabel) {
+			t.Errorf("trait label %q leaked into a .stat-line span (bug is back), got:\n%s",
+				traitLabel, result)
+		}
+	}
+}
+
 func TestStatBlockParser_DetectsElRayo(t *testing.T) {
 	// El Rayo markdown from el-exiliado-de-las-tierras-marchitas/bestiary.md
 	// lines 876-893. Verifies the WotC stat block parser produces
@@ -406,6 +475,124 @@ func TestStatBlockParser_SplitsMultiPropertyLine(t *testing.T) {
 		if !strings.Contains(result, want) {
 			t.Errorf("expected label %q in output, got:\n%s", want, result)
 		}
+	}
+}
+
+func TestStatBlockParser_HoistsMonsterImage(t *testing.T) {
+	// REQ (fix-statblock-layout-and-cover-overflow): when a
+	// `## Monster` section is followed by `---` and then a
+	// `![…](assets/monster-X.png)` image, the image must be embedded
+	// INSIDE the just-emitted <div class="stat-block"> as a hero
+	// illustration, not as a free-floating <img> after the stat block.
+	//
+	// v5.4.2 (PR #17) put the image after the closing </div>, so the
+	// bestiary ended with a stack of detached monster illustrations at
+	// the bottom (e.g. El Rayo at bestiary.md line 932).
+	//
+	// The fixture mirrors the real el-exiliado bestiary layout:
+	//   ## My Monster
+	//   *<size> <type>*
+	//   **Armor Class** 10
+	//   ...
+	//
+	//   ---                          ← horizontal rule (signals end of stat block)
+	//
+	//   ![…](assets/monster-foo.png) ← hero image, hoisted
+	//
+	//   ## Next Section
+	tmpDir := t.TempDir()
+	imgDir := filepath.Join(tmpDir, "assets")
+	if err := os.MkdirAll(imgDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	imgPath := filepath.Join(imgDir, "monster-foo.png")
+	if err := os.WriteFile(imgPath, []byte("fake-png-bytes"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	monsterMD := `## My Monster
+*Mediana bestia, sin alineamiento*
+
+**Armor Class** 10
+**Hit Points** 22 (4d8 + 4)
+**Speed** 40 ft.
+
+---
+
+` + "![My Monster illustration](assets/monster-foo.png)" + `
+
+## Next Section
+
+Body of the next section.
+`
+
+	result := markdownToHTML(monsterMD, tmpDir)
+
+	// 1. The stat-block wrapper must be present.
+	if !strings.Contains(result, `<div class="stat-block" data-monster="My Monster">`) {
+		t.Fatalf("expected stat-block wrapper, got:\n%s", result)
+	}
+
+	// 2. The image must be INSIDE the stat-block, not after it.
+	//    The hoisted image gets the <img ... class="campaign-image"> tag.
+	statBlockOpen := strings.Index(result, `<div class="stat-block" data-monster="My Monster">`)
+	if statBlockOpen == -1 {
+		t.Fatal("stat-block open tag not found")
+	}
+	// Find the matching close </div> by counting nesting depth from the
+	// stat-block open tag (the stat-block has 3 inner .stat-line divs
+	// inside, so the first </div> is the inner close, not the outer).
+	statBlockEnd := -1
+	depth := 0
+	for j := statBlockOpen; j < len(result); {
+		switch {
+		case strings.HasPrefix(result[j:], `<div`):
+			depth++
+			j += len("<div")
+		case strings.HasPrefix(result[j:], `</div>`):
+			depth--
+			if depth == 0 {
+				statBlockEnd = j + len("</div>")
+				j = statBlockEnd
+				break
+			}
+			j += len("</div>")
+		default:
+			j++
+		}
+		if statBlockEnd != -1 {
+			break
+		}
+	}
+	if statBlockEnd == -1 {
+		t.Fatal("could not find matching </div> for stat-block")
+	}
+	statBlockHTML := result[statBlockOpen:statBlockEnd]
+
+	if !strings.Contains(statBlockHTML, `<img`) {
+		t.Errorf("expected <img> tag inside the stat-block, got stat-block HTML:\n%s", statBlockHTML)
+	}
+
+	// 3. The hero image must be at the stat-block's top level (NOT wrapped
+	//    in <p>…</p> like a free-floating image). After hoisting, the
+	//    <img> should appear right before the closing </div> at top level.
+	if !strings.Contains(statBlockHTML, `class="campaign-image"`) {
+		t.Errorf("expected campaign-image class on the hoisted image, got:\n%s", statBlockHTML)
+	}
+
+	// 4. The hoisted image is embedded as a data URI (base64 PNG), not as
+	//    a relative path. So we check the base64 of "fake-png-bytes".
+	if !strings.Contains(statBlockHTML, "ZmFrZS1wbmctYnl0ZXM=") {
+		t.Errorf("expected hoisted image's base64 data URI, got:\n%s", statBlockHTML)
+	}
+
+	// 5. Negative: the image must NOT appear AFTER the stat-block close.
+	afterStatBlock := result[statBlockEnd:]
+	imgAfterIdx := strings.Index(afterStatBlock, `<img`)
+	if imgAfterIdx != -1 {
+		// The image appearing after </div> would mean hoisting failed.
+		t.Errorf("image appeared as a top-level element AFTER the stat-block, got:\n%s",
+			afterStatBlock[:min(imgAfterIdx+200, len(afterStatBlock))])
 	}
 }
 

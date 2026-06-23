@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -172,10 +171,15 @@ func TestCSSRegression_EncounterRecommendation(t *testing.T) {
 	}
 }
 
-// TestCSSRegression_CoverWrapper tests the cover page CSS hardening
-// (REQ-3.1, 3.2, 3.3): .cover-wrapper must have BOTH legacy and modern
-// page-break properties, use min-height (not fixed height), and the
-// .cover-footer must be absolutely positioned so it cannot push overflow.
+// TestCSSRegression_CoverWrapper tests the cover page CSS hardening.
+// UPDATED for fix-statblock-layout-and-cover-overflow: the v5.4.2 contract
+// (min-height + flex column + absolute footer) was the cause of Bug B
+// (cover spilled to 2 pages). The new contract is an EXACT 297mm box
+// with absolute-positioned children — see TestCSSRegression_CoverFixedHeight
+// for the full new contract. This test keeps the legacy "must not regress"
+// checks (BOTH break-after + break-inside variants, position: relative,
+// absolute footer with bottom offset) and is now compatible with the
+// fixed-height rule.
 func TestCSSRegression_CoverWrapper(t *testing.T) {
 	css, err := compiler.GetTemplate("dnd-style")
 	if err != nil {
@@ -205,15 +209,13 @@ func TestCSSRegression_CoverWrapper(t *testing.T) {
 		t.Errorf("CSS regression: .cover-wrapper missing modern 'break-after: page'. Block: %s", block)
 	}
 
-	// REQ-3.2: min-height (not fixed height) as a safety net
-	if !strings.Contains(block, "min-height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'min-height: 297mm'. Block: %s", block)
+	// REQ-3.2 (updated): EXACT height 297mm (not min-height) — the new
+	// contract that fixes Bug B (cover spilled to 2 pages).
+	if !strings.Contains(block, "height: 297mm") {
+		t.Errorf("CSS regression: .cover-wrapper missing exact 'height: 297mm'. Block: %s", block)
 	}
-	// Negative check: no bare 'height: 297mm' (would be too rigid).
-	// Use a regex with a non-word boundary so it doesn't match 'min-height:'.
-	fixedHeightRe := regexp.MustCompile(`(?:^|[^a-z\-])height:\s*297mm`)
-	if fixedHeightRe.MatchString(block) {
-		t.Errorf("CSS regression: .cover-wrapper still uses fixed 'height: 297mm' (should be min-height). Block: %s", block)
+	if strings.Contains(block, "min-height: 297mm") {
+		t.Errorf("CSS regression: .cover-wrapper still uses 'min-height: 297mm' (Bug B is back). Block: %s", block)
 	}
 
 	// position: relative needed for absolute footer positioning
@@ -248,6 +250,135 @@ func TestCSSRegression_CoverWrapper(t *testing.T) {
 // borders, and all new sub-classes (.stat-line, .stat-label, .stat-value,
 // .ability-scores, .property-line, .monster-type, .trait, .action,
 // .actions-heading).
+func TestCSSRegression_StatLineNoFlex(t *testing.T) {
+	// REQ (fix-statblock-layout-and-cover-overflow): .stat-block .stat-line
+	// must NOT use `display: flex` or `justify-content`. The v5.4.2 flex
+	// layout pushed long values into a narrow right column when the parser
+	// over-split a trait line into 3 .stat-line rows (Bug A from PR #17).
+	// The WotC look is bold label + space + value flowing inline, so
+	// `display: block` with inline label/value spans is the correct rule.
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	// Find the .stat-block .stat-line rule.
+	classIdx := strings.Index(css, ".stat-block .stat-line {")
+	if classIdx == -1 {
+		classIdx = strings.Index(css, ".stat-block .stat-line{")
+	}
+	if classIdx == -1 {
+		t.Fatal("CSS regression: '.stat-block .stat-line' rule not found in CSS")
+	}
+	closeIdx := strings.Index(css[classIdx:], "}")
+	if closeIdx == -1 {
+		t.Fatal("CSS regression: could not find closing brace for .stat-block .stat-line")
+	}
+	block := css[classIdx : classIdx+closeIdx+1]
+
+	if strings.Contains(block, "display: flex") {
+		t.Errorf("CSS regression: .stat-block .stat-line still uses 'display: flex' (Bug A is back). Block: %s", block)
+	}
+	if strings.Contains(block, "justify-content") {
+		t.Errorf("CSS regression: .stat-block .stat-line still uses 'justify-content' (Bug A is back). Block: %s", block)
+	}
+
+	// The label/value spans must remain, and the stat-label should still
+	// be bold (the WotC convention). We don't assert `display: block`
+	// directly because the fix uses block; the negative assertions above
+	// are the contract.
+	if !strings.Contains(css, ".stat-block .stat-label") {
+		t.Error("CSS regression: '.stat-block .stat-label' rule not found")
+	}
+	if !strings.Contains(css, ".stat-block .stat-value") {
+		t.Error("CSS regression: '.stat-block .stat-value' rule not found")
+	}
+}
+
+// TestCSSRegression_CoverFixedHeight asserts the new cover contract:
+// REQ (fix-statblock-layout-and-cover-overflow): .cover-wrapper uses
+// EXACT height 297mm (not min-height 297mm) with absolute-positioned
+// children, because the v5.4.2 min-height + flex-column + absolute
+// footer approach pushed the wrapper past one A4 page (Bug B from
+// PR #17 — cover spilled to 2 pages).
+func TestCSSRegression_CoverFixedHeight(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	classIdx := strings.Index(css, ".cover-wrapper {")
+	if classIdx == -1 {
+		classIdx = strings.Index(css, ".cover-wrapper{")
+	}
+	if classIdx == -1 {
+		t.Fatal("CSS regression: '.cover-wrapper' class not found in CSS")
+	}
+	closeIdx := strings.Index(css[classIdx:], "}")
+	if closeIdx == -1 {
+		t.Fatal("CSS regression: could not find closing brace for .cover-wrapper")
+	}
+	block := css[classIdx : classIdx+closeIdx+1]
+
+	// The new contract: height: 297mm (exact) AND max-height: 297mm.
+	if !strings.Contains(block, "height: 297mm") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'height: 297mm' (exact). Block: %s", block)
+	}
+	if !strings.Contains(block, "max-height: 297mm") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'max-height: 297mm'. Block: %s", block)
+	}
+	if strings.Contains(block, "min-height: 297mm") {
+		t.Errorf("CSS regression: .cover-wrapper still uses 'min-height: 297mm' (Bug B is back). Block: %s", block)
+	}
+	if !strings.Contains(block, "overflow: hidden") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'overflow: hidden' (needed for the fixed 297mm box). Block: %s", block)
+	}
+	if !strings.Contains(block, "position: relative") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'position: relative' (needed for absolute children). Block: %s", block)
+	}
+	// Break-inside avoid (BOTH legacy and modern forms)
+	if !strings.Contains(block, "page-break-inside: avoid") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'page-break-inside: avoid'. Block: %s", block)
+	}
+	if !strings.Contains(block, "break-inside: avoid") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'break-inside: avoid'. Block: %s", block)
+	}
+	// Break-after (BOTH legacy and modern forms)
+	if !strings.Contains(block, "page-break-after: always") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'page-break-after: always'. Block: %s", block)
+	}
+	if !strings.Contains(block, "break-after: page") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'break-after: page'. Block: %s", block)
+	}
+	// No flex layout (was the cause of Bug B)
+	if strings.Contains(block, "display: flex") {
+		t.Errorf("CSS regression: .cover-wrapper still uses 'display: flex' (Bug B is back). Block: %s", block)
+	}
+
+	// .cover-image must be absolutely positioned between top: 35mm and
+	// bottom: 20mm (per design #2306).
+	imgIdx := strings.Index(css, ".cover-image {")
+	if imgIdx == -1 {
+		imgIdx = strings.Index(css, ".cover-image{")
+	}
+	if imgIdx == -1 {
+		t.Fatal("CSS regression: '.cover-image' class not found in CSS")
+	}
+	imgClose := strings.Index(css[imgIdx:], "}")
+	if imgClose == -1 {
+		t.Fatal("CSS regression: could not find closing brace for .cover-image")
+	}
+	imgBlock := css[imgIdx : imgIdx+imgClose+1]
+	if !strings.Contains(imgBlock, "position: absolute") {
+		t.Errorf("CSS regression: .cover-image not absolutely positioned. Block: %s", imgBlock)
+	}
+	if !strings.Contains(imgBlock, "top: 35mm") {
+		t.Errorf("CSS regression: .cover-image missing 'top: 35mm' (per design). Block: %s", imgBlock)
+	}
+	if !strings.Contains(imgBlock, "bottom: 20mm") {
+		t.Errorf("CSS regression: .cover-image missing 'bottom: 20mm' (per design). Block: %s", imgBlock)
+	}
+}
 func TestCSSRegression_StatBlockClassic(t *testing.T) {
 	css, err := compiler.GetTemplate("dnd-style")
 	if err != nil {

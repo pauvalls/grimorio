@@ -1249,6 +1249,91 @@ func isCoreStat(label string) bool {
 	return false
 }
 
+// detectTraitLine reports whether a stat-block line is a WotC trait header.
+//
+// The WotC convention is "**Name.** description with optional **inner
+// bolds**". The signature is: the FIRST `**…**` group ends in `.` AND at
+// least one more `**…**` group exists in the same line. When this matches,
+// the line is rendered as a single <p class="trait"> with inner bolds
+// preserved inline, instead of being split into one .property-line /
+// .stat-line per `**…**` group.
+//
+// Reference: SRD monster stat block convention ("Damage Vulnerabilities"
+// / "Condition Immunities" / "Senses" lines never have a label ending in
+// `.`, so a trailing period in the first bold is a reliable trait signal).
+func detectTraitLine(line string) bool {
+	matches := statBlockPropertyRegex.FindAllStringSubmatchIndex(line, -1)
+	if len(matches) < 2 {
+		return false
+	}
+	first := matches[0]
+	firstLabel := strings.TrimSpace(line[first[2]:first[3]])
+	return strings.HasSuffix(firstLabel, ".")
+}
+
+// peekHoistableMonsterImage scans forward from startIdx looking for a
+// markdown image whose path's basename starts with `monster-`. If found,
+// returns the rendered <img> HTML and the index of the line AFTER the
+// image. Otherwise returns ("", 0). This is the convention guard for
+// image hoisting: only files explicitly named `monster-*.png` (and
+// similar) are hoisted into the just-emitted .stat-block; scene, NPC,
+// and cover illustrations keep their normal top-level rendering.
+//
+// The scan is permissive: it skips blank lines and horizontal rules
+// (---, ***, ___, - - -), but it does NOT stop at intermediate text /
+// h3 / paragraphs. The real el-exiliado bestiary places the hero image
+// AFTER the monster's tactical-phases section (which has its own ---,
+// ### heading, and several trait paragraphs before the image). The
+// only hard stop is the next `## ` heading — we never cross into the
+// next monster's section, even though we scan past any in-section
+// content.
+//
+// REQ (fix-statblock-layout-and-cover-overflow), Decision §Image hoisting.
+func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, seenImages map[string]bool) (string, int) {
+	for peek := startIdx; peek < len(lines); peek++ {
+		t := strings.TrimSpace(lines[peek])
+		// Hard stop: next H2 heading (the next monster's section).
+		// We must not cross this boundary, even though we skip blanks
+		// and horizontal rules.
+		if strings.HasPrefix(t, "## ") {
+			return "", 0
+		}
+		// Skip: blank lines, horizontal rules, and any non-image content.
+		// (Tactical phases, h3 sub-headings, and trait paragraphs inside
+		// the monster section are all kept as-is in the stat block by
+		// parseStatBlock when they appear BEFORE the closing ---; the
+		// peek only runs AFTER parseStatBlock returns. Content after
+		// the closing --- is conventionally the hero image, possibly
+		// interleaved with commentary that the author placed between.)
+		if t == "" || t == "---" || t == "***" || t == "___" || t == "- - -" {
+			continue
+		}
+		if imageRegex.MatchString(t) {
+			m := imageRegex.FindStringSubmatch(t)
+			if m == nil || len(m) < 3 {
+				return "", 0
+			}
+			imgPath := m[2] // group 1 is alt text, group 2 is the path
+			base := filepath.Base(imgPath)
+			if strings.HasPrefix(base, "monster-") {
+				img := processImages(t, baseDir, seenImages)
+				if img == "" {
+					// Image was already seen (dedup) or unreadable; advance
+					// past it so the main loop doesn't emit a duplicate.
+					return "", peek + 1
+				}
+				return img, peek + 1
+			}
+		}
+		// Non-image, non-skip content. Keep scanning — the image may be
+		// a few lines further (the el-exiliado convention is "monster
+		// image goes after the LAST --- rule, just before the next
+		// ## section, regardless of intermediate commentary").
+		continue
+	}
+	return "", 0
+}
+
 // tryStatBlock peeks ahead from a `## ` heading. If the next non-blank line
 // matches the WotC size+type italic pattern, it renders a full stat block
 // and returns the rendered HTML + the number of lines consumed. Otherwise
@@ -1325,6 +1410,24 @@ func parseStatBlock(name string, lines []string, typeLineIdx int, baseDir string
 
 		// Multi-property line: count **Label** groups
 		groups := splitPropertyGroups(t)
+
+		// WotC trait detection: a line whose first **…** label ends in "."
+		// AND has at least one more **…** group in the same line is a trait
+		// description (e.g. "**Radiación Distorsionante (pasiva).** La
+		// serpiente tiene **inmunidad** … **ventaja** …"). Render as a
+		// SINGLE <p class="trait"> with the whole line preserved (inner
+		// bolds kept inline). Action detection (<em> in value) wins when
+		// both signatures are present.
+		if detectTraitLine(t) {
+			rendered := formatInline(t)
+			if strings.Contains(rendered, "<em>") {
+				fmt.Fprintf(&b, `<p class="action">%s</p>`, rendered)
+			} else {
+				fmt.Fprintf(&b, `<p class="trait">%s</p>`, rendered)
+			}
+			consumed = j + 1
+			continue
+		}
 
 		// Single bold "**Actions**" or "**Legendary Actions**" alone
 		// → <h3 class="actions-heading">
@@ -1885,6 +1988,22 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			// line is "*<Size> <Type>*", enter the stat block sub-parser.
 			if sb, consumed := tryStatBlock(text, lines, i, baseDir, seenImages, reg); consumed > 0 {
 				out = append(out, sb)
+
+				// REQ (fix-statblock-layout-and-cover-overflow): after a
+				// stat block, peek for a `monster-{name}.png` hero image
+				// and hoist it inside the just-emitted <div class="stat-block">.
+				// Convention: any author adding a monster image should name
+				// the file `monster-{name}.png` and place it directly after
+				// the stat block (typically after the closing --- rule). The
+				// convention guard (`monster-` prefix) prevents scene / npc /
+				// cover images from being hoisted into the wrong block.
+				if imgHTML, newConsumed := peekHoistableMonsterImage(consumed, lines, baseDir, seenImages); imgHTML != "" {
+					if len(out) > 0 && strings.HasSuffix(out[len(out)-1], "</div>") {
+						out[len(out)-1] = strings.TrimSuffix(out[len(out)-1], "</div>") + imgHTML + "</div>"
+						consumed = newConsumed
+					}
+				}
+
 				// Parser returns the absolute index of the line AFTER the block.
 				// Set i = consumed - 1 so the loop's own i++ lands on `consumed`.
 				i = consumed - 1

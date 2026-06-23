@@ -12,13 +12,20 @@ body {
   padding: 10px;
 }
 
-/* Cover — full page */
+/* Cover — full page (A4). FIX: v5.4.2 used min-height + flex column +
+ * absolute footer, which Chromium's column-count layout rounded past one
+ * A4 page, triggering page-break-inside: avoid and spilling the cover to
+ * 2 pages (Bug B from PR #17). The new rule is an EXACT 297mm box with
+ * absolutely-positioned children — deterministic, no flex, no rounding.
+ * See internal/compiler/compiler.go cover generation for the A4
+ * assumption. */
 .cover-wrapper {
   box-sizing: border-box;
   column-span: all;
   page-break-after: always; /* legacy */
   break-after: page; /* modern, Chromium 80+ */
   page-break-inside: avoid;
+  break-inside: avoid;
   page-break-before: avoid;
   margin: -10px -10px 0 -10px;
   background: #1a0f0a;
@@ -26,23 +33,26 @@ body {
   text-align: center;
   padding: 0;
   overflow: hidden;
-  min-height: 297mm; /* safety net so footer nudge can't push overflow */
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
+  width: 100%;
+  height: 297mm;       /* A4 height — exact, not min */
+  max-height: 297mm;
 }
 
 .cover-wrapper h1 {
   font-family: 'Cinzel', serif;
   font-size: 24pt;
   font-weight: 700;
-  margin: 20px 0 0 0;
+  margin: 0;
   text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
   color: #f5f0e6;
   line-height: 1.2;
   z-index: 10;
+  position: absolute;
+  top: 20mm;
+  left: 0;
+  right: 0;
+  text-align: center;
 }
 
 .cover-footer {
@@ -51,7 +61,7 @@ body {
   color: #c9ad6a;
   text-align: center;
   position: absolute; /* take footer out of flow so it can't push overflow */
-  bottom: 12mm;
+  bottom: 8mm;
   left: 0;
   right: 0;
   margin: 0;
@@ -60,8 +70,11 @@ body {
 
 .cover-image {
   margin: 0;
-  width: 100%;
-  flex: 1;
+  position: absolute;
+  top: 35mm;            /* below title */
+  bottom: 20mm;         /* above footer */
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -69,10 +82,9 @@ body {
 }
 
 .cover-image img {
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
-  max-height: 250mm;
 }
 
 /* TOC */
@@ -328,9 +340,14 @@ tbody tr:nth-child(odd) {
   font-size: 9pt;
 }
 
+/* FIX: v5.4.2 used `display: flex; justify-content: space-between` on
+ * .stat-line, which pushed long values into a narrow right column when
+ * the parser over-split a trait line into 3 .stat-line rows (Bug A from
+ * PR #17). The WotC convention is bold label + space + value flowing
+ * inline; `display: block` with inline label/value spans is the
+ * correct rule. */
 .stat-block .stat-line {
-  display: flex;
-  justify-content: space-between;
+  display: block;
   padding: 2px 0;
   border-bottom: 1px dotted #c9ad6a;
 }
@@ -348,12 +365,14 @@ tbody tr:nth-child(odd) {
 }
 
 .stat-block .property-line {
+  display: block;       /* explicit for clarity; was implicit */
   padding: 1px 0;
   font-size: 9pt;
 }
 
 .stat-block .property-line strong {
   color: #5a3d2b;
+  font-weight: bold;
 }
 
 .stat-block .ability-scores {
