@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"encoding/base64"
@@ -1868,32 +1869,64 @@ func embedImage(imgPath, alt, baseDir string, seenImages map[string]bool) string
 	}
 
 	ext := strings.ToLower(filepath.Ext(imgPath))
-	var mimeType string
 
-	switch ext {
-	case ".svg":
-		// Use SVG directly - both Chromium and wkhtmltopdf can render SVG files
-		// Return relative path from campaign directory
+	// SVG short-circuit: must come BEFORE magic-byte scan (REQ-1.6).
+	// SVG is embedded as a relative path so Chromium can inline-render it.
+	if ext == ".svg" {
 		relPath, _ := filepath.Rel(baseDir, imgPath)
 		if relPath == "" {
 			relPath = imgPath
 		}
 		return fmt.Sprintf(`<img src="%s" alt="%s" class="campaign-image"/>`, html.EscapeString(relPath), html.EscapeString(alt))
-	case ".png":
-		mimeType = "image/png"
-	case ".jpg", ".jpeg":
-		mimeType = "image/jpeg"
-	case ".gif":
-		mimeType = "image/gif"
-	case ".webp":
-		mimeType = "image/webp"
-	default:
-		mimeType = "image/png"
+	}
+
+	// Detect MIME from magic bytes FIRST. This fixes the bug where `.png`
+	// files in assets/ are actually JPEG bytes (REQ-1.1 through 1.5).
+	var mimeType string
+	if mt, ok := detectMimeType(data); ok {
+		mimeType = mt
+	} else {
+		// Fallback to extension-derived MIME for ambiguous / unknown bytes.
+		switch ext {
+		case ".png":
+			mimeType = "image/png"
+		case ".jpg", ".jpeg":
+			mimeType = "image/jpeg"
+		case ".gif":
+			mimeType = "image/gif"
+		case ".webp":
+			mimeType = "image/webp"
+		default:
+			mimeType = "image/png"
+		}
 	}
 
 	encoded := base64.StdEncoding.EncodeToString(data)
 	dataURI := fmt.Sprintf("data:%s;base64,%s", mimeType, encoded)
 	return fmt.Sprintf(`<img src="%s" alt="%s" class="campaign-image"/>`, dataURI, html.EscapeString(alt))
+}
+
+// detectMimeType returns the MIME type inferred from the first 4-12 bytes of data.
+// Returns ("", false) when no signature matches; caller must then fall back to
+// extension-derived MIME. Recognized signatures: PNG, JPEG, GIF87a/89a, WEBP.
+func detectMimeType(data []byte) (mimeType string, detected bool) {
+	// PNG: 89 50 4E 47 0D 0A 1A 0A
+	if len(data) >= 8 && bytes.Equal(data[:8], []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}) {
+		return "image/png", true
+	}
+	// JPEG: FF D8 FF
+	if len(data) >= 3 && bytes.Equal(data[:3], []byte{0xFF, 0xD8, 0xFF}) {
+		return "image/jpeg", true
+	}
+	// GIF: "GIF87a" or "GIF89a"
+	if len(data) >= 6 && (bytes.Equal(data[:6], []byte("GIF87a")) || bytes.Equal(data[:6], []byte("GIF89a"))) {
+		return "image/gif", true
+	}
+	// WebP: "RIFF" .... "WEBP" (12 bytes covers the 4-byte size field)
+	if len(data) >= 12 && bytes.Equal(data[:4], []byte("RIFF")) && bytes.Equal(data[8:12], []byte("WEBP")) {
+		return "image/webp", true
+	}
+	return "", false
 }
 
 // findCoverImage searches for a cover image in the campaign's assets directory.

@@ -121,6 +121,97 @@ func TestImageEmbedding_MissingImage(t *testing.T) {
 	}
 }
 
+func TestImageEmbedding_MIMEDetection(t *testing.T) {
+	// 5 table cases: PNG bytes, JPEG bytes under .png (the bug), GIF, WebP, unknown fallback
+	// REQ-1.1, 1.2, 1.3, 1.4, 1.5, 4.1, 4.2
+	tests := []struct {
+		name           string
+		filename       string
+		bytes          []byte
+		wantMimePrefix string
+	}{
+		{
+			name:           "PNG bytes with .png extension",
+			filename:       "test.png",
+			bytes:          []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D},
+			wantMimePrefix: "data:image/png;base64,",
+		},
+		{
+			name:           "JPEG bytes with .png extension (the bug)",
+			filename:       "cover.png",
+			bytes:          []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F', 0x00, 0x01},
+			wantMimePrefix: "data:image/jpeg;base64,",
+		},
+		{
+			name:           "GIF87a bytes with .gif extension",
+			filename:       "anim.gif",
+			bytes:          []byte("GIF87a"),
+			wantMimePrefix: "data:image/gif;base64,",
+		},
+		{
+			name:           "RIFF/WEBP bytes with .webp extension",
+			filename:       "modern.webp",
+			bytes:          []byte{'R', 'I', 'F', 'F', 0x00, 0x00, 0x00, 0x00, 'W', 'E', 'B', 'P'},
+			wantMimePrefix: "data:image/webp;base64,",
+		},
+		{
+			name:           "Unknown bytes fall back to extension-derived MIME",
+			filename:       "mystery.png",
+			bytes:          []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B},
+			wantMimePrefix: "data:image/png;base64,",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			imgPath := filepath.Join(tmpDir, tt.filename)
+			if err := os.WriteFile(imgPath, tt.bytes, 0644); err != nil {
+				t.Fatal(err)
+			}
+
+			// Use the public embedImage via a markdown image ref
+			md := "![alt](" + imgPath + ")"
+			result := markdownToHTML(md, tmpDir)
+
+			if !strings.Contains(result, tt.wantMimePrefix) {
+				t.Errorf("expected MIME prefix %q, got result:\n%s", tt.wantMimePrefix, result)
+			}
+		})
+	}
+}
+
+func TestDetectMimeType(t *testing.T) {
+	// Direct unit test for the helper function
+	tests := []struct {
+		name       string
+		data       []byte
+		wantMime   string
+		wantDetect bool
+	}{
+		{"PNG signature", []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}, "image/png", true},
+		{"JPEG signature", []byte{0xFF, 0xD8, 0xFF, 0xE1}, "image/jpeg", true},
+		{"GIF87a signature", []byte("GIF87a"), "image/gif", true},
+		{"GIF89a signature", []byte("GIF89a"), "image/gif", true},
+		{"WebP signature", []byte{'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P'}, "image/webp", true},
+		{"empty input", []byte{}, "", false},
+		{"unknown bytes", []byte{0x00, 0x01, 0x02, 0x03}, "", false},
+		{"too short for PNG", []byte{0x89, 0x50}, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mime, detected := detectMimeType(tt.data)
+			if detected != tt.wantDetect {
+				t.Errorf("detectMimeType() detected = %v, want %v", detected, tt.wantDetect)
+			}
+			if mime != tt.wantMime {
+				t.Errorf("detectMimeType() mime = %q, want %q", mime, tt.wantMime)
+			}
+		})
+	}
+}
+
 func TestImageEmbedding_CodeAssetRef(t *testing.T) {
 	tmpDir := t.TempDir()
 	imgDir := filepath.Join(tmpDir, "assets")
