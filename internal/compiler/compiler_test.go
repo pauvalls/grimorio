@@ -338,6 +338,36 @@ func TestStatBlockParser_DetectsElRayo(t *testing.T) {
 	if !strings.Contains(result, `</div>`) {
 		t.Errorf("expected closing </div>, got:\n%s", result)
 	}
+
+	// 8. REQ-2.5: trait paragraphs become <p class="trait">. The fixture
+	// contains the trait "**Incorpóreo y luminoso.**" which must be classified
+	// as a trait (label ends with ".", value is plain text with no <em>).
+	if !strings.Contains(result, `class="trait"`) {
+		t.Errorf("expected at least one .trait paragraph (REQ-2.5), got:\n%s", result)
+	}
+	traitCount := strings.Count(result, `<p class="trait">`)
+	if traitCount < 1 {
+		t.Errorf("expected at least one <p class=\"trait\"> element, got %d in:\n%s", traitCount, result)
+	}
+
+	// 9. REQ-2.8: action paragraphs become <p class="action">. The fixture
+	// contains the action "**Toque del Rayo.** *Melee Spell Attack:*" which
+	// must be classified as an action (value contains <em> from italic).
+	if !strings.Contains(result, `class="action"`) {
+		t.Errorf("expected at least one .action paragraph (REQ-2.8), got:\n%s", result)
+	}
+	actionCount := strings.Count(result, `<p class="action">`)
+	if actionCount < 1 {
+		t.Errorf("expected at least one <p class=\"action\"> element, got %d in:\n%s", actionCount, result)
+	}
+
+	// 10. property-line should still appear for the multi-property line
+	// (Saving Throws + Challenge) but NOT for the trait or action paragraphs.
+	// If property-line count is too high, trait/action detection is broken.
+	propertyLineCount := strings.Count(result, `<p class="property-line">`)
+	if propertyLineCount > 4 {
+		t.Errorf("property-line count suspiciously high (%d) — trait/action likely misclassified in:\n%s", propertyLineCount, result)
+	}
 }
 
 func TestStatBlockParser_SplitsMultiPropertyLine(t *testing.T) {

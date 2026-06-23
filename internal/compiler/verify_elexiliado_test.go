@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -86,6 +87,40 @@ func TestVerifyElExiliado_CoverAndBestiary(t *testing.T) {
 		t.Errorf("expected at least 1 data:image/jpeg base64 URI (cover + NPC/PC portraits), got %d", jpegCount)
 	}
 	t.Logf("Found %d data:image/jpeg base64 URIs in compiled HTML", jpegCount)
+
+	// REQ-2.5 / REQ-2.8 (live repro): trait and action paragraphs must be
+	// classified with the right CSS class in the el-exiliado compile, not
+	// dumped into .property-line. We assert a sane minimum and log the
+	// counts so the report can be cited.
+	traitCount := strings.Count(html, `<p class="trait">`)
+	actionCount := strings.Count(html, `<p class="action">`)
+	propertyLineCount := strings.Count(html, `<p class="property-line">`)
+	if traitCount < 1 {
+		t.Errorf("expected at least 1 <p class=\"trait\"> in el-exiliado compile (REQ-2.5), got %d", traitCount)
+	}
+	if actionCount < 1 {
+		t.Errorf("expected at least 1 <p class=\"action\"> in el-exiliado compile (REQ-2.8), got %d", actionCount)
+	}
+	t.Logf("El-exiliado live repro: trait=%d action=%d property-line=%d stat-block=%d jpeg-uris=%d",
+		traitCount, actionCount, propertyLineCount, statBlockCount, jpegCount)
+
+	// Persist the live-repro counts to a sidecar file so a follow-up shell
+	// pipeline (or `make` target) can grep them without re-running the
+	// compiler. Useful for the verify/apply reports.
+	reportPath := campaignDir + "/.live-repro-counts.txt"
+	report := fmt.Sprintf("trait=%d action=%d property-line=%d stat-block=%d jpeg-uris=%d html-bytes=%d\n",
+		traitCount, actionCount, propertyLineCount, statBlockCount, jpegCount, len(html))
+	if err := os.WriteFile(reportPath, []byte(report), 0o644); err != nil {
+		t.Logf("could not write live-repro report: %v", err)
+	}
+
+	// Also dump the full live-repro HTML to disk so the user can grep
+	// (the binary itself does not expose a `compile` CLI subcommand — the
+	// only compile path is the in-process `generateHTML` we just called).
+	livePath := campaignDir + "/campaign.live-repro.html"
+	if err := os.WriteFile(livePath, []byte(html), 0o644); err != nil {
+		t.Logf("could not write live-repro HTML: %v", err)
+	}
 }
 
 func findElExiliadoCampaign() string {

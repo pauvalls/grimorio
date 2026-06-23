@@ -1350,7 +1350,10 @@ func parseStatBlock(name string, lines []string, typeLineIdx int, baseDir string
 		}
 
 		// 1 group: if the label is one of the WotC core stats (AC/HP/Speed)
-		// → .stat-line. Otherwise → .property-line.
+		// → .stat-line. Otherwise classify by label/value shape:
+		//   - label ends with "." + value has no <em> → .trait (REQ-2.5)
+		//   - value has <em>                     → .action (REQ-2.8)
+		//   - otherwise                          → .property-line
 		// 4+ groups: each → .property-line.
 		if len(groups) >= 1 {
 			for _, g := range groups {
@@ -1361,6 +1364,18 @@ func parseStatBlock(name string, lines []string, typeLineIdx int, baseDir string
 				if len(groups) == 1 && isCoreStat(cleanLabel) {
 					fmt.Fprintf(&b, `<div class="stat-line"><span class="stat-label">%s</span> <span class="stat-value">%s</span></div>`,
 						html.EscapeString(cleanLabel), formatInline(value))
+				} else if len(groups) == 1 && strings.HasSuffix(label, ".") {
+					// Single-group line ending in "." is a trait or action.
+					// Distinguish by whether the rendered value contains <em>
+					// (italic attack notation like "*Melee Spell Attack:*").
+					rendered := formatInline(value)
+					if strings.Contains(rendered, "<em>") {
+						fmt.Fprintf(&b, `<p class="action"><strong>%s</strong> %s</p>`,
+							html.EscapeString(label), rendered)
+					} else {
+						fmt.Fprintf(&b, `<p class="trait"><strong>%s</strong> %s</p>`,
+							html.EscapeString(label), rendered)
+					}
 				} else {
 					fmt.Fprintf(&b, `<p class="property-line"><strong>%s</strong> %s</p>`,
 						html.EscapeString(label), formatInline(value))
