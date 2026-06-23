@@ -1249,6 +1249,28 @@ func isCoreStat(label string) bool {
 	return false
 }
 
+// detectTraitLine reports whether a stat-block line is a WotC trait header.
+//
+// The WotC convention is "**Name.** description with optional **inner
+// bolds**". The signature is: the FIRST `**…**` group ends in `.` AND at
+// least one more `**…**` group exists in the same line. When this matches,
+// the line is rendered as a single <p class="trait"> with inner bolds
+// preserved inline, instead of being split into one .property-line /
+// .stat-line per `**…**` group.
+//
+// Reference: SRD monster stat block convention ("Damage Vulnerabilities"
+// / "Condition Immunities" / "Senses" lines never have a label ending in
+// `.`, so a trailing period in the first bold is a reliable trait signal).
+func detectTraitLine(line string) bool {
+	matches := statBlockPropertyRegex.FindAllStringSubmatchIndex(line, -1)
+	if len(matches) < 2 {
+		return false
+	}
+	first := matches[0]
+	firstLabel := strings.TrimSpace(line[first[2]:first[3]])
+	return strings.HasSuffix(firstLabel, ".")
+}
+
 // tryStatBlock peeks ahead from a `## ` heading. If the next non-blank line
 // matches the WotC size+type italic pattern, it renders a full stat block
 // and returns the rendered HTML + the number of lines consumed. Otherwise
@@ -1325,6 +1347,24 @@ func parseStatBlock(name string, lines []string, typeLineIdx int, baseDir string
 
 		// Multi-property line: count **Label** groups
 		groups := splitPropertyGroups(t)
+
+		// WotC trait detection: a line whose first **…** label ends in "."
+		// AND has at least one more **…** group in the same line is a trait
+		// description (e.g. "**Radiación Distorsionante (pasiva).** La
+		// serpiente tiene **inmunidad** … **ventaja** …"). Render as a
+		// SINGLE <p class="trait"> with the whole line preserved (inner
+		// bolds kept inline). Action detection (<em> in value) wins when
+		// both signatures are present.
+		if detectTraitLine(t) {
+			rendered := formatInline(t)
+			if strings.Contains(rendered, "<em>") {
+				fmt.Fprintf(&b, `<p class="action">%s</p>`, rendered)
+			} else {
+				fmt.Fprintf(&b, `<p class="trait">%s</p>`, rendered)
+			}
+			consumed = j + 1
+			continue
+		}
 
 		// Single bold "**Actions**" or "**Legendary Actions**" alone
 		// → <h3 class="actions-heading">

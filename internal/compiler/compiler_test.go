@@ -269,6 +269,75 @@ El Rayo ataca desde la distancia.
 	}
 }
 
+func TestStatBlockParser_TraitWithInnerBold(t *testing.T) {
+	// REQ (fix-statblock-layout-and-cover-overflow): a WotC trait line
+	// with inner **bold** spans (e.g. Serpiente Ciega de Calor's
+	// "Radiación Distorsionante (pasiva).") must render as a single
+	// <p class="trait"> element, not be split into 3 .property-line divs.
+	// v5.4.2 split the line because it counted 3 **…** groups and emitted
+	// one property-line per group, which broke the WotC look and triggered
+	// the flexbox column bug in the stat-line CSS.
+	serpienteMD := `## Serpiente Ciega de Calor
+*Pequeña bestia, sin alineamiento*
+
+**Armor Class** 12
+**Hit Points** 7 (2d6)
+**Speed** 30 ft., swim 20 ft.
+
+| STR | DEX | CON | INT | WIS | CHA |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 8 (-1) | 14 (+2) | 10 (+0) | 1 (-5) | 12 (+1) | 4 (-3) |
+
+**Senses** blindsight 10 ft. (thermal), passive Perception 11
+**Challenge** 1/4 (50 XP)
+
+**Radiación Distorsionante (pasiva).** La serpiente tiene **inmunidad** al daño de Radiación Arcana y **ventaja** en salvaciones de Constitución contra frío.
+`
+
+	result := markdownToHTML(serpienteMD, "/tmp")
+
+	// 1. The wrapper must still be present (we are inside a stat block).
+	if !strings.Contains(result, `<div class="stat-block" data-monster="Serpiente Ciega de Calor">`) {
+		t.Fatalf("expected stat-block wrapper, got:\n%s", result)
+	}
+
+	// 2. The trait line must be a single <p class="trait">.
+	traitCount := strings.Count(result, `<p class="trait">`)
+	if traitCount != 1 {
+		t.Errorf("expected exactly 1 <p class=\"trait\">, got %d in:\n%s", traitCount, result)
+	}
+
+	// 3. The trait must contain the label and the inner bolds.
+	if !strings.Contains(result, `<strong>Radiación Distorsionante (pasiva).</strong>`) {
+		t.Errorf("expected trait label as <strong>…</strong>, got:\n%s", result)
+	}
+	if !strings.Contains(result, `<strong>inmunidad</strong>`) {
+		t.Errorf("expected inner bold 'inmunidad' preserved, got:\n%s", result)
+	}
+	if !strings.Contains(result, `<strong>ventaja</strong>`) {
+		t.Errorf("expected inner bold 'ventaja' preserved, got:\n%s", result)
+	}
+
+	// 4. None of the trait's labels should be promoted to .stat-line
+	// (.stat-line is still legitimate for AC/HP/Speed, but trait labels
+	// must not appear inside a <span class="stat-label">). The fixture
+	// has 3 .stat-line divs (Armor Class, Hit Points, Speed) and 0 trait
+	// labels in any of them.
+	statLineCount := strings.Count(result, `<div class="stat-line">`)
+	if statLineCount != 3 {
+		t.Errorf("expected 3 .stat-line divs (AC/HP/Speed only), got %d (trait labels leaked into .stat-line?):\n%s",
+			statLineCount, result)
+	}
+	for _, traitLabel := range []string{"Radiación Distorsionante", "inmunidad", "ventaja"} {
+		// If any of these appear inside a stat-label span, the trait
+		// was split and the bug is back.
+		if strings.Contains(result, `<span class="stat-label">`+traitLabel) {
+			t.Errorf("trait label %q leaked into a .stat-line span (bug is back), got:\n%s",
+				traitLabel, result)
+		}
+	}
+}
+
 func TestStatBlockParser_DetectsElRayo(t *testing.T) {
 	// El Rayo markdown from el-exiliado-de-las-tierras-marchitas/bestiary.md
 	// lines 876-893. Verifies the WotC stat block parser produces
