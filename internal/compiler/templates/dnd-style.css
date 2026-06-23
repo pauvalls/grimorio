@@ -16,7 +16,8 @@ body {
 .cover-wrapper {
   box-sizing: border-box;
   column-span: all;
-  page-break-after: always;
+  page-break-after: always; /* legacy */
+  break-after: page; /* modern, Chromium 80+ */
   page-break-inside: avoid;
   page-break-before: avoid;
   margin: -10px -10px 0 -10px;
@@ -25,7 +26,8 @@ body {
   text-align: center;
   padding: 0;
   overflow: hidden;
-  height: 297mm;
+  min-height: 297mm; /* safety net so footer nudge can't push overflow */
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -48,7 +50,11 @@ body {
   font-size: 9pt;
   color: #c9ad6a;
   text-align: center;
-  margin: 0 0 12mm 0;
+  position: absolute; /* take footer out of flow so it can't push overflow */
+  bottom: 12mm;
+  left: 0;
+  right: 0;
+  margin: 0;
   z-index: 10;
 }
 
@@ -284,18 +290,108 @@ tbody tr:nth-child(odd) {
 .stat-block {
   background: #fdf1dc;
   border: 2px solid #c9ad6a;
-  border-top: 4px solid #c9ad6a;
-  border-bottom: 4px solid #c9ad6a;
-  padding: 12px;
-  margin: 12px 0;
+  border-top: 4px solid #8b0000; /* WotC red top border */
+  border-bottom: 4px solid #8b0000; /* WotC red bottom border */
+  border-radius: 0; /* faithful WotC: no rounded corners */
+  padding: 12px 16px;
+  margin: 14px 0;
+  column-span: all; /* WotC stat blocks span both columns */
   column-break-inside: avoid;
   page-break-inside: avoid;
+  break-inside: avoid;
+  box-shadow: 3px 3px 6px rgba(0,0,0,0.15);
+  font-size: 9.5pt;
+}
+
+.stat-block h2 {
+  font-family: 'Cinzel', serif;
+  color: #5a3d2b;
+  border-bottom: 2px solid #8b0000;
+  margin: 0 0 6px 0;
+  padding-bottom: 4px;
+  font-size: 14pt;
+  text-align: center;
 }
 
 .stat-block h3 {
   color: #5a3d2b;
   border-bottom: 1px solid #c9ad6a;
   margin-top: 0;
+  font-size: 12pt;
+}
+
+.stat-block .monster-type {
+  font-style: italic;
+  color: #5a3d2b;
+  margin: 0 0 8px 0;
+  text-align: center;
+  font-size: 9pt;
+}
+
+.stat-block .stat-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  border-bottom: 1px dotted #c9ad6a;
+}
+
+.stat-block .stat-label {
+  font-weight: bold;
+  color: #5a3d2b;
+  text-transform: uppercase;
+  font-size: 8.5pt;
+  letter-spacing: 0.5px;
+}
+
+.stat-block .stat-value {
+  color: #1a1a1a;
+}
+
+.stat-block .property-line {
+  padding: 1px 0;
+  font-size: 9pt;
+}
+
+.stat-block .property-line strong {
+  color: #5a3d2b;
+}
+
+.stat-block .ability-scores {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 9pt;
+}
+
+.stat-block .ability-scores th,
+.stat-block .ability-scores td {
+  text-align: center;
+  padding: 4px;
+  border: 1px solid #c9ad6a;
+  font-weight: normal;
+}
+
+.stat-block .ability-scores th {
+  background: #5a3d2b;
+  color: #f5f0e6;
+  font-family: 'Cinzel', serif;
+}
+
+.stat-block .actions-heading {
+  font-family: 'Cinzel', serif;
+  color: #8b0000;
+  border-bottom: 1px solid #c9ad6a;
+  font-size: 11pt;
+  margin: 10px 0 4px 0;
+}
+
+.stat-block .trait,
+.stat-block .action {
+  margin: 4px 0;
+}
+
+.stat-block .action em {
+  color: #5a3d2b;
 }
 
 .read-aloud {
@@ -363,25 +459,6 @@ blockquote.sidebar h5,
 
 h3 .area-number {
   display: inline-block;
-}
-
-/* Stat block borders - WotC style */
-.stat-block {
-  background: #fdf1dc;
-  border: 2px solid #c9ad6a;
-  border-top: 4px solid #c9ad6a;
-  border-bottom: 4px solid #c9ad6a;
-  padding: 12px;
-  margin: 12px 0;
-  column-break-inside: avoid;
-  box-shadow: 3px 3px 6px rgba(0,0,0,0.15);
-}
-
-.stat-block h3 {
-  color: #5a3d2b;
-  border-bottom: 1px solid #c9ad6a;
-  margin-top: 0;
-  font-size: 12pt;
 }
 
 /* Handout page styles */
