@@ -64,6 +64,10 @@ func TestVerifyElExiliado_CoverAndBestiary(t *testing.T) {
 	t.Logf("Found %d stat-block wrappers (target: >= 4 named)", statBlockCount)
 
 	// REQ-3.1, 3.2, 3.3: Cover page CSS hardening must be present.
+	// UPDATED for fix-statblock-layout-and-cover-overflow: the new contract
+	// is `height: 297mm` (exact) + `max-height: 297mm` + `overflow: hidden`,
+	// not `min-height: 297mm` (the v5.4.2 min-height approach spilled the
+	// cover to 2 pages — Bug B from PR #17).
 	css, err := GetTemplate("dnd-style")
 	if err != nil {
 		t.Fatalf("get CSS: %v", err)
@@ -71,8 +75,14 @@ func TestVerifyElExiliado_CoverAndBestiary(t *testing.T) {
 	if !strings.Contains(css, "break-after: page") {
 		t.Error("CSS missing 'break-after: page' (REQ-3.1)")
 	}
-	if !strings.Contains(css, "min-height: 297mm") {
-		t.Error("CSS missing 'min-height: 297mm' (REQ-3.2)")
+	if !strings.Contains(css, "height: 297mm") {
+		t.Error("CSS missing 'height: 297mm' (exact cover height, REQ-3.2 NEW contract)")
+	}
+	if !strings.Contains(css, "max-height: 297mm") {
+		t.Error("CSS missing 'max-height: 297mm' (REQ-3.2 NEW contract)")
+	}
+	if strings.Contains(css, "min-height: 297mm") {
+		t.Error("CSS still uses 'min-height: 297mm' (Bug B is back)")
 	}
 	if !strings.Contains(css, "position: absolute") || !strings.Contains(css, "position: relative") {
 		t.Error("CSS missing absolute/relative positioning (REQ-3.3)")
