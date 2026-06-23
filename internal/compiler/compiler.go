@@ -1288,8 +1288,8 @@ func tryStatBlock(name string, lines []string, startIdx int, baseDir string, see
 // `## ` heading line and the italic type line).
 func parseStatBlock(name string, lines []string, typeLineIdx int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf(`<div class="stat-block" data-monster="%s">`, html.EscapeString(name)))
-	b.WriteString(fmt.Sprintf(`<h2>%s</h2>`, html.EscapeString(name)))
+	fmt.Fprintf(&b, `<div class="stat-block" data-monster="%s">`, html.EscapeString(name))
+	fmt.Fprintf(&b, `<h2>%s</h2>`, html.EscapeString(name))
 
 	// Italic type line → <p class="monster-type">
 	typeLine := strings.TrimSpace(lines[typeLineIdx])
