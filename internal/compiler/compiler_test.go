@@ -121,6 +121,294 @@ func TestImageEmbedding_MissingImage(t *testing.T) {
 	}
 }
 
+func TestImageEmbedding_MIMEDetection(t *testing.T) {
+	// 5 table cases: PNG bytes, JPEG bytes under .png (the bug), GIF, WebP, unknown fallback
+	// REQ-1.1, 1.2, 1.3, 1.4, 1.5, 4.1, 4.2
+	tests := []struct {
+		name           string
+		filename       string
+		bytes          []byte
+		wantMimePrefix string
+	}{
+		{
+			name:           "PNG bytes with .png extension",
+			filename:       "test.png",
+			bytes:          []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D},
+			wantMimePrefix: "data:image/png;base64,",
+		},
+		{
+			name:           "JPEG bytes with .png extension (the bug)",
+			filename:       "cover.png",
+			bytes:          []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F', 0x00, 0x01},
+			wantMimePrefix: "data:image/jpeg;base64,",
+		},
+		{
+			name:           "GIF87a bytes with .gif extension",
+			filename:       "anim.gif",
+			bytes:          []byte("GIF87a"),
+			wantMimePrefix: "data:image/gif;base64,",
+		},
+		{
+			name:           "RIFF/WEBP bytes with .webp extension",
+			filename:       "modern.webp",
+			bytes:          []byte{'R', 'I', 'F', 'F', 0x00, 0x00, 0x00, 0x00, 'W', 'E', 'B', 'P'},
+			wantMimePrefix: "data:image/webp;base64,",
+		},
+		{
+			name:           "Unknown bytes fall back to extension-derived MIME",
+			filename:       "mystery.png",
+			bytes:          []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B},
+			wantMimePrefix: "data:image/png;base64,",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			imgPath := filepath.Join(tmpDir, tt.filename)
+			if err := os.WriteFile(imgPath, tt.bytes, 0644); err != nil {
+				t.Fatal(err)
+			}
+
+			// Use the public embedImage via a markdown image ref
+			md := "![alt](" + imgPath + ")"
+			result := markdownToHTML(md, tmpDir)
+
+			if !strings.Contains(result, tt.wantMimePrefix) {
+				t.Errorf("expected MIME prefix %q, got result:\n%s", tt.wantMimePrefix, result)
+			}
+		})
+	}
+}
+
+func TestDetectMimeType(t *testing.T) {
+	// Direct unit test for the helper function
+	tests := []struct {
+		name       string
+		data       []byte
+		wantMime   string
+		wantDetect bool
+	}{
+		{"PNG signature", []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}, "image/png", true},
+		{"JPEG signature", []byte{0xFF, 0xD8, 0xFF, 0xE1}, "image/jpeg", true},
+		{"GIF87a signature", []byte("GIF87a"), "image/gif", true},
+		{"GIF89a signature", []byte("GIF89a"), "image/gif", true},
+		{"WebP signature", []byte{'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P'}, "image/webp", true},
+		{"empty input", []byte{}, "", false},
+		{"unknown bytes", []byte{0x00, 0x01, 0x02, 0x03}, "", false},
+		{"too short for PNG", []byte{0x89, 0x50}, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mime, detected := detectMimeType(tt.data)
+			if detected != tt.wantDetect {
+				t.Errorf("detectMimeType() detected = %v, want %v", detected, tt.wantDetect)
+			}
+			if mime != tt.wantMime {
+				t.Errorf("detectMimeType() mime = %q, want %q", mime, tt.wantMime)
+			}
+		})
+	}
+}
+
+func TestStatBlockParser_DoesNotTriggerOnChapterHeading(t *testing.T) {
+	// Negative lock: a `## ` heading NOT followed by an italic size+type line
+	// must NOT be wrapped in `.stat-block` (REQ-2.10, 2.11, 4.5).
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name: "chapter heading with chapter summary",
+			input: `# Capítulo 1: La Llegada
+
+> **Nivel:** 1-2 | **Duración:** 2-3 horas
+
+## Resumen
+
+Los personajes llegan al pueblo y aceptan su primera misión.
+
+### Área 1: La Entrada del Pueblo
+
+> **Read-Aloud:** *El camino costero termina en un pueblo pequeño.*
+`,
+		},
+		{
+			name: "NPC heading without italic size line",
+			input: `## Beroldo
+
+Beroldo es un herrero local. Tiene una barba canosa y siempre está
+trabajando en su fragua. Sabe más de lo que dice.
+
+### Apariencia
+
+Un hombre de unos cincuenta años, con delantal de cuero.
+`,
+		},
+		{
+			name: "h3 sub-section must stay h3 (not promoted to h2)",
+			input: `## Description narrativa
+
+Some narrative text.
+
+### Fase 1: Despierto
+
+El Rayo ataca desde la distancia.
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := markdownToHTML(tt.input, "/tmp")
+			if strings.Contains(result, `<div class="stat-block"`) {
+				t.Errorf("expected NO .stat-block wrapper, but found one in:\n%s", result)
+			}
+		})
+	}
+}
+
+func TestStatBlockParser_DetectsElRayo(t *testing.T) {
+	// El Rayo markdown from el-exiliado-de-las-tierras-marchitas/bestiary.md
+	// lines 876-893. Verifies the WotC stat block parser produces
+	// <div class="stat-block" data-monster="El Rayo"> wrapper,
+	// exactly 3 .stat-line divs (AC/HP/Speed), <h2>El Rayo</h2> preserved,
+	// and <p class="monster-type"> present (REQ-2.1, 2.2, 4.4).
+	elRayoMD := `## El Rayo
+*Mediano incorpóreo, caótico neutro*
+
+**Armor Class** 14
+**Hit Points** 82 (11d10 + 22)
+**Speed** 0 ft., fly 50 ft. (hover)
+
+| STR | DEX | CON | INT | WIS | CHA |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1 (-5) | 18 (+4) | 14 (+2) | 16 (+3) | 14 (+2) | 18 (+4) |
+
+**Saving Throws** Dex +8, Con +6
+**Challenge** 5 (1,800 XP)
+
+**Incorpóreo y luminoso.** El Rayo no tiene cuerpo físico.
+
+**Actions**
+
+**Toque del Rayo.** *Melee Spell Attack:* +8 to hit.
+`
+
+	result := markdownToHTML(elRayoMD, "/tmp")
+
+	// 1. Wrapper div with data-monster attribute
+	if !strings.Contains(result, `<div class="stat-block" data-monster="El Rayo">`) {
+		t.Errorf("expected stat-block wrapper with data-monster attribute, got:\n%s", result)
+	}
+
+	// 2. h2 preserved (not downgraded to h3)
+	if !strings.Contains(result, `<h2>El Rayo</h2>`) {
+		t.Errorf("expected <h2>El Rayo</h2> preserved, got:\n%s", result)
+	}
+
+	// 3. monster-type paragraph for the italic line
+	if !strings.Contains(result, `<p class="monster-type">`) {
+		t.Errorf("expected <p class=\"monster-type\"> for the italic line, got:\n%s", result)
+	}
+
+	// 4. exactly 3 .stat-line divs (AC, HP, Speed)
+	statLineCount := strings.Count(result, `<div class="stat-line">`)
+	if statLineCount != 3 {
+		t.Errorf("expected 3 .stat-line divs (AC/HP/Speed), got %d in:\n%s", statLineCount, result)
+	}
+
+	// 5. stat-label and stat-value present
+	if !strings.Contains(result, `class="stat-label"`) {
+		t.Errorf("expected stat-label spans, got:\n%s", result)
+	}
+	if !strings.Contains(result, `class="stat-value"`) {
+		t.Errorf("expected stat-value spans, got:\n%s", result)
+	}
+
+	// 6. Labels for AC, HP, Speed
+	for _, want := range []string{"Armor Class", "Hit Points", "Speed"} {
+		if !strings.Contains(result, want) {
+			t.Errorf("expected stat label %q in output, got:\n%s", want, result)
+		}
+	}
+
+	// 7. closing div
+	if !strings.Contains(result, `</div>`) {
+		t.Errorf("expected closing </div>, got:\n%s", result)
+	}
+
+	// 8. REQ-2.5: trait paragraphs become <p class="trait">. The fixture
+	// contains the trait "**Incorpóreo y luminoso.**" which must be classified
+	// as a trait (label ends with ".", value is plain text with no <em>).
+	if !strings.Contains(result, `class="trait"`) {
+		t.Errorf("expected at least one .trait paragraph (REQ-2.5), got:\n%s", result)
+	}
+	traitCount := strings.Count(result, `<p class="trait">`)
+	if traitCount < 1 {
+		t.Errorf("expected at least one <p class=\"trait\"> element, got %d in:\n%s", traitCount, result)
+	}
+
+	// 9. REQ-2.8: action paragraphs become <p class="action">. The fixture
+	// contains the action "**Toque del Rayo.** *Melee Spell Attack:*" which
+	// must be classified as an action (value contains <em> from italic).
+	if !strings.Contains(result, `class="action"`) {
+		t.Errorf("expected at least one .action paragraph (REQ-2.8), got:\n%s", result)
+	}
+	actionCount := strings.Count(result, `<p class="action">`)
+	if actionCount < 1 {
+		t.Errorf("expected at least one <p class=\"action\"> element, got %d in:\n%s", actionCount, result)
+	}
+
+	// 10. property-line should still appear for the multi-property line
+	// (Saving Throws + Challenge) but NOT for the trait or action paragraphs.
+	// If property-line count is too high, trait/action detection is broken.
+	propertyLineCount := strings.Count(result, `<p class="property-line">`)
+	if propertyLineCount > 4 {
+		t.Errorf("property-line count suspiciously high (%d) — trait/action likely misclassified in:\n%s", propertyLineCount, result)
+	}
+}
+
+func TestStatBlockParser_SplitsMultiPropertyLine(t *testing.T) {
+	// REQ-2.3, 4.6: a line with multiple **Label** groups must split into
+	// one .property-line per group.
+	multiPropMD := `## Test Monster
+*Medium humanoid, neutral*
+
+**Armor Class** 14
+**Hit Points** 82 (11d10 + 22)
+**Speed** 0 ft., fly 50 ft. (hover)
+
+| STR | DEX | CON | INT | WIS | CHA |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 10 | 10 | 10 | 10 | 10 | 10 |
+
+**Saving Throws** Dex +8, Con +6 **Damage Vulnerabilities** radiant **Damage Immunities** poison **Condition Immunities** charmed **Challenge** 5 (1,800 XP)
+`
+
+	result := markdownToHTML(multiPropMD, "/tmp")
+
+	// Should contain the stat-block wrapper
+	if !strings.Contains(result, `<div class="stat-block" data-monster="Test Monster">`) {
+		t.Errorf("expected stat-block wrapper, got:\n%s", result)
+	}
+
+	// 5 .property-line divs (Saving Throws, Damage Vulnerabilities, Damage
+	// Immunities, Condition Immunities, Challenge).
+	propLineCount := strings.Count(result, `<p class="property-line">`)
+	if propLineCount != 5 {
+		t.Errorf("expected 5 .property-line divs, got %d in:\n%s", propLineCount, result)
+	}
+
+	// Each label should appear
+	for _, want := range []string{"Saving Throws", "Damage Vulnerabilities", "Damage Immunities", "Condition Immunities", "Challenge"} {
+		if !strings.Contains(result, want) {
+			t.Errorf("expected label %q in output, got:\n%s", want, result)
+		}
+	}
+}
+
 func TestImageEmbedding_CodeAssetRef(t *testing.T) {
 	tmpDir := t.TempDir()
 	imgDir := filepath.Join(tmpDir, "assets")

@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"encoding/base64"
@@ -1193,7 +1194,267 @@ func classifyBlockquote(lines []string, sectionID string) (blockquoteClass, []st
 	return bqReadAloud, cleaned
 }
 
-// headingMarkerRe matches markdown heading markers (##### to #) at the start of a line.
+// statBlockSizeRegex matches the WotC size word at the start of an italic
+// type line that opens a monster stat block. Bilingual, both masculine and
+// feminine Spanish forms are covered (the el-exiliado bestiary uses
+// Diminuta, Pequeña, Mediana — not just the masculine forms).
+var statBlockSizeRegex = regexp.MustCompile(
+	`^\*(Tiny|Small|Medium|Large|Huge|Gargantuan|` +
+		`Diminut[oa]|Minuscul[oa]|Pequeñ[oa]|Median[oa]|Grand[ea]|Enorme[ns]?|Colosal)\s+\S`)
+
+// statBlockPropertyRegex finds a single **Label** in a stat block line. Go
+// regexp does not support lookahead, so the value is extracted separately
+// via slice arithmetic in splitPropertyGroups below.
+var statBlockPropertyRegex = regexp.MustCompile(`\*\*([^*]+?)\*\*`)
+
+// boldTraitRegex matches a leading "**Ability Name.**" trait header inside a
+// stat block (REQ-2.5).
+var boldTraitRegex = regexp.MustCompile(`^\*\*[^*]+\.\*\*`)
+
+// splitPropertyGroups splits a stat-block inline line into (label, value)
+// pairs by walking the line and finding each `**Label**` boundary. Returns
+// the captured groups in source order. A value runs from the end of its
+// label to the start of the next label (or end of line), trimmed.
+func splitPropertyGroups(line string) [][]string {
+	matches := statBlockPropertyRegex.FindAllStringSubmatchIndex(line, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	var groups [][]string
+	for i, m := range matches {
+		if len(m) < 4 {
+			continue
+		}
+		label := strings.TrimSpace(line[m[2]:m[3]])
+		// Value starts after `**label**` and runs to the start of the next label,
+		// or to the end of the line.
+		valueStart := m[1]
+		valueEnd := len(line)
+		if i+1 < len(matches) {
+			valueEnd = matches[i+1][0]
+		}
+		value := strings.TrimSpace(line[valueStart:valueEnd])
+		groups = append(groups, []string{label, value})
+	}
+	return groups
+}
+
+// isCoreStat reports whether a property label is one of the WotC core stats
+// (Armor Class, Hit Points, Speed) that must be rendered as a .stat-line.
+func isCoreStat(label string) bool {
+	switch label {
+	case "Armor Class", "Hit Points", "Speed":
+		return true
+	}
+	return false
+}
+
+// tryStatBlock peeks ahead from a `## ` heading. If the next non-blank line
+// matches the WotC size+type italic pattern, it renders a full stat block
+// and returns the rendered HTML + the number of lines consumed. Otherwise
+// it returns ("", 0) and the caller falls back to the regular <h2> path.
+//
+// REQ-2.1, 2.2, 2.5, 2.6, 2.7, 2.10, 2.11, 4.4
+func tryStatBlock(name string, lines []string, startIdx int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
+	// Look for the italic size+type line within the next 3 lines (skipping blanks).
+	endIdx := startIdx + 4
+	if endIdx > len(lines) {
+		endIdx = len(lines)
+	}
+	typeLineIdx := -1
+	for j := startIdx + 1; j < endIdx; j++ {
+		t := strings.TrimSpace(lines[j])
+		if t == "" {
+			continue
+		}
+		// Must be a full italic line (starts and ends with *), and must start
+		// with a recognized size word. The body can contain commas + words.
+		if strings.HasPrefix(t, "*") && strings.HasSuffix(t, "*") && statBlockSizeRegex.MatchString(t) {
+			typeLineIdx = j
+			break
+		}
+		// First non-blank line wasn't a stat-block opener — bail out.
+		break
+	}
+	if typeLineIdx == -1 {
+		return "", 0
+	}
+	return parseStatBlock(name, lines, typeLineIdx, baseDir, seenImages, reg)
+}
+
+// parseStatBlock renders a WotC stat block starting at typeLineIdx (the italic
+// size+type line) and consuming up to the next `## ` heading or `---` rule.
+// Returns the rendered HTML and the number of lines consumed (including the
+// `## ` heading line and the italic type line).
+func parseStatBlock(name string, lines []string, typeLineIdx int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
+	var b strings.Builder
+	fmt.Fprintf(&b, `<div class="stat-block" data-monster="%s">`, html.EscapeString(name))
+	fmt.Fprintf(&b, `<h2>%s</h2>`, html.EscapeString(name))
+
+	// Italic type line → <p class="monster-type">
+	typeLine := strings.TrimSpace(lines[typeLineIdx])
+	typeLine = strings.TrimPrefix(typeLine, "*")
+	typeLine = strings.TrimSuffix(typeLine, "*")
+	typeLine = strings.TrimSpace(typeLine)
+	fmt.Fprintf(&b, `<p class="monster-type">%s</p>`, formatInline(typeLine))
+
+	// Walk subsequent lines until next `## ` or `---` or end of input.
+	consumed := typeLineIdx + 1
+	for j := typeLineIdx + 1; j < len(lines); j++ {
+		raw := lines[j]
+		t := strings.TrimSpace(raw)
+
+		// Stop conditions: next H2 (case-insensitive) or horizontal rule.
+		if strings.HasPrefix(t, "## ") || t == "---" || t == "***" || t == "___" {
+			break
+		}
+
+		// Empty line — skip (stat blocks are dense).
+		if t == "" {
+			consumed = j + 1
+			continue
+		}
+
+		// Ability-scores table: header row "STR DEX CON INT WIS CHA" with 6 cells
+		// AND followed by a separator row. Emit a <table class="ability-scores">.
+		if isTableRow(t) && isAbilityScoresTable(j, lines) {
+			b.WriteString(renderAbilityScoresTable(lines, &j, baseDir, seenImages, reg))
+			consumed = j + 1
+			continue
+		}
+
+		// Multi-property line: count **Label** groups
+		groups := splitPropertyGroups(t)
+
+		// Single bold "**Actions**" or "**Legendary Actions**" alone
+		// → <h3 class="actions-heading">
+		if len(groups) == 1 {
+			label := groups[0][0]
+			if label == "Actions" || label == "Legendary Actions" {
+				fmt.Fprintf(&b, `<h3 class="actions-heading">%s</h3>`, html.EscapeString(label))
+				consumed = j + 1
+				continue
+			}
+		}
+
+		// 3 groups on a single line (AC / HP / Speed) → 3 .stat-line divs
+		if len(groups) == 3 {
+			for _, g := range groups {
+				label := g[0]
+				value := g[1]
+				fmt.Fprintf(&b, `<div class="stat-line"><span class="stat-label">%s</span> <span class="stat-value">%s</span></div>`,
+					html.EscapeString(label), formatInline(value))
+			}
+			consumed = j + 1
+			continue
+		}
+
+		// 1 group: if the label is one of the WotC core stats (AC/HP/Speed)
+		// → .stat-line. Otherwise classify by label/value shape:
+		//   - label ends with "." + value has no <em> → .trait (REQ-2.5)
+		//   - value has <em>                     → .action (REQ-2.8)
+		//   - otherwise                          → .property-line
+		// 4+ groups: each → .property-line.
+		if len(groups) >= 1 {
+			for _, g := range groups {
+				label := g[0]
+				value := g[1]
+				// Strip trailing period from trait-style labels (e.g. "Incorpóreo y luminoso.")
+				cleanLabel := strings.TrimSuffix(label, ".")
+				if len(groups) == 1 && isCoreStat(cleanLabel) {
+					fmt.Fprintf(&b, `<div class="stat-line"><span class="stat-label">%s</span> <span class="stat-value">%s</span></div>`,
+						html.EscapeString(cleanLabel), formatInline(value))
+				} else if len(groups) == 1 && strings.HasSuffix(label, ".") {
+					// Single-group line ending in "." is a trait or action.
+					// Distinguish by whether the rendered value contains <em>
+					// (italic attack notation like "*Melee Spell Attack:*").
+					rendered := formatInline(value)
+					if strings.Contains(rendered, "<em>") {
+						fmt.Fprintf(&b, `<p class="action"><strong>%s</strong> %s</p>`,
+							html.EscapeString(label), rendered)
+					} else {
+						fmt.Fprintf(&b, `<p class="trait"><strong>%s</strong> %s</p>`,
+							html.EscapeString(label), rendered)
+					}
+				} else {
+					fmt.Fprintf(&b, `<p class="property-line"><strong>%s</strong> %s</p>`,
+						html.EscapeString(label), formatInline(value))
+				}
+			}
+			consumed = j + 1
+			continue
+		}
+
+		// No **Label** group at all — render as a plain paragraph (.trait by default).
+		// If line has a leading "**Name.**" with a period, emit <p class="trait">.
+		// Otherwise treat as narrative.
+		if m := boldTraitRegex.FindStringSubmatch(t); m != nil {
+			name := strings.TrimSuffix(strings.TrimSpace(m[1]), ".")
+			rest := strings.TrimSpace(t[len(m[0]):])
+			fmt.Fprintf(&b, `<p class="trait"><strong>%s.</strong> %s</p>`,
+				html.EscapeString(name), formatInline(rest))
+		} else {
+			escaped := processInlineText(t, baseDir, seenImages, reg)
+			fmt.Fprintf(&b, `<p>%s</p>`, escaped)
+		}
+		consumed = j + 1
+	}
+
+	b.WriteString(`</div>`)
+	return b.String(), consumed
+}
+
+// isAbilityScoresTable returns true if the table starting at row j is the
+// 6-column ability-scores table (header row contains STR/DEX/CON/INT/WIS/CHA
+// and is followed by a separator).
+func isAbilityScoresTable(rowIdx int, lines []string) bool {
+	if rowIdx+1 >= len(lines) {
+		return false
+	}
+	header := strings.TrimSpace(lines[rowIdx])
+	cells := parseTableRow(header)
+	if len(cells) != 6 {
+		return false
+	}
+	needles := []string{"STR", "DEX", "CON", "INT", "WIS", "CHA"}
+	for i, c := range cells {
+		uc := strings.ToUpper(strings.TrimSpace(c))
+		if uc != needles[i] {
+			return false
+		}
+	}
+	// Next line must be a separator row
+	return isTableSeparator(strings.TrimSpace(lines[rowIdx+1]))
+}
+
+// renderAbilityScoresTable renders the 6-column ability-scores table starting
+// at row j. Returns the HTML and advances j past the table (header + separator
+// + data rows). The header row index is at j.
+func renderAbilityScoresTable(lines []string, j *int, baseDir string, seenImages map[string]bool, reg anchorRegistry) string {
+	var b strings.Builder
+	b.WriteString(`<table class="ability-scores"><thead><tr>`)
+	headers := parseTableRow(lines[*j])
+	for _, h := range headers {
+		fmt.Fprintf(&b, `<th>%s</th>`, html.EscapeString(strings.TrimSpace(h)))
+	}
+	b.WriteString(`</tr></thead><tbody>`)
+	*j += 2 // skip header + separator
+	for ; *j < len(lines); *j++ {
+		t := strings.TrimSpace(lines[*j])
+		if !isTableRow(t) {
+			break
+		}
+		row := parseTableRow(t)
+		b.WriteString(`<tr>`)
+		for _, c := range row {
+			fmt.Fprintf(&b, `<td>%s</td>`, processInlineText(strings.TrimSpace(c), baseDir, seenImages, reg))
+		}
+		b.WriteString(`</tr>`)
+	}
+	b.WriteString(`</tbody></table>`)
+	*j-- // outer loop will do *j++
+	return b.String()
+}
 var headingMarkerRe = regexp.MustCompile(`^#{1,5}\s+`)
 
 // stripBlockquotePrefix removes remaining section/heading markers from blockquote
@@ -1453,7 +1714,8 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		tableRows = nil
 	}
 
-	for _, line := range lines {
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
 		trimmed := strings.TrimSpace(line)
 
 		// Skip horizontal rules (---, ***, ___, - - -)
@@ -1618,6 +1880,17 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 				inList = false
 			}
 			text := strings.TrimPrefix(trimmed, "## ")
+
+			// NEW (REQ-2.1): peek-ahead for WotC stat block. If the next non-blank
+			// line is "*<Size> <Type>*", enter the stat block sub-parser.
+			if sb, consumed := tryStatBlock(text, lines, i, baseDir, seenImages, reg); consumed > 0 {
+				out = append(out, sb)
+				// Parser returns the absolute index of the line AFTER the block.
+				// Set i = consumed - 1 so the loop's own i++ lands on `consumed`.
+				i = consumed - 1
+				continue
+			}
+
 			id := headingID(text, sectionID, compilerVersion, headingCounter, reg)
 			out = append(out, fmt.Sprintf(`<h2 id="%s">%s</h2>`, id, html.EscapeString(text)))
 		} else if strings.HasPrefix(trimmed, "# ") {
@@ -1868,32 +2141,64 @@ func embedImage(imgPath, alt, baseDir string, seenImages map[string]bool) string
 	}
 
 	ext := strings.ToLower(filepath.Ext(imgPath))
-	var mimeType string
 
-	switch ext {
-	case ".svg":
-		// Use SVG directly - both Chromium and wkhtmltopdf can render SVG files
-		// Return relative path from campaign directory
+	// SVG short-circuit: must come BEFORE magic-byte scan (REQ-1.6).
+	// SVG is embedded as a relative path so Chromium can inline-render it.
+	if ext == ".svg" {
 		relPath, _ := filepath.Rel(baseDir, imgPath)
 		if relPath == "" {
 			relPath = imgPath
 		}
 		return fmt.Sprintf(`<img src="%s" alt="%s" class="campaign-image"/>`, html.EscapeString(relPath), html.EscapeString(alt))
-	case ".png":
-		mimeType = "image/png"
-	case ".jpg", ".jpeg":
-		mimeType = "image/jpeg"
-	case ".gif":
-		mimeType = "image/gif"
-	case ".webp":
-		mimeType = "image/webp"
-	default:
-		mimeType = "image/png"
+	}
+
+	// Detect MIME from magic bytes FIRST. This fixes the bug where `.png`
+	// files in assets/ are actually JPEG bytes (REQ-1.1 through 1.5).
+	var mimeType string
+	if mt, ok := detectMimeType(data); ok {
+		mimeType = mt
+	} else {
+		// Fallback to extension-derived MIME for ambiguous / unknown bytes.
+		switch ext {
+		case ".png":
+			mimeType = "image/png"
+		case ".jpg", ".jpeg":
+			mimeType = "image/jpeg"
+		case ".gif":
+			mimeType = "image/gif"
+		case ".webp":
+			mimeType = "image/webp"
+		default:
+			mimeType = "image/png"
+		}
 	}
 
 	encoded := base64.StdEncoding.EncodeToString(data)
 	dataURI := fmt.Sprintf("data:%s;base64,%s", mimeType, encoded)
 	return fmt.Sprintf(`<img src="%s" alt="%s" class="campaign-image"/>`, dataURI, html.EscapeString(alt))
+}
+
+// detectMimeType returns the MIME type inferred from the first 4-12 bytes of data.
+// Returns ("", false) when no signature matches; caller must then fall back to
+// extension-derived MIME. Recognized signatures: PNG, JPEG, GIF87a/89a, WEBP.
+func detectMimeType(data []byte) (mimeType string, detected bool) {
+	// PNG: 89 50 4E 47 0D 0A 1A 0A
+	if len(data) >= 8 && bytes.Equal(data[:8], []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}) {
+		return "image/png", true
+	}
+	// JPEG: FF D8 FF
+	if len(data) >= 3 && bytes.Equal(data[:3], []byte{0xFF, 0xD8, 0xFF}) {
+		return "image/jpeg", true
+	}
+	// GIF: "GIF87a" or "GIF89a"
+	if len(data) >= 6 && (bytes.Equal(data[:6], []byte("GIF87a")) || bytes.Equal(data[:6], []byte("GIF89a"))) {
+		return "image/gif", true
+	}
+	// WebP: "RIFF" .... "WEBP" (12 bytes covers the 4-byte size field)
+	if len(data) >= 12 && bytes.Equal(data[:4], []byte("RIFF")) && bytes.Equal(data[8:12], []byte("WEBP")) {
+		return "image/webp", true
+	}
+	return "", false
 }
 
 // findCoverImage searches for a cover image in the campaign's assets directory.
