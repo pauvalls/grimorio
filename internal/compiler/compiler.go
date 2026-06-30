@@ -1310,7 +1310,7 @@ func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, see
 		}
 		if imageRegex.MatchString(t) {
 			m := imageRegex.FindStringSubmatch(t)
-			if m == nil || len(m) < 3 {
+			if len(m) < 3 {
 				return "", 0
 			}
 			imgPath := m[2] // group 1 is alt text, group 2 is the path
