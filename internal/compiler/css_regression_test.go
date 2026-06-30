@@ -209,10 +209,11 @@ func TestCSSRegression_CoverWrapper(t *testing.T) {
 		t.Errorf("CSS regression: .cover-wrapper missing modern 'break-after: page'. Block: %s", block)
 	}
 
-	// REQ-3.2 (updated): EXACT height 297mm (not min-height) — the new
-	// contract that fixes Bug B (cover spilled to 2 pages).
-	if !strings.Contains(block, "height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper missing exact 'height: 297mm'. Block: %s", block)
+	// REQ-3.2 (updated): height fits A4 minus body padding (20px vertical).
+	// The previous exact `height: 297mm` + negative margin pushed the cover
+	// past one page under Chromium's column-span: all layout.
+	if !strings.Contains(block, "height: calc(297mm - 20px)") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'height: calc(297mm - 20px)'. Block: %s", block)
 	}
 	if strings.Contains(block, "min-height: 297mm") {
 		t.Errorf("CSS regression: .cover-wrapper still uses 'min-height: 297mm' (Bug B is back). Block: %s", block)
@@ -320,12 +321,14 @@ func TestCSSRegression_CoverFixedHeight(t *testing.T) {
 	}
 	block := css[classIdx : classIdx+closeIdx+1]
 
-	// The new contract: height: 297mm (exact) AND max-height: 297mm.
-	if !strings.Contains(block, "height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'height: 297mm' (exact). Block: %s", block)
+	// The new contract: height must fit within the A4 page minus body padding
+	// (10px top + 10px bottom = 20px). Exact 297mm + negative margin pushed
+	// the cover past one page under Chromium's column-span: all layout.
+	if !strings.Contains(block, "height: calc(297mm - 20px)") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'height: calc(297mm - 20px)' (fits A4 minus body padding). Block: %s", block)
 	}
-	if !strings.Contains(block, "max-height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'max-height: 297mm'. Block: %s", block)
+	if !strings.Contains(block, "max-height: calc(297mm - 20px)") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'max-height: calc(297mm - 20px)'. Block: %s", block)
 	}
 	if strings.Contains(block, "min-height: 297mm") {
 		t.Errorf("CSS regression: .cover-wrapper still uses 'min-height: 297mm' (Bug B is back). Block: %s", block)
@@ -372,11 +375,11 @@ func TestCSSRegression_CoverFixedHeight(t *testing.T) {
 	if !strings.Contains(imgBlock, "position: absolute") {
 		t.Errorf("CSS regression: .cover-image not absolutely positioned. Block: %s", imgBlock)
 	}
-	if !strings.Contains(imgBlock, "top: 35mm") {
-		t.Errorf("CSS regression: .cover-image missing 'top: 35mm' (per design). Block: %s", imgBlock)
+	if !strings.Contains(imgBlock, "top: 32mm") {
+		t.Errorf("CSS regression: .cover-image missing 'top: 32mm' (per design). Block: %s", imgBlock)
 	}
-	if !strings.Contains(imgBlock, "bottom: 20mm") {
-		t.Errorf("CSS regression: .cover-image missing 'bottom: 20mm' (per design). Block: %s", imgBlock)
+	if !strings.Contains(imgBlock, "bottom: 14mm") {
+		t.Errorf("CSS regression: .cover-image missing 'bottom: 14mm' (per design). Block: %s", imgBlock)
 	}
 }
 func TestCSSRegression_StatBlockClassic(t *testing.T) {
@@ -609,6 +612,8 @@ func TestCSS_NoConflictsWithExistingClasses(t *testing.T) {
 
 // TestCSS_SnapshotComparison compares generated HTML against saved snapshots
 func TestCSS_SnapshotComparison(t *testing.T) {
+	// Set UPDATE_SNAPSHOTS=1 to regenerate snapshots (used after intentional CSS changes).
+	updateSnapshots := os.Getenv("UPDATE_SNAPSHOTS") == "1"
 	snapshotDir := "testdata/css-snapshots"
 	
 	// Create snapshot directory if it doesn't exist
@@ -651,6 +656,13 @@ func TestCSS_SnapshotComparison(t *testing.T) {
 			}
 
 			if string(expected) != html {
+				if updateSnapshots {
+					if err := os.WriteFile(snapshotPath, []byte(html), 0644); err != nil {
+						t.Fatalf("Failed to update snapshot: %v", err)
+					}
+					t.Logf("Updated snapshot: %s", snapshotPath)
+					return
+				}
 				t.Errorf("HTML differs from snapshot. Run with -update to update snapshots.")
 			}
 		})
