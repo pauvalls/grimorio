@@ -1,15 +1,39 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
 
+/* First page: no margins, so the cover can fill the full A4 sheet without
+ * interacting with body padding or column-span rounding. Subsequent pages
+ * use the body padding (see @page below — Chromium's print CSS picks up
+ * the @page rule for non-:first pages). */
+@page :first {
+  margin: 0;
+  padding: 0;
+}
+
 body {
   font-family: 'Lora', Georgia, serif;
   font-size: 10pt;
   line-height: 1.5;
   color: #1a1a1a;
   background: #f5f0e6;
+  /* No padding on body — it would constrain the cover (first child) and
+   * cause page-break rounding to split it. The .campaign-body wrapper
+   * (post-cover content) gets the padding instead. */
+  padding: 0;
+  margin: 0;
+  /* Two-column layout lives on .campaign-body, NOT on body. The cover
+   * (.cover-wrapper) is a sibling of .campaign-body, so it is NOT inside
+   * the multi-column flow. This avoids the column-span: all + page-break
+   * rounding bug that split the cover and dropped the footer on page 2. */
+}
+
+/* Wrapper that holds everything after the cover. The compiler emits
+ * <div class="campaign-body"> right after the cover and applies the
+ * two-column layout + padding here. */
+.campaign-body {
+  padding: 10px;
   column-count: 2;
   column-gap: 24px;
   column-rule: 1px solid #c9ad6a;
-  padding: 10px;
 }
 
 /* Cover — full page (A4). FIX: v5.4.2 used min-height + flex column +
@@ -21,22 +45,33 @@ body {
  * assumption. */
 .cover-wrapper {
   box-sizing: border-box;
-  column-span: all;
+  /* No column-span: all — the cover is a sibling of .campaign-body (the
+   * column-count container), so it is naturally outside the multi-column
+   * flow. This was the root cause of the page-break split: column-span: all
+   * + column-count: 2 made Chromium round the cover past one A4 page. */
   page-break-after: always; /* legacy */
   break-after: page; /* modern, Chromium 80+ */
   page-break-inside: avoid;
   break-inside: avoid;
-  page-break-before: avoid;
-  margin: -10px -10px 0 -10px;
+  page-break-before: avoid; /* cover is the first child, no break needed */
+  margin: 0;
   background: #1a0f0a;
   color: #f5f0e6;
   text-align: center;
   padding: 0;
   overflow: hidden;
-  position: relative;
+  /* position: absolute anchors the cover to the page (not the body) on the
+   * first page where @page :first removed the margin. This makes the
+   * page-break calculation treat the cover as anchored to the page,
+   * not as a flowing block that needs to be split. */
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 297mm;       /* A4 height — exact, not min */
-  max-height: 297mm;
+  height: 100%;
+  /* Fallback for browsers that don't honor 100% on absolute elements in
+   * print: exact A4. */
+  min-height: 297mm;
 }
 
 .cover-wrapper h1 {
@@ -71,12 +106,12 @@ body {
 .cover-image {
   margin: 0;
   position: absolute;
-  top: 35mm;            /* below title */
-  bottom: 20mm;         /* above footer */
+  top: 32mm;            /* just below the title (title ends ~30mm with 24pt + 1.2 line-height) */
+  bottom: 14mm;         /* above footer (footer sits at bottom: 8mm + ~6mm height) */
   left: 0;
   right: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* anchor image to top — was center, which floated landscape art in the middle of a tall box */
   justify-content: center;
   overflow: hidden;
 }

@@ -209,18 +209,23 @@ func TestCSSRegression_CoverWrapper(t *testing.T) {
 		t.Errorf("CSS regression: .cover-wrapper missing modern 'break-after: page'. Block: %s", block)
 	}
 
-	// REQ-3.2 (updated): EXACT height 297mm (not min-height) — the new
-	// contract that fixes Bug B (cover spilled to 2 pages).
-	if !strings.Contains(block, "height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper missing exact 'height: 297mm'. Block: %s", block)
+	// REQ-3.2 (updated): position: absolute + min-height: 297mm + @page :first.
+	// The previous `height: 297mm` (flow-positioned) still split the cover
+	// under Chromium's page-break rounding. Anchoring the cover to the page
+	// with position: absolute makes the page-break calculation treat it as
+	// page-relative and never round the bottom off.
+	if !strings.Contains(block, "position: absolute") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'position: absolute'. Block: %s", block)
 	}
-	if strings.Contains(block, "min-height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper still uses 'min-height: 297mm' (Bug B is back). Block: %s", block)
+	if !strings.Contains(block, "min-height: 297mm") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'min-height: 297mm'. Block: %s", block)
 	}
 
-	// position: relative needed for absolute footer positioning
-	if !strings.Contains(block, "position: relative") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'position: relative' (needed for absolute footer). Block: %s", block)
+	// position: absolute anchors the cover to the page (not body), so the
+	// page-break calculation never rounds the bottom onto a second page.
+	// The cover-footer is still absolutely positioned relative to the cover.
+	if !strings.Contains(block, "position: absolute") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'position: absolute'. Block: %s", block)
 	}
 
 	// REQ-3.3: cover-footer must be absolutely positioned
@@ -320,21 +325,18 @@ func TestCSSRegression_CoverFixedHeight(t *testing.T) {
 	}
 	block := css[classIdx : classIdx+closeIdx+1]
 
-	// The new contract: height: 297mm (exact) AND max-height: 297mm.
-	if !strings.Contains(block, "height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'height: 297mm' (exact). Block: %s", block)
+	// The new contract: position: absolute + @page :first { margin: 0 } +
+	// min-height: 297mm. The cover anchors to the page itself (not the body)
+	// so the page-break calculation treats it as page-relative and never
+	// rounds the bottom off onto a second page.
+	if !strings.Contains(block, "position: absolute") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'position: absolute'. Block: %s", block)
 	}
-	if !strings.Contains(block, "max-height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'max-height: 297mm'. Block: %s", block)
-	}
-	if strings.Contains(block, "min-height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper still uses 'min-height: 297mm' (Bug B is back). Block: %s", block)
+	if !strings.Contains(block, "min-height: 297mm") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'min-height: 297mm' (A4 fallback). Block: %s", block)
 	}
 	if !strings.Contains(block, "overflow: hidden") {
 		t.Errorf("CSS regression: .cover-wrapper missing 'overflow: hidden' (needed for the fixed 297mm box). Block: %s", block)
-	}
-	if !strings.Contains(block, "position: relative") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'position: relative' (needed for absolute children). Block: %s", block)
 	}
 	// Break-inside avoid (BOTH legacy and modern forms)
 	if !strings.Contains(block, "page-break-inside: avoid") {
@@ -372,11 +374,11 @@ func TestCSSRegression_CoverFixedHeight(t *testing.T) {
 	if !strings.Contains(imgBlock, "position: absolute") {
 		t.Errorf("CSS regression: .cover-image not absolutely positioned. Block: %s", imgBlock)
 	}
-	if !strings.Contains(imgBlock, "top: 35mm") {
-		t.Errorf("CSS regression: .cover-image missing 'top: 35mm' (per design). Block: %s", imgBlock)
+	if !strings.Contains(imgBlock, "top: 32mm") {
+		t.Errorf("CSS regression: .cover-image missing 'top: 32mm' (per design). Block: %s", imgBlock)
 	}
-	if !strings.Contains(imgBlock, "bottom: 20mm") {
-		t.Errorf("CSS regression: .cover-image missing 'bottom: 20mm' (per design). Block: %s", imgBlock)
+	if !strings.Contains(imgBlock, "bottom: 14mm") {
+		t.Errorf("CSS regression: .cover-image missing 'bottom: 14mm' (per design). Block: %s", imgBlock)
 	}
 }
 func TestCSSRegression_StatBlockClassic(t *testing.T) {
@@ -609,6 +611,8 @@ func TestCSS_NoConflictsWithExistingClasses(t *testing.T) {
 
 // TestCSS_SnapshotComparison compares generated HTML against saved snapshots
 func TestCSS_SnapshotComparison(t *testing.T) {
+	// Set UPDATE_SNAPSHOTS=1 to regenerate snapshots (used after intentional CSS changes).
+	updateSnapshots := os.Getenv("UPDATE_SNAPSHOTS") == "1"
 	snapshotDir := "testdata/css-snapshots"
 	
 	// Create snapshot directory if it doesn't exist
@@ -651,6 +655,13 @@ func TestCSS_SnapshotComparison(t *testing.T) {
 			}
 
 			if string(expected) != html {
+				if updateSnapshots {
+					if err := os.WriteFile(snapshotPath, []byte(html), 0644); err != nil {
+						t.Fatalf("Failed to update snapshot: %v", err)
+					}
+					t.Logf("Updated snapshot: %s", snapshotPath)
+					return
+				}
 				t.Errorf("HTML differs from snapshot. Run with -update to update snapshots.")
 			}
 		})
