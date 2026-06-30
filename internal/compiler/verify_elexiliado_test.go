@@ -106,10 +106,10 @@ func TestVerifyElExiliado_CoverAndBestiary(t *testing.T) {
 	}
 
 	// REQ-3.1, 3.2, 3.3: Cover page CSS hardening must be present.
-	// UPDATED: the contract is `height: calc(297mm - 20px)` (A4 minus body
-	// vertical padding) + `max-height: calc(297mm - 20px)` + `overflow: hidden`.
-	// The previous exact `height: 297mm` + negative margin spilled the cover
-	// to 2 pages under Chromium's column-span: all layout.
+	// UPDATED: the contract is `height: 297mm` (exact A4) + `@page :first { margin: 0 }`
+	// so the cover fills the first page as a regular block (no column-span: all,
+	// no body padding interaction). The previous `height: calc(297mm - 20px)` +
+	// column-span: all still split the cover under Chromium's rounding.
 	css, err := GetTemplate("dnd-style")
 	if err != nil {
 		t.Fatalf("get CSS: %v", err)
@@ -117,17 +117,17 @@ func TestVerifyElExiliado_CoverAndBestiary(t *testing.T) {
 	if !strings.Contains(css, "break-after: page") {
 		t.Error("CSS missing 'break-after: page' (REQ-3.1)")
 	}
-	if !strings.Contains(css, "height: calc(297mm - 20px)") {
-		t.Error("CSS missing 'height: calc(297mm - 20px)' (REQ-3.2 contract)")
+	if !strings.Contains(css, "@page :first") {
+		t.Error("CSS missing '@page :first' rule (first-page margin reset)")
 	}
-	if !strings.Contains(css, "max-height: calc(297mm - 20px)") {
-		t.Error("CSS missing 'max-height: calc(297mm - 20px)' (REQ-3.2 contract)")
+	if !strings.Contains(css, "position: absolute") {
+		t.Error("CSS missing 'position: absolute' on .cover-wrapper (REQ-3.2 contract)")
 	}
-	if strings.Contains(css, "min-height: 297mm") {
-		t.Error("CSS still uses 'min-height: 297mm' (Bug B is back)")
+	if !strings.Contains(css, "min-height: 297mm") {
+		t.Error("CSS missing 'min-height: 297mm' (REQ-3.2 A4 fallback)")
 	}
-	if !strings.Contains(css, "position: absolute") || !strings.Contains(css, "position: relative") {
-		t.Error("CSS missing absolute/relative positioning (REQ-3.3)")
+	if !strings.Contains(css, "position: absolute") {
+		t.Error("CSS missing 'position: absolute' (REQ-3.3 — cover and footer are page-anchored)")
 	}
 
 	// REQ-5.3: NPC/PC portraits must be embedded (not as data:image/png for

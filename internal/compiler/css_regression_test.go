@@ -209,19 +209,23 @@ func TestCSSRegression_CoverWrapper(t *testing.T) {
 		t.Errorf("CSS regression: .cover-wrapper missing modern 'break-after: page'. Block: %s", block)
 	}
 
-	// REQ-3.2 (updated): height fits A4 minus body padding (20px vertical).
-	// The previous exact `height: 297mm` + negative margin pushed the cover
-	// past one page under Chromium's column-span: all layout.
-	if !strings.Contains(block, "height: calc(297mm - 20px)") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'height: calc(297mm - 20px)'. Block: %s", block)
+	// REQ-3.2 (updated): position: absolute + min-height: 297mm + @page :first.
+	// The previous `height: 297mm` (flow-positioned) still split the cover
+	// under Chromium's page-break rounding. Anchoring the cover to the page
+	// with position: absolute makes the page-break calculation treat it as
+	// page-relative and never round the bottom off.
+	if !strings.Contains(block, "position: absolute") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'position: absolute'. Block: %s", block)
 	}
-	if strings.Contains(block, "min-height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper still uses 'min-height: 297mm' (Bug B is back). Block: %s", block)
+	if !strings.Contains(block, "min-height: 297mm") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'min-height: 297mm'. Block: %s", block)
 	}
 
-	// position: relative needed for absolute footer positioning
-	if !strings.Contains(block, "position: relative") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'position: relative' (needed for absolute footer). Block: %s", block)
+	// position: absolute anchors the cover to the page (not body), so the
+	// page-break calculation never rounds the bottom onto a second page.
+	// The cover-footer is still absolutely positioned relative to the cover.
+	if !strings.Contains(block, "position: absolute") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'position: absolute'. Block: %s", block)
 	}
 
 	// REQ-3.3: cover-footer must be absolutely positioned
@@ -321,23 +325,18 @@ func TestCSSRegression_CoverFixedHeight(t *testing.T) {
 	}
 	block := css[classIdx : classIdx+closeIdx+1]
 
-	// The new contract: height must fit within the A4 page minus body padding
-	// (10px top + 10px bottom = 20px). Exact 297mm + negative margin pushed
-	// the cover past one page under Chromium's column-span: all layout.
-	if !strings.Contains(block, "height: calc(297mm - 20px)") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'height: calc(297mm - 20px)' (fits A4 minus body padding). Block: %s", block)
+	// The new contract: position: absolute + @page :first { margin: 0 } +
+	// min-height: 297mm. The cover anchors to the page itself (not the body)
+	// so the page-break calculation treats it as page-relative and never
+	// rounds the bottom off onto a second page.
+	if !strings.Contains(block, "position: absolute") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'position: absolute'. Block: %s", block)
 	}
-	if !strings.Contains(block, "max-height: calc(297mm - 20px)") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'max-height: calc(297mm - 20px)'. Block: %s", block)
-	}
-	if strings.Contains(block, "min-height: 297mm") {
-		t.Errorf("CSS regression: .cover-wrapper still uses 'min-height: 297mm' (Bug B is back). Block: %s", block)
+	if !strings.Contains(block, "min-height: 297mm") {
+		t.Errorf("CSS regression: .cover-wrapper missing 'min-height: 297mm' (A4 fallback). Block: %s", block)
 	}
 	if !strings.Contains(block, "overflow: hidden") {
 		t.Errorf("CSS regression: .cover-wrapper missing 'overflow: hidden' (needed for the fixed 297mm box). Block: %s", block)
-	}
-	if !strings.Contains(block, "position: relative") {
-		t.Errorf("CSS regression: .cover-wrapper missing 'position: relative' (needed for absolute children). Block: %s", block)
 	}
 	// Break-inside avoid (BOTH legacy and modern forms)
 	if !strings.Contains(block, "page-break-inside: avoid") {
