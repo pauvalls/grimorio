@@ -1189,6 +1189,21 @@ func classifyBlockquote(lines []string, sectionID, filePath string, c *Compiler)
 
 	// DM Sidebar detection takes precedence.
 	if dmSidebarPrefixRe.MatchString(first) {
+		// REQ-1.5: warn once per file when the no-colon variant is parsed.
+		// The debounce lives on the Compiler so concurrent compiles in the
+		// MCP server don't cross-contaminate. Empty filePath / nil Compiler
+		// skip the warning (e.g. the unexported markdownToHTMLWithID tests
+		// pass nil for the Compiler).
+		// Distinguish colon vs no-colon: the line must contain a `:` between
+		// "DM Sidebar" and the title content to be the colon variant.
+		if c != nil && filePath != "" && !strings.Contains(first, "DM Sidebar:") && !strings.Contains(first, "dm sidebar:") {
+			if _, warned := c.warnedFilesDebounce[filePath]; !warned {
+				c.warnedFilesDebounce[filePath] = struct{}{}
+				fmt.Fprintf(os.Stderr,
+					"grimorio: warning: %s: DM Sidebar prefix without ':' — consider adding a colon for consistency\n",
+					filePath)
+			}
+		}
 		cleaned[0] = dmSidebarPrefixRe.ReplaceAllString(first, "")
 		return bqDMSidebar, cleaned
 	}
