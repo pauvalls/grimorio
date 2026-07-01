@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -879,4 +880,108 @@ func TestGenerateAdventureRoster_Wrapper(t *testing.T) {
 	if !strings.Contains(out, "Apéndice F") {
 		t.Errorf("roster missing h2 'Apéndice F'. Output:\n%s", out)
 	}
+}
+
+// TestFlushTable_WrapsInTableWrap asserts REQ-3.1: every <table> emitted
+// by flushTable is wrapped in a <div class="table-wrap">…</div> so
+// Chromium's page-break algorithm can split at row boundaries instead
+// of slicing the table across columns (Issue C).
+func TestFlushTable_WrapsInTableWrap(t *testing.T) {
+	tests := []struct {
+		name string
+		md   string
+	}{
+		{
+			name: "simple 2-col table",
+			md: `| A | B |
+|---|---|
+| 1 | 2 |
+| 3 | 4 |
+`,
+		},
+		{
+			name: "3-col table",
+			md: `| A | B | C |
+|---|---|---|
+| 1 | 2 | 3 |
+`,
+		},
+		{
+			name: "empty table",
+			md: `| H1 | H2 |
+|----|----|
+`,
+		},
+		{
+			name: "table with bold cell",
+			md: `| A | B |
+|---|---|
+| **bold** | normal |
+`,
+		},
+		{
+			name: "table with code cell",
+			md: "| A | B |\n|---|---|\n| `code` | normal |\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := New(t.TempDir(), "")
+			seen := make(map[string]bool)
+			out := c.markdownToHTMLWithID(tt.md, t.TempDir(), "test", new(int), seen, nil, "")
+			// Walk every <table> substring in `out` and assert each is
+			// immediately preceded by a <div class="table-wrap">.
+			rest := out
+			for {
+				tblIdx := strings.Index(rest, "<table>")
+				if tblIdx == -1 {
+					break
+				}
+				// Look backwards from <table> for the nearest "<div" tag.
+				divIdx := strings.LastIndex(rest[:tblIdx], "<div")
+				if divIdx == -1 {
+					t.Errorf("table at offset %d not preceded by <div>, output:\n%s", tblIdx, rest)
+					return
+				}
+				// Verify the div has class="table-wrap" within the next 100 chars.
+				probeEnd := divIdx + 100
+				if probeEnd > len(rest) {
+					probeEnd = len(rest)
+				}
+				blockStart := rest[divIdx:probeEnd]
+				if !strings.Contains(blockStart, `class="table-wrap"`) {
+					t.Errorf("table at offset %d not wrapped in .table-wrap, surrounding div: %q", tblIdx, blockStart)
+				}
+				// Advance past this <table>.
+				rest = rest[tblIdx+len("<table>"):]
+			}
+		})
+	}
+}
+
+// TestFlushTable_PreservesAllRows asserts REQ-3.5: a 10-row 3-column
+// markdown table renders with all 10 <tr> elements intact (header + 10
+// data rows = 11 <tr>). This is the unit companion of the gated
+// TestCompile_TableIntegrity integration test.
+func TestFlushTable_PreservesAllRows(t *testing.T) {
+	md := `| Col1 | Col2 | Col3 |
+|------|------|------|
+` + generate10RowTable()
+	c := New(t.TempDir(), "")
+	seen := make(map[string]bool)
+	out := c.markdownToHTMLWithID(md, t.TempDir(), "test", new(int), seen, nil, "")
+	rowCount := strings.Count(out, "<tr>")
+	if rowCount < 11 {
+		t.Errorf("expected at least 11 <tr> (header + 10 rows), got %d. Output:\n%s", rowCount, out)
+	}
+}
+
+// generate10RowTable builds a deterministic 10-row 3-column markdown
+// table body for TestFlushTable_PreservesAllRows.
+func generate10RowTable() string {
+	rows := ""
+	for i := 1; i <= 10; i++ {
+		rows += fmt.Sprintf("| Row %d Col1 | Row %d Col2 | Row %d Col3 |\n", i, i, i)
+	}
+	return rows
 }

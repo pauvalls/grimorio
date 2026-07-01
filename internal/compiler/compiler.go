@@ -1820,6 +1820,14 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 		headers := parseTableRow(tableRows[0])
 		alignments := parseTableAlign(tableRows[1])
 		var htmlOut strings.Builder
+		// Wrap every emitted table in a <div class="table-wrap"> so the
+		// CSS rule .table-wrap { column-span: all; break-inside: auto; }
+		// can take over the column-spanning role from the table itself.
+		// Chromium 148's page-break algorithm then splits the wrapper at
+		// row boundaries (the existing tr { break-inside: avoid } rule
+		// protects each row), instead of slicing the table across columns.
+		// See visual-issues-pdf PR 3 / REQ-3.1.
+		htmlOut.WriteString(`<div class="table-wrap">`)
 		htmlOut.WriteString(`<table><thead><tr>`)
 		for i, h := range headers {
 			align := ""
@@ -1851,6 +1859,7 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 			htmlOut.WriteString(`</tr>`)
 		}
 		htmlOut.WriteString(`</tbody></table>`)
+		htmlOut.WriteString(`</div>`)
 		out = append(out, htmlOut.String())
 		tableRows = nil
 	}
