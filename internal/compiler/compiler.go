@@ -1019,7 +1019,8 @@ func (c *Compiler) buildChromiumCmd(ctx context.Context, htmlPath, pdfPath strin
 		"--allow-file-access-from-files",
 		"--run-all-compositor-stages-before-draw",
 		"--print-to-pdf="+absPDF,
-		"--print-to-pdf-no-header",
+		"--no-pdf-header-footer",
+		"--paper=A4",
 		"--virtual-time-budget=10000",
 		fileURL,
 	)
