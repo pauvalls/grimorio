@@ -278,14 +278,17 @@ strong em {
   color: #5a3d2b;
 }
 
-ul {
+ul, ol {
   margin: 4px 0;
   padding-left: 18px;
+  break-inside: avoid;
+  column-break-inside: avoid;
 }
 
 li {
   margin-bottom: 2px;
   line-height: 1.4;
+  break-inside: avoid;
 }
 
 /* Tables */

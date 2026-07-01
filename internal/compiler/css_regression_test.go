@@ -811,3 +811,56 @@ func TestCSSRegression_TableWrapExists(t *testing.T) {
 		t.Errorf(".table-wrap block missing 'column-span: all'. Block: %s", block)
 	}
 }
+
+// TestCSSRegression_ListBreakInside asserts REQ-3.3: lists and
+// list items never break inside their content. The `ul, ol` rule
+// must contain `break-inside: avoid` (modern) and
+// `column-break-inside: avoid` (legacy alias). The `li` rule
+// must contain `break-inside: avoid`. These together prevent
+// Chromium from splitting a single bullet item across two
+// columns or pages (Issue K).
+func TestCSSRegression_ListBreakInside(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	// Find the `ul, ol {` block (or the single-selector `ul {` if
+	// the cascade has not yet been widened — the test asserts the
+	// widened form is present).
+	idx := strings.Index(css, "ul, ol {")
+	if idx == -1 {
+		t.Fatal("CSS regression: 'ul, ol {' block not found (selector should be widened from 'ul' to 'ul, ol' per REQ-3.3)")
+	}
+	end := strings.Index(css[idx:], "}")
+	if end == -1 {
+		t.Fatal("CSS regression: ul, ol block has no closing brace")
+	}
+	block := css[idx : idx+end+1]
+
+	if !strings.Contains(block, "break-inside: avoid") {
+		t.Errorf("ul, ol block missing 'break-inside: avoid'. Block: %s", block)
+	}
+	if !strings.Contains(block, "column-break-inside: avoid") {
+		t.Errorf("ul, ol block missing 'column-break-inside: avoid'. Block: %s", block)
+	}
+
+	// li block: must contain break-inside: avoid. The selector must be
+	// the standalone `li {` (preceded by a newline/whitespace, not a
+	// class name like `.toc li {` or `.character-worksheet .worksheet-section li {`).
+	// We use a regex to match the standalone selector.
+	liRe := regexp.MustCompile(`(?m)^\s*li\s*\{`)
+	liLoc := liRe.FindStringIndex(css)
+	if liLoc == nil {
+		t.Fatal("CSS regression: standalone 'li {' block not found")
+	}
+	liIdx := liLoc[0]
+	liEnd := strings.Index(css[liIdx:], "}")
+	if liEnd == -1 {
+		t.Fatal("CSS regression: li block has no closing brace")
+	}
+	liBlock := css[liIdx : liIdx+liEnd+1]
+	if !strings.Contains(liBlock, "break-inside: avoid") {
+		t.Errorf("li block missing 'break-inside: avoid'. Block: %s", liBlock)
+	}
+}
