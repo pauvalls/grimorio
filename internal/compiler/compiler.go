@@ -2110,9 +2110,23 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 	}
 
 	// Restore HTML blocks
+	// Re-process inline markdown (`![alt](path)`, `[text](url)`) inside
+	// extracted HTML blocks so images and links reach the printer even
+	// when the author pre-rendered HTML wraps raw markdown. See
+	// visual-issues-pdf PR 2 / REQ-2.1.
+	//
+	// We call processImages + processLinks directly instead of
+	// processInlineText because processInlineText HTML-escapes its input
+	// (after stashing <img>/<a>). For pre-rendered HTML blocks the
+	// escape step would corrupt attributes like <div class="stat-block">.
+	// processImages + processLinks only convert raw markdown patterns
+	// to tags; everything else (including pre-rendered <div>, <h2>, <em>,
+	// etc.) passes through unchanged.
 	result := strings.Join(out, "\n")
 	for i, html := range htmlBlocks {
-		result = strings.Replace(result, fmt.Sprintf("\x00HTMLBLOCK%d\x00", i), html, 1)
+		processed := processImages(html, baseDir, seenImages)
+		processed = processLinks(processed, "", reg)
+		result = strings.Replace(result, fmt.Sprintf("\x00HTMLBLOCK%d\x00", i), processed, 1)
 	}
 
 	return result
