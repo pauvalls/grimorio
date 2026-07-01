@@ -994,20 +994,23 @@ func (c *Compiler) htmlToPDF(ctx context.Context, htmlPath, pdfPath string) erro
 	return c.htmlToPDFWkhtmltopdf(ctx, htmlPath, pdfPath)
 }
 
-func (c *Compiler) htmlToPDFChromium(ctx context.Context, htmlPath, pdfPath string) error {
+// buildChromiumCmd constructs the *exec.Cmd for the Chromium headless print
+// invocation. It is extracted from htmlToPDFChromium so tests can inspect the
+// argument slice without actually running the engine.
+func (c *Compiler) buildChromiumCmd(ctx context.Context, htmlPath, pdfPath string) *exec.Cmd {
 	absHTML, err := filepath.Abs(htmlPath)
 	if err != nil {
-		return fmt.Errorf("failed to resolve HTML path: %w", err)
+		absHTML = htmlPath
 	}
 	absPDF, err := filepath.Abs(pdfPath)
 	if err != nil {
-		return fmt.Errorf("failed to resolve PDF path: %w", err)
+		absPDF = pdfPath
 	}
 
 	// Use file:// URL for local file access
 	fileURL := "file://" + absHTML
 
-	cmd := exec.CommandContext(ctx, c.PDFEngine,
+	return exec.CommandContext(ctx, c.PDFEngine,
 		"--headless",
 		"--no-sandbox",
 		"--disable-setuid-sandbox",
@@ -1020,6 +1023,10 @@ func (c *Compiler) htmlToPDFChromium(ctx context.Context, htmlPath, pdfPath stri
 		"--virtual-time-budget=10000",
 		fileURL,
 	)
+}
+
+func (c *Compiler) htmlToPDFChromium(ctx context.Context, htmlPath, pdfPath string) error {
+	cmd := c.buildChromiumCmd(ctx, htmlPath, pdfPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("chromium headless failed: %w\nOutput: %s", err, string(output))
