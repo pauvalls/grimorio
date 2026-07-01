@@ -503,6 +503,38 @@ func TestCSSRegression_PrologueDefaultStyles(t *testing.T) {
 	}
 }
 
+// TestCSSRegression_DMSidebarColumnSpan asserts the 4 callout classes have
+// column-span: all so they span both columns of .campaign-body. REQ-1.3.
+func TestCSSRegression_DMSidebarColumnSpan(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+	classes := []string{
+		".dm-sidebar",
+		".shock-point",
+		".encounter-recommendation",
+		".general-features",
+	}
+	for _, cls := range classes {
+		idx := strings.Index(css, cls+" {")
+		if idx == -1 {
+			t.Errorf("class %s not found in CSS", cls)
+			continue
+		}
+		// Cut at the next "}" to scope the check to this class's block.
+		endIdx := strings.Index(css[idx:], "}")
+		if endIdx == -1 {
+			t.Errorf("class %s block has no closing brace", cls)
+			continue
+		}
+		block := css[idx : idx+endIdx+1]
+		if !strings.Contains(block, "column-span: all") {
+			t.Errorf("class %s block does not contain 'column-span: all'. Block: %s", cls, block)
+		}
+	}
+}
+
 // TestCSSRegression_PageRules asserts the @page A4 rule with all 5 margin
 // boxes set to content: none. REQ-1.2: defense-in-depth against Chromium
 // version drift on the --no-pdf-header-footer flag.

@@ -690,6 +690,7 @@ h3 .area-number {
   border-right: 1px dashed #c9ad6a;
   padding: 10px 14px;
   margin: 12px 0;
+  column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -796,6 +797,7 @@ h3 .area-number {
   padding: 8px 12px;
   margin: 8px 0;
   font-size: 9pt;
+  column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -877,6 +879,7 @@ h3 .area-number {
   border-left: 4px solid #5a3d2b;
   padding: 10px 12px;
   margin: 8px 0;
+  column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -961,6 +964,7 @@ h3 .area-number {
   padding: 1em;
   border-left: 3px solid #5a3d2b;
   margin: 10px 0;
+  column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
 }
