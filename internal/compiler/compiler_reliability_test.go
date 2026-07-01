@@ -210,7 +210,7 @@ func TestMarkdownToHTMLWithID_StripsWorksheetsV2(t *testing.T) {
 
 After worksheet.
 `
-	result := markdownToHTMLWithID(md, "/tmp", "sec-test", new(int), make(map[string]bool), 2, nil)
+	result := markdownToHTMLWithID(nil, md, "/tmp", "sec-test", new(int), make(map[string]bool), 2, nil, "")
 	if strings.Contains(result, `<div class="character-worksheet">`) {
 		t.Errorf("v2 should strip character-worksheet divs, got: %s", result)
 	}
@@ -226,7 +226,7 @@ func TestMarkdownToHTMLWithID_KeepsWorksheetsV1(t *testing.T) {
 </div>
 </div>
 `
-	result := markdownToHTMLWithID(md, "/tmp", "sec-test", new(int), make(map[string]bool), 1, nil)
+	result := markdownToHTMLWithID(nil, md, "/tmp", "sec-test", new(int), make(map[string]bool), 1, nil, "")
 	if !strings.Contains(result, `<div class="character-worksheet">`) {
 		t.Errorf("v1 should keep character-worksheet divs, got: %s", result)
 	}
@@ -300,7 +300,7 @@ func TestClassifyBlockquote(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotClass, gotLines := classifyBlockquote(tt.lines, tt.sectionID)
+			gotClass, gotLines := classifyBlockquote(tt.lines, tt.sectionID, "", nil)
 			if gotClass != tt.wantClass {
 				t.Errorf("classifyBlockquote() class = %v, want %v", gotClass, tt.wantClass)
 			}
@@ -490,7 +490,7 @@ func TestMarkdownToHTMLWithID_StableHeadingIDs(t *testing.T) {
 			if tt.version == 2 {
 				reg = anchorRegistry{"adventure-background": "sec-content-adventure-background"}
 			}
-			result := markdownToHTMLWithID(tt.input, "/tmp", "sec-content", new(int), make(map[string]bool), tt.version, reg)
+			result := markdownToHTMLWithID(nil, tt.input, "/tmp", "sec-content", new(int), make(map[string]bool), tt.version, reg, "")
 			if tt.wantContains != "" && !strings.Contains(result, tt.wantContains) {
 				t.Errorf("markdownToHTMLWithID() should contain %q\nGot: %s", tt.wantContains, result)
 			}
@@ -504,7 +504,7 @@ func TestMarkdownToHTMLWithID_StableHeadingIDs(t *testing.T) {
 func TestMarkdownToHTMLWithID_CrossFileLink(t *testing.T) {
 	input := "See [Appendix A](appendices.md#appendix-a-magic-items) for items."
 	reg := anchorRegistry{"appendix-a-magic-items": "appendix-a-magic-items"}
-	result := markdownToHTMLWithID(input, "/tmp", "sec-test", new(int), make(map[string]bool), 2, reg)
+	result := markdownToHTMLWithID(nil, input, "/tmp", "sec-test", new(int), make(map[string]bool), 2, reg, "")
 	want := `<a href="#appendix-a-magic-items">Appendix A</a>`
 	if !strings.Contains(result, want) {
 		t.Errorf("expected %q in result, got: %s", want, result)
@@ -546,7 +546,7 @@ func TestIntroductionSidebarMarker(t *testing.T) {
 > ##### Optional Rule: Bonds
 > Bonds connect characters.
 `
-	result := markdownToHTMLWithID(md, "/tmp", "sec-introduction", new(int), make(map[string]bool), 2, nil)
+	result := markdownToHTMLWithID(nil, md, "/tmp", "sec-introduction", new(int), make(map[string]bool), 2, nil, "")
 	if !strings.Contains(result, `<div class="introduction-sidebar">`) {
 		t.Errorf("expected introduction-sidebar class, got: %s", result)
 	}

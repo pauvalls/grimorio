@@ -64,6 +64,9 @@ type Compiler struct {
 	CompilerVersion     int
 	seenImages          map[string]bool
 	handoutRendererImpl HandoutRenderer
+	// warnedFilesDebounce tracks files that have already emitted a
+	// "no-colon DM Sidebar" warning in this compile session (REQ-1.5).
+	warnedFilesDebounce map[string]struct{}
 }
 
 // blockquoteClass classifies the semantic role of a markdown blockquote.
@@ -119,10 +122,11 @@ func New(campaignDir, pdfEngine string) *Compiler {
 		pdfEngine = detectPDFEngine()
 	}
 	return &Compiler{
-		CampaignDir:     campaignDir,
-		PDFEngine:       pdfEngine,
-		CompilerVersion: 2,
-		seenImages:      make(map[string]bool),
+		CampaignDir:         campaignDir,
+		PDFEngine:           pdfEngine,
+		CompilerVersion:     2,
+		seenImages:          make(map[string]bool),
+		warnedFilesDebounce: make(map[string]struct{}),
 	}
 }
 
@@ -428,7 +432,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 						continue
 					}
 					sectionID := "sec-" + sanitizeID(sec.name+"-"+f.Name())
-					htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages, reg)
+					htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages, reg, filepath.Join(sec.path, f.Name()))
 					htmlResult = postProcessHTML(htmlResult, c.CompilerVersion)
 					if strings.TrimSpace(htmlResult) != "" {
 						htmlParts = append(htmlParts, htmlResult)
@@ -445,7 +449,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 				continue
 			}
 			sectionID := "sec-" + sanitizeID(sec.name)
-			htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages, reg)
+			htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages, reg, sec.path)
 			htmlResult = postProcessHTML(htmlResult, c.CompilerVersion)
 			if strings.TrimSpace(htmlResult) != "" {
 				htmlParts = append(htmlParts, htmlResult)
@@ -544,7 +548,7 @@ func (c *Compiler) generateSessionZero() string {
 		return "" // no session zero, skip
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-session-zero", new(int), c.seenImages, c.CompilerVersion, nil)
+	htmlResult := markdownToHTMLWithID(c, string(data), c.CampaignDir, "sec-session-zero", new(int), c.seenImages, c.CompilerVersion, nil, path)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -565,7 +569,7 @@ func (c *Compiler) generatePrologue() string {
 		return "" // no prologue, skip
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-prologue", new(int), c.seenImages, c.CompilerVersion, nil)
+	htmlResult := markdownToHTMLWithID(c, string(data), c.CampaignDir, "sec-prologue", new(int), c.seenImages, c.CompilerVersion, nil, path)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -623,7 +627,7 @@ func (c *Compiler) generateSessionPrepHTML(sessionNum int) string {
 		}
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, fmt.Sprintf("sec-session-prep-%d", sessionNum), new(int), c.seenImages, c.CompilerVersion, nil)
+	htmlResult := markdownToHTMLWithID(c, string(data), c.CampaignDir, fmt.Sprintf("sec-session-prep-%d", sessionNum), new(int), c.seenImages, c.CompilerVersion, nil, path)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -641,7 +645,7 @@ func (c *Compiler) generateCharacterSheetHTML(characterID string) string {
 		return ""
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, fmt.Sprintf("sec-character-%s", characterID), new(int), c.seenImages, c.CompilerVersion, nil)
+	htmlResult := markdownToHTMLWithID(c, string(data), c.CampaignDir, fmt.Sprintf("sec-character-%s", characterID), new(int), c.seenImages, c.CompilerVersion, nil, path)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -1171,7 +1175,10 @@ func stripCharacterWorksheets(md string) string {
 
 // classifyBlockquote determines the semantic role of a blockquote and returns the
 // class along with lines that have the class-identifying marker removed.
-func classifyBlockquote(lines []string, sectionID string) (blockquoteClass, []string) {
+//
+// c and filePath are optional (both may be empty/nil): they enable the
+// per-file stderr warning for the no-colon DM Sidebar variant (REQ-1.5).
+func classifyBlockquote(lines []string, sectionID, filePath string, c *Compiler) (blockquoteClass, []string) {
 	if len(lines) == 0 {
 		return bqReadAloud, lines
 	}
@@ -1650,11 +1657,11 @@ func extractBalancedDivs(md string) (string, []string) {
 	return result.String(), blocks
 }
 
-func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, reg anchorRegistry) string {
-	return markdownToHTMLWithID(md, baseDir, sectionID, headingCounter, seenImages, c.CompilerVersion, reg)
+func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, reg anchorRegistry, filePath string) string {
+	return markdownToHTMLWithID(c, md, baseDir, sectionID, headingCounter, seenImages, c.CompilerVersion, reg, filePath)
 }
 
-func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry) string {
+func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry, filePath string) string {
 	// Strip character-worksheet div blocks before further processing (v2 only)
 	if compilerVersion == 2 {
 		md = stripCharacterWorksheets(md)
@@ -1744,7 +1751,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 
 		var className string
 		if compilerVersion == 2 {
-			class, cleanedLines := classifyBlockquote(originalLines, sectionID)
+			class, cleanedLines := classifyBlockquote(originalLines, sectionID, filePath, c)
 			if blockquoteClassOverride >= 0 {
 				class = blockquoteClassOverride
 			}
@@ -2173,7 +2180,7 @@ func parseTableAlign(row string) []string {
 func markdownToHTML(md string, baseDir string) string {
 	counter := 0
 	seen := make(map[string]bool)
-	return markdownToHTMLWithID(md, baseDir, "content", &counter, seen, 0, nil)
+	return markdownToHTMLWithID(nil, md, baseDir, "content", &counter, seen, 0, nil, "")
 }
 
 // postProcessHTML applies v2 cross-reference links and other transformations
