@@ -503,6 +503,37 @@ func TestCSSRegression_PrologueDefaultStyles(t *testing.T) {
 	}
 }
 
+// TestCSSRegression_PageRules asserts the @page A4 rule with all 5 margin
+// boxes set to content: none. REQ-1.2: defense-in-depth against Chromium
+// version drift on the --no-pdf-header-footer flag.
+func TestCSSRegression_PageRules(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+	// The @page block may be multi-line; normalize whitespace for substring checks.
+	normalized := strings.Join(strings.Fields(css), " ")
+	if !strings.Contains(normalized, "@page { size: A4; margin: 15mm;") {
+		t.Error("expected @page rule with size: A4; margin: 15mm;")
+	}
+	expectedBoxes := []string{
+		"@top-left { content: none }",
+		"@top-right { content: none }",
+		"@bottom-left { content: none }",
+		"@bottom-center { content: none }",
+		"@bottom-right { content: none }",
+	}
+	for _, box := range expectedBoxes {
+		if !strings.Contains(css, box) {
+			t.Errorf("expected %q in CSS", box)
+		}
+	}
+	// @page :first must still exist (preserves cover full-bleed)
+	if !strings.Contains(css, "@page :first {") {
+		t.Error("expected @page :first rule to remain")
+	}
+}
+
 // TestCSSRegression_PageBreakAvoid tests that all div-based classes have page-break-inside: avoid
 func TestCSSRegression_PageBreakAvoid(t *testing.T) {
 	// Get the CSS directly

@@ -1,5 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
 
+/* REQ-1.2: enforce A4 + suppress all five margin boxes. Defense-in-depth
+ * in case Chromium ever drops the --no-pdf-header-footer flag. The 5
+ * @top-* / @bottom-* boxes are what Chromium 116+ prints by default
+ * (URL, page title, date, n/91 page counter) and they are the source of
+ * the "n/91" leak in v5.4.3. */
+@page {
+  size: A4;
+  margin: 15mm;
+  @top-left { content: none }
+  @top-right { content: none }
+  @bottom-left { content: none }
+  @bottom-center { content: none }
+  @bottom-right { content: none }
+}
+
 /* First page: no margins, so the cover can fill the full A4 sheet without
  * interacting with body padding or column-span rounding. Subsequent pages
  * use the body padding (see @page below — Chromium's print CSS picks up
