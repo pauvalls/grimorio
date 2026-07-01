@@ -292,7 +292,6 @@ li {
 table {
   width: 100%;
   table-layout: fixed;
-  column-span: all;
   border-collapse: collapse;
   margin: 10px 0;
   font-size: 9pt;
@@ -301,6 +300,15 @@ table {
   break-inside: avoid; /* wkhtmltopdf compatibility */
   page-break-before: avoid;
   page-break-after: auto;
+}
+
+/* Table wrapper — moves column-span from the table itself to a wrapper div
+ * so Chromium's page-break algorithm can split at row boundaries instead
+ * of slicing the table across columns. See visual-issues-pdf PR 3 / REQ-3.2. */
+.table-wrap {
+  column-span: all;
+  break-inside: auto;
+  page-break-inside: auto;
 }
 
 thead {

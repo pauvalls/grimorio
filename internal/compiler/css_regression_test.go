@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -758,5 +759,55 @@ func TestCSS_SnapshotComparison(t *testing.T) {
 				t.Errorf("HTML differs from snapshot. Run with -update to update snapshots.")
 			}
 		})
+	}
+}
+
+// TestCSSRegression_TableHasNoColumnSpan asserts REQ-3.2: the
+// `table {` selector block in dnd-style.css no longer contains
+// `column-span: all`. The rule moved to a new `.table-wrap` block.
+// The regex anchors on `^table\s*\{` so it does NOT match
+// `.table-wrap` (the dot in `.table-wrap` is a class-marker, not
+// the `table` element selector).
+func TestCSSRegression_TableHasNoColumnSpan(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	re := regexp.MustCompile(`(?ms)^table\s*\{[^}]*\}`)
+	m := re.FindString(css)
+	if m == "" {
+		t.Fatal("table { block not found in CSS")
+	}
+	if strings.Contains(m, "column-span: all") {
+		t.Errorf("table { block should not contain 'column-span: all' (moved to .table-wrap). Block: %s", m)
+	}
+}
+
+// TestCSSRegression_TableWrapExists asserts REQ-3.2: a new
+// `.table-wrap` CSS rule exists and contains `column-span: all`.
+// The wrapper is emitted by flushTable (see WU-1) and is the
+// recipient of the column-span role that the `table` selector
+// used to play.
+func TestCSSRegression_TableWrapExists(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	idx := strings.Index(css, ".table-wrap {")
+	if idx == -1 {
+		idx = strings.Index(css, ".table-wrap{")
+	}
+	if idx == -1 {
+		t.Fatal("CSS regression: '.table-wrap' class not found in dnd-style.css")
+	}
+	end := strings.Index(css[idx:], "}")
+	if end == -1 {
+		t.Fatal("CSS regression: .table-wrap block has no closing brace")
+	}
+	block := css[idx : idx+end+1]
+	if !strings.Contains(block, "column-span: all") {
+		t.Errorf(".table-wrap block missing 'column-span: all'. Block: %s", block)
 	}
 }
