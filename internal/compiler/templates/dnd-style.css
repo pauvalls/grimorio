@@ -179,6 +179,15 @@ body {
   content: target-counter(attr(href), page);
 }
 
+/* Adventure Roster — Apéndice F: column-spanning wrapper.
+   Holds the h2 heading and the three tables (NPCs, Monstruos,
+   Encuentros) so they render as a single full-width block. */
+.roster-wrap {
+  column-span: all;
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
 /* Section break */
 .section-break {
   column-span: all;

@@ -473,6 +473,36 @@ func TestCSSRegression_Prologue(t *testing.T) {
 	}
 }
 
+// TestCSSRegression_RosterWrap asserts REQ-2.4: the .roster-wrap
+// CSS rule exists and includes column-span: all. The wrapper is
+// used by generateAdventureRoster to span the three tables
+// (NPCs / Monstruos / Encuentros) across the full page width.
+func TestCSSRegression_RosterWrap(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	// Find the .roster-wrap block (with or without space before brace)
+	classIdx := strings.Index(css, ".roster-wrap {")
+	if classIdx == -1 {
+		classIdx = strings.Index(css, ".roster-wrap{")
+	}
+	if classIdx == -1 {
+		t.Fatal("CSS regression: '.roster-wrap' class not found in dnd-style.css")
+	}
+
+	closeIdx := strings.Index(css[classIdx:], "}")
+	if closeIdx == -1 {
+		t.Fatal("CSS regression: could not find closing brace for .roster-wrap")
+	}
+	block := css[classIdx : classIdx+closeIdx+1]
+
+	if !strings.Contains(block, "column-span: all") {
+		t.Errorf("CSS regression: .roster-wrap missing 'column-span: all'. Block: %s", block)
+	}
+}
+
 // TestCSSRegression_PrologueDefaultStyles tests that prologue styles include expected CSS properties
 func TestCSSRegression_PrologueDefaultStyles(t *testing.T) {
 	css, err := compiler.GetTemplate("dnd-style")
