@@ -285,6 +285,8 @@ ul, ol {
   padding-left: 18px;
   break-inside: avoid;
   column-break-inside: avoid;
+  break-before: auto;
+  page-break-before: auto;
 }
 
 li {
