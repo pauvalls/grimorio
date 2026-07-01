@@ -792,7 +792,7 @@ func (c *Compiler) generateAdventureRoster() string {
 		b.WriteString(`</tbody></table>`)
 	}
 
-	return b.String()
+	return `<div class="roster-wrap">` + b.String() + `</div>`
 }
 
 // extractRosterEntries parses markdown for roster entities

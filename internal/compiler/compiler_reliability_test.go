@@ -813,3 +813,70 @@ func TestMarkdownToHTMLWithID_InlineImageInHTMLBlock(t *testing.T) {
 		t.Errorf("expected alt=\"Cover\" in output (proves image was processed), got:\n%s", result)
 	}
 }
+
+// TestGenerateAdventureRoster_Wrapper asserts REQ-2.2: the
+// generateAdventureRoster output is wrapped in a single
+// <div class="roster-wrap">…</div> element that contains the h2
+// heading and all three tables (NPCs, Monstruos, Encuentros). The
+// wrapper is the outermost element so the h2 inherits the
+// column-span context of the .roster-wrap CSS rule (REQ-2.4).
+func TestGenerateAdventureRoster_Wrapper(t *testing.T) {
+	dir := t.TempDir()
+
+	// Build a minimal campaign with one entry per table.
+	// The fixture uses chapters/ because that's the canonical chapter
+	// source per the v5.0.2 WU7 removal of the legacy areas/ dir.
+	chaptersDir := filepath.Join(dir, "chapters")
+	if err := os.MkdirAll(chaptersDir, 0755); err != nil {
+		t.Fatalf("mkdir chapters: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(chaptersDir, "npcs.md"), []byte(`
+## NPCs
+
+- **Eldrin** tavern keeper
+`), 0644); err != nil {
+		t.Fatalf("write npcs.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(chaptersDir, "bestiary.md"), []byte(`
+## Monstruos
+
+- **Goblin** Challenge 1
+`), 0644); err != nil {
+		t.Fatalf("write bestiary.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(chaptersDir, "encounters.md"), []byte(`
+## Encuentros
+
+- **Test Encounter 1** A test encounter
+`), 0644); err != nil {
+		t.Fatalf("write encounters.md: %v", err)
+	}
+
+	c := New(dir, "")
+	out := c.generateAdventureRoster()
+
+	trimmed := strings.TrimSpace(out)
+	if !strings.HasPrefix(trimmed, `<div class="roster-wrap">`) {
+		t.Errorf("roster output should start with .roster-wrap, got prefix: %.80q", trimmed)
+	}
+	if !strings.HasSuffix(trimmed, `</div>`) {
+		t.Errorf("roster output should end with </div>, got suffix: %.80q", trimmed[len(trimmed)-80:])
+	}
+	// Exactly one outer wrap (the function does not nest the wrapper).
+	if got := strings.Count(out, `<div class="roster-wrap">`); got != 1 {
+		t.Errorf("expected exactly 1 .roster-wrap, got %d. Output:\n%s", got, out)
+	}
+	// All three h3 headings must be inside the wrapper. The h2
+	// ("Apéndice F") and the three h3 headings are the proof that
+	// the wrap did not eat the body of the function.
+	for _, h3 := range []string{"NPCs", "Monstruos", "Encuentros"} {
+		if !strings.Contains(out, h3) {
+			t.Errorf("roster missing h3 %q. Output:\n%s", h3, out)
+		}
+	}
+	// The h2 (Apéndice F: Adventure Roster) must also survive inside
+	// the wrap.
+	if !strings.Contains(out, "Apéndice F") {
+		t.Errorf("roster missing h2 'Apéndice F'. Output:\n%s", out)
+	}
+}
