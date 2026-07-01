@@ -1073,7 +1073,9 @@ var (
 	readAloudPrefixRe = regexp.MustCompile(`^\*{0,2}(?:Read-Aloud(?:\s+Text)?|Para Leer en Voz Alta)\*{0,2}:\s*\*{0,2}\s*`)
 
 	// dmSidebarPrefixRe strips DM Sidebar labels from blockquote text.
-	dmSidebarPrefixRe = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar:\s*\*{0,2}\s*`)
+	// The trailing colon is OPTIONAL — both `DM Sidebar:` and `DM Sidebar`
+	// (the no-colon variant) must match (REQ-1.4).
+	dmSidebarPrefixRe = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar:?\s*\*{0,2}\s*`)
 
 	// linkRegex matches markdown links [text](href).
 	linkRegex = regexp.MustCompile(`\[(?P<text>[^\]]+)\]\((?P<href>[^)]+)\)`)

@@ -55,6 +55,42 @@ func TestRegexes(t *testing.T) {
 			want:  true,
 		},
 		{
+			name:  "dm sidebar prefix no colon bare",
+			re:    dmSidebarPrefixRe,
+			input: "DM Sidebar Title",
+			want:  true,
+		},
+		{
+			name:  "dm sidebar prefix no colon heading",
+			re:    dmSidebarPrefixRe,
+			input: "##### DM Sidebar Title",
+			want:  true,
+		},
+		{
+			name:  "dm sidebar prefix no colon bolded",
+			re:    dmSidebarPrefixRe,
+			input: "**DM Sidebar** Title",
+			want:  true,
+		},
+		{
+			name:  "dm sidebar prefix no colon mixed case",
+			re:    dmSidebarPrefixRe,
+			input: "##### Dm Sidebar title",
+			want:  true,
+		},
+		{
+			name:  "dm sidebar prefix no colon lower",
+			re:    dmSidebarPrefixRe,
+			input: "##### dm sidebar: title",
+			want:  true,
+		},
+		{
+			name:  "dm sidebar prefix no colon leading whitespace",
+			re:    dmSidebarPrefixRe,
+			input: "  ##### DM Sidebar Title",
+			want:  false,
+		},
+		{
 			name:  "read-aloud text prefix",
 			re:    readAloudPrefixRe,
 			input: "**Read-Aloud Text:** description",
