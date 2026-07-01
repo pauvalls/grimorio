@@ -209,6 +209,8 @@ h1 {
   column-span: all;
   page-break-before: auto;
   page-break-after: avoid;
+  break-after: avoid;
+  column-break-after: avoid;
 }
 
 h2 {

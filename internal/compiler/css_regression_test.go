@@ -864,3 +864,38 @@ func TestCSSRegression_ListBreakInside(t *testing.T) {
 		t.Errorf("li block missing 'break-inside: avoid'. Block: %s", liBlock)
 	}
 }
+
+// TestCSSRegression_H1BreakAfter asserts REQ-3.4: chapter h1
+// titles never break after themselves. The standalone `h1 {`
+// block (h1 is the chapter title selector) must contain
+// `break-after: avoid` and `column-break-after: avoid` so the
+// chapter title stays with its first paragraph (Issue G).
+//
+// The test uses a regex anchored on `^h1\s*\{` (line start, no
+// leading class) so it does NOT match child selectors like
+// `.cover-wrapper h1 {` or `.prologue h1 {`.
+func TestCSSRegression_H1BreakAfter(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	h1Re := regexp.MustCompile(`(?m)^\s*h1\s*\{`)
+	h1Loc := h1Re.FindStringIndex(css)
+	if h1Loc == nil {
+		t.Fatal("CSS regression: standalone 'h1 {' block not found")
+	}
+	idx := h1Loc[0]
+	end := strings.Index(css[idx:], "}")
+	if end == -1 {
+		t.Fatal("CSS regression: h1 block has no closing brace")
+	}
+	block := css[idx : idx+end+1]
+
+	if !strings.Contains(block, "break-after: avoid") {
+		t.Errorf("h1 block missing 'break-after: avoid'. Block: %s", block)
+	}
+	if !strings.Contains(block, "column-break-after: avoid") {
+		t.Errorf("h1 block missing 'column-break-after: avoid'. Block: %s", block)
+	}
+}
