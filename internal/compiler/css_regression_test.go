@@ -50,7 +50,7 @@ func TestCSSRegression_StatBlockV2(t *testing.T) {
 	checks := []string{
 		".stat-block-v2",
 		"linear-gradient",
-		"border-top: 4px solid #8b0000",
+		"border-top: 4px solid #7a2e1a",
 		".stat-line",
 		".stat-label",
 		".stat-value",
@@ -382,26 +382,32 @@ func TestCSSRegression_CoverFixedHeight(t *testing.T) {
 		t.Errorf("CSS regression: .cover-image missing 'bottom: 14mm' (per design). Block: %s", imgBlock)
 	}
 }
+func parseCSSBlock(css, selector string) string {
+	// Find the selector block (with or without space before brace)
+	idx := strings.Index(css, selector+" {")
+	if idx == -1 {
+		idx = strings.Index(css, selector+"{")
+	}
+	if idx == -1 {
+		return ""
+	}
+	end := strings.Index(css[idx:], "}")
+	if end == -1 {
+		return ""
+	}
+	return css[idx : idx+end+1]
+}
+
 func TestCSSRegression_StatBlockClassic(t *testing.T) {
 	css, err := compiler.GetTemplate("dnd-style")
 	if err != nil {
 		t.Fatalf("Failed to get CSS: %v", err)
 	}
 
-	// Find the .stat-block class block (not .stat-block-v2)
-	classIdx := strings.Index(css, ".stat-block {")
-	if classIdx == -1 {
-		classIdx = strings.Index(css, ".stat-block{")
-	}
-	if classIdx == -1 {
+	block := parseCSSBlock(css, ".stat-block")
+	if block == "" {
 		t.Fatal("CSS regression: '.stat-block' class not found in CSS")
 	}
-
-	closeIdx := strings.Index(css[classIdx:], "}")
-	if closeIdx == -1 {
-		t.Fatal("CSS regression: could not find closing brace for .stat-block")
-	}
-	block := css[classIdx : classIdx+closeIdx+1]
 
 	// Required properties for the faithful WotC stat block
 	checks := []struct {
@@ -410,8 +416,8 @@ func TestCSSRegression_StatBlockClassic(t *testing.T) {
 	}{
 		{"column-span: all", "must span both columns"},
 		{"page-break-inside: avoid", "must avoid page break inside"},
-		{"border-top: 4px solid #8b0000", "WotC red top border"},
-		{"border-bottom: 4px solid #8b0000", "WotC red bottom border"},
+		{"border-top: 4px solid #7a2e1a", "reddish-brown top border"},
+		{"border-bottom: 4px solid #7a2e1a", "reddish-brown bottom border"},
 	}
 	for _, c := range checks {
 		if !strings.Contains(block, c.prop) {
@@ -435,6 +441,141 @@ func TestCSSRegression_StatBlockClassic(t *testing.T) {
 		if !strings.Contains(css, sc) {
 			t.Errorf("CSS regression: sub-class %q not found in CSS", sc)
 		}
+	}
+}
+
+// TestCSSRegression_StatBlockSubtitleSeparator asserts REQ: the separator
+// line moves from .stat-block h2 to .stat-block .monster-type.
+func TestCSSRegression_StatBlockSubtitleSeparator(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	// .stat-block h2 must NOT have border-bottom
+	h2Block := parseCSSBlock(css, ".stat-block h2")
+	if h2Block == "" {
+		t.Fatal("CSS regression: '.stat-block h2' block not found in CSS")
+	}
+	if strings.Contains(h2Block, "border-bottom") {
+		t.Errorf("CSS regression: .stat-block h2 should NOT have 'border-bottom' (separator moved to .monster-type). Block: %s", h2Block)
+	}
+
+	// .stat-block .monster-type MUST have border-bottom + padding-bottom
+	typeBlock := parseCSSBlock(css, ".stat-block .monster-type")
+	if typeBlock == "" {
+		t.Fatal("CSS regression: '.stat-block .monster-type' block not found in CSS")
+	}
+	if !strings.Contains(typeBlock, "border-bottom: 2px solid #8b0000") {
+		t.Errorf("CSS regression: .stat-block .monster-type missing 'border-bottom: 2px solid #8b0000'. Block: %s", typeBlock)
+	}
+	if !strings.Contains(typeBlock, "padding-bottom:") {
+		t.Errorf("CSS regression: .stat-block .monster-type missing 'padding-bottom'. Block: %s", typeBlock)
+	}
+}
+
+// TestCSSRegression_StatLabelSmallCaps asserts REQ: stat labels use
+// font-variant: small-caps instead of text-transform: uppercase.
+func TestCSSRegression_StatLabelSmallCaps(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	labelBlock := parseCSSBlock(css, ".stat-block .stat-label")
+	if labelBlock == "" {
+		t.Fatal("CSS regression: '.stat-block .stat-label' block not found in CSS")
+	}
+	if strings.Contains(labelBlock, "text-transform: uppercase") {
+		t.Errorf("CSS regression: .stat-block .stat-label should NOT use 'text-transform: uppercase'. Block: %s", labelBlock)
+	}
+	if !strings.Contains(labelBlock, "font-variant: small-caps") {
+		t.Errorf("CSS regression: .stat-block .stat-label missing 'font-variant: small-caps'. Block: %s", labelBlock)
+	}
+	if !strings.Contains(labelBlock, "font-feature-settings: \"smcp\"") {
+		t.Errorf("CSS regression: .stat-block .stat-label missing 'font-feature-settings: \"smcp\"'. Block: %s", labelBlock)
+	}
+}
+
+// TestCSSRegression_StatBlockActionsHeading asserts REQ: actions heading
+// uses border-top (separator above) instead of border-bottom.
+func TestCSSRegression_StatBlockActionsHeading(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	headingBlock := parseCSSBlock(css, ".stat-block .actions-heading")
+	if headingBlock == "" {
+		t.Fatal("CSS regression: '.stat-block .actions-heading' block not found in CSS")
+	}
+	if strings.Contains(headingBlock, "border-bottom") {
+		t.Errorf("CSS regression: .stat-block .actions-heading should NOT have 'border-bottom'. Block: %s", headingBlock)
+	}
+	if !strings.Contains(headingBlock, "border-top: 1px solid #c9ad6a") {
+		t.Errorf("CSS regression: .stat-block .actions-heading missing 'border-top: 1px solid #c9ad6a'. Block: %s", headingBlock)
+	}
+	if !strings.Contains(headingBlock, "padding-top:") {
+		t.Errorf("CSS regression: .stat-block .actions-heading missing 'padding-top'. Block: %s", headingBlock)
+	}
+}
+
+// TestCSSRegression_StatBlockBoldItalic asserts REQ: trait and action names
+// are bold+italic via .trait strong:first-child and .action strong:first-child.
+func TestCSSRegression_StatBlockBoldItalic(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	// Check the combined rule
+	expected := ".stat-block .trait strong:first-child"
+	if !strings.Contains(css, expected) {
+		t.Errorf("CSS regression: missing selector %q", expected)
+	}
+	expected = ".stat-block .action strong:first-child"
+	if !strings.Contains(css, expected) {
+		t.Errorf("CSS regression: missing selector %q", expected)
+	}
+	// Check font-style: italic
+	if !strings.Contains(css, "trait strong:first-child, .stat-block .action strong:first-child") &&
+		!strings.Contains(css, "action strong:first-child, .stat-block .trait strong:first-child") {
+		// Check each individually
+		found := false
+		idx := strings.Index(css, "trait strong:first-child")
+		if idx != -1 {
+			// Look for font-style near this position
+			contextEnd := idx + 200
+			if contextEnd > len(css) {
+				contextEnd = len(css)
+			}
+			if strings.Contains(css[idx:contextEnd], "font-style: italic") {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("CSS regression: trait/action strong:first-child missing 'font-style: italic'")
+		}
+	}
+}
+
+// TestCSSRegression_StatBlockV2BorderColor asserts REQ: .stat-block-v2
+// border colors match the reddish-brown palette (#7a2e1a).
+func TestCSSRegression_StatBlockV2BorderColor(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	v2Block := parseCSSBlock(css, ".stat-block-v2")
+	if v2Block == "" {
+		t.Fatal("CSS regression: '.stat-block-v2' block not found in CSS")
+	}
+	if !strings.Contains(v2Block, "border-top: 4px solid #7a2e1a") {
+		t.Errorf("CSS regression: .stat-block-v2 missing 'border-top: 4px solid #7a2e1a'. Block: %s", v2Block)
+	}
+	if !strings.Contains(v2Block, "border-bottom: 4px solid #7a2e1a") {
+		t.Errorf("CSS regression: .stat-block-v2 missing 'border-bottom: 4px solid #7a2e1a'. Block: %s", v2Block)
 	}
 }
 

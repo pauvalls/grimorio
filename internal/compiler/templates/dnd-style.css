@@ -376,8 +376,8 @@ tbody tr:nth-child(odd) {
 .stat-block {
   background: #fdf1dc;
   border: 2px solid #c9ad6a;
-  border-top: 4px solid #8b0000; /* WotC red top border */
-  border-bottom: 4px solid #8b0000; /* WotC red bottom border */
+  border-top: 4px solid #7a2e1a; /* reddish-brown top border */
+  border-bottom: 4px solid #7a2e1a; /* reddish-brown bottom border */
   border-radius: 0; /* faithful WotC: no rounded corners */
   padding: 12px 16px;
   margin: 14px 0;
@@ -392,7 +392,6 @@ tbody tr:nth-child(odd) {
 .stat-block h2 {
   font-family: 'Cinzel', serif;
   color: #5a3d2b;
-  border-bottom: 2px solid #8b0000;
   margin: 0 0 6px 0;
   padding-bottom: 4px;
   font-size: 14pt;
@@ -412,6 +411,8 @@ tbody tr:nth-child(odd) {
   margin: 0 0 8px 0;
   text-align: center;
   font-size: 9pt;
+  border-bottom: 2px solid #8b0000;
+  padding-bottom: 4px;
 }
 
 /* FIX: v5.4.2 used `display: flex; justify-content: space-between` on
@@ -429,7 +430,8 @@ tbody tr:nth-child(odd) {
 .stat-block .stat-label {
   font-weight: bold;
   color: #5a3d2b;
-  text-transform: uppercase;
+  font-variant: small-caps;
+  font-feature-settings: "smcp";
   font-size: 8.5pt;
   letter-spacing: 0.5px;
 }
@@ -473,7 +475,8 @@ tbody tr:nth-child(odd) {
 .stat-block .actions-heading {
   font-family: 'Cinzel', serif;
   color: #8b0000;
-  border-bottom: 1px solid #c9ad6a;
+  border-top: 1px solid #c9ad6a;
+  padding-top: 6px;
   font-size: 11pt;
   margin: 10px 0 4px 0;
 }
@@ -481,6 +484,11 @@ tbody tr:nth-child(odd) {
 .stat-block .trait,
 .stat-block .action {
   margin: 4px 0;
+}
+
+.stat-block .trait strong:first-child,
+.stat-block .action strong:first-child {
+  font-style: italic;
 }
 
 .stat-block .action em {
@@ -746,8 +754,8 @@ h3 .area-number {
 .stat-block-v2 {
   background: linear-gradient(180deg, #fdf1dc 0%, #f5e6c8 100%);
   border: 2px solid #c9ad6a;
-  border-top: 4px solid #8b0000;
-  border-bottom: 4px solid #8b0000;
+  border-top: 4px solid #7a2e1a;
+  border-bottom: 4px solid #7a2e1a;
   padding: 14px 16px;
   margin: 14px 0;
   column-break-inside: avoid;
