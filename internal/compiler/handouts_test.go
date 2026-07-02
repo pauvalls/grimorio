@@ -77,3 +77,76 @@ func TestGenerateHandouts_V1(t *testing.T) {
 		t.Error("v1 compiler should not generate handouts")
 	}
 }
+
+// TestGenerateHandouts_NilRendererReturnsEmpty asserts REQ-2.3: when
+// SetHandoutRenderer was never called (the renderer is nil), the
+// function returns the empty string — no <div class="handout-page">,
+// no "Player Handouts" h1, no placeholder HTML. The rendered PDF
+// has no page break for the handouts section.
+func TestGenerateHandouts_NilRendererReturnsEmpty(t *testing.T) {
+	c := New(t.TempDir(), "")
+	// Intentionally do NOT call c.SetHandoutRenderer.
+	out, err := c.generateHandouts()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out != "" {
+		t.Errorf("nil renderer should return empty string, got: %.200q", out)
+	}
+	if strings.Contains(out, "handout-page") {
+		t.Errorf("nil renderer output should not contain 'handout-page' marker, got: %.200q", out)
+	}
+	if strings.Contains(out, "Player Handouts") {
+		t.Errorf("nil renderer output should not contain 'Player Handouts' heading, got: %.200q", out)
+	}
+}
+
+// stubHandoutRenderer is a minimal HandoutRenderer that returns the
+// values pre-set on the struct. Used by TestGenerateHandouts_StubRendererPreserved
+// to verify the positive path (a wired renderer is still called and
+// its output reaches the final HTML).
+type stubHandoutRenderer struct {
+	clues string
+	npcs  string
+	recap string
+	map_  string
+}
+
+func (s *stubHandoutRenderer) GenerateClueList() (string, error) {
+	return s.clues, nil
+}
+func (s *stubHandoutRenderer) GenerateNPCReference() (string, error) {
+	return s.npcs, nil
+}
+func (s *stubHandoutRenderer) GenerateSessionRecap() (string, error) {
+	return s.recap, nil
+}
+func (s *stubHandoutRenderer) GeneratePlayerMap(name string) (string, error) {
+	return s.map_, nil
+}
+
+// TestGenerateHandouts_StubRendererPreserved asserts the positive
+// path: a wired renderer is called, its output appears in the
+// generated HTML inside a <div class="handout-page">. This is the
+// companion to TestGenerateHandouts_NilRendererReturnsEmpty — the
+// regression check for "the early-return does not skip wired renderers".
+func TestGenerateHandouts_StubRendererPreserved(t *testing.T) {
+	c := New(t.TempDir(), "")
+	c.SetHandoutRenderer(&stubHandoutRenderer{
+		clues: "Test clue list",
+		npcs:  "Test NPC reference",
+	})
+	out, err := c.generateHandouts()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, `<div class="handout-page"`) {
+		t.Errorf("stub renderer output should contain handout-page div, got: %.200q", out)
+	}
+	if !strings.Contains(out, "Test clue list") {
+		t.Errorf("stub renderer output missing 'Test clue list', got:\n%s", out)
+	}
+	if !strings.Contains(out, "Test NPC reference") {
+		t.Errorf("stub renderer output missing 'Test NPC reference', got:\n%s", out)
+	}
+}

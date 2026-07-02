@@ -2,7 +2,9 @@ package compiler_test
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -670,5 +672,90 @@ func TestCompile_PDFEngineAgnostic(t *testing.T) {
 	}
 	if info.Size() == 0 {
 		t.Error("PDF file is empty")
+	}
+}
+
+// TestCompile_TableIntegrity asserts REQ-3.5 (end-to-end): a 10-row
+// 3-column table in a fixture campaign renders with all 10 rows
+// visible in the compiled PDF, verified via `pdftotext -layout`.
+// The test is gated on `compiler.IsPDFEngineAvailable()` so it
+// skips cleanly when Chromium is not in PATH. The test is also
+// skipped if `pdftotext` (poppler-utils) is not installed.
+func TestCompile_TableIntegrity(t *testing.T) {
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("Chromium not in PATH, skipping table integrity test")
+	}
+
+	dir := t.TempDir()
+
+	// Minimal campaign structure (chapters/ is the canonical source per
+	// v5.0.2 WU7 removal of legacy areas/).
+	dirs := []string{"chapters", "npcs", "bestiary", "encounters", "maps", "assets"}
+	for _, d := range dirs {
+		if err := os.MkdirAll(filepath.Join(dir, d), 0755); err != nil {
+			t.Fatalf("mkdir %s: %v", d, err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(dir, "introduction.md"), []byte("# Table Test\n\nIntro.\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "lore.md"), []byte("# Lore\n\nLore.\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "appendices.md"), []byte("# Appendices\n\nAppx.\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// 10-row 3-column table in a chapter file. The first column of
+	// each row is a unique marker ("Row N Col1" for N=1..10) so we
+	// can verify all 10 rows survived the page-break logic.
+	chapter := "# Chapter 1\n\n## Table Test\n\n| Col1 | Col2 | Col3 |\n|------|------|------|\n"
+	for i := 1; i <= 10; i++ {
+		chapter += fmt.Sprintf("| Row %d Col1 | Row %d Col2 | Row %d Col3 |\n", i, i, i)
+	}
+	chapter += "\nEnd of chapter.\n"
+	if err := os.WriteFile(filepath.Join(dir, "chapters", "tables.md"), []byte(chapter), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Compile end-to-end.
+	c := compiler.New(dir, "")
+	pdfPath, err := c.Compile(context.Background(), "Table Test")
+	if err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+	if _, err := os.Stat(pdfPath); err != nil {
+		t.Fatalf("PDF not created at %s: %v", pdfPath, err)
+	}
+
+	// Run pdftotext on the PDF. If pdftotext is not in PATH, skip.
+	pdftotext, err := exec.LookPath("pdftotext")
+	if err != nil {
+		t.Skip("pdftotext not in PATH, skipping text extraction verification")
+	}
+	out, err := exec.Command(pdftotext, "-layout", pdfPath, "-").Output()
+	if err != nil {
+		t.Skipf("pdftotext failed (cannot verify row markers): %v", err)
+	}
+	text := string(out)
+
+	// Each row's first column is a unique marker "Row N Col1" for N=1..10.
+	// All 10 must appear in the extracted PDF text.
+	seen := make(map[string]bool)
+	for i := 1; i <= 10; i++ {
+		marker := fmt.Sprintf("Row %d Col1", i)
+		if strings.Contains(text, marker) {
+			seen[marker] = true
+		}
+	}
+	if len(seen) < 10 {
+		missing := []string{}
+		for i := 1; i <= 10; i++ {
+			marker := fmt.Sprintf("Row %d Col1", i)
+			if !seen[marker] {
+				missing = append(missing, marker)
+			}
+		}
+		t.Errorf("PDF missing %d of 10 row markers: %v", 10-len(seen), missing)
 	}
 }

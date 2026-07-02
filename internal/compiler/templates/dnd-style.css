@@ -1,5 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
 
+/* REQ-1.2: enforce A4 + suppress all five margin boxes. Defense-in-depth
+ * in case Chromium ever drops the --no-pdf-header-footer flag. The 5
+ * @top-* / @bottom-* boxes are what Chromium 116+ prints by default
+ * (URL, page title, date, n/91 page counter) and they are the source of
+ * the "n/91" leak in v5.4.3. */
+@page {
+  size: A4;
+  margin: 15mm;
+  @top-left { content: none }
+  @top-right { content: none }
+  @bottom-left { content: none }
+  @bottom-center { content: none }
+  @bottom-right { content: none }
+}
+
 /* First page: no margins, so the cover can fill the full A4 sheet without
  * interacting with body padding or column-span rounding. Subsequent pages
  * use the body padding (see @page below — Chromium's print CSS picks up
@@ -164,6 +179,15 @@ body {
   content: target-counter(attr(href), page);
 }
 
+/* Adventure Roster — Apéndice F: column-spanning wrapper.
+   Holds the h2 heading and the three tables (NPCs, Monstruos,
+   Encuentros) so they render as a single full-width block. */
+.roster-wrap {
+  column-span: all;
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
 /* Section break */
 .section-break {
   column-span: all;
@@ -185,6 +209,8 @@ h1 {
   column-span: all;
   page-break-before: auto;
   page-break-after: avoid;
+  break-after: avoid;
+  column-break-after: avoid;
 }
 
 h2 {
@@ -254,21 +280,25 @@ strong em {
   color: #5a3d2b;
 }
 
-ul {
+ul, ol {
   margin: 4px 0;
   padding-left: 18px;
+  break-inside: avoid;
+  column-break-inside: avoid;
+  break-before: auto;
+  page-break-before: auto;
 }
 
 li {
   margin-bottom: 2px;
   line-height: 1.4;
+  break-inside: avoid;
 }
 
 /* Tables */
 table {
   width: 100%;
   table-layout: fixed;
-  column-span: all;
   border-collapse: collapse;
   margin: 10px 0;
   font-size: 9pt;
@@ -277,6 +307,15 @@ table {
   break-inside: avoid; /* wkhtmltopdf compatibility */
   page-break-before: avoid;
   page-break-after: auto;
+}
+
+/* Table wrapper — moves column-span from the table itself to a wrapper div
+ * so Chromium's page-break algorithm can split at row boundaries instead
+ * of slicing the table across columns. See visual-issues-pdf PR 3 / REQ-3.2. */
+.table-wrap {
+  column-span: all;
+  break-inside: auto;
+  page-break-inside: auto;
 }
 
 thead {
@@ -337,8 +376,8 @@ tbody tr:nth-child(odd) {
 .stat-block {
   background: #fdf1dc;
   border: 2px solid #c9ad6a;
-  border-top: 4px solid #8b0000; /* WotC red top border */
-  border-bottom: 4px solid #8b0000; /* WotC red bottom border */
+  border-top: 4px solid #7a2e1a; /* reddish-brown top border */
+  border-bottom: 4px solid #7a2e1a; /* reddish-brown bottom border */
   border-radius: 0; /* faithful WotC: no rounded corners */
   padding: 12px 16px;
   margin: 14px 0;
@@ -353,7 +392,6 @@ tbody tr:nth-child(odd) {
 .stat-block h2 {
   font-family: 'Cinzel', serif;
   color: #5a3d2b;
-  border-bottom: 2px solid #8b0000;
   margin: 0 0 6px 0;
   padding-bottom: 4px;
   font-size: 14pt;
@@ -373,6 +411,8 @@ tbody tr:nth-child(odd) {
   margin: 0 0 8px 0;
   text-align: center;
   font-size: 9pt;
+  border-bottom: 2px solid #8b0000;
+  padding-bottom: 4px;
 }
 
 /* FIX: v5.4.2 used `display: flex; justify-content: space-between` on
@@ -390,7 +430,8 @@ tbody tr:nth-child(odd) {
 .stat-block .stat-label {
   font-weight: bold;
   color: #5a3d2b;
-  text-transform: uppercase;
+  font-variant: small-caps;
+  font-feature-settings: "smcp";
   font-size: 8.5pt;
   letter-spacing: 0.5px;
 }
@@ -434,7 +475,8 @@ tbody tr:nth-child(odd) {
 .stat-block .actions-heading {
   font-family: 'Cinzel', serif;
   color: #8b0000;
-  border-bottom: 1px solid #c9ad6a;
+  border-top: 1px solid #c9ad6a;
+  padding-top: 6px;
   font-size: 11pt;
   margin: 10px 0 4px 0;
 }
@@ -442,6 +484,11 @@ tbody tr:nth-child(odd) {
 .stat-block .trait,
 .stat-block .action {
   margin: 4px 0;
+}
+
+.stat-block .trait strong:first-child,
+.stat-block .action strong:first-child {
+  font-style: italic;
 }
 
 .stat-block .action em {
@@ -675,6 +722,7 @@ h3 .area-number {
   border-right: 1px dashed #c9ad6a;
   padding: 10px 14px;
   margin: 12px 0;
+  column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -706,8 +754,8 @@ h3 .area-number {
 .stat-block-v2 {
   background: linear-gradient(180deg, #fdf1dc 0%, #f5e6c8 100%);
   border: 2px solid #c9ad6a;
-  border-top: 4px solid #8b0000;
-  border-bottom: 4px solid #8b0000;
+  border-top: 4px solid #7a2e1a;
+  border-bottom: 4px solid #7a2e1a;
   padding: 14px 16px;
   margin: 14px 0;
   column-break-inside: avoid;
@@ -781,6 +829,7 @@ h3 .area-number {
   padding: 8px 12px;
   margin: 8px 0;
   font-size: 9pt;
+  column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -862,6 +911,7 @@ h3 .area-number {
   border-left: 4px solid #5a3d2b;
   padding: 10px 12px;
   margin: 8px 0;
+  column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -946,6 +996,7 @@ h3 .area-number {
   padding: 1em;
   border-left: 3px solid #5a3d2b;
   margin: 10px 0;
+  column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
 }

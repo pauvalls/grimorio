@@ -20,6 +20,9 @@ func (c *Compiler) generateHandouts() (string, error) {
 	if c.CompilerVersion != 2 {
 		return "", nil // handouts only in v2
 	}
+	if c.handoutRenderer() == nil {
+		return "", nil // no renderer wired → skip the page entirely
+	}
 
 	var parts []string
 

@@ -64,6 +64,9 @@ type Compiler struct {
 	CompilerVersion     int
 	seenImages          map[string]bool
 	handoutRendererImpl HandoutRenderer
+	// warnedFilesDebounce tracks files that have already emitted a
+	// "no-colon DM Sidebar" warning in this compile session (REQ-1.5).
+	warnedFilesDebounce map[string]struct{}
 }
 
 // blockquoteClass classifies the semantic role of a markdown blockquote.
@@ -119,10 +122,11 @@ func New(campaignDir, pdfEngine string) *Compiler {
 		pdfEngine = detectPDFEngine()
 	}
 	return &Compiler{
-		CampaignDir:     campaignDir,
-		PDFEngine:       pdfEngine,
-		CompilerVersion: 2,
-		seenImages:      make(map[string]bool),
+		CampaignDir:         campaignDir,
+		PDFEngine:           pdfEngine,
+		CompilerVersion:     2,
+		seenImages:          make(map[string]bool),
+		warnedFilesDebounce: make(map[string]struct{}),
 	}
 }
 
@@ -428,7 +432,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 						continue
 					}
 					sectionID := "sec-" + sanitizeID(sec.name+"-"+f.Name())
-					htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages, reg)
+					htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages, reg, filepath.Join(sec.path, f.Name()))
 					htmlResult = postProcessHTML(htmlResult, c.CompilerVersion)
 					if strings.TrimSpace(htmlResult) != "" {
 						htmlParts = append(htmlParts, htmlResult)
@@ -445,7 +449,7 @@ func (c *Compiler) generateHTML(title string) ([]string, error) {
 				continue
 			}
 			sectionID := "sec-" + sanitizeID(sec.name)
-			htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages, reg)
+			htmlResult := c.markdownToHTMLWithID(string(content), c.CampaignDir, sectionID, &headingCounter, c.seenImages, reg, sec.path)
 			htmlResult = postProcessHTML(htmlResult, c.CompilerVersion)
 			if strings.TrimSpace(htmlResult) != "" {
 				htmlParts = append(htmlParts, htmlResult)
@@ -544,7 +548,7 @@ func (c *Compiler) generateSessionZero() string {
 		return "" // no session zero, skip
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-session-zero", new(int), c.seenImages, c.CompilerVersion, nil)
+	htmlResult := markdownToHTMLWithID(c, string(data), c.CampaignDir, "sec-session-zero", new(int), c.seenImages, c.CompilerVersion, nil, path)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -565,7 +569,7 @@ func (c *Compiler) generatePrologue() string {
 		return "" // no prologue, skip
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, "sec-prologue", new(int), c.seenImages, c.CompilerVersion, nil)
+	htmlResult := markdownToHTMLWithID(c, string(data), c.CampaignDir, "sec-prologue", new(int), c.seenImages, c.CompilerVersion, nil, path)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -623,7 +627,7 @@ func (c *Compiler) generateSessionPrepHTML(sessionNum int) string {
 		}
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, fmt.Sprintf("sec-session-prep-%d", sessionNum), new(int), c.seenImages, c.CompilerVersion, nil)
+	htmlResult := markdownToHTMLWithID(c, string(data), c.CampaignDir, fmt.Sprintf("sec-session-prep-%d", sessionNum), new(int), c.seenImages, c.CompilerVersion, nil, path)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -641,7 +645,7 @@ func (c *Compiler) generateCharacterSheetHTML(characterID string) string {
 		return ""
 	}
 
-	htmlResult := markdownToHTMLWithID(string(data), c.CampaignDir, fmt.Sprintf("sec-character-%s", characterID), new(int), c.seenImages, c.CompilerVersion, nil)
+	htmlResult := markdownToHTMLWithID(c, string(data), c.CampaignDir, fmt.Sprintf("sec-character-%s", characterID), new(int), c.seenImages, c.CompilerVersion, nil, path)
 	if strings.TrimSpace(htmlResult) == "" {
 		return ""
 	}
@@ -788,7 +792,7 @@ func (c *Compiler) generateAdventureRoster() string {
 		b.WriteString(`</tbody></table>`)
 	}
 
-	return b.String()
+	return `<div class="roster-wrap">` + b.String() + `</div>`
 }
 
 // extractRosterEntries parses markdown for roster entities
@@ -994,20 +998,23 @@ func (c *Compiler) htmlToPDF(ctx context.Context, htmlPath, pdfPath string) erro
 	return c.htmlToPDFWkhtmltopdf(ctx, htmlPath, pdfPath)
 }
 
-func (c *Compiler) htmlToPDFChromium(ctx context.Context, htmlPath, pdfPath string) error {
+// buildChromiumCmd constructs the *exec.Cmd for the Chromium headless print
+// invocation. It is extracted from htmlToPDFChromium so tests can inspect the
+// argument slice without actually running the engine.
+func (c *Compiler) buildChromiumCmd(ctx context.Context, htmlPath, pdfPath string) *exec.Cmd {
 	absHTML, err := filepath.Abs(htmlPath)
 	if err != nil {
-		return fmt.Errorf("failed to resolve HTML path: %w", err)
+		absHTML = htmlPath
 	}
 	absPDF, err := filepath.Abs(pdfPath)
 	if err != nil {
-		return fmt.Errorf("failed to resolve PDF path: %w", err)
+		absPDF = pdfPath
 	}
 
 	// Use file:// URL for local file access
 	fileURL := "file://" + absHTML
 
-	cmd := exec.CommandContext(ctx, c.PDFEngine,
+	return exec.CommandContext(ctx, c.PDFEngine,
 		"--headless",
 		"--no-sandbox",
 		"--disable-setuid-sandbox",
@@ -1016,10 +1023,15 @@ func (c *Compiler) htmlToPDFChromium(ctx context.Context, htmlPath, pdfPath stri
 		"--allow-file-access-from-files",
 		"--run-all-compositor-stages-before-draw",
 		"--print-to-pdf="+absPDF,
-		"--print-to-pdf-no-header",
+		"--no-pdf-header-footer",
+		"--paper=A4",
 		"--virtual-time-budget=10000",
 		fileURL,
 	)
+}
+
+func (c *Compiler) htmlToPDFChromium(ctx context.Context, htmlPath, pdfPath string) error {
+	cmd := c.buildChromiumCmd(ctx, htmlPath, pdfPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("chromium headless failed: %w\nOutput: %s", err, string(output))
@@ -1065,7 +1077,9 @@ var (
 	readAloudPrefixRe = regexp.MustCompile(`^\*{0,2}(?:Read-Aloud(?:\s+Text)?|Para Leer en Voz Alta)\*{0,2}:\s*\*{0,2}\s*`)
 
 	// dmSidebarPrefixRe strips DM Sidebar labels from blockquote text.
-	dmSidebarPrefixRe = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar:\s*\*{0,2}\s*`)
+	// The trailing colon is OPTIONAL — both `DM Sidebar:` and `DM Sidebar`
+	// (the no-colon variant) must match (REQ-1.4).
+	dmSidebarPrefixRe = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar:?\s*\*{0,2}\s*`)
 
 	// linkRegex matches markdown links [text](href).
 	linkRegex = regexp.MustCompile(`\[(?P<text>[^\]]+)\]\((?P<href>[^)]+)\)`)
@@ -1161,7 +1175,10 @@ func stripCharacterWorksheets(md string) string {
 
 // classifyBlockquote determines the semantic role of a blockquote and returns the
 // class along with lines that have the class-identifying marker removed.
-func classifyBlockquote(lines []string, sectionID string) (blockquoteClass, []string) {
+//
+// c and filePath are optional (both may be empty/nil): they enable the
+// per-file stderr warning for the no-colon DM Sidebar variant (REQ-1.5).
+func classifyBlockquote(lines []string, sectionID, filePath string, c *Compiler) (blockquoteClass, []string) {
 	if len(lines) == 0 {
 		return bqReadAloud, lines
 	}
@@ -1172,6 +1189,21 @@ func classifyBlockquote(lines []string, sectionID string) (blockquoteClass, []st
 
 	// DM Sidebar detection takes precedence.
 	if dmSidebarPrefixRe.MatchString(first) {
+		// REQ-1.5: warn once per file when the no-colon variant is parsed.
+		// The debounce lives on the Compiler so concurrent compiles in the
+		// MCP server don't cross-contaminate. Empty filePath / nil Compiler
+		// skip the warning (e.g. the unexported markdownToHTMLWithID tests
+		// pass nil for the Compiler).
+		// Distinguish colon vs no-colon: the line must contain a `:` between
+		// "DM Sidebar" and the title content to be the colon variant.
+		if c != nil && filePath != "" && !strings.Contains(first, "DM Sidebar:") && !strings.Contains(first, "dm sidebar:") {
+			if _, warned := c.warnedFilesDebounce[filePath]; !warned {
+				c.warnedFilesDebounce[filePath] = struct{}{}
+				fmt.Fprintf(os.Stderr,
+					"grimorio: warning: %s: DM Sidebar prefix without ':' — consider adding a colon for consistency\n",
+					filePath)
+			}
+		}
 		cleaned[0] = dmSidebarPrefixRe.ReplaceAllString(first, "")
 		return bqDMSidebar, cleaned
 	}
@@ -1640,11 +1672,11 @@ func extractBalancedDivs(md string) (string, []string) {
 	return result.String(), blocks
 }
 
-func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, reg anchorRegistry) string {
-	return markdownToHTMLWithID(md, baseDir, sectionID, headingCounter, seenImages, c.CompilerVersion, reg)
+func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, reg anchorRegistry, filePath string) string {
+	return markdownToHTMLWithID(c, md, baseDir, sectionID, headingCounter, seenImages, c.CompilerVersion, reg, filePath)
 }
 
-func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry) string {
+func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry, filePath string) string {
 	// Strip character-worksheet div blocks before further processing (v2 only)
 	if compilerVersion == 2 {
 		md = stripCharacterWorksheets(md)
@@ -1734,7 +1766,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 
 		var className string
 		if compilerVersion == 2 {
-			class, cleanedLines := classifyBlockquote(originalLines, sectionID)
+			class, cleanedLines := classifyBlockquote(originalLines, sectionID, filePath, c)
 			if blockquoteClassOverride >= 0 {
 				class = blockquoteClassOverride
 			}
@@ -1788,6 +1820,14 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 		headers := parseTableRow(tableRows[0])
 		alignments := parseTableAlign(tableRows[1])
 		var htmlOut strings.Builder
+		// Wrap every emitted table in a <div class="table-wrap"> so the
+		// CSS rule .table-wrap { column-span: all; break-inside: auto; }
+		// can take over the column-spanning role from the table itself.
+		// Chromium 148's page-break algorithm then splits the wrapper at
+		// row boundaries (the existing tr { break-inside: avoid } rule
+		// protects each row), instead of slicing the table across columns.
+		// See visual-issues-pdf PR 3 / REQ-3.1.
+		htmlOut.WriteString(`<div class="table-wrap">`)
 		htmlOut.WriteString(`<table><thead><tr>`)
 		for i, h := range headers {
 			align := ""
@@ -1819,6 +1859,7 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 			htmlOut.WriteString(`</tr>`)
 		}
 		htmlOut.WriteString(`</tbody></table>`)
+		htmlOut.WriteString(`</div>`)
 		out = append(out, htmlOut.String())
 		tableRows = nil
 	}
@@ -2078,9 +2119,23 @@ func markdownToHTMLWithID(md string, baseDir string, sectionID string, headingCo
 	}
 
 	// Restore HTML blocks
+	// Re-process inline markdown (`![alt](path)`, `[text](url)`) inside
+	// extracted HTML blocks so images and links reach the printer even
+	// when the author pre-rendered HTML wraps raw markdown. See
+	// visual-issues-pdf PR 2 / REQ-2.1.
+	//
+	// We call processImages + processLinks directly instead of
+	// processInlineText because processInlineText HTML-escapes its input
+	// (after stashing <img>/<a>). For pre-rendered HTML blocks the
+	// escape step would corrupt attributes like <div class="stat-block">.
+	// processImages + processLinks only convert raw markdown patterns
+	// to tags; everything else (including pre-rendered <div>, <h2>, <em>,
+	// etc.) passes through unchanged.
 	result := strings.Join(out, "\n")
 	for i, html := range htmlBlocks {
-		result = strings.Replace(result, fmt.Sprintf("\x00HTMLBLOCK%d\x00", i), html, 1)
+		processed := processImages(html, baseDir, seenImages)
+		processed = processLinks(processed, "", reg)
+		result = strings.Replace(result, fmt.Sprintf("\x00HTMLBLOCK%d\x00", i), processed, 1)
 	}
 
 	return result
@@ -2163,7 +2218,7 @@ func parseTableAlign(row string) []string {
 func markdownToHTML(md string, baseDir string) string {
 	counter := 0
 	seen := make(map[string]bool)
-	return markdownToHTMLWithID(md, baseDir, "content", &counter, seen, 0, nil)
+	return markdownToHTMLWithID(nil, md, baseDir, "content", &counter, seen, 0, nil, "")
 }
 
 // postProcessHTML applies v2 cross-reference links and other transformations
