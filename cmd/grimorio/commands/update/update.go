@@ -199,8 +199,13 @@ type updater struct {
 // (per `~/.config/opencode/plugins/grimorio/.mcp.json`), which is a separate
 // path from the CLI binary in $HOME/.local/bin/grimorio.
 //
-// Returning the MCP path is non-fatal when the file does not exist: in that
-// case, the user is probably running grimorio as a CLI only (no MCP server
+// v5.4.5 addition: also discovers the plugin binary at
+// $HOME/.config/opencode/plugins/grimorio/grimorio. This is a separate copy
+// that opencode can use as an MCP server — it was previously missed, leaving
+// the plugin binary stale after updates.
+//
+// Returning a path is non-fatal when the file does not exist: in that case,
+// the user is probably running grimorio as a CLI only (no MCP server
 // configured), and the update should still succeed for the CLI binary.
 //
 // The homeDir parameter is injected for testability (tests use t.TempDir()
@@ -208,15 +213,34 @@ type updater struct {
 func discoverInstallDirs(cliBinary, homeDir string) ([]string, error) {
 	dirs := []string{cliBinary}
 
+	// MCP binary at $HOME/.grimorio/grimorio (canonical install path)
 	mcpBinary := filepath.Join(homeDir, ".grimorio", "grimorio")
 	if goos := runtime.GOOS; goos == "windows" {
 		mcpBinary += ".exe"
 	}
-
 	if _, err := os.Stat(mcpBinary); err == nil {
 		dirs = append(dirs, mcpBinary)
 	} else if !os.IsNotExist(err) {
 		return nil, fmt.Errorf("checking MCP binary at %s: %w", mcpBinary, err)
+	}
+
+	// Plugin binary at $HOME/.config/opencode/plugins/grimorio/grimorio
+	// (opencode MCP plugin path). This is a separate copy that the repo's
+	// .mcp.json may reference, and it MUST be updated alongside the others.
+	pluginBinary := filepath.Join(homeDir, ".config", "opencode", "plugins", "grimorio", "grimorio")
+	if goos := runtime.GOOS; goos == "windows" {
+		pluginBinary += ".exe"
+	}
+	if _, err := os.Stat(pluginBinary); err == nil {
+		// Deduplicate: if the plugin binary is actually a symlink to the
+		// MCP binary (or the same path), skip it to avoid double-update.
+		pluginReal, _ := filepath.EvalSymlinks(pluginBinary)
+		mcpReal, _ := filepath.EvalSymlinks(mcpBinary)
+		if pluginReal != mcpReal {
+			dirs = append(dirs, pluginBinary)
+		}
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("checking plugin binary at %s: %w", pluginBinary, err)
 	}
 
 	return dirs, nil
