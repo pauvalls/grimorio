@@ -669,28 +669,37 @@ func TestUpdater_CheckForUpdate(t *testing.T) {
 
 // --- T008: Multi-Path Update (MCP binary) ---
 
-// TestDiscoverInstallDirs verifies that the updater detects BOTH the CLI
-// binary (where `grimorio update` was invoked from) and the MCP binary
-// (the binary the opencode MCP server actually runs from, per
-// ~/.config/opencode/plugins/grimorio/.mcp.json).
+// TestDiscoverInstallDirs verifies that the updater detects the CLI, MCP,
+// AND plugin binary paths (the three places grimorio can be installed).
 //
 // This regression test was added after v5.3.0: the previous updater only
 // updated the CLI binary, leaving the MCP binary stale. Symptom: the user
 // ran `grimorio update`, the CLI showed v5.3.0, but the MCP server kept
 // running the previous version (and was missing the 3 new tools:
 // validate_monster, suggest_monster_cr, audit_monster_cr).
+//
+// v5.4.5 extension: also verifies the plugin binary at
+// $HOME/.config/opencode/plugins/grimorio/grimorio is discovered, since it
+// was previously missed.
 func TestDiscoverInstallDirs(t *testing.T) {
-	// Create a fake HOME with a fake ~/.grimorio/grimorio
+	// Create a fake HOME with fake binary dirs
 	home := t.TempDir()
 	cliDir := t.TempDir()
 	mcpDir := filepath.Join(home, ".grimorio")
-	if err := os.MkdirAll(mcpDir, 0755); err != nil {
-		t.Fatal(err)
+	pluginDir := filepath.Join(home, ".config", "opencode", "plugins", "grimorio")
+	for _, d := range []string{mcpDir, pluginDir} {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			t.Fatal(err)
+		}
 	}
 
-	// Create the fake MCP binary
+	// Create fake binaries — ensure different content so dedup doesn't skip them
 	mcpBinary := filepath.Join(mcpDir, "grimorio")
 	if err := os.WriteFile(mcpBinary, []byte("fake mcp binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	pluginBinary := filepath.Join(pluginDir, "grimorio")
+	if err := os.WriteFile(pluginBinary, []byte("fake plugin binary"), 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -705,9 +714,10 @@ func TestDiscoverInstallDirs(t *testing.T) {
 		t.Fatalf("discoverInstallDirs() error = %v", err)
 	}
 
-	// Expect at least the CLI and MCP paths
+	// Expect all three paths
 	foundCLI := false
 	foundMCP := false
+	foundPlugin := false
 	for _, d := range dirs {
 		if d == cliBinary {
 			foundCLI = true
@@ -715,12 +725,62 @@ func TestDiscoverInstallDirs(t *testing.T) {
 		if d == mcpBinary {
 			foundMCP = true
 		}
+		if d == pluginBinary {
+			foundPlugin = true
+		}
 	}
 	if !foundCLI {
 		t.Errorf("discoverInstallDirs() missing CLI path %q, got %v", cliBinary, dirs)
 	}
 	if !foundMCP {
 		t.Errorf("discoverInstallDirs() missing MCP path %q, got %v", mcpBinary, dirs)
+	}
+	if !foundPlugin {
+		t.Errorf("discoverInstallDirs() missing plugin path %q, got %v", pluginBinary, dirs)
+	}
+}
+
+// TestDiscoverInstallDirs_DedupPlugin verifies that when the plugin binary
+// is a symlink to the MCP binary (same inode), only one copy is included
+// in the install dirs to avoid double-update.
+func TestDiscoverInstallDirs_DedupPlugin(t *testing.T) {
+	home := t.TempDir()
+	cliDir := t.TempDir()
+	mcpDir := filepath.Join(home, ".grimorio")
+	pluginDir := filepath.Join(home, ".config", "opencode", "plugins", "grimorio")
+	for _, d := range []string{mcpDir, pluginDir} {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Create a real MCP binary
+	mcpBinary := filepath.Join(mcpDir, "grimorio")
+	if err := os.WriteFile(mcpBinary, []byte("real binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Plugin binary is a symlink to the MCP binary
+	pluginBinary := filepath.Join(pluginDir, "grimorio")
+	if err := os.Symlink(mcpBinary, pluginBinary); err != nil {
+		t.Fatal(err)
+	}
+
+	cliBinary := filepath.Join(cliDir, "grimorio")
+	if err := os.WriteFile(cliBinary, []byte("fake cli binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	dirs, err := discoverInstallDirs(cliBinary, home)
+	if err != nil {
+		t.Fatalf("discoverInstallDirs() error = %v", err)
+	}
+
+	// Must NOT include the plugin path (it's the same file as MCP)
+	for _, d := range dirs {
+		if d == pluginBinary {
+			t.Errorf("discoverInstallDirs() should NOT include plugin path when it's a symlink to MCP binary")
+		}
 	}
 }
 
