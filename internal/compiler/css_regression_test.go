@@ -35,6 +35,33 @@ func TestCSSRegression_DMSidebar(t *testing.T) {
 	}
 }
 
+func TestCSSRegression_ArkanumCalloutLayoutContract(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	checks := []string{
+		".dm-sidebar-wide",
+		".nested-card .table-wrap",
+		"break-inside: avoid",
+		"page-break-inside: avoid",
+	}
+	for _, check := range checks {
+		if !strings.Contains(css, check) {
+			t.Errorf("Arkanum CSS contract: missing %q", check)
+		}
+	}
+
+	dmSidebarStart := strings.Index(css, ".dm-sidebar {")
+	if dmSidebarStart >= 0 {
+		dmSidebarEnd := strings.Index(css[dmSidebarStart:], "}")
+		if dmSidebarEnd >= 0 && strings.Contains(css[dmSidebarStart:dmSidebarStart+dmSidebarEnd], "column-span: all") {
+			t.Errorf("ordinary DM sidebars must not span all columns")
+		}
+	}
+}
+
 // TestCSSRegression_StatBlockV2 tests stat-block-v2 CSS rendering
 func TestCSSRegression_StatBlockV2(t *testing.T) {
 	html := generateCSSFixture(t, `

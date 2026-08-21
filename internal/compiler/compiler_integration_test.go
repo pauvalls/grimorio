@@ -127,6 +127,58 @@ La aventura comienza.
 	}
 }
 
+func TestCompile_NestedCalloutTempCampaignPreservesBlockSemantics(t *testing.T) {
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping integration test")
+	}
+
+	tmpDir := t.TempDir()
+	createTestCampaign(t, tmpDir, "Nested Callout Test")
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	if err := os.MkdirAll(chaptersDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	chapter := `# Nested Card
+
+> **Read-Aloud:** The archive is silent.
+>
+> | Sign | Meaning |
+> | --- | --- |
+> | Dust | A hidden door |
+>
+> - Search the shelves
+> - [Open the door](#door)
+>
+> ` + "```text" + `
+> key <door>
+> ` + "```" + `
+`
+	if err := os.WriteFile(filepath.Join(chaptersDir, "nested.md"), []byte(chapter), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	pdfPath, err := compiler.New(tmpDir, "").Compile(t.Context(), "Nested Callout Test")
+	if err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+	if info, err := os.Stat(pdfPath); err != nil || info.Size() == 0 {
+		t.Fatalf("compiled PDF is missing or empty: %v", err)
+	}
+	htmlContent, err := os.ReadFile(filepath.Join(tmpDir, "campaign.html"))
+	if err != nil {
+		t.Fatalf("Failed to read HTML: %v", err)
+	}
+	htmlStr := string(htmlContent)
+	for _, want := range []string{"<table>", "<ul>", `<a href="#door">Open the door</a>`, "key &lt;door&gt;"} {
+		if !strings.Contains(htmlStr, want) {
+			t.Errorf("nested callout HTML missing %q", want)
+		}
+	}
+	if strings.Contains(htmlStr, "| Sign | Meaning |") || strings.Contains(htmlStr, "```text") {
+		t.Errorf("nested callout leaked Markdown markers into HTML")
+	}
+}
+
 // TestCompileWithDMSidebar tests DM sidebar generation
 func TestCompileWithDMSidebar(t *testing.T) {
 	tmpDir := t.TempDir()

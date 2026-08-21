@@ -318,6 +318,65 @@ func TestClassifyBlockquote(t *testing.T) {
 	}
 }
 
+func TestImageFirstMonsterBlocksStayCoherent(t *testing.T) {
+	tmpDir := t.TempDir()
+	assetsDir := filepath.Join(tmpDir, "assets")
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"monster-gromerm.png", "monster-error.png", "monster-guardian.png"} {
+		if err := os.WriteFile(filepath.Join(assetsDir, name), []byte(name), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	md := `## Gromerm
+![Gromerm](assets/monster-gromerm.png)
+*Medium beast, unaligned*
+**Armor Class** 14
+
+## El Error
+![El Error](assets/monster-error.png)
+*Small aberration, unaligned*
+**Armor Class** 12
+
+## Guardián de Arkanum
+![Guardián](assets/monster-guardian.png)
+*Large construct, unaligned*
+**Armor Class** 16
+`
+	got := markdownToHTML(md, tmpDir)
+	if gotBlocks := strings.Count(got, `class="stat-block"`); gotBlocks != 3 {
+		t.Fatalf("image-first monsters should produce three stat blocks, got %d\n%s", gotBlocks, got)
+	}
+	for _, marker := range []string{"monster-gromerm.png", "monster-error.png", "monster-guardian.png"} {
+		if gotImages := strings.Count(got, marker); gotImages != 1 {
+			t.Errorf("image %q should occur once in its stat block, got %d", marker, gotImages)
+		}
+	}
+}
+
+func TestRosterExtractionExcludesEncounterSolutions(t *testing.T) {
+	md := `## Adventure Roster
+
+### NPCs
+- **Mira** — Guide
+
+### Encounter: The Bridge
+- **Mira** attacks from the west.
+
+### Solution
+- **Mira** is secretly the traitor.
+`
+	npcs, _, encounters := extractRosterEntries(md)
+	if len(npcs) != 1 || npcs[0] != "Mira|Guide" {
+		t.Fatalf("roster should contain only the bounded NPC row, got %v", npcs)
+	}
+	if len(encounters) != 0 {
+		t.Fatalf("encounter prose and solution rows must not become roster entries, got %v", encounters)
+	}
+}
+
 func TestStripBlockquotePrefix(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -921,7 +980,7 @@ func TestFlushTable_WrapsInTableWrap(t *testing.T) {
 		},
 		{
 			name: "table with code cell",
-			md: "| A | B |\n|---|---|\n| `code` | normal |\n",
+			md:   "| A | B |\n|---|---|\n| `code` | normal |\n",
 		},
 	}
 	for _, tt := range tests {
