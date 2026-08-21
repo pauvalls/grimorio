@@ -1493,8 +1493,8 @@ func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, see
 		// Skip: blank lines, horizontal rules, and any non-image content.
 		// (Tactical phases, h3 sub-headings, and trait paragraphs inside
 		// the monster section are all kept as-is in the stat block by
-		// parseStatBlock when they appear BEFORE the closing ---; the
-		// peek only runs AFTER parseStatBlock returns. Content after
+		// parseStatBlockWithImages when they appear BEFORE the closing ---; the
+		// peek only runs AFTER parseStatBlockWithImages returns. Content after
 		// the closing --- is conventionally the hero image, possibly
 		// interleaved with commentary that the author placed between.)
 		if t == "" || t == "---" || t == "***" || t == "___" || t == "- - -" {
@@ -1570,14 +1570,6 @@ func tryStatBlock(name string, lines []string, startIdx int, baseDir string, see
 		return "", 0
 	}
 	return parseStatBlockWithImages(name, lines, typeLineIdx, imageIndexes, baseDir, seenImages, reg)
-}
-
-// parseStatBlock renders a WotC stat block starting at typeLineIdx (the italic
-// size+type line) and consuming up to the next `## ` heading or `---` rule.
-// Returns the rendered HTML and the number of lines consumed (including the
-// `## ` heading line and the italic type line).
-func parseStatBlock(name string, lines []string, typeLineIdx int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
-	return parseStatBlockWithImages(name, lines, typeLineIdx, nil, baseDir, seenImages, reg)
 }
 
 func parseStatBlockWithImages(name string, lines []string, typeLineIdx int, imageIndexes []int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
@@ -1986,7 +1978,7 @@ func renderMarkdownBlocksAtDepth(c *Compiler, md string, baseDir string, section
 		blockquoteLines = nil
 		var className string
 		class := bqReadAloud
-		cleanedLines := originalLines
+		var cleanedLines []string
 		if compilerVersion == 2 {
 			class, cleanedLines = classifyBlockquote(originalLines, sectionID, filePath, c)
 			if blockquoteClassOverride >= 0 {
