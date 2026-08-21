@@ -82,6 +82,20 @@ const (
 // anchorRegistry maps a requested link fragment to the element ID emitted in the HTML.
 type anchorRegistry map[string]string
 
+const (
+	// Markdown rendering is deliberately bounded. Campaign files are trusted
+	// input, but malformed nested cards must not be able to grow the call stack
+	// or allocate without limit.
+	maxBlockquoteDepth = 2
+	maxMarkdownBytes   = 1 << 20
+	maxMarkdownLines   = 10000
+)
+
+type markdownFence struct {
+	delimiter byte
+	length    int
+}
+
 // pdfEnginePriority defines the preferred order of PDF engines.
 var pdfEnginePriority = []string{
 	"chromium",
@@ -1596,6 +1610,7 @@ func renderAbilityScoresTable(lines []string, j *int, baseDir string, seenImages
 	*j-- // outer loop will do *j++
 	return b.String()
 }
+
 var headingMarkerRe = regexp.MustCompile(`^#{1,5}\s+`)
 
 // stripBlockquotePrefix removes remaining section/heading markers from blockquote
@@ -1677,6 +1692,34 @@ func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID str
 }
 
 func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry, filePath string) string {
+	return renderMarkdownBlocksAtDepth(c, md, baseDir, sectionID, headingCounter, seenImages, compilerVersion, reg, filePath, 0)
+}
+
+// renderMarkdownBlocks is the shared block renderer used by top-level
+// documents and recursive callout bodies. It keeps the existing HTML
+// contracts while making blockquote contents a real Markdown fragment instead
+// of a flattened paragraph.
+func renderMarkdownBlocks(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry, filePath string) string {
+	return renderMarkdownBlocksAtDepth(nil, md, baseDir, sectionID, headingCounter, seenImages, compilerVersion, reg, filePath, 0)
+}
+
+func renderMarkdownBlocksAtDepth(c *Compiler, md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry, filePath string, depth int) string {
+	if headingCounter == nil {
+		headingCounter = new(int)
+	}
+	if seenImages == nil {
+		seenImages = make(map[string]bool)
+	}
+	if len(md) > maxMarkdownBytes {
+		return markdownFallback(md)
+	}
+	if len(md) == 0 {
+		return ""
+	}
+	if len(strings.Split(md, "\n")) > maxMarkdownLines {
+		return markdownFallback(md)
+	}
+
 	// Strip character-worksheet div blocks before further processing (v2 only)
 	if compilerVersion == 2 {
 		md = stripCharacterWorksheets(md)
@@ -1707,6 +1750,7 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 
 	// Strip raw HTML tags (except <img>) that would be escaped and rendered as visible text.
 	// Stash <img> tags, strip all remaining HTML tags, then restore <img> tags.
+	md = protectFencedMarkup(md)
 	imgPlaceholder := "__IMG_TAG_PLACEHOLDER__"
 	imgStash := imgTagRegex.FindAllString(md, -1)
 	md = imgTagRegex.ReplaceAllString(md, imgPlaceholder)
@@ -1714,6 +1758,8 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 	for _, imgTag := range imgStash {
 		md = strings.Replace(md, imgPlaceholder, imgTag, 1)
 	}
+	md = strings.ReplaceAll(md, "\x00LT\x00", "<")
+	md = strings.ReplaceAll(md, "\x00GT\x00", ">")
 
 	// Restore explicit anchor tags now that raw tags have been stripped.
 	for i, anchor := range anchorTags {
@@ -1739,6 +1785,7 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 	// Code block state
 	inCodeBlock := false
 	var codeBlockLines []string
+	var activeFence markdownFence
 
 	flushCodeBlock := func() {
 		if len(codeBlockLines) == 0 {
@@ -1752,6 +1799,22 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 		escaped := html.EscapeString(code)
 		out = append(out, fmt.Sprintf(`<pre class="code-block"><code>%s</code></pre>`, escaped))
 	}
+	flushLiteralCodeBlock := func(extra string) {
+		literal := make([]string, 0, len(codeBlockLines)+2)
+		if activeFence.length > 0 {
+			literal = append(literal, strings.Repeat(string(activeFence.delimiter), activeFence.length))
+		}
+		literal = append(literal, codeBlockLines...)
+		if extra != "" {
+			literal = append(literal, extra)
+		}
+		codeBlockLines = nil
+		activeFence = markdownFence{}
+		if len(literal) == 0 {
+			return
+		}
+		out = append(out, fmt.Sprintf("<p>%s</p>", html.EscapeString(strings.Join(literal, "\n"))))
+	}
 
 	flushBlockquote := func() {
 		if len(blockquoteLines) == 0 {
@@ -1759,19 +1822,14 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 		}
 		originalLines := blockquoteLines
 		blockquoteLines = nil
-		text := strings.Join(originalLines, " ")
-		if text == "" {
-			return
-		}
-
 		var className string
+		class := bqReadAloud
+		cleanedLines := originalLines
 		if compilerVersion == 2 {
-			class, cleanedLines := classifyBlockquote(originalLines, sectionID, filePath, c)
+			class, cleanedLines = classifyBlockquote(originalLines, sectionID, filePath, c)
 			if blockquoteClassOverride >= 0 {
 				class = blockquoteClassOverride
 			}
-			text = strings.Join(cleanedLines, " ")
-			text = stripBlockquotePrefix(text, class)
 			switch class {
 			case bqDMSidebar:
 				className = "dm-sidebar"
@@ -1784,12 +1842,26 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 			}
 		} else {
 			// Legacy v1 / helper behavior: all blockquotes are read-aloud.
-			text = readAloudPrefixRe.ReplaceAllString(text, "")
+			cleanedLines = append([]string(nil), originalLines...)
+			if len(cleanedLines) > 0 {
+				cleanedLines[0] = readAloudPrefixRe.ReplaceAllString(cleanedLines[0], "")
+			}
 			className = "read-aloud"
 		}
+		if len(cleanedLines) > 0 {
+			cleanedLines[0] = stripBlockquotePrefix(cleanedLines[0], class)
+		}
 
-		escaped := processInlineText(text, baseDir, seenImages, reg)
-		out = append(out, fmt.Sprintf(`<div class="%s">%s</div>`, className, escaped))
+		body := strings.Join(cleanedLines, "\n")
+		if strings.TrimSpace(body) == "" {
+			return
+		}
+		if depth >= maxBlockquoteDepth {
+			out = append(out, fmt.Sprintf(`<div class="%s"><p>%s</p></div>`, className, html.EscapeString(body)))
+			return
+		}
+		body = renderCalloutBody(c, cleanedLines, baseDir, sectionID, headingCounter, seenImages, compilerVersion, reg, filePath, depth+1)
+		out = append(out, fmt.Sprintf(`<div class="%s">%s</div>`, className, body))
 	}
 
 	flushParagraph := func() {
@@ -1879,6 +1951,38 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 			continue
 		}
 
+		// Fence handling runs before table and blockquote detection so code
+		// examples containing pipes or Markdown markers remain code. Only a
+		// matching delimiter closes a fence; a mismatched delimiter is emitted
+		// literally and releases the parser before subsequent content.
+		if inCodeBlock {
+			if fence, ok := parseMarkdownFence(trimmed); ok {
+				if fence.delimiter == activeFence.delimiter && fence.length >= activeFence.length {
+					flushCodeBlock()
+					inCodeBlock = false
+					activeFence = markdownFence{}
+				} else {
+					flushLiteralCodeBlock(trimmed)
+					inCodeBlock = false
+				}
+				continue
+			}
+			codeBlockLines = append(codeBlockLines, line)
+			continue
+		}
+		if fence, ok := parseMarkdownFence(trimmed); ok {
+			flushParagraph()
+			flushBlockquote()
+			flushTable()
+			if inList {
+				out = append(out, "</ul>")
+				inList = false
+			}
+			inCodeBlock = true
+			activeFence = fence
+			continue
+		}
+
 		// Skip empty lines inside table
 		if inTable && trimmed == "" {
 			continue
@@ -1933,34 +2037,10 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 			continue
 		}
 
-		// Handle code blocks (```)
-		if strings.HasPrefix(trimmed, "```") {
-			if inCodeBlock {
-				// End code block
-				flushCodeBlock()
-				inCodeBlock = false
-			} else {
-				// Start code block
-				flushParagraph()
-				flushBlockquote()
-				if inList {
-					out = append(out, "</ul>")
-					inList = false
-				}
-				inCodeBlock = true
-			}
-			continue
-		}
-
-		// If we're inside a code block, collect lines
-		if inCodeBlock {
-			codeBlockLines = append(codeBlockLines, line) // Keep original line, not trimmed
-			continue
-		}
-
 		// Handle blockquotes (read-aloud text)
 		if bqMatch := blockquoteRe.FindStringSubmatch(trimmed); bqMatch != nil {
 			flushParagraph()
+			flushTable()
 			if inList {
 				out = append(out, "</ul>")
 				inList = false
@@ -2141,6 +2221,39 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 	return result
 }
 
+// renderCalloutBody renders the Markdown fragment inside a callout while
+// sharing image de-duplication, heading IDs, and link resolution with its
+// parent document. Keeping this as a separate boundary makes recursive
+// blockquotes explicit and gives overflow a safe, readable fallback.
+func renderCalloutBody(c *Compiler, lines []string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry, filePath string, depth int) string {
+	body := strings.Join(lines, "\n")
+	if strings.TrimSpace(body) == "" {
+		return ""
+	}
+	if depth > maxBlockquoteDepth {
+		return markdownFallback(body)
+	}
+	return renderMarkdownBlocksAtDepth(c, body, baseDir, sectionID, headingCounter, seenImages, compilerVersion, reg, filePath, depth)
+}
+
+func markdownFallback(md string) string {
+	if len(md) > maxMarkdownBytes {
+		md = string([]rune(md)[:maxMarkdownRunes(md, maxMarkdownBytes)])
+	}
+	return fmt.Sprintf("<p>%s</p>", html.EscapeString(md))
+}
+
+func maxMarkdownRunes(value string, maxBytes int) int {
+	if len(value) <= maxBytes {
+		return len([]rune(value))
+	}
+	runes := []rune(value)
+	for len(string(runes)) > maxBytes {
+		runes = runes[:len(runes)-1]
+	}
+	return len(runes)
+}
+
 // headingID returns the emitted id for a heading. In v2 it prefers a stable
 // slug-based ID from the registry when it matches the current section; otherwise
 // it falls back to the legacy counter-based ID.
@@ -2165,6 +2278,53 @@ func headingID(text, sectionID string, compilerVersion int, headingCounter *int,
 
 func isTableRow(line string) bool {
 	return strings.HasPrefix(line, "|") && strings.HasSuffix(line, "|") && strings.Count(line, "|") >= 3
+}
+
+func parseMarkdownFence(line string) (markdownFence, bool) {
+	line = strings.TrimSpace(line)
+	if len(line) < 3 || (line[0] != '`' && line[0] != '~') {
+		return markdownFence{}, false
+	}
+	delimiter := line[0]
+	length := 0
+	for length < len(line) && line[length] == delimiter {
+		length++
+	}
+	if length < 3 {
+		return markdownFence{}, false
+	}
+	return markdownFence{delimiter: delimiter, length: length}, true
+}
+
+// protectFencedMarkup prevents the raw-HTML cleanup pass from treating code
+// such as "if x < 2" or "<seal>" as an HTML tag. It deliberately uses the
+// same matching rule as the renderer and leaves mismatched fences untouched.
+func protectFencedMarkup(md string) string {
+	lines := strings.Split(md, "\n")
+	var active markdownFence
+	for i, line := range lines {
+		trimmed := fenceContent(line)
+		if active.length > 0 {
+			if fence, ok := parseMarkdownFence(trimmed); ok && fence.delimiter == active.delimiter && fence.length >= active.length {
+				active = markdownFence{}
+				continue
+			}
+			lines[i] = strings.ReplaceAll(strings.ReplaceAll(line, "<", "\x00LT\x00"), ">", "\x00GT\x00")
+			continue
+		}
+		if fence, ok := parseMarkdownFence(trimmed); ok {
+			active = fence
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func fenceContent(line string) string {
+	line = strings.TrimSpace(line)
+	for strings.HasPrefix(line, ">") {
+		line = strings.TrimSpace(strings.TrimPrefix(line, ">"))
+	}
+	return line
 }
 
 func isTableSeparator(line string) bool {
