@@ -356,6 +356,39 @@ func TestImageFirstMonsterBlocksStayCoherent(t *testing.T) {
 	}
 }
 
+func TestImageFirstMonsterStopsAtNonMonsterAndDeduplicates(t *testing.T) {
+	tmpDir := t.TempDir()
+	assetsDir := filepath.Join(tmpDir, "assets")
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"monster-echo.png", "scene.png"} {
+		if err := os.WriteFile(filepath.Join(assetsDir, name), []byte(name), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	md := `## Echo
+![Echo](assets/monster-echo.png)
+
+*Tiny construct, unaligned*
+**Armor Class** 10
+---
+![Echo duplicate](assets/monster-echo.png)
+![Scene](assets/scene.png)
+`
+	got := markdownToHTML(md, tmpDir)
+	if blocks := strings.Count(got, `class="stat-block"`); blocks != 1 {
+		t.Fatalf("expected one stat block, got %d\n%s", blocks, got)
+	}
+	if occurrences := strings.Count(got, "monster-echo.png"); occurrences != 1 {
+		t.Fatalf("duplicate monster image should be emitted once, got %d\n%s", occurrences, got)
+	}
+	if !strings.Contains(got, `alt="Scene"`) {
+		t.Fatalf("non-monster image should remain outside the stat block\n%s", got)
+	}
+}
+
 func TestRosterExtractionExcludesEncounterSolutions(t *testing.T) {
 	md := `## Adventure Roster
 
@@ -374,6 +407,79 @@ func TestRosterExtractionExcludesEncounterSolutions(t *testing.T) {
 	}
 	if len(encounters) != 0 {
 		t.Fatalf("encounter prose and solution rows must not become roster entries, got %v", encounters)
+	}
+}
+
+func TestParseRosterSectionUsesTypedBoundedRows(t *testing.T) {
+	md := `## Adventure Roster
+
+### NPCs
+- **Mira** — Guide
+
+### Monstruos
+- **Goblin** (CR 1/4)
+
+### Encuentros
+- **The Bridge** — Social
+
+### Encounter: prose is not a roster section
+- **Mira** attacks from the west.
+
+### Solution
+- **Mira** is secretly the traitor.
+`
+	entries := parseRosterSection(md)
+	if len(entries) != 3 {
+		t.Fatalf("expected three bounded roster entries, got %d: %#v", len(entries), entries)
+	}
+	want := []struct {
+		category rosterCategory
+		name     string
+		detail   string
+	}{
+		{rosterNPC, "Mira", "Guide"},
+		{rosterMonster, "Goblin", "(CR 1/4)"},
+		{rosterEncounter, "The Bridge", "Social"},
+	}
+	for i, expected := range want {
+		if entries[i].category != expected.category || entries[i].name != expected.name || entries[i].detail != expected.detail {
+			t.Errorf("entry %d = %#v, want category=%q name=%q detail=%q", i, entries[i], expected.category, expected.name, expected.detail)
+		}
+	}
+}
+
+func TestParseRosterSectionRejectsUnrecognizedRows(t *testing.T) {
+	md := `# Notes
+## Encounter: The Bridge
+- **Mira** attacks from the west.
+
+## Solution
+- **Mira** is secretly the traitor.
+
+| Name | Role |
+| --- | --- |
+| Fabricated | Row |
+`
+	if entries := parseRosterSection(md); len(entries) != 0 {
+		t.Fatalf("unrecognized prose and arbitrary tables must not create roster rows: %#v", entries)
+	}
+}
+
+func TestParseRosterSectionAcceptsNameOnlyNPCIdentity(t *testing.T) {
+	entries := parseRosterSection("## NPCs\n- **Ivo**\n")
+	if len(entries) != 1 || entries[0].category != rosterNPC || entries[0].name != "Ivo" {
+		t.Fatalf("name-only NPC identity bullet should be retained, got %#v", entries)
+	}
+}
+
+func TestDMSidebarWideUsesExplicitWideClass(t *testing.T) {
+	headingCounter := 0
+	got := markdownToHTMLWithID(nil, "> DM Sidebar Wide: Use the full page for this reference.\n", t.TempDir(), "sec-test", &headingCounter, make(map[string]bool), 2, nil, "")
+	if !strings.Contains(got, `<div class="dm-sidebar-wide">`) {
+		t.Fatalf("explicit wide DM sidebar should use the wide class, got:\n%s", got)
+	}
+	if strings.Contains(got, `<div class="dm-sidebar">`) {
+		t.Fatalf("wide DM sidebar must not fall back to the narrow class, got:\n%s", got)
 	}
 }
 

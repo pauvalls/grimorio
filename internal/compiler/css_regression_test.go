@@ -702,15 +702,14 @@ func TestCSSRegression_PrologueDefaultStyles(t *testing.T) {
 	}
 }
 
-// TestCSSRegression_DMSidebarColumnSpan asserts the 4 callout classes have
-// column-span: all so they span both columns of .campaign-body. REQ-1.3.
+// TestCSSRegression_DMSidebarColumnSpan asserts that only explicitly wide DM
+// sidebars span both columns. Ordinary callouts stay in one readable column.
 func TestCSSRegression_DMSidebarColumnSpan(t *testing.T) {
 	css, err := compiler.GetTemplate("dnd-style")
 	if err != nil {
 		t.Fatalf("Failed to get CSS: %v", err)
 	}
 	classes := []string{
-		".dm-sidebar",
 		".shock-point",
 		".encounter-recommendation",
 		".general-features",
@@ -731,6 +730,14 @@ func TestCSSRegression_DMSidebarColumnSpan(t *testing.T) {
 		if !strings.Contains(block, "column-span: all") {
 			t.Errorf("class %s block does not contain 'column-span: all'. Block: %s", cls, block)
 		}
+	}
+	wideIdx := strings.Index(css, ".dm-sidebar-wide {")
+	if wideIdx == -1 {
+		t.Fatal("class .dm-sidebar-wide not found in CSS")
+	}
+	wideEnd := strings.Index(css[wideIdx:], "}")
+	if wideEnd == -1 || !strings.Contains(css[wideIdx:wideIdx+wideEnd], "column-span: all") {
+		t.Errorf("class .dm-sidebar-wide must contain 'column-span: all'")
 	}
 }
 

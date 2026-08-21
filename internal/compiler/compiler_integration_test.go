@@ -6,11 +6,174 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/pauvalls/grimorio/internal/compiler"
 )
+
+func copyCampaignSources(t *testing.T, source, destination string) {
+	t.Helper()
+	err := filepath.WalkDir(source, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		if rel == "." {
+			return os.MkdirAll(destination, 0755)
+		}
+		if entry.IsDir() {
+			if entry.Name() == ".consolidation" || entry.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			return os.MkdirAll(filepath.Join(destination, rel), 0755)
+		}
+		if entry.Name() == "campaign.html" || entry.Name() == "campaign.pdf" || entry.Name() == "campaign.epub" {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(destination, rel), data, 0644)
+	})
+	if err != nil {
+		t.Fatalf("copy campaign sources: %v", err)
+	}
+}
+
+// TestCompileArkanumTempCopySmoke validates the current campaign source
+// without ever writing generated files into the source directory. It is
+// opt-in because the full campaign intentionally takes longer than fixture
+// integration tests and Chromium pagination is environment-sensitive.
+func TestCompileArkanumTempCopySmoke(t *testing.T) {
+	if os.Getenv("GRIMORIO_TEST_CAMPAIGNS") != "1" {
+		t.Skip("set GRIMORIO_TEST_CAMPAIGNS=1 to run the Arkanum campaign smoke test")
+	}
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping Arkanum campaign smoke test")
+	}
+
+	source := "/home/pau/campaigns/los-fragmentos-de-arkanum"
+	if _, err := os.Stat(source); err != nil {
+		t.Skipf("Arkanum campaign source unavailable: %v", err)
+	}
+	original, err := os.ReadFile(filepath.Join(source, "chapters", "chapter_00.md"))
+	if err != nil {
+		t.Fatalf("read source sentinel: %v", err)
+	}
+
+	tmpDir := t.TempDir()
+	copyCampaignSources(t, source, tmpDir)
+	c := compiler.New(tmpDir, "")
+	pdfPath, err := c.Compile(context.Background(), "Los Fragmentos de Arkanum")
+	if err != nil {
+		t.Fatalf("Arkanum temp-copy compile failed: %v", err)
+	}
+	htmlData, err := os.ReadFile(filepath.Join(tmpDir, "campaign.html"))
+	if err != nil {
+		t.Fatalf("read generated HTML: %v", err)
+	}
+	if len(htmlData) == 0 {
+		t.Fatal("generated HTML is empty")
+	}
+	pdfInfo, err := os.Stat(pdfPath)
+	if err != nil || pdfInfo.Size() == 0 {
+		t.Fatalf("generated PDF is missing or empty: %v", err)
+	}
+	htmlText := string(htmlData)
+	for _, marker := range []string{"```", "~~~"} {
+		if strings.Contains(htmlText, marker) {
+			t.Errorf("generated HTML retains fence marker %q", marker)
+		}
+	}
+	if regexp.MustCompile(`(?m)^\s*\|[^\n]*\|`).MatchString(htmlText) {
+		t.Error("generated HTML retains a literal Markdown table row")
+	}
+	for _, monster := range []string{"Gromerm", "El Error", "Guardián de Arkanum"} {
+		if !strings.Contains(htmlText, `data-monster="`+monster+`"`) {
+			t.Errorf("generated HTML is missing coherent stat block for %q", monster)
+		}
+	}
+	cssStart := strings.Index(htmlText, "<style>")
+	cssEnd := strings.Index(htmlText, "</style>")
+	if cssStart == -1 || cssEnd <= cssStart {
+		t.Fatal("generated HTML has no embedded stylesheet")
+	}
+	css := htmlText[cssStart:cssEnd]
+	if sidebar := strings.Index(css, ".dm-sidebar {"); sidebar >= 0 {
+		end := strings.Index(css[sidebar:], "}")
+		if end >= 0 && strings.Contains(css[sidebar:sidebar+end], "column-span: all") {
+			t.Error("ordinary DM sidebar unexpectedly spans all columns")
+		}
+	}
+	for _, selector := range []string{".dm-sidebar-wide", ".nested-card .table-wrap", "break-inside: avoid", "page-break-inside: avoid"} {
+		if !strings.Contains(css, selector) {
+			t.Errorf("generated stylesheet is missing layout contract %q", selector)
+		}
+	}
+	rosterStart := strings.Index(htmlText, `<div class="roster-wrap">`)
+	if rosterStart == -1 {
+		t.Fatal("generated HTML is missing the bounded Adventure Roster")
+	}
+	rosterEnd := strings.Index(htmlText[rosterStart:], "</div>")
+	if rosterEnd == -1 {
+		t.Fatal("generated Adventure Roster is unclosed")
+	}
+	roster := htmlText[rosterStart : rosterStart+rosterEnd]
+	for _, header := range []string{"<th>Nombre</th>", "<th>CR</th>"} {
+		if !strings.Contains(htmlText, header) {
+			t.Errorf("roster is missing stable semantic header %q", header)
+		}
+	}
+	if strings.Contains(htmlText, "<h3>NPCs</h3>") && !strings.Contains(htmlText, "<th>Rol</th>") {
+		t.Error("roster NPC section is missing stable semantic header <th>Rol</th>")
+	}
+	for _, forbidden := range []string{"Solución DM", "Solution", "attacks from the west"} {
+		if strings.Contains(roster, forbidden) {
+			t.Errorf("roster contains excluded prose %q", forbidden)
+		}
+	}
+
+	pdftotext, err := exec.LookPath("pdftotext")
+	if err == nil {
+		textData, textErr := exec.Command(pdftotext, "-layout", pdfPath, "-").Output()
+		if textErr != nil {
+			t.Errorf("pdftotext failed: %v", textErr)
+		} else {
+			pdfText := string(textData)
+			for _, marker := range []string{"Gromerm", "El Error", "Guardián de Arkanum"} {
+				if !strings.Contains(pdfText, marker) {
+					t.Errorf("PDF text is missing marker %q", marker)
+				}
+			}
+		}
+	} else {
+		t.Log("pdftotext unavailable; skipped PDF text assertions")
+	}
+
+	if pdftoppm, lookErr := exec.LookPath("pdftoppm"); lookErr == nil {
+		pages := []int{12, 31, 55, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 133, 134, 135}
+		for _, page := range pages {
+			prefix := filepath.Join(tmpDir, fmt.Sprintf("page-%d", page))
+			cmd := exec.Command(pdftoppm, "-f", fmt.Sprint(page), "-l", fmt.Sprint(page), "-singlefile", "-png", pdfPath, prefix)
+			if output, renderErr := cmd.CombinedOutput(); renderErr != nil {
+				t.Logf("page %d rasterization unavailable (no exact page-count assertion): %v (%s)", page, renderErr, strings.TrimSpace(string(output)))
+			}
+		}
+	} else {
+		t.Log("pdftoppm unavailable; skipped rasterized page inspection")
+	}
+
+	current, err := os.ReadFile(filepath.Join(source, "chapters", "chapter_00.md"))
+	if err != nil || string(current) != string(original) {
+		t.Fatal("campaign source sentinel changed during smoke test")
+	}
+}
 
 // TestCompileWithAllFeatures tests PDF compilation with all new features enabled
 func TestCompileWithAllFeatures(t *testing.T) {

@@ -188,6 +188,14 @@ body {
   page-break-inside: auto;
 }
 
+.roster-wrap h2,
+.roster-wrap h3,
+.roster-wrap table,
+.roster-wrap tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 /* Section break */
 .section-break {
   column-span: all;
@@ -284,6 +292,7 @@ ul, ol {
   margin: 4px 0;
   padding-left: 18px;
   break-inside: avoid;
+  page-break-inside: avoid;
   column-break-inside: avoid;
   break-before: auto;
   page-break-before: auto;
@@ -302,9 +311,9 @@ table {
   border-collapse: collapse;
   margin: 10px 0;
   font-size: 9pt;
-  column-break-inside: avoid;
-  page-break-inside: avoid;
-  break-inside: avoid; /* wkhtmltopdf compatibility */
+  column-break-inside: auto;
+  page-break-inside: auto;
+  break-inside: auto;
   page-break-before: avoid;
   page-break-after: auto;
 }
@@ -314,6 +323,20 @@ table {
  * of slicing the table across columns. See visual-issues-pdf PR 3 / REQ-3.2. */
 .table-wrap {
   column-span: all;
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+/* Tables inside a card belong to that card's text column. The top-level
+ * wrapper still spans the campaign page so long tables can flow, but nested
+ * wrappers must not escape their callout and cause horizontal clipping. */
+.nested-card .table-wrap,
+.read-aloud .table-wrap,
+.dm-sidebar .table-wrap,
+.chapter-summary .table-wrap,
+.introduction-sidebar .table-wrap {
+  width: 100%;
+  column-span: none;
   break-inside: auto;
   page-break-inside: auto;
 }
@@ -385,6 +408,7 @@ tbody tr:nth-child(odd) {
   column-break-inside: avoid;
   page-break-inside: avoid;
   break-inside: avoid;
+  overflow: visible;
   box-shadow: 3px 3px 6px rgba(0,0,0,0.15);
   font-size: 9.5pt;
 }
@@ -506,6 +530,8 @@ tbody tr:nth-child(odd) {
   font-style: italic;
   column-break-inside: avoid;
   page-break-inside: avoid;
+  break-inside: avoid;
+  overflow: visible;
   box-shadow: 2px 2px 4px rgba(0,0,0,0.1);
 }
 
@@ -647,6 +673,8 @@ h3 .area-number {
   text-align: center;
   column-break-inside: avoid;
   page-break-inside: avoid;
+  break-inside: avoid;
+  overflow: visible;
 }
 
 .campaign-image img {
@@ -687,6 +715,7 @@ h3 .area-number {
   column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .code-block code {
@@ -701,6 +730,8 @@ h3 .area-number {
   padding: 10px 12px;
   column-break-inside: avoid;
   page-break-inside: avoid;
+  break-inside: avoid;
+  overflow: visible;
 }
 
 .introduction-sidebar {
@@ -709,6 +740,8 @@ h3 .area-number {
   padding: 10px 12px;
   column-break-inside: avoid;
   page-break-inside: avoid;
+  break-inside: avoid;
+  overflow: visible;
 }
 
 /* ==========================================
@@ -722,9 +755,37 @@ h3 .area-number {
   border-right: 1px dashed #c9ad6a;
   padding: 10px 14px;
   margin: 12px 0;
+  column-break-inside: avoid;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  overflow: visible;
+}
+
+/* Only an explicitly wide callout spans both campaign columns. Ordinary DM
+ * sidebars remain readable in one column and no longer force a blank column
+ * or clip their bottom border at a column boundary. */
+.dm-sidebar-wide {
+  background: #f8f4ec;
+  border-left: 4px solid #8b0000;
+  border-top: 1px dashed #c9ad6a;
+  border-bottom: 1px dashed #c9ad6a;
+  border-right: 1px dashed #c9ad6a;
+  padding: 10px 14px;
+  margin: 12px 0;
   column-span: all;
   column-break-inside: avoid;
   page-break-inside: avoid;
+  break-inside: avoid;
+  overflow: visible;
+}
+
+.dm-sidebar-wide h5 {
+  font-family: 'Cinzel', serif;
+  font-size: 9pt;
+  color: #8b0000;
+  margin: 0 0 6px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .dm-sidebar h5 {
@@ -736,7 +797,8 @@ h3 .area-number {
   letter-spacing: 0.5px;
 }
 
-.dm-sidebar::before {
+.dm-sidebar::before,
+.dm-sidebar-wide::before {
   content: "DM Only";
   display: block;
   font-weight: bold;

@@ -75,6 +75,7 @@ type blockquoteClass int
 const (
 	bqReadAloud blockquoteClass = iota
 	bqDMSidebar
+	bqDMSidebarWide
 	bqChapterSummary
 	bqIntroductionSidebar
 )
@@ -706,7 +707,13 @@ func (c *Compiler) generateShockPointsHTML(shockPoints []struct {
 
 // generateAdventureRoster builds Apéndice F from scanned markdown files
 func (c *Compiler) generateAdventureRoster() string {
-	var npcs, monsters, encounters []string
+	var entries []rosterEntry
+	appendFileEntries := func(path string) {
+		content, err := os.ReadFile(path)
+		if err == nil {
+			entries = append(entries, parseRosterSection(string(content))...)
+		}
+	}
 
 	// chapters/ is the only chapter source — grimorio-areas (legacy
 	// areas/ directory) was removed in v5.0.2 WU7.
@@ -715,11 +722,7 @@ func (c *Compiler) generateAdventureRoster() string {
 		files, _ := os.ReadDir(chaptersDir)
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".md") {
-				content, _ := os.ReadFile(filepath.Join(chaptersDir, f.Name()))
-				n, m, e := extractRosterEntries(string(content))
-				npcs = append(npcs, n...)
-				monsters = append(monsters, m...)
-				encounters = append(encounters, e...)
+				appendFileEntries(filepath.Join(chaptersDir, f.Name()))
 			}
 		}
 	}
@@ -730,9 +733,7 @@ func (c *Compiler) generateAdventureRoster() string {
 		files, _ := os.ReadDir(npcsDir)
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".md") {
-				content, _ := os.ReadFile(filepath.Join(npcsDir, f.Name()))
-				n, _, _ := extractRosterEntries(string(content))
-				npcs = append(npcs, n...)
+				appendFileEntries(filepath.Join(npcsDir, f.Name()))
 			}
 		}
 	}
@@ -743,9 +744,7 @@ func (c *Compiler) generateAdventureRoster() string {
 		files, _ := os.ReadDir(bestiaryDir)
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".md") {
-				content, _ := os.ReadFile(filepath.Join(bestiaryDir, f.Name()))
-				_, m, _ := extractRosterEntries(string(content))
-				monsters = append(monsters, m...)
+				appendFileEntries(filepath.Join(bestiaryDir, f.Name()))
 			}
 		}
 	}
@@ -756,52 +755,44 @@ func (c *Compiler) generateAdventureRoster() string {
 		files, _ := os.ReadDir(encountersDir)
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".md") {
-				content, _ := os.ReadFile(filepath.Join(encountersDir, f.Name()))
-				_, _, e := extractRosterEntries(string(content))
-				encounters = append(encounters, e...)
+				appendFileEntries(filepath.Join(encountersDir, f.Name()))
 			}
 		}
 	}
 
-	if len(npcs) == 0 && len(monsters) == 0 && len(encounters) == 0 {
+	if len(entries) == 0 {
 		return ""
 	}
 
 	var b strings.Builder
 	b.WriteString(`<h2 id="sec-adventure-roster">Apéndice F: Adventure Roster</h2>`)
 
-	if len(npcs) > 0 {
+	if countRosterEntries(entries, rosterNPC) > 0 {
 		b.WriteString(`<h3>NPCs</h3><table><thead><tr><th>Nombre</th><th>Rol</th></tr></thead><tbody>`)
-		for _, n := range npcs {
-			parts := strings.SplitN(n, "|", 2)
-			name := parts[0]
-			role := ""
-			if len(parts) > 1 {
-				role = parts[1]
+		for _, entry := range entries {
+			if entry.category == rosterNPC {
+				fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(entry.name), html.EscapeString(entry.detail))
 			}
-			fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(name), html.EscapeString(role))
 		}
 		b.WriteString(`</tbody></table>`)
 	}
 
-	if len(monsters) > 0 {
+	if countRosterEntries(entries, rosterMonster) > 0 {
 		b.WriteString(`<h3>Monstruos</h3><table><thead><tr><th>Nombre</th><th>CR</th></tr></thead><tbody>`)
-		for _, m := range monsters {
-			parts := strings.SplitN(m, "|", 2)
-			name := parts[0]
-			cr := ""
-			if len(parts) > 1 {
-				cr = parts[1]
+		for _, entry := range entries {
+			if entry.category == rosterMonster {
+				fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(entry.name), html.EscapeString(entry.detail))
 			}
-			fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(name), html.EscapeString(cr))
 		}
 		b.WriteString(`</tbody></table>`)
 	}
 
-	if len(encounters) > 0 {
+	if countRosterEntries(entries, rosterEncounter) > 0 {
 		b.WriteString(`<h3>Encuentros</h3><table><thead><tr><th>Nombre</th></tr></thead><tbody>`)
-		for _, e := range encounters {
-			fmt.Fprintf(&b, `<tr><td>%s</td></tr>`, html.EscapeString(e))
+		for _, entry := range entries {
+			if entry.category == rosterEncounter {
+				fmt.Fprintf(&b, `<tr><td>%s</td></tr>`, html.EscapeString(entry.name))
+			}
 		}
 		b.WriteString(`</tbody></table>`)
 	}
@@ -809,44 +800,170 @@ func (c *Compiler) generateAdventureRoster() string {
 	return `<div class="roster-wrap">` + b.String() + `</div>`
 }
 
-// extractRosterEntries parses markdown for roster entities
-func extractRosterEntries(md string) (npcs, monsters, encounters []string) {
-	lines := strings.Split(md, "\n")
-	var inNPCs, inMonsters, inEncounters bool
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		lower := strings.ToLower(trimmed)
+type rosterCategory string
 
-		if strings.HasPrefix(lower, "## ") || strings.HasPrefix(lower, "### ") {
-			inNPCs = strings.Contains(lower, "npc") || strings.Contains(lower, "personaje")
-			inMonsters = strings.Contains(lower, "monstruo") || strings.Contains(lower, "criatura") || strings.Contains(lower, "bestia")
-			inEncounters = strings.Contains(lower, "encuentro")
+const (
+	rosterNPC       rosterCategory = "npc"
+	rosterMonster   rosterCategory = "monster"
+	rosterEncounter rosterCategory = "encounter"
+)
+
+type rosterEntry struct {
+	category rosterCategory
+	name     string
+	detail   string
+}
+
+func countRosterEntries(entries []rosterEntry, category rosterCategory) int {
+	count := 0
+	for _, entry := range entries {
+		if entry.category == category {
+			count++
+		}
+	}
+	return count
+}
+
+func rosterCategoryForHeading(heading string) rosterCategory {
+	lower := strings.ToLower(strings.TrimSpace(heading))
+	switch {
+	case strings.Contains(lower, "npc"), strings.Contains(lower, "personaje"):
+		return rosterNPC
+	case strings.Contains(lower, "monstru"), strings.Contains(lower, "criatura"), strings.Contains(lower, "bestia"):
+		return rosterMonster
+	case lower == "encuentros", lower == "encounters":
+		return rosterEncounter
+	default:
+		return ""
+	}
+}
+
+func isRosterHeading(heading string) bool {
+	lower := strings.ToLower(strings.TrimSpace(heading))
+	return strings.Contains(lower, "adventure roster") || strings.Contains(lower, "roster") || strings.Contains(lower, "apéndice f") || strings.Contains(lower, "apendice f")
+}
+
+func parseRosterBullet(line string) (name, detail string, ok bool) {
+	trimmed := strings.TrimSpace(line)
+	if strings.HasPrefix(trimmed, "- ") {
+		trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "- "))
+	} else if strings.HasPrefix(trimmed, "* ") {
+		trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "* "))
+	} else {
+		return "", "", false
+	}
+	if trimmed == "" || strings.HasPrefix(trimmed, "*") && !strings.HasPrefix(trimmed, "**") {
+		return "", "", false
+	}
+	if match := boldRegex.FindStringSubmatch(trimmed); match != nil {
+		name = strings.TrimSpace(match[1])
+		detail = strings.TrimSpace(strings.TrimPrefix(trimmed, match[0]))
+		detail = strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(detail, "—"), "-"))
+		return name, detail, name != ""
+	}
+	return strings.TrimSpace(trimmed), "", isSimpleRosterTitle(trimmed)
+}
+
+func isSimpleRosterTitle(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" || len(value) > 100 || strings.HasPrefix(value, "[") {
+		return false
+	}
+	if strings.ContainsAny(value, ".?!:") || strings.HasPrefix(value, "*") {
+		return false
+	}
+	return true
+}
+
+func parseBestiaryRosterEntries(lines []string) []rosterEntry {
+	var entries []rosterEntry
+	for i := 0; i < len(lines); i++ {
+		heading := strings.TrimSpace(lines[i])
+		if !strings.HasPrefix(heading, "## ") {
 			continue
 		}
+		name := strings.TrimSpace(strings.TrimPrefix(heading, "## "))
+		end := i + 1
+		for end < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[end]), "## ") {
+			end++
+		}
+		hasType := false
+		challenge := ""
+		for j := i + 1; j < end; j++ {
+			t := strings.TrimSpace(lines[j])
+			if !hasType && strings.HasPrefix(t, "*") && strings.HasSuffix(t, "*") && statBlockSizeRegex.MatchString(t) {
+				hasType = true
+			}
+			groups := splitPropertyGroups(t)
+			if len(groups) == 1 && strings.EqualFold(strings.TrimSuffix(groups[0][0], "."), "Challenge") {
+				challenge = strings.TrimSpace(groups[0][1])
+			}
+		}
+		if hasType && challenge != "" {
+			entries = append(entries, rosterEntry{category: rosterMonster, name: name, detail: challenge})
+		}
+		i = end - 1
+	}
+	return entries
+}
 
-		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
-			item := strings.TrimPrefix(trimmed, "- ")
-			if strings.HasPrefix(trimmed, "* ") {
-				item = strings.TrimPrefix(trimmed, "* ")
-			}
-			item = strings.TrimSpace(item)
-			// Extract bold name
-			if m := boldRegex.FindStringSubmatch(item); m != nil {
-				name := m[1]
-				rest := strings.TrimSpace(strings.TrimPrefix(item, m[0]))
-				rest = strings.TrimPrefix(rest, "—")
-				rest = strings.TrimPrefix(rest, "-")
-				rest = strings.TrimSpace(rest)
-				if inNPCs {
-					npcs = append(npcs, name+"|"+rest)
-				} else if inMonsters {
-					monsters = append(monsters, name+"|"+rest)
-				} else if inEncounters {
-					encounters = append(encounters, name)
+// parseRosterSection parses only bounded, direct roster rows. It deliberately
+// keeps heading state local to this invocation so prose from one source file
+// cannot turn later bullets into roster entries.
+func parseRosterSection(md string) []rosterEntry {
+	lines := strings.Split(md, "\n")
+	var entries []rosterEntry
+	var category rosterCategory
+	rootRoster := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "## ") {
+			heading := strings.TrimSpace(strings.TrimPrefix(trimmed, "## "))
+			rootRoster = isRosterHeading(heading)
+			category = rosterCategoryForHeading(heading)
+			continue
+		}
+		if strings.HasPrefix(trimmed, "### ") {
+			if rootRoster {
+				heading := strings.TrimSpace(strings.TrimPrefix(trimmed, "### "))
+				if strings.Contains(strings.ToLower(heading), "solution") || strings.Contains(strings.ToLower(heading), "solución") {
+					category = ""
+				} else {
+					category = rosterCategoryForHeading(heading)
 				}
-			} else if inEncounters && item != "" {
-				encounters = append(encounters, item)
+			} else {
+				// A subsection ends an H2 roster section. This prevents NPC
+				// roleplaying bullets and encounter prose from leaking in.
+				category = ""
 			}
+			continue
+		}
+		if category == "" || !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "*") {
+			continue
+		}
+		lower := strings.ToLower(trimmed)
+		if strings.Contains(lower, "solution") || strings.Contains(lower, "solución") {
+			continue
+		}
+		name, detail, ok := parseRosterBullet(trimmed)
+		if !ok {
+			continue
+		}
+		entries = append(entries, rosterEntry{category: category, name: name, detail: detail})
+	}
+	return append(entries, parseBestiaryRosterEntries(lines)...)
+}
+
+// extractRosterEntries is the compatibility adapter for older callers.
+func extractRosterEntries(md string) (npcs, monsters, encounters []string) {
+	for _, entry := range parseRosterSection(md) {
+		switch entry.category {
+		case rosterNPC:
+			npcs = append(npcs, entry.name+"|"+entry.detail)
+		case rosterMonster:
+			monsters = append(monsters, entry.name+"|"+entry.detail)
+		case rosterEncounter:
+			encounters = append(encounters, entry.name)
 		}
 	}
 	return
@@ -1093,7 +1210,8 @@ var (
 	// dmSidebarPrefixRe strips DM Sidebar labels from blockquote text.
 	// The trailing colon is OPTIONAL — both `DM Sidebar:` and `DM Sidebar`
 	// (the no-colon variant) must match (REQ-1.4).
-	dmSidebarPrefixRe = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar:?\s*\*{0,2}\s*`)
+	dmSidebarWidePrefixRe = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar Wide:?\s*\*{0,2}\s*`)
+	dmSidebarPrefixRe     = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar(?: Wide)?:?\s*\*{0,2}\s*`)
 
 	// linkRegex matches markdown links [text](href).
 	linkRegex = regexp.MustCompile(`\[(?P<text>[^\]]+)\]\((?P<href>[^)]+)\)`)
@@ -1218,6 +1336,10 @@ func classifyBlockquote(lines []string, sectionID, filePath string, c *Compiler)
 					filePath)
 			}
 		}
+		if dmSidebarWidePrefixRe.MatchString(first) {
+			cleaned[0] = dmSidebarWidePrefixRe.ReplaceAllString(first, "")
+			return bqDMSidebarWide, cleaned
+		}
 		cleaned[0] = dmSidebarPrefixRe.ReplaceAllString(first, "")
 		return bqDMSidebar, cleaned
 	}
@@ -1323,6 +1445,24 @@ func detectTraitLine(line string) bool {
 	return strings.HasSuffix(firstLabel, ".")
 }
 
+// processMonsterImage preserves the source path as non-visible metadata. The
+// compiler normally embeds raster images as data URIs, which is ideal for a
+// self-contained PDF but makes it impossible to identify an illustration in
+// generated HTML. Stat blocks use this metadata for source-order inspection
+// and it does not change the rendered image.
+func processMonsterImage(line, baseDir string, seenImages map[string]bool) string {
+	matches := imageRegex.FindStringSubmatch(strings.TrimSpace(line))
+	if len(matches) < 3 {
+		return ""
+	}
+	rendered := processImages(line, baseDir, seenImages)
+	if !strings.Contains(rendered, "<img ") {
+		return rendered
+	}
+	metadata := fmt.Sprintf(`data-source-path="%s" `, html.EscapeString(filepath.ToSlash(matches[2])))
+	return strings.Replace(rendered, "<img ", "<img "+metadata, 1)
+}
+
 // peekHoistableMonsterImage scans forward from startIdx looking for a
 // markdown image whose path's basename starts with `monster-`. If found,
 // returns the rendered <img> HTML and the index of the line AFTER the
@@ -1368,7 +1508,7 @@ func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, see
 			imgPath := m[2] // group 1 is alt text, group 2 is the path
 			base := filepath.Base(imgPath)
 			if strings.HasPrefix(base, "monster-") {
-				img := processImages(t, baseDir, seenImages)
+				img := processMonsterImage(t, baseDir, seenImages)
 				if img == "" {
 					// Image was already seen (dedup) or unreadable; advance
 					// past it so the main loop doesn't emit a duplicate.
@@ -1386,6 +1526,38 @@ func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, see
 	return "", 0
 }
 
+// findStatBlockStart locates the type line that opens a stat block and any
+// contiguous monster illustrations immediately before it. Blank lines are
+// allowed between the heading, illustrations, and type line, but unrelated
+// content or a non-monster image makes the heading an ordinary section.
+//
+// The returned image indexes are consumed by parseStatBlockWithImages so the
+// outer Markdown renderer cannot emit them a second time.
+func findStatBlockStart(lines []string, headingIdx int) (typeLineIdx int, imageIndexes []int, ok bool) {
+	for i := headingIdx + 1; i < len(lines); i++ {
+		t := strings.TrimSpace(lines[i])
+		if t == "" {
+			continue
+		}
+		if strings.HasPrefix(t, "## ") {
+			return -1, nil, false
+		}
+		if imageRegex.MatchString(t) {
+			matches := imageRegex.FindStringSubmatch(t)
+			if len(matches) < 3 || !strings.HasPrefix(filepath.Base(matches[2]), "monster-") {
+				return -1, nil, false
+			}
+			imageIndexes = append(imageIndexes, i)
+			continue
+		}
+		if strings.HasPrefix(t, "*") && strings.HasSuffix(t, "*") && statBlockSizeRegex.MatchString(t) {
+			return i, imageIndexes, true
+		}
+		return -1, nil, false
+	}
+	return -1, nil, false
+}
+
 // tryStatBlock peeks ahead from a `## ` heading. If the next non-blank line
 // matches the WotC size+type italic pattern, it renders a full stat block
 // and returns the rendered HTML + the number of lines consumed. Otherwise
@@ -1393,30 +1565,11 @@ func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, see
 //
 // REQ-2.1, 2.2, 2.5, 2.6, 2.7, 2.10, 2.11, 4.4
 func tryStatBlock(name string, lines []string, startIdx int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
-	// Look for the italic size+type line within the next 3 lines (skipping blanks).
-	endIdx := startIdx + 4
-	if endIdx > len(lines) {
-		endIdx = len(lines)
-	}
-	typeLineIdx := -1
-	for j := startIdx + 1; j < endIdx; j++ {
-		t := strings.TrimSpace(lines[j])
-		if t == "" {
-			continue
-		}
-		// Must be a full italic line (starts and ends with *), and must start
-		// with a recognized size word. The body can contain commas + words.
-		if strings.HasPrefix(t, "*") && strings.HasSuffix(t, "*") && statBlockSizeRegex.MatchString(t) {
-			typeLineIdx = j
-			break
-		}
-		// First non-blank line wasn't a stat-block opener — bail out.
-		break
-	}
-	if typeLineIdx == -1 {
+	typeLineIdx, imageIndexes, ok := findStatBlockStart(lines, startIdx)
+	if !ok {
 		return "", 0
 	}
-	return parseStatBlock(name, lines, typeLineIdx, baseDir, seenImages, reg)
+	return parseStatBlockWithImages(name, lines, typeLineIdx, imageIndexes, baseDir, seenImages, reg)
 }
 
 // parseStatBlock renders a WotC stat block starting at typeLineIdx (the italic
@@ -1424,9 +1577,18 @@ func tryStatBlock(name string, lines []string, startIdx int, baseDir string, see
 // Returns the rendered HTML and the number of lines consumed (including the
 // `## ` heading line and the italic type line).
 func parseStatBlock(name string, lines []string, typeLineIdx int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
+	return parseStatBlockWithImages(name, lines, typeLineIdx, nil, baseDir, seenImages, reg)
+}
+
+func parseStatBlockWithImages(name string, lines []string, typeLineIdx int, imageIndexes []int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
 	var b strings.Builder
 	fmt.Fprintf(&b, `<div class="stat-block" data-monster="%s">`, html.EscapeString(name))
 	fmt.Fprintf(&b, `<h2>%s</h2>`, html.EscapeString(name))
+	for _, imageIdx := range imageIndexes {
+		if imageIdx >= 0 && imageIdx < len(lines) {
+			b.WriteString(processMonsterImage(lines[imageIdx], baseDir, seenImages))
+		}
+	}
 
 	// Italic type line → <p class="monster-type">
 	typeLine := strings.TrimSpace(lines[typeLineIdx])
@@ -1617,7 +1779,7 @@ var headingMarkerRe = regexp.MustCompile(`^#{1,5}\s+`)
 // text so that CSS pseudo-elements can provide the visible label.
 func stripBlockquotePrefix(text string, class blockquoteClass) string {
 	switch class {
-	case bqDMSidebar, bqIntroductionSidebar:
+	case bqDMSidebar, bqDMSidebarWide, bqIntroductionSidebar:
 		text = headingMarkerRe.ReplaceAllString(text, "")
 	}
 	return text
@@ -1833,6 +1995,8 @@ func renderMarkdownBlocksAtDepth(c *Compiler, md string, baseDir string, section
 			switch class {
 			case bqDMSidebar:
 				className = "dm-sidebar"
+			case bqDMSidebarWide:
+				className = "dm-sidebar-wide"
 			case bqChapterSummary:
 				className = "chapter-summary"
 			case bqIntroductionSidebar:
@@ -2124,11 +2288,11 @@ func renderMarkdownBlocksAtDepth(c *Compiler, md string, baseDir string, section
 				// the stat block (typically after the closing --- rule). The
 				// convention guard (`monster-` prefix) prevents scene / npc /
 				// cover images from being hoisted into the wrong block.
-				if imgHTML, newConsumed := peekHoistableMonsterImage(consumed, lines, baseDir, seenImages); imgHTML != "" {
-					if len(out) > 0 && strings.HasSuffix(out[len(out)-1], "</div>") {
+				if imgHTML, newConsumed := peekHoistableMonsterImage(consumed, lines, baseDir, seenImages); newConsumed > consumed {
+					if imgHTML != "" && len(out) > 0 && strings.HasSuffix(out[len(out)-1], "</div>") {
 						out[len(out)-1] = strings.TrimSuffix(out[len(out)-1], "</div>") + imgHTML + "</div>"
-						consumed = newConsumed
 					}
+					consumed = newConsumed
 				}
 
 				// Parser returns the absolute index of the line AFTER the block.
