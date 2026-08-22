@@ -987,33 +987,41 @@ func TestCSSRegression_TableWrapExists(t *testing.T) {
 	}
 }
 
-func TestCSSRegression_AdaptiveTableIsland(t *testing.T) {
+func TestCSSRegression_TablePage(t *testing.T) {
 	css, err := compiler.GetTemplate("dnd-style")
 	if err != nil {
 		t.Fatalf("Failed to get CSS: %v", err)
 	}
 
-	island := regexp.MustCompile(`(?ms)\.table-wrap\.table-island\s*\{[^}]*\}`).FindString(css)
-	if island == "" {
-		t.Fatal("CSS regression: .table-wrap.table-island block not found")
+	page := regexp.MustCompile(`(?ms)\.table-wrap\.table-page\s*\{[^}]*\}`).FindString(css)
+	if page == "" {
+		t.Fatal("CSS regression: .table-wrap.table-page block not found")
 	}
 	for _, property := range []string{"column-span: all", "break-before: page", "page-break-before: always", "break-inside: auto", "page-break-inside: auto"} {
-		if !strings.Contains(island, property) {
-			t.Errorf("island block missing %q: %s", property, island)
+		if !strings.Contains(page, property) {
+			t.Errorf("table-page block missing %q: %s", property, page)
+		}
+	}
+	for _, property := range []string{"width: 100%", "overflow: visible"} {
+		if !strings.Contains(page, property) {
+			t.Errorf("table-page block missing %q: %s", property, page)
 		}
 	}
 
-	boundary := regexp.MustCompile(`(?ms)\.table-island-boundary\s*\{[^}]*\}`).FindString(css)
+	boundary := regexp.MustCompile(`(?ms)\.table-page-boundary\s*\{[^}]*\}`).FindString(css)
 	if boundary == "" {
-		t.Fatal("CSS regression: .table-island-boundary block not found")
+		t.Fatal("CSS regression: .table-page-boundary block not found")
 	}
-	for _, property := range []string{"display: block", "height: 0", "column-span: all", "break-before: page", "page-break-before: always"} {
+	for _, property := range []string{"display: block", "width: 100%", "height: 0", "margin: 0", "padding: 0", "border: 0", "column-span: all", "break-before: page", "page-break-before: always"} {
 		if !strings.Contains(boundary, property) {
 			t.Errorf("boundary block missing %q: %s", property, boundary)
 		}
 	}
 	if strings.Contains(boundary, "display: none") {
 		t.Error("boundary must remain in layout; display:none defeats the page break")
+	}
+	if strings.Contains(page, "break-after: page") || strings.Contains(boundary, "break-after: page") {
+		t.Error("table-page pagination must use the wrapper and sibling break-before, not break-after")
 	}
 }
 
@@ -1030,8 +1038,28 @@ func TestCSSRegression_AdaptiveTableFragmentation(t *testing.T) {
 	if !strings.Contains(css, "display: table-header-group") {
 		t.Error("thead must repeat as a table-header-group")
 	}
-	if !strings.Contains(css, ".table-wrap.table-island") || strings.Contains(css, ".table-wrap.table-island {\n  overflow-x") {
-		t.Error("table island must remain a full-width, non-scrolling fragmentable surface")
+	if !strings.Contains(css, ".table-wrap.table-page") || strings.Contains(css, ".table-wrap.table-page {\n  overflow-x") {
+		t.Error("table-page must remain a full-width, non-scrolling fragmentable surface")
+	}
+}
+
+func TestCSSRegression_TablePageNestedNeutralizers(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+	for _, selector := range []string{
+		".nested-card .table-wrap.table-page",
+		".read-aloud .table-wrap.table-page",
+		".dm-sidebar .table-wrap.table-page",
+		".chapter-summary .table-wrap.table-page",
+		".introduction-sidebar .table-wrap.table-page",
+		".nested-card .table-page-boundary",
+		".read-aloud .table-page-boundary",
+	} {
+		if !strings.Contains(css, selector) {
+			t.Errorf("nested containment selector missing %q", selector)
+		}
 	}
 }
 

@@ -10,121 +10,156 @@ import (
 	"testing"
 )
 
-func TestClassifyTableRows(t *testing.T) {
-	longCell := strings.Repeat("visible ", 15)
-	longToken := strings.Repeat("x", 32)
-	longRow := "| " + strings.Repeat("content ", 20) + " | short |"
+func TestFlushTableAdaptiveHTML(t *testing.T) {
 	tests := []struct {
-		name        string
-		rows        []string
-		wantComplex bool
-		wantColumns int
-		wantMedia   bool
-		wantCode    bool
+		name  string
+		md    string
+		cells []string
 	}{
 		{
-			name:        "compact regular table remains simple",
-			rows:        []string{"| Name | Role | Note |", "| --- | --- | --- |", "| Mira | Guide | Short |"},
-			wantColumns: 3,
+			name:  "compact two-column table",
+			md:    "before\n\n| Name | Role |\n| --- | --- |\n| Mira | Guide |\n\nafter",
+			cells: []string{"Mira", "Guide"},
 		},
 		{
-			name:        "four columns are complex",
-			rows:        []string{"| A | B | C | D |", "| --- | --- | --- | --- |", "| 1 | 2 | 3 | 4 |"},
-			wantComplex: true,
-			wantColumns: 4,
+			name:  "three-column table",
+			md:    "before\n\n| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |\n\nafter",
+			cells: []string{"1", "2", "3"},
 		},
 		{
-			name:        "long visible cell is complex",
-			rows:        []string{"| Name | Note |", "| --- | --- |", "| Mira | " + longCell + " |"},
-			wantComplex: true,
-			wantColumns: 2,
-		},
-		{
-			name:        "indivisible token is complex",
-			rows:        []string{"| Name | Note |", "| --- | --- |", "| Mira | " + longToken + " |"},
-			wantComplex: true,
-			wantColumns: 2,
-		},
-		{
-			name:        "image and inline code are complex",
-			rows:        []string{"| Asset | Snippet |", "| --- | --- |", "| ![map](assets/map.png) | `roll 1d6` |"},
-			wantComplex: true,
-			wantColumns: 2,
-			wantMedia:   true,
-			wantCode:    true,
-		},
-		{
-			name: "estimated tall table is complex",
-			rows: append([]string{"| Name | Note |", "| --- | --- |"}, func() []string {
-				rows := make([]string, 0, 20)
-				for i := 0; i < 20; i++ {
-					rows = append(rows, longRow)
-				}
-				return rows
-			}()...),
-			wantComplex: true,
-			wantColumns: 2,
-		},
-		{
-			name:        "inconsistent row widths are complex",
-			rows:        []string{"| Name | Role |", "| --- | --- |", "| Mira | Guide | Extra |"},
-			wantComplex: true,
-			wantColumns: 3,
+			name:  "wide four-column table",
+			md:    "before\n\n| A | B | C | D |\n| --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 |\n\nafter",
+			cells: []string{"1", "2", "3", "4"},
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			profile := classifyTableRows(tt.rows)
-			if got := profile.columnCount; got != tt.wantColumns {
-				t.Fatalf("columnCount = %d, want %d (profile %#v)", got, tt.wantColumns, profile)
+			got := markdownToHTML(tt.md, ".")
+			wrapper := `<div class="table-wrap table-page"><table>`
+			boundary := `<div class="table-page-boundary" aria-hidden="true"></div>`
+			if !strings.Contains(got, wrapper) {
+				t.Fatalf("top-level table missing page wrapper %q: %s", wrapper, got)
 			}
-			if got := profile.isComplex(); got != tt.wantComplex {
-				t.Errorf("isComplex() = %v, want %v (profile %#v)", got, tt.wantComplex, profile)
+			if !strings.Contains(got, `</table></div>`+boundary) {
+				t.Fatalf("top-level table missing immediate sibling boundary %q: %s", boundary, got)
 			}
-			if profile.hasMedia != tt.wantMedia {
-				t.Errorf("hasMedia = %v, want %v", profile.hasMedia, tt.wantMedia)
+			for _, cell := range tt.cells {
+				if !strings.Contains(got, ">"+cell+"</td>") {
+					t.Errorf("table lost cell %q: %s", cell, got)
+				}
 			}
-			if profile.hasCode != tt.wantCode {
-				t.Errorf("hasCode = %v, want %v", profile.hasCode, tt.wantCode)
+			if strings.Index(got, "before") > strings.Index(got, wrapper) || strings.Index(got, wrapper) > strings.Index(got, "after") {
+				t.Fatalf("table changed document order: %s", got)
 			}
 		})
 	}
 }
 
-func TestFlushTableAdaptiveHTML(t *testing.T) {
-	simple := markdownToHTML("| Name | Role |\n| --- | --- |\n| Mira | Guide |", ".")
-	if strings.Contains(simple, "table-island") {
-		t.Fatalf("simple table was promoted: %s", simple)
+func TestNestedTableDoesNotBecomeIsland(t *testing.T) {
+	tests := []struct {
+		name  string
+		md    string
+		cells []string
+	}{
+		{
+			name:  "nested two-column table",
+			md:    "> | Sign | Meaning |\n> | --- | --- |\n> | Dust | Door |",
+			cells: []string{"Dust", "Door"},
+		},
+		{
+			name:  "nested wide table",
+			md:    "> | A | B | C | D |\n> | --- | --- | --- | --- |\n> | 1 | 2 | 3 | 4 |",
+			cells: []string{"1", "2", "3", "4"},
+		},
 	}
-	if got := strings.Count(simple, `<div class="table-wrap">`); got != 1 {
-		t.Fatalf("simple table wrapper count = %d, want 1: %s", got, simple)
-	}
-
-	complex := markdownToHTML("before\n\n| A | B | C | D |\n| --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 |\n\nafter", ".")
-	wrapper := `<div class="table-wrap table-island"><table>`
-	if !strings.Contains(complex, wrapper) {
-		t.Fatalf("complex table missing island wrapper %q: %s", wrapper, complex)
-	}
-	boundary := `<div class="table-island-boundary" aria-hidden="true"></div>`
-	if !strings.Contains(complex, `</table></div>`+boundary) {
-		t.Fatalf("complex table missing immediate sibling boundary %q: %s", boundary, complex)
-	}
-	if !strings.Contains(complex, "1</td>") || !strings.Contains(complex, "4</td>") {
-		t.Fatalf("complex table lost cells: %s", complex)
-	}
-	if strings.Index(complex, "before") > strings.Index(complex, wrapper) || strings.Index(complex, wrapper) > strings.Index(complex, "after") {
-		t.Fatalf("table changed document order: %s", complex)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := markdownToHTML(tt.md, ".")
+			if !strings.Contains(got, `class="read-aloud"`) {
+				t.Fatalf("nested table lost its callout: %s", got)
+			}
+			if strings.Contains(got, "table-page") || strings.Contains(got, "table-island") {
+				t.Fatalf("nested table was promoted outside its callout: %s", got)
+			}
+			for _, cell := range tt.cells {
+				if !strings.Contains(got, ">"+cell+"</td>") {
+					t.Errorf("nested table lost cell %q: %s", cell, got)
+				}
+			}
+		})
 	}
 }
 
-func TestNestedTableDoesNotBecomeIsland(t *testing.T) {
-	got := markdownToHTML("> | A | B | C | D |\n> | --- | --- | --- | --- |\n> | 1 | 2 | 3 | 4 |", ".")
-	if !strings.Contains(got, `class="read-aloud"`) {
-		t.Fatalf("nested table lost its callout: %s", got)
+func TestSpecializedTablesDoNotBecomePageTables(t *testing.T) {
+	tests := []struct {
+		name string
+		got  func() string
+		want string
+	}{
+		{
+			name: "raw HTML table",
+			got: func() string {
+				return markdownToHTML(`<div class="custom-card"><table><tr><td>Raw</td></tr></table></div>`, ".")
+			},
+			want: "Raw",
+		},
+		{
+			name: "faction tracker",
+			got: func() string {
+				dir := t.TempDir()
+				if err := os.MkdirAll(filepath.Join(dir, "factions"), 0755); err != nil {
+					t.Fatal(err)
+				}
+				data := `{"entries":[{"faction_id":"Guild","party_id":"Heroes","score":2,"status":"friendly"}]}`
+				if err := os.WriteFile(filepath.Join(dir, "factions", "reputation_matrix.json"), []byte(data), 0644); err != nil {
+					t.Fatal(err)
+				}
+				return New(dir, "").generateFactionTracker()
+			},
+			want: "Guild",
+		},
+		{
+			name: "stat block ability scores",
+			got: func() string {
+				md := "## Goblin\n\n*Small humanoid*\n\n| STR | DEX | CON | INT | WIS | CHA |\n| --- | --- | --- | --- | --- | --- |\n| 10 | 14 | 12 | 8 | 10 | 9 |\n\n---\n"
+				return markdownToHTML(md, ".")
+			},
+			want: "ability-scores",
+		},
 	}
-	if strings.Contains(got, "table-island") || strings.Contains(got, "table-island-boundary") {
-		t.Fatalf("nested table was promoted outside its callout: %s", got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.got()
+			if !strings.Contains(got, tt.want) {
+				t.Fatalf("specialized table output missing %q: %s", tt.want, got)
+			}
+			if strings.Contains(got, "table-page") || strings.Contains(got, "table-island") || strings.Contains(got, "table-page-boundary") {
+				t.Fatalf("specialized table unexpectedly received page markers: %s", got)
+			}
+		})
+	}
+}
+
+func TestFlushTable_ConsecutiveTopLevelTablesUseSingleBoundaries(t *testing.T) {
+	md := `| First | Value |
+| --- | --- |
+| one | 1 |
+
+between tables
+
+| Second | Value |
+| --- | --- |
+| two | 2 |
+`
+	got := markdownToHTML(md, ".")
+	if pages := strings.Count(got, `class="table-wrap table-page"`); pages != 2 {
+		t.Fatalf("consecutive top-level tables = %d page wrappers, want 2: %s", pages, got)
+	}
+	if boundaries := strings.Count(got, `class="table-page-boundary"`); boundaries != 2 {
+		t.Fatalf("consecutive top-level tables = %d boundaries, want 2: %s", boundaries, got)
+	}
+	if strings.Count(got, `table-page-boundary" aria-hidden="true"></div>`) != 2 {
+		t.Fatalf("each page table must have exactly one immediate boundary: %s", got)
 	}
 }
 
@@ -1150,8 +1185,8 @@ func TestGenerateAdventureRoster_Wrapper(t *testing.T) {
 	if got := strings.Count(out, `<div class="roster-wrap">`); got != 1 {
 		t.Errorf("expected exactly 1 .roster-wrap, got %d. Output:\n%s", got, out)
 	}
-	if strings.Contains(out, "table-island") {
-		t.Error("generated roster tables must not be promoted by the Markdown table classifier")
+	if strings.Contains(out, "table-page") {
+		t.Error("generated roster tables must not be promoted by the Markdown table renderer")
 	}
 	// All three h3 headings must be inside the wrapper. The h2
 	// ("Apéndice F") and the three h3 headings are the proof that
@@ -1174,9 +1209,8 @@ func TestGenerateAdventureRoster_Wrapper(t *testing.T) {
 // of slicing the table across columns (Issue C).
 func TestFlushTable_WrapsInTableWrap(t *testing.T) {
 	tests := []struct {
-		name   string
-		md     string
-		island bool
+		name string
+		md   string
 	}{
 		{
 			name: "simple 2-col table",
@@ -1207,9 +1241,8 @@ func TestFlushTable_WrapsInTableWrap(t *testing.T) {
 `,
 		},
 		{
-			name:   "table with code cell",
-			md:     "| A | B |\n|---|---|\n| `code` | normal |\n",
-			island: true,
+			name: "table with code cell",
+			md:   "| A | B |\n|---|---|\n| `code` | normal |\n",
 		},
 	}
 	for _, tt := range tests {
@@ -1237,11 +1270,14 @@ func TestFlushTable_WrapsInTableWrap(t *testing.T) {
 					probeEnd = len(rest)
 				}
 				blockStart := rest[divIdx:probeEnd]
-				if !strings.Contains(blockStart, `class="table-wrap"`) && !strings.Contains(blockStart, `class="table-wrap table-island"`) {
+				if !strings.Contains(blockStart, `class="table-wrap`) {
 					t.Errorf("table at offset %d not wrapped in .table-wrap, surrounding div: %q", tblIdx, blockStart)
 				}
-				if tt.island && !strings.Contains(blockStart, `class="table-wrap table-island"`) {
-					t.Errorf("complex table should use an island wrapper, surrounding div: %q", blockStart)
+				if !strings.Contains(blockStart, `class="table-wrap table-page"`) {
+					t.Errorf("top-level table should use a table-page wrapper, surrounding div: %q", blockStart)
+				}
+				if !strings.Contains(rest, `</table></div><div class="table-page-boundary" aria-hidden="true"></div>`) {
+					t.Errorf("top-level table should have an immediate page boundary, output: %s", rest)
 				}
 				// Advance past this <table>.
 				rest = rest[tblIdx+len("<table>"):]

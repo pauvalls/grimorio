@@ -327,10 +327,10 @@ table {
   page-break-inside: auto;
 }
 
-/* Complex Markdown tables are promoted by flushTable to a page-level island.
+/* Top-level Markdown tables are promoted by flushTable to a page-level island.
  * The wrapper spans both campaign columns, but remains fragmentable so a
  * multi-page table can repeat its header and continue at row boundaries. */
-.table-wrap.table-island {
+.table-wrap.table-page {
   width: 100%;
   column-span: all;
   break-before: page;
@@ -340,11 +340,11 @@ table {
   overflow: visible;
 }
 
-/* A separate sibling is required after an island. Chromium can otherwise
+/* A separate sibling is required after a page table. Chromium can otherwise
  * resume the following two-column content in the final column of the page
  * containing the table's last fragment. Keep this block in layout (rather
  * than display:none) so the page break is observable to the print engine. */
-.table-island-boundary {
+.table-page-boundary {
   display: block;
   width: 100%;
   height: 0;
@@ -373,19 +373,19 @@ table {
 /* Defensive containment if a future renderer ever emits a marker while
  * recursively rendering a callout. Nested tables must never force a global
  * page transition or escape their card. */
-.nested-card .table-island-boundary,
-.read-aloud .table-island-boundary,
-.dm-sidebar .table-island-boundary,
-.chapter-summary .table-island-boundary,
-.introduction-sidebar .table-island-boundary {
+.nested-card .table-page-boundary,
+.read-aloud .table-page-boundary,
+.dm-sidebar .table-page-boundary,
+.chapter-summary .table-page-boundary,
+.introduction-sidebar .table-page-boundary {
   display: none;
 }
 
-.nested-card .table-wrap.table-island,
-.read-aloud .table-wrap.table-island,
-.dm-sidebar .table-wrap.table-island,
-.chapter-summary .table-wrap.table-island,
-.introduction-sidebar .table-wrap.table-island {
+.nested-card .table-wrap.table-page,
+.read-aloud .table-wrap.table-page,
+.dm-sidebar .table-wrap.table-page,
+.chapter-summary .table-wrap.table-page,
+.introduction-sidebar .table-wrap.table-page {
   column-span: none;
   break-before: auto;
   page-break-before: auto;

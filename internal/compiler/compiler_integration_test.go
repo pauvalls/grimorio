@@ -86,10 +86,10 @@ func TestCompileArkanumTempCopySmoke(t *testing.T) {
 		t.Fatalf("generated PDF is missing or empty: %v", err)
 	}
 	htmlText := string(htmlData)
-	if islands := strings.Count(htmlText, `class="table-wrap table-island"`); islands == 0 {
-		t.Error("Arkanum HTML is missing a promoted complex-table island")
-	} else if boundaries := strings.Count(htmlText, `class="table-island-boundary"`); boundaries != islands {
-		t.Errorf("Arkanum island/boundary count mismatch: islands=%d boundaries=%d", islands, boundaries)
+	if pages := strings.Count(htmlText, `class="table-wrap table-page"`); pages == 0 {
+		t.Error("Arkanum HTML is missing a promoted top-level table page")
+	} else if boundaries := strings.Count(htmlText, `class="table-page-boundary"`); boundaries != pages {
+		t.Errorf("Arkanum table-page/boundary count mismatch: pages=%d boundaries=%d", pages, boundaries)
 	}
 	if simple := strings.Count(htmlText, `class="table-wrap">`); simple == 0 {
 		t.Error("Arkanum HTML is missing a compact table wrapper")
@@ -217,8 +217,8 @@ func TestCompileAdaptiveTableOverflowTempCopy(t *testing.T) {
 		t.Fatalf("read fixture HTML: %v", err)
 	}
 	htmlText := string(htmlData)
-	if !strings.Contains(htmlText, `class="table-wrap table-island"`) || !strings.Contains(htmlText, `class="table-island-boundary"`) {
-		t.Fatalf("fixture HTML missing island boundary contract: %s", htmlText)
+	if !strings.Contains(htmlText, `class="table-wrap table-page"`) || !strings.Contains(htmlText, `class="table-page-boundary"`) {
+		t.Fatalf("fixture HTML missing table-page boundary contract: %s", htmlText)
 	}
 	for _, marker := range []string{"ROW-01", "ROW-OVERSIZED", "ROW-LAST", "After adaptive table prose sentinel."} {
 		if !strings.Contains(htmlText, marker) {
@@ -239,6 +239,48 @@ func TestCompileAdaptiveTableOverflowTempCopy(t *testing.T) {
 	for _, marker := range []string{"ROW-01", "ROW-OVERSIZED", "ROW-LAST", "After adaptive table prose sentinel."} {
 		if !strings.Contains(pdfText, marker) {
 			t.Errorf("PDF text missing marker %q; oversized rows may have been clipped", marker)
+		}
+	}
+	pages := strings.Split(pdfText, "\f")
+	pageContaining := func(marker string) int {
+		for i, page := range pages {
+			if strings.Contains(page, marker) {
+				return i
+			}
+		}
+		return -1
+	}
+	beforePage := pageContaining("Before adaptive table prose.")
+	firstRowPage := pageContaining("ROW-01")
+	lastRowPage := pageContaining("ROW-LAST")
+	afterPage := pageContaining("After adaptive table prose sentinel.")
+	if beforePage < 0 || firstRowPage < 0 || lastRowPage < 0 || afterPage < 0 {
+		t.Fatalf("could not locate pagination sentinels in extracted pages: before=%d first=%d last=%d after=%d", beforePage, firstRowPage, lastRowPage, afterPage)
+	}
+	if beforePage >= firstRowPage {
+		t.Errorf("table did not start after the before sentinel page: before=%d first-row=%d", beforePage, firstRowPage)
+	}
+	if afterPage <= lastRowPage {
+		t.Errorf("post-table prose resumed before the final table page boundary: last-row=%d after=%d", lastRowPage, afterPage)
+	}
+	rowMarkers := []string{"ROW-01", "ROW-02", "ROW-03", "ROW-04", "ROW-05", "ROW-06", "ROW-07", "ROW-08", "ROW-09", "ROW-10", "ROW-11", "ROW-12", "ROW-13", "ROW-14", "ROW-15", "ROW-16", "ROW-17", "ROW-18", "ROW-OVERSIZED", "ROW-LAST"}
+	for i, marker := range rowMarkers {
+		if count := strings.Count(pdfText, marker); count != 1 {
+			t.Errorf("row marker %s appears %d times, want exactly once", marker, count)
+		}
+		if i > 0 {
+			previous := rowMarkers[i-1]
+			if strings.Index(pdfText, previous) > strings.Index(pdfText, marker) {
+				t.Errorf("row markers are out of source order: %s before %s", previous, marker)
+			}
+		}
+	}
+	for i, page := range pages {
+		if i == len(pages)-1 && strings.TrimSpace(page) == "" {
+			continue
+		}
+		if strings.TrimSpace(page) == "" {
+			t.Errorf("PDF contains an empty text page at index %d", i)
 		}
 	}
 	if count := strings.Count(pdfText, "Marker"); count < 2 {
