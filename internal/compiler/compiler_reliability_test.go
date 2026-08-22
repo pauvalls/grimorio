@@ -10,6 +10,124 @@ import (
 	"testing"
 )
 
+func TestClassifyTableRows(t *testing.T) {
+	longCell := strings.Repeat("visible ", 15)
+	longToken := strings.Repeat("x", 32)
+	longRow := "| " + strings.Repeat("content ", 20) + " | short |"
+	tests := []struct {
+		name        string
+		rows        []string
+		wantComplex bool
+		wantColumns int
+		wantMedia   bool
+		wantCode    bool
+	}{
+		{
+			name:        "compact regular table remains simple",
+			rows:        []string{"| Name | Role | Note |", "| --- | --- | --- |", "| Mira | Guide | Short |"},
+			wantColumns: 3,
+		},
+		{
+			name:        "four columns are complex",
+			rows:        []string{"| A | B | C | D |", "| --- | --- | --- | --- |", "| 1 | 2 | 3 | 4 |"},
+			wantComplex: true,
+			wantColumns: 4,
+		},
+		{
+			name:        "long visible cell is complex",
+			rows:        []string{"| Name | Note |", "| --- | --- |", "| Mira | " + longCell + " |"},
+			wantComplex: true,
+			wantColumns: 2,
+		},
+		{
+			name:        "indivisible token is complex",
+			rows:        []string{"| Name | Note |", "| --- | --- |", "| Mira | " + longToken + " |"},
+			wantComplex: true,
+			wantColumns: 2,
+		},
+		{
+			name:        "image and inline code are complex",
+			rows:        []string{"| Asset | Snippet |", "| --- | --- |", "| ![map](assets/map.png) | `roll 1d6` |"},
+			wantComplex: true,
+			wantColumns: 2,
+			wantMedia:   true,
+			wantCode:    true,
+		},
+		{
+			name: "estimated tall table is complex",
+			rows: append([]string{"| Name | Note |", "| --- | --- |"}, func() []string {
+				rows := make([]string, 0, 20)
+				for i := 0; i < 20; i++ {
+					rows = append(rows, longRow)
+				}
+				return rows
+			}()...),
+			wantComplex: true,
+			wantColumns: 2,
+		},
+		{
+			name:        "inconsistent row widths are complex",
+			rows:        []string{"| Name | Role |", "| --- | --- |", "| Mira | Guide | Extra |"},
+			wantComplex: true,
+			wantColumns: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			profile := classifyTableRows(tt.rows)
+			if got := profile.columnCount; got != tt.wantColumns {
+				t.Fatalf("columnCount = %d, want %d (profile %#v)", got, tt.wantColumns, profile)
+			}
+			if got := profile.isComplex(); got != tt.wantComplex {
+				t.Errorf("isComplex() = %v, want %v (profile %#v)", got, tt.wantComplex, profile)
+			}
+			if profile.hasMedia != tt.wantMedia {
+				t.Errorf("hasMedia = %v, want %v", profile.hasMedia, tt.wantMedia)
+			}
+			if profile.hasCode != tt.wantCode {
+				t.Errorf("hasCode = %v, want %v", profile.hasCode, tt.wantCode)
+			}
+		})
+	}
+}
+
+func TestFlushTableAdaptiveHTML(t *testing.T) {
+	simple := markdownToHTML("| Name | Role |\n| --- | --- |\n| Mira | Guide |", ".")
+	if strings.Contains(simple, "table-island") {
+		t.Fatalf("simple table was promoted: %s", simple)
+	}
+	if got := strings.Count(simple, `<div class="table-wrap">`); got != 1 {
+		t.Fatalf("simple table wrapper count = %d, want 1: %s", got, simple)
+	}
+
+	complex := markdownToHTML("before\n\n| A | B | C | D |\n| --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 |\n\nafter", ".")
+	wrapper := `<div class="table-wrap table-island"><table>`
+	if !strings.Contains(complex, wrapper) {
+		t.Fatalf("complex table missing island wrapper %q: %s", wrapper, complex)
+	}
+	boundary := `<div class="table-island-boundary" aria-hidden="true"></div>`
+	if !strings.Contains(complex, `</table></div>`+boundary) {
+		t.Fatalf("complex table missing immediate sibling boundary %q: %s", boundary, complex)
+	}
+	if !strings.Contains(complex, "1</td>") || !strings.Contains(complex, "4</td>") {
+		t.Fatalf("complex table lost cells: %s", complex)
+	}
+	if strings.Index(complex, "before") > strings.Index(complex, wrapper) || strings.Index(complex, wrapper) > strings.Index(complex, "after") {
+		t.Fatalf("table changed document order: %s", complex)
+	}
+}
+
+func TestNestedTableDoesNotBecomeIsland(t *testing.T) {
+	got := markdownToHTML("> | A | B | C | D |\n> | --- | --- | --- | --- |\n> | 1 | 2 | 3 | 4 |", ".")
+	if !strings.Contains(got, `class="read-aloud"`) {
+		t.Fatalf("nested table lost its callout: %s", got)
+	}
+	if strings.Contains(got, "table-island") || strings.Contains(got, "table-island-boundary") {
+		t.Fatalf("nested table was promoted outside its callout: %s", got)
+	}
+}
+
 func TestRegexes(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1032,6 +1150,9 @@ func TestGenerateAdventureRoster_Wrapper(t *testing.T) {
 	if got := strings.Count(out, `<div class="roster-wrap">`); got != 1 {
 		t.Errorf("expected exactly 1 .roster-wrap, got %d. Output:\n%s", got, out)
 	}
+	if strings.Contains(out, "table-island") {
+		t.Error("generated roster tables must not be promoted by the Markdown table classifier")
+	}
 	// All three h3 headings must be inside the wrapper. The h2
 	// ("Apéndice F") and the three h3 headings are the proof that
 	// the wrap did not eat the body of the function.
@@ -1053,8 +1174,9 @@ func TestGenerateAdventureRoster_Wrapper(t *testing.T) {
 // of slicing the table across columns (Issue C).
 func TestFlushTable_WrapsInTableWrap(t *testing.T) {
 	tests := []struct {
-		name string
-		md   string
+		name   string
+		md     string
+		island bool
 	}{
 		{
 			name: "simple 2-col table",
@@ -1085,8 +1207,9 @@ func TestFlushTable_WrapsInTableWrap(t *testing.T) {
 `,
 		},
 		{
-			name: "table with code cell",
-			md:   "| A | B |\n|---|---|\n| `code` | normal |\n",
+			name:   "table with code cell",
+			md:     "| A | B |\n|---|---|\n| `code` | normal |\n",
+			island: true,
 		},
 	}
 	for _, tt := range tests {
@@ -1114,8 +1237,11 @@ func TestFlushTable_WrapsInTableWrap(t *testing.T) {
 					probeEnd = len(rest)
 				}
 				blockStart := rest[divIdx:probeEnd]
-				if !strings.Contains(blockStart, `class="table-wrap"`) {
+				if !strings.Contains(blockStart, `class="table-wrap"`) && !strings.Contains(blockStart, `class="table-wrap table-island"`) {
 					t.Errorf("table at offset %d not wrapped in .table-wrap, surrounding div: %q", tblIdx, blockStart)
+				}
+				if tt.island && !strings.Contains(blockStart, `class="table-wrap table-island"`) {
+					t.Errorf("complex table should use an island wrapper, surrounding div: %q", blockStart)
 				}
 				// Advance past this <table>.
 				rest = rest[tblIdx+len("<table>"):]

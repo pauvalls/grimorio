@@ -86,6 +86,14 @@ func TestCompileArkanumTempCopySmoke(t *testing.T) {
 		t.Fatalf("generated PDF is missing or empty: %v", err)
 	}
 	htmlText := string(htmlData)
+	if islands := strings.Count(htmlText, `class="table-wrap table-island"`); islands == 0 {
+		t.Error("Arkanum HTML is missing a promoted complex-table island")
+	} else if boundaries := strings.Count(htmlText, `class="table-island-boundary"`); boundaries != islands {
+		t.Errorf("Arkanum island/boundary count mismatch: islands=%d boundaries=%d", islands, boundaries)
+	}
+	if simple := strings.Count(htmlText, `class="table-wrap">`); simple == 0 {
+		t.Error("Arkanum HTML is missing a compact table wrapper")
+	}
 	for _, marker := range []string{"```", "~~~"} {
 		if strings.Contains(htmlText, marker) {
 			t.Errorf("generated HTML retains fence marker %q", marker)
@@ -172,6 +180,69 @@ func TestCompileArkanumTempCopySmoke(t *testing.T) {
 	current, err := os.ReadFile(filepath.Join(source, "chapters", "chapter_00.md"))
 	if err != nil || string(current) != string(original) {
 		t.Fatal("campaign source sentinel changed during smoke test")
+	}
+}
+
+// TestCompileAdaptiveTableOverflowTempCopy exercises the Chromium pagination
+// contract using only a temporary campaign. The source includes a table with
+// many rows and one deliberately oversized row; no generated artifact or
+// campaign source outside t.TempDir is ever modified.
+func TestCompileAdaptiveTableOverflowTempCopy(t *testing.T) {
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping adaptive-table Chromium test")
+	}
+	tmpDir := t.TempDir()
+	long := strings.Repeat("oversized-row-content ", 220)
+	var table strings.Builder
+	table.WriteString("| Marker | Detail | State | Owner |\n| --- | --- | --- | --- |\n")
+	for i := 1; i <= 18; i++ {
+		fmt.Fprintf(&table, "| ROW-%02d | ordinary detail for pagination | ready | Arkanum |\n", i)
+	}
+	table.WriteString("| ROW-OVERSIZED | ")
+	table.WriteString(long)
+	table.WriteString(" | deliberately long | Arkanum |\n")
+	table.WriteString("| ROW-LAST | content after oversized row | done | Arkanum |\n")
+	content := "Before adaptive table prose.\n\n" + table.String() + "\nAfter adaptive table prose sentinel.\n"
+	if err := os.WriteFile(filepath.Join(tmpDir, "introduction.md"), []byte(content), 0644); err != nil {
+		t.Fatalf("write fixture campaign: %v", err)
+	}
+
+	c := compiler.New(tmpDir, "")
+	pdfPath, err := c.Compile(context.Background(), "Adaptive table fixture")
+	if err != nil {
+		t.Fatalf("adaptive-table fixture compile failed: %v", err)
+	}
+	htmlData, err := os.ReadFile(filepath.Join(tmpDir, "campaign.html"))
+	if err != nil {
+		t.Fatalf("read fixture HTML: %v", err)
+	}
+	htmlText := string(htmlData)
+	if !strings.Contains(htmlText, `class="table-wrap table-island"`) || !strings.Contains(htmlText, `class="table-island-boundary"`) {
+		t.Fatalf("fixture HTML missing island boundary contract: %s", htmlText)
+	}
+	for _, marker := range []string{"ROW-01", "ROW-OVERSIZED", "ROW-LAST", "After adaptive table prose sentinel."} {
+		if !strings.Contains(htmlText, marker) {
+			t.Errorf("fixture HTML missing marker %q", marker)
+		}
+	}
+
+	pdftotext, lookErr := exec.LookPath("pdftotext")
+	if lookErr != nil {
+		t.Log("pdftotext unavailable; skipped extracted-text pagination assertions")
+		return
+	}
+	textData, textErr := exec.Command(pdftotext, "-layout", pdfPath, "-").Output()
+	if textErr != nil {
+		t.Fatalf("pdftotext failed: %v", textErr)
+	}
+	pdfText := string(textData)
+	for _, marker := range []string{"ROW-01", "ROW-OVERSIZED", "ROW-LAST", "After adaptive table prose sentinel."} {
+		if !strings.Contains(pdfText, marker) {
+			t.Errorf("PDF text missing marker %q; oversized rows may have been clipped", marker)
+		}
+	}
+	if count := strings.Count(pdfText, "Marker"); count < 2 {
+		t.Errorf("expected repeated table header after pagination, got %d occurrences", count)
 	}
 }
 

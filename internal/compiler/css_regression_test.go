@@ -883,7 +883,7 @@ func TestCSS_SnapshotComparison(t *testing.T) {
 	// Set UPDATE_SNAPSHOTS=1 to regenerate snapshots (used after intentional CSS changes).
 	updateSnapshots := os.Getenv("UPDATE_SNAPSHOTS") == "1"
 	snapshotDir := "testdata/css-snapshots"
-	
+
 	// Create snapshot directory if it doesn't exist
 	if _, err := os.Stat(snapshotDir); os.IsNotExist(err) {
 		_ = os.MkdirAll(snapshotDir, 0755)
@@ -911,8 +911,8 @@ func TestCSS_SnapshotComparison(t *testing.T) {
 			// If snapshot doesn't exist, create it
 			if _, err := os.Stat(snapshotPath); os.IsNotExist(err) {
 				if err := os.WriteFile(snapshotPath, []byte(html), 0644); err != nil {
-				t.Fatalf("Failed to write snapshot: %v", err)
-			}
+					t.Fatalf("Failed to write snapshot: %v", err)
+				}
 				t.Logf("Created snapshot: %s", snapshotPath)
 				return
 			}
@@ -984,6 +984,54 @@ func TestCSSRegression_TableWrapExists(t *testing.T) {
 	block := css[idx : idx+end+1]
 	if !strings.Contains(block, "column-span: all") {
 		t.Errorf(".table-wrap block missing 'column-span: all'. Block: %s", block)
+	}
+}
+
+func TestCSSRegression_AdaptiveTableIsland(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+
+	island := regexp.MustCompile(`(?ms)\.table-wrap\.table-island\s*\{[^}]*\}`).FindString(css)
+	if island == "" {
+		t.Fatal("CSS regression: .table-wrap.table-island block not found")
+	}
+	for _, property := range []string{"column-span: all", "break-before: page", "page-break-before: always", "break-inside: auto", "page-break-inside: auto"} {
+		if !strings.Contains(island, property) {
+			t.Errorf("island block missing %q: %s", property, island)
+		}
+	}
+
+	boundary := regexp.MustCompile(`(?ms)\.table-island-boundary\s*\{[^}]*\}`).FindString(css)
+	if boundary == "" {
+		t.Fatal("CSS regression: .table-island-boundary block not found")
+	}
+	for _, property := range []string{"display: block", "height: 0", "column-span: all", "break-before: page", "page-break-before: always"} {
+		if !strings.Contains(boundary, property) {
+			t.Errorf("boundary block missing %q: %s", property, boundary)
+		}
+	}
+	if strings.Contains(boundary, "display: none") {
+		t.Error("boundary must remain in layout; display:none defeats the page break")
+	}
+}
+
+func TestCSSRegression_AdaptiveTableFragmentation(t *testing.T) {
+	css, err := compiler.GetTemplate("dnd-style")
+	if err != nil {
+		t.Fatalf("Failed to get CSS: %v", err)
+	}
+	for _, property := range []string{"thead", "tbody", "tr"} {
+		if !strings.Contains(css, property) {
+			t.Errorf("stylesheet missing table fragmentation selector %q", property)
+		}
+	}
+	if !strings.Contains(css, "display: table-header-group") {
+		t.Error("thead must repeat as a table-header-group")
+	}
+	if !strings.Contains(css, ".table-wrap.table-island") || strings.Contains(css, ".table-wrap.table-island {\n  overflow-x") {
+		t.Error("table island must remain a full-width, non-scrolling fragmentable surface")
 	}
 }
 
