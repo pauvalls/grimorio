@@ -6,11 +6,287 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/pauvalls/grimorio/internal/compiler"
 )
+
+func copyCampaignSources(t *testing.T, source, destination string) {
+	t.Helper()
+	err := filepath.WalkDir(source, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		if rel == "." {
+			return os.MkdirAll(destination, 0755)
+		}
+		if entry.IsDir() {
+			if entry.Name() == ".consolidation" || entry.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			return os.MkdirAll(filepath.Join(destination, rel), 0755)
+		}
+		if entry.Name() == "campaign.html" || entry.Name() == "campaign.pdf" || entry.Name() == "campaign.epub" {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(destination, rel), data, 0644)
+	})
+	if err != nil {
+		t.Fatalf("copy campaign sources: %v", err)
+	}
+}
+
+// TestCompileArkanumTempCopySmoke validates the current campaign source
+// without ever writing generated files into the source directory. It is
+// opt-in because the full campaign intentionally takes longer than fixture
+// integration tests and Chromium pagination is environment-sensitive.
+func TestCompileArkanumTempCopySmoke(t *testing.T) {
+	if os.Getenv("GRIMORIO_TEST_CAMPAIGNS") != "1" {
+		t.Skip("set GRIMORIO_TEST_CAMPAIGNS=1 to run the Arkanum campaign smoke test")
+	}
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping Arkanum campaign smoke test")
+	}
+
+	source := "/home/pau/campaigns/los-fragmentos-de-arkanum"
+	if _, err := os.Stat(source); err != nil {
+		t.Skipf("Arkanum campaign source unavailable: %v", err)
+	}
+	original, err := os.ReadFile(filepath.Join(source, "chapters", "chapter_00.md"))
+	if err != nil {
+		t.Fatalf("read source sentinel: %v", err)
+	}
+
+	tmpDir := t.TempDir()
+	copyCampaignSources(t, source, tmpDir)
+	c := compiler.New(tmpDir, "")
+	pdfPath, err := c.Compile(context.Background(), "Los Fragmentos de Arkanum")
+	if err != nil {
+		t.Fatalf("Arkanum temp-copy compile failed: %v", err)
+	}
+	htmlData, err := os.ReadFile(filepath.Join(tmpDir, "campaign.html"))
+	if err != nil {
+		t.Fatalf("read generated HTML: %v", err)
+	}
+	if len(htmlData) == 0 {
+		t.Fatal("generated HTML is empty")
+	}
+	pdfInfo, err := os.Stat(pdfPath)
+	if err != nil || pdfInfo.Size() == 0 {
+		t.Fatalf("generated PDF is missing or empty: %v", err)
+	}
+	htmlText := string(htmlData)
+	if pages := strings.Count(htmlText, `class="table-wrap table-page"`); pages == 0 {
+		t.Error("Arkanum HTML is missing a promoted top-level table page")
+	} else if boundaries := strings.Count(htmlText, `class="table-page-boundary"`); boundaries != pages {
+		t.Errorf("Arkanum table-page/boundary count mismatch: pages=%d boundaries=%d", pages, boundaries)
+	}
+	if simple := strings.Count(htmlText, `class="table-wrap">`); simple == 0 {
+		t.Error("Arkanum HTML is missing a compact table wrapper")
+	}
+	for _, marker := range []string{"```", "~~~"} {
+		if strings.Contains(htmlText, marker) {
+			t.Errorf("generated HTML retains fence marker %q", marker)
+		}
+	}
+	if regexp.MustCompile(`(?m)^\s*\|[^\n]*\|`).MatchString(htmlText) {
+		t.Error("generated HTML retains a literal Markdown table row")
+	}
+	for _, monster := range []string{"Gromerm", "El Error", "Guardián de Arkanum"} {
+		if !strings.Contains(htmlText, `data-monster="`+monster+`"`) {
+			t.Errorf("generated HTML is missing coherent stat block for %q", monster)
+		}
+	}
+	cssStart := strings.Index(htmlText, "<style>")
+	cssEnd := strings.Index(htmlText, "</style>")
+	if cssStart == -1 || cssEnd <= cssStart {
+		t.Fatal("generated HTML has no embedded stylesheet")
+	}
+	css := htmlText[cssStart:cssEnd]
+	if sidebar := strings.Index(css, ".dm-sidebar {"); sidebar >= 0 {
+		end := strings.Index(css[sidebar:], "}")
+		if end >= 0 && strings.Contains(css[sidebar:sidebar+end], "column-span: all") {
+			t.Error("ordinary DM sidebar unexpectedly spans all columns")
+		}
+	}
+	for _, selector := range []string{".dm-sidebar-wide", ".nested-card .table-wrap", "break-inside: avoid", "page-break-inside: avoid"} {
+		if !strings.Contains(css, selector) {
+			t.Errorf("generated stylesheet is missing layout contract %q", selector)
+		}
+	}
+	rosterStart := strings.Index(htmlText, `<div class="roster-wrap">`)
+	if rosterStart == -1 {
+		t.Fatal("generated HTML is missing the bounded Adventure Roster")
+	}
+	rosterEnd := strings.Index(htmlText[rosterStart:], "</div>")
+	if rosterEnd == -1 {
+		t.Fatal("generated Adventure Roster is unclosed")
+	}
+	roster := htmlText[rosterStart : rosterStart+rosterEnd]
+	for _, header := range []string{"<th>Nombre</th>", "<th>CR</th>"} {
+		if !strings.Contains(htmlText, header) {
+			t.Errorf("roster is missing stable semantic header %q", header)
+		}
+	}
+	if strings.Contains(htmlText, "<h3>NPCs</h3>") && !strings.Contains(htmlText, "<th>Rol</th>") {
+		t.Error("roster NPC section is missing stable semantic header <th>Rol</th>")
+	}
+	for _, forbidden := range []string{"Solución DM", "Solution", "attacks from the west"} {
+		if strings.Contains(roster, forbidden) {
+			t.Errorf("roster contains excluded prose %q", forbidden)
+		}
+	}
+
+	pdftotext, err := exec.LookPath("pdftotext")
+	if err == nil {
+		textData, textErr := exec.Command(pdftotext, "-layout", pdfPath, "-").Output()
+		if textErr != nil {
+			t.Errorf("pdftotext failed: %v", textErr)
+		} else {
+			pdfText := string(textData)
+			for _, marker := range []string{"Gromerm", "El Error", "Guardián de Arkanum"} {
+				if !strings.Contains(pdfText, marker) {
+					t.Errorf("PDF text is missing marker %q", marker)
+				}
+			}
+		}
+	} else {
+		t.Log("pdftotext unavailable; skipped PDF text assertions")
+	}
+
+	if pdftoppm, lookErr := exec.LookPath("pdftoppm"); lookErr == nil {
+		pages := []int{12, 31, 55, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 133, 134, 135}
+		for _, page := range pages {
+			prefix := filepath.Join(tmpDir, fmt.Sprintf("page-%d", page))
+			cmd := exec.Command(pdftoppm, "-f", fmt.Sprint(page), "-l", fmt.Sprint(page), "-singlefile", "-png", pdfPath, prefix)
+			if output, renderErr := cmd.CombinedOutput(); renderErr != nil {
+				t.Logf("page %d rasterization unavailable (no exact page-count assertion): %v (%s)", page, renderErr, strings.TrimSpace(string(output)))
+			}
+		}
+	} else {
+		t.Log("pdftoppm unavailable; skipped rasterized page inspection")
+	}
+
+	current, err := os.ReadFile(filepath.Join(source, "chapters", "chapter_00.md"))
+	if err != nil || string(current) != string(original) {
+		t.Fatal("campaign source sentinel changed during smoke test")
+	}
+}
+
+// TestCompileAdaptiveTableOverflowTempCopy exercises the Chromium pagination
+// contract using only a temporary campaign. The source includes a table with
+// many rows and one deliberately oversized row; no generated artifact or
+// campaign source outside t.TempDir is ever modified.
+func TestCompileAdaptiveTableOverflowTempCopy(t *testing.T) {
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping adaptive-table Chromium test")
+	}
+	tmpDir := t.TempDir()
+	long := strings.Repeat("oversized-row-content ", 220)
+	var table strings.Builder
+	table.WriteString("| Marker | Detail | State | Owner |\n| --- | --- | --- | --- |\n")
+	for i := 1; i <= 18; i++ {
+		fmt.Fprintf(&table, "| ROW-%02d | ordinary detail for pagination | ready | Arkanum |\n", i)
+	}
+	table.WriteString("| ROW-OVERSIZED | ")
+	table.WriteString(long)
+	table.WriteString(" | deliberately long | Arkanum |\n")
+	table.WriteString("| ROW-LAST | content after oversized row | done | Arkanum |\n")
+	content := "Before adaptive table prose.\n\n" + table.String() + "\nAfter adaptive table prose sentinel.\n"
+	if err := os.WriteFile(filepath.Join(tmpDir, "introduction.md"), []byte(content), 0644); err != nil {
+		t.Fatalf("write fixture campaign: %v", err)
+	}
+
+	c := compiler.New(tmpDir, "")
+	pdfPath, err := c.Compile(context.Background(), "Adaptive table fixture")
+	if err != nil {
+		t.Fatalf("adaptive-table fixture compile failed: %v", err)
+	}
+	htmlData, err := os.ReadFile(filepath.Join(tmpDir, "campaign.html"))
+	if err != nil {
+		t.Fatalf("read fixture HTML: %v", err)
+	}
+	htmlText := string(htmlData)
+	if !strings.Contains(htmlText, `class="table-wrap table-page"`) || !strings.Contains(htmlText, `class="table-page-boundary"`) {
+		t.Fatalf("fixture HTML missing table-page boundary contract: %s", htmlText)
+	}
+	for _, marker := range []string{"ROW-01", "ROW-OVERSIZED", "ROW-LAST", "After adaptive table prose sentinel."} {
+		if !strings.Contains(htmlText, marker) {
+			t.Errorf("fixture HTML missing marker %q", marker)
+		}
+	}
+
+	pdftotext, lookErr := exec.LookPath("pdftotext")
+	if lookErr != nil {
+		t.Log("pdftotext unavailable; skipped extracted-text pagination assertions")
+		return
+	}
+	textData, textErr := exec.Command(pdftotext, "-layout", pdfPath, "-").Output()
+	if textErr != nil {
+		t.Fatalf("pdftotext failed: %v", textErr)
+	}
+	pdfText := string(textData)
+	for _, marker := range []string{"ROW-01", "ROW-OVERSIZED", "ROW-LAST", "After adaptive table prose sentinel."} {
+		if !strings.Contains(pdfText, marker) {
+			t.Errorf("PDF text missing marker %q; oversized rows may have been clipped", marker)
+		}
+	}
+	pages := strings.Split(pdfText, "\f")
+	pageContaining := func(marker string) int {
+		for i, page := range pages {
+			if strings.Contains(page, marker) {
+				return i
+			}
+		}
+		return -1
+	}
+	beforePage := pageContaining("Before adaptive table prose.")
+	firstRowPage := pageContaining("ROW-01")
+	lastRowPage := pageContaining("ROW-LAST")
+	afterPage := pageContaining("After adaptive table prose sentinel.")
+	if beforePage < 0 || firstRowPage < 0 || lastRowPage < 0 || afterPage < 0 {
+		t.Fatalf("could not locate pagination sentinels in extracted pages: before=%d first=%d last=%d after=%d", beforePage, firstRowPage, lastRowPage, afterPage)
+	}
+	if beforePage >= firstRowPage {
+		t.Errorf("table did not start after the before sentinel page: before=%d first-row=%d", beforePage, firstRowPage)
+	}
+	if afterPage <= lastRowPage {
+		t.Errorf("post-table prose resumed before the final table page boundary: last-row=%d after=%d", lastRowPage, afterPage)
+	}
+	rowMarkers := []string{"ROW-01", "ROW-02", "ROW-03", "ROW-04", "ROW-05", "ROW-06", "ROW-07", "ROW-08", "ROW-09", "ROW-10", "ROW-11", "ROW-12", "ROW-13", "ROW-14", "ROW-15", "ROW-16", "ROW-17", "ROW-18", "ROW-OVERSIZED", "ROW-LAST"}
+	for i, marker := range rowMarkers {
+		if count := strings.Count(pdfText, marker); count != 1 {
+			t.Errorf("row marker %s appears %d times, want exactly once", marker, count)
+		}
+		if i > 0 {
+			previous := rowMarkers[i-1]
+			if strings.Index(pdfText, previous) > strings.Index(pdfText, marker) {
+				t.Errorf("row markers are out of source order: %s before %s", previous, marker)
+			}
+		}
+	}
+	for i, page := range pages {
+		if i == len(pages)-1 && strings.TrimSpace(page) == "" {
+			continue
+		}
+		if strings.TrimSpace(page) == "" {
+			t.Errorf("PDF contains an empty text page at index %d", i)
+		}
+	}
+	if count := strings.Count(pdfText, "Marker"); count < 2 {
+		t.Errorf("expected repeated table header after pagination, got %d occurrences", count)
+	}
+}
 
 // TestCompileWithAllFeatures tests PDF compilation with all new features enabled
 func TestCompileWithAllFeatures(t *testing.T) {
@@ -124,6 +400,58 @@ La aventura comienza.
 	// Check for character sheet section
 	if !strings.Contains(htmlStr, "Test Hero") {
 		t.Error("HTML missing character sheet")
+	}
+}
+
+func TestCompile_NestedCalloutTempCampaignPreservesBlockSemantics(t *testing.T) {
+	if !compiler.IsPDFEngineAvailable() {
+		t.Skip("No PDF engine available, skipping integration test")
+	}
+
+	tmpDir := t.TempDir()
+	createTestCampaign(t, tmpDir, "Nested Callout Test")
+	chaptersDir := filepath.Join(tmpDir, "chapters")
+	if err := os.MkdirAll(chaptersDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	chapter := `# Nested Card
+
+> **Read-Aloud:** The archive is silent.
+>
+> | Sign | Meaning |
+> | --- | --- |
+> | Dust | A hidden door |
+>
+> - Search the shelves
+> - [Open the door](#door)
+>
+> ` + "```text" + `
+> key <door>
+> ` + "```" + `
+`
+	if err := os.WriteFile(filepath.Join(chaptersDir, "nested.md"), []byte(chapter), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	pdfPath, err := compiler.New(tmpDir, "").Compile(t.Context(), "Nested Callout Test")
+	if err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+	if info, err := os.Stat(pdfPath); err != nil || info.Size() == 0 {
+		t.Fatalf("compiled PDF is missing or empty: %v", err)
+	}
+	htmlContent, err := os.ReadFile(filepath.Join(tmpDir, "campaign.html"))
+	if err != nil {
+		t.Fatalf("Failed to read HTML: %v", err)
+	}
+	htmlStr := string(htmlContent)
+	for _, want := range []string{"<table>", "<ul>", `<a href="#door">Open the door</a>`, "key &lt;door&gt;"} {
+		if !strings.Contains(htmlStr, want) {
+			t.Errorf("nested callout HTML missing %q", want)
+		}
+	}
+	if strings.Contains(htmlStr, "| Sign | Meaning |") || strings.Contains(htmlStr, "```text") {
+		t.Errorf("nested callout leaked Markdown markers into HTML")
 	}
 }
 

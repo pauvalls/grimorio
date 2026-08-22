@@ -57,6 +57,116 @@ func TestMarkdownToHTML_ProcessScenePlaceholders(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownBlocks_NestedCalloutContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	imagePath := filepath.Join(tmpDir, "card.png")
+	if err := os.WriteFile(imagePath, []byte("card-image"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		md   string
+		want []string
+		not  []string
+	}{
+		{
+			name: "mixed semantic blocks",
+			md: "" +
+				"> **Read-Aloud:** The sealed door hums.\n" +
+				">\n" +
+				"> | Clue | Result |\n" +
+				"> | --- | --- |\n" +
+				"> | Dust | A hidden latch |\n" +
+				">\n" +
+				"> - Search the room\n" +
+				"> - [Open the latch](#latch)\n" +
+				">\n" +
+				"> ![Door](" + imagePath + ")\n",
+			want: []string{`class="read-aloud"`, "<table>", "<th", ">Clue</th>", "<li>Search the room</li>", `<a href="#latch">Open the latch</a>`, `class="campaign-image"`},
+			not:  []string{"| Clue | Result |", "![Door]"},
+		},
+		{
+			name: "matching backtick and tilde fences",
+			md: "" +
+				"> ```go\n" +
+				"> if x < 2 {\n" +
+				">   return x\n" +
+				"> }\n" +
+				"> ```\n" +
+				">\n" +
+				"> ~~~text\n" +
+				"> ritual <seal>\n" +
+				"> ~~~\n",
+			want: []string{`class="code-block"`, "if x &lt; 2", "ritual &lt;seal&gt;"},
+			not:  []string{"```go", "~~~text"},
+		},
+		{
+			name: "nested blockquote is bounded and readable",
+			md:   "> outer\n> > inner\n> > > overflow\n",
+			want: []string{"outer", "inner", "overflow"},
+			not:  []string{"panic"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := renderMarkdownBlocks(tt.md, tmpDir, "content", new(int), make(map[string]bool), 0, nil, "")
+			for _, want := range tt.want {
+				if !strings.Contains(got, want) {
+					t.Errorf("renderMarkdownBlocks() missing %q\nGot: %s", want, got)
+				}
+			}
+			for _, not := range tt.not {
+				if strings.Contains(got, not) {
+					t.Errorf("renderMarkdownBlocks() unexpectedly contains %q\nGot: %s", not, got)
+				}
+			}
+		})
+	}
+}
+
+func TestRenderMarkdownBlocks_MalformedInputPreservesText(t *testing.T) {
+	tests := []string{
+		"> unclosed card\n>\n> still readable",
+		"> ```\n> code without a closing fence\nAfter the card",
+		"> ~~~\n> tilde content\n> ```\nAfter mismatched fence",
+	}
+
+	for _, input := range tests {
+		t.Run(strings.ReplaceAll(strings.TrimSpace(input), "\n", "_"), func(t *testing.T) {
+			got := renderMarkdownBlocks(input, t.TempDir(), "content", new(int), make(map[string]bool), 0, nil, "")
+			if strings.TrimSpace(got) == "" {
+				t.Fatalf("malformed markdown lost all readable content: %q", input)
+			}
+			if !strings.Contains(got, "readable") && !strings.Contains(got, "After") && !strings.Contains(got, "content") {
+				t.Errorf("malformed markdown lost source text\nGot: %s", got)
+			}
+			if strings.Contains(input, "mismatched") && (!strings.Contains(got, "~~~") || !strings.Contains(got, "```")) {
+				t.Errorf("mismatched fence markers must remain readable\nGot: %s", got)
+			}
+		})
+	}
+}
+
+func TestRenderMarkdownBlocks_EnforcesDepthAndSizeLimits(t *testing.T) {
+	depthLimited := renderMarkdownBlocks("> one\n> > two\n> > > three\n", t.TempDir(), "content", new(int), make(map[string]bool), 0, nil, "")
+	if got := strings.Count(depthLimited, `class="read-aloud"`); got > maxBlockquoteDepth+1 {
+		t.Fatalf("nested callouts exceeded depth limit %d: got %d\n%s", maxBlockquoteDepth, got, depthLimited)
+	}
+	if !strings.Contains(depthLimited, "three") {
+		t.Fatalf("depth overflow should preserve readable source text\nGot: %s", depthLimited)
+	}
+
+	oversized := renderMarkdownBlocks(strings.Repeat("x", maxMarkdownBytes+1), t.TempDir(), "content", new(int), make(map[string]bool), 0, nil, "")
+	if len(oversized) > maxMarkdownBytes*2 {
+		t.Fatalf("oversized markdown fallback was not bounded: %d bytes", len(oversized))
+	}
+	if !strings.Contains(oversized, "xxx") {
+		t.Fatalf("oversized markdown fallback lost readable content")
+	}
+}
+
 func TestMarkdownToHTML_ScenePlaceholder_Formatting(t *testing.T) {
 	input := "[SCENE: A mystical forest at dawn]"
 	result := markdownToHTML(input, "/tmp")
@@ -1356,7 +1466,7 @@ func TestFormatInline_BoldItalic(t *testing.T) {
 func TestMarkdownToHTML_StripsComments(t *testing.T) {
 	input := "Texto <!-- comentario --> más texto"
 	result := markdownToHTML(input, "")
-	
+
 	if strings.Contains(result, "<!--") {
 		t.Errorf("HTML comments not stripped: %s", result)
 	}
@@ -1374,7 +1484,7 @@ func TestMarkdownToHTML_StripsMultilineComments(t *testing.T) {
 -->
 más texto`
 	result := markdownToHTML(input, "")
-	
+
 	if strings.Contains(result, "<!--") {
 		t.Errorf("Multiline comments not stripped: %s", result)
 	}
@@ -1386,7 +1496,7 @@ más texto`
 func TestMarkdownToHTML_StripsCommentsInParagraph(t *testing.T) {
 	input := "Párrafo con <!-- comentario inline --> texto"
 	result := markdownToHTML(input, "")
-	
+
 	if strings.Contains(result, "<!--") {
 		t.Errorf("Inline comments not stripped: %s", result)
 	}
@@ -1398,7 +1508,7 @@ Texto normal
 <!-- <div>comentario con HTML</div> -->
 Más texto`
 	result := markdownToHTML(input, "")
-	
+
 	if strings.Contains(result, "<!--") {
 		t.Errorf("Comments with HTML not stripped: %s", result)
 	}
@@ -1419,13 +1529,13 @@ Some text before.
 
 Some text after.
 `
-	
+
 	html := markdownToHTML(md, "/tmp")
-	
+
 	if strings.Contains(html, "<p><div") {
 		t.Errorf("HTML should not wrap <div> in <p> tags, got: %s", html)
 	}
-	
+
 	if !strings.Contains(html, `<div class="shock-point`) {
 		t.Errorf("HTML should contain the div, got: %s", html)
 	}
@@ -1458,28 +1568,28 @@ func TestWorksheetNestedDivs(t *testing.T) {
 </div>
 </div>
 `
-	
+
 	html := markdownToHTML(md, "/tmp")
-	
+
 	// Verify all opening tags have closing tags
 	openCount := strings.Count(html, `<div class="worksheet-section">`)
 	closeCount := strings.Count(html, `</div>`)
-	
+
 	// Should have 4 worksheet-section opening tags
 	if openCount != 4 {
 		t.Errorf("Expected 4 worksheet-section opening tags, got %d", openCount)
 	}
-	
+
 	// Should have enough closing tags (4 worksheet-section + 1 character-worksheet + 4 prompt-box = 9 minimum)
 	if closeCount < 9 {
 		t.Errorf("Expected at least 9 closing </div> tags, got %d. HTML:\n%s", closeCount, html)
 	}
-	
+
 	// Verify no <p><div> nesting
 	if strings.Contains(html, "<p><div") {
 		t.Errorf("HTML should not wrap <div> in <p> tags:\n%s", html)
 	}
-	
+
 	// Verify character-worksheet div is present
 	if !strings.Contains(html, `<div class="character-worksheet">`) {
 		t.Errorf("HTML should contain character-worksheet div:\n%s", html)
@@ -1494,17 +1604,17 @@ func TestDeeplyNestedDivs(t *testing.T) {
 </div>
 </div>
 </div>`
-	
+
 	html := markdownToHTML(md, "/tmp")
-	
+
 	// Count each level
 	level1Open := strings.Count(html, `<div class="level1">`)
 	level1Close := strings.Count(html, `</div>`) // This counts all, but we need at least 4 total
-	
+
 	if level1Open != 1 {
 		t.Errorf("Expected 1 level1 div, got %d", level1Open)
 	}
-	
+
 	// Should have at least 4 closing divs for 4 levels
 	if level1Close < 4 {
 		t.Errorf("Expected at least 4 closing divs for nested structure, got %d. HTML:\n%s", level1Close, html)
@@ -1515,9 +1625,9 @@ func TestDeeplyNestedDivs(t *testing.T) {
 
 func TestExtractBalancedDivs_UnclosedDiv(t *testing.T) {
 	md := `<div class="foo">some content`
-	
+
 	html := markdownToHTML(md, "/tmp")
-	
+
 	// Verify the div is auto-closed
 	if !strings.Contains(html, `<div class="foo">`) {
 		t.Errorf("Expected opening div tag, got: %s", html)
@@ -1528,7 +1638,7 @@ func TestExtractBalancedDivs_UnclosedDiv(t *testing.T) {
 	if !strings.Contains(html, "some content") {
 		t.Errorf("Expected content preserved, got: %s", html)
 	}
-	
+
 	// Verify balanced tags
 	openCount := strings.Count(html, `<div class="foo">`)
 	closeCount := strings.Count(html, `</div>`)
@@ -1539,9 +1649,9 @@ func TestExtractBalancedDivs_UnclosedDiv(t *testing.T) {
 
 func TestExtractBalancedDivs_NestedUnclosed(t *testing.T) {
 	md := `<div class="outer"><div class="inner">nested content`
-	
+
 	html := markdownToHTML(md, "/tmp")
-	
+
 	// Verify both divs are auto-closed
 	if !strings.Contains(html, `<div class="outer">`) {
 		t.Errorf("Expected outer div opening tag, got: %s", html)
@@ -1552,7 +1662,7 @@ func TestExtractBalancedDivs_NestedUnclosed(t *testing.T) {
 	if !strings.Contains(html, "nested content") {
 		t.Errorf("Expected content preserved, got: %s", html)
 	}
-	
+
 	// Verify balanced tags (2 opens, 2 closes)
 	openCount := strings.Count(html, `<div class="`)
 	closeCount := strings.Count(html, `</div>`)
@@ -1564,9 +1674,9 @@ func TestExtractBalancedDivs_NestedUnclosed(t *testing.T) {
 func TestExtractBalancedDivs_Mismatched(t *testing.T) {
 	// 3 opens, 2 closes = net 1 unclosed
 	md := `<div class="a"><div class="b"><div class="c">content</div></div>`
-	
+
 	html := markdownToHTML(md, "/tmp")
-	
+
 	// Verify all opening tags are present
 	if !strings.Contains(html, `<div class="a">`) {
 		t.Errorf("Expected div a opening tag, got: %s", html)
@@ -1577,7 +1687,7 @@ func TestExtractBalancedDivs_Mismatched(t *testing.T) {
 	if !strings.Contains(html, `<div class="c">`) {
 		t.Errorf("Expected div c opening tag, got: %s", html)
 	}
-	
+
 	// Verify balanced tags (3 opens, 3 closes)
 	openCount := strings.Count(html, `<div class="`)
 	closeCount := strings.Count(html, `</div>`)

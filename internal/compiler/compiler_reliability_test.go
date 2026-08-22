@@ -10,6 +10,159 @@ import (
 	"testing"
 )
 
+func TestFlushTableAdaptiveHTML(t *testing.T) {
+	tests := []struct {
+		name  string
+		md    string
+		cells []string
+	}{
+		{
+			name:  "compact two-column table",
+			md:    "before\n\n| Name | Role |\n| --- | --- |\n| Mira | Guide |\n\nafter",
+			cells: []string{"Mira", "Guide"},
+		},
+		{
+			name:  "three-column table",
+			md:    "before\n\n| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |\n\nafter",
+			cells: []string{"1", "2", "3"},
+		},
+		{
+			name:  "wide four-column table",
+			md:    "before\n\n| A | B | C | D |\n| --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 |\n\nafter",
+			cells: []string{"1", "2", "3", "4"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := markdownToHTML(tt.md, ".")
+			wrapper := `<div class="table-wrap table-page"><table>`
+			boundary := `<div class="table-page-boundary" aria-hidden="true"></div>`
+			if !strings.Contains(got, wrapper) {
+				t.Fatalf("top-level table missing page wrapper %q: %s", wrapper, got)
+			}
+			if !strings.Contains(got, `</table></div>`+boundary) {
+				t.Fatalf("top-level table missing immediate sibling boundary %q: %s", boundary, got)
+			}
+			for _, cell := range tt.cells {
+				if !strings.Contains(got, ">"+cell+"</td>") {
+					t.Errorf("table lost cell %q: %s", cell, got)
+				}
+			}
+			if strings.Index(got, "before") > strings.Index(got, wrapper) || strings.Index(got, wrapper) > strings.Index(got, "after") {
+				t.Fatalf("table changed document order: %s", got)
+			}
+		})
+	}
+}
+
+func TestNestedTableDoesNotBecomeIsland(t *testing.T) {
+	tests := []struct {
+		name  string
+		md    string
+		cells []string
+	}{
+		{
+			name:  "nested two-column table",
+			md:    "> | Sign | Meaning |\n> | --- | --- |\n> | Dust | Door |",
+			cells: []string{"Dust", "Door"},
+		},
+		{
+			name:  "nested wide table",
+			md:    "> | A | B | C | D |\n> | --- | --- | --- | --- |\n> | 1 | 2 | 3 | 4 |",
+			cells: []string{"1", "2", "3", "4"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := markdownToHTML(tt.md, ".")
+			if !strings.Contains(got, `class="read-aloud"`) {
+				t.Fatalf("nested table lost its callout: %s", got)
+			}
+			if strings.Contains(got, "table-page") || strings.Contains(got, "table-island") {
+				t.Fatalf("nested table was promoted outside its callout: %s", got)
+			}
+			for _, cell := range tt.cells {
+				if !strings.Contains(got, ">"+cell+"</td>") {
+					t.Errorf("nested table lost cell %q: %s", cell, got)
+				}
+			}
+		})
+	}
+}
+
+func TestSpecializedTablesDoNotBecomePageTables(t *testing.T) {
+	tests := []struct {
+		name string
+		got  func() string
+		want string
+	}{
+		{
+			name: "raw HTML table",
+			got: func() string {
+				return markdownToHTML(`<div class="custom-card"><table><tr><td>Raw</td></tr></table></div>`, ".")
+			},
+			want: "Raw",
+		},
+		{
+			name: "faction tracker",
+			got: func() string {
+				dir := t.TempDir()
+				if err := os.MkdirAll(filepath.Join(dir, "factions"), 0755); err != nil {
+					t.Fatal(err)
+				}
+				data := `{"entries":[{"faction_id":"Guild","party_id":"Heroes","score":2,"status":"friendly"}]}`
+				if err := os.WriteFile(filepath.Join(dir, "factions", "reputation_matrix.json"), []byte(data), 0644); err != nil {
+					t.Fatal(err)
+				}
+				return New(dir, "").generateFactionTracker()
+			},
+			want: "Guild",
+		},
+		{
+			name: "stat block ability scores",
+			got: func() string {
+				md := "## Goblin\n\n*Small humanoid*\n\n| STR | DEX | CON | INT | WIS | CHA |\n| --- | --- | --- | --- | --- | --- |\n| 10 | 14 | 12 | 8 | 10 | 9 |\n\n---\n"
+				return markdownToHTML(md, ".")
+			},
+			want: "ability-scores",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.got()
+			if !strings.Contains(got, tt.want) {
+				t.Fatalf("specialized table output missing %q: %s", tt.want, got)
+			}
+			if strings.Contains(got, "table-page") || strings.Contains(got, "table-island") || strings.Contains(got, "table-page-boundary") {
+				t.Fatalf("specialized table unexpectedly received page markers: %s", got)
+			}
+		})
+	}
+}
+
+func TestFlushTable_ConsecutiveTopLevelTablesUseSingleBoundaries(t *testing.T) {
+	md := `| First | Value |
+| --- | --- |
+| one | 1 |
+
+between tables
+
+| Second | Value |
+| --- | --- |
+| two | 2 |
+`
+	got := markdownToHTML(md, ".")
+	if pages := strings.Count(got, `class="table-wrap table-page"`); pages != 2 {
+		t.Fatalf("consecutive top-level tables = %d page wrappers, want 2: %s", pages, got)
+	}
+	if boundaries := strings.Count(got, `class="table-page-boundary"`); boundaries != 2 {
+		t.Fatalf("consecutive top-level tables = %d boundaries, want 2: %s", boundaries, got)
+	}
+	if strings.Count(got, `table-page-boundary" aria-hidden="true"></div>`) != 2 {
+		t.Fatalf("each page table must have exactly one immediate boundary: %s", got)
+	}
+}
+
 func TestRegexes(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -315,6 +468,171 @@ func TestClassifyBlockquote(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestImageFirstMonsterBlocksStayCoherent(t *testing.T) {
+	tmpDir := t.TempDir()
+	assetsDir := filepath.Join(tmpDir, "assets")
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"monster-gromerm.png", "monster-error.png", "monster-guardian.png"} {
+		if err := os.WriteFile(filepath.Join(assetsDir, name), []byte(name), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	md := `## Gromerm
+![Gromerm](assets/monster-gromerm.png)
+*Medium beast, unaligned*
+**Armor Class** 14
+
+## El Error
+![El Error](assets/monster-error.png)
+*Small aberration, unaligned*
+**Armor Class** 12
+
+## Guardián de Arkanum
+![Guardián](assets/monster-guardian.png)
+*Large construct, unaligned*
+**Armor Class** 16
+`
+	got := markdownToHTML(md, tmpDir)
+	if gotBlocks := strings.Count(got, `class="stat-block"`); gotBlocks != 3 {
+		t.Fatalf("image-first monsters should produce three stat blocks, got %d\n%s", gotBlocks, got)
+	}
+	for _, marker := range []string{"monster-gromerm.png", "monster-error.png", "monster-guardian.png"} {
+		if gotImages := strings.Count(got, marker); gotImages != 1 {
+			t.Errorf("image %q should occur once in its stat block, got %d", marker, gotImages)
+		}
+	}
+}
+
+func TestImageFirstMonsterStopsAtNonMonsterAndDeduplicates(t *testing.T) {
+	tmpDir := t.TempDir()
+	assetsDir := filepath.Join(tmpDir, "assets")
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"monster-echo.png", "scene.png"} {
+		if err := os.WriteFile(filepath.Join(assetsDir, name), []byte(name), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	md := `## Echo
+![Echo](assets/monster-echo.png)
+
+*Tiny construct, unaligned*
+**Armor Class** 10
+---
+![Echo duplicate](assets/monster-echo.png)
+![Scene](assets/scene.png)
+`
+	got := markdownToHTML(md, tmpDir)
+	if blocks := strings.Count(got, `class="stat-block"`); blocks != 1 {
+		t.Fatalf("expected one stat block, got %d\n%s", blocks, got)
+	}
+	if occurrences := strings.Count(got, "monster-echo.png"); occurrences != 1 {
+		t.Fatalf("duplicate monster image should be emitted once, got %d\n%s", occurrences, got)
+	}
+	if !strings.Contains(got, `alt="Scene"`) {
+		t.Fatalf("non-monster image should remain outside the stat block\n%s", got)
+	}
+}
+
+func TestRosterExtractionExcludesEncounterSolutions(t *testing.T) {
+	md := `## Adventure Roster
+
+### NPCs
+- **Mira** — Guide
+
+### Encounter: The Bridge
+- **Mira** attacks from the west.
+
+### Solution
+- **Mira** is secretly the traitor.
+`
+	npcs, _, encounters := extractRosterEntries(md)
+	if len(npcs) != 1 || npcs[0] != "Mira|Guide" {
+		t.Fatalf("roster should contain only the bounded NPC row, got %v", npcs)
+	}
+	if len(encounters) != 0 {
+		t.Fatalf("encounter prose and solution rows must not become roster entries, got %v", encounters)
+	}
+}
+
+func TestParseRosterSectionUsesTypedBoundedRows(t *testing.T) {
+	md := `## Adventure Roster
+
+### NPCs
+- **Mira** — Guide
+
+### Monstruos
+- **Goblin** (CR 1/4)
+
+### Encuentros
+- **The Bridge** — Social
+
+### Encounter: prose is not a roster section
+- **Mira** attacks from the west.
+
+### Solution
+- **Mira** is secretly the traitor.
+`
+	entries := parseRosterSection(md)
+	if len(entries) != 3 {
+		t.Fatalf("expected three bounded roster entries, got %d: %#v", len(entries), entries)
+	}
+	want := []struct {
+		category rosterCategory
+		name     string
+		detail   string
+	}{
+		{rosterNPC, "Mira", "Guide"},
+		{rosterMonster, "Goblin", "(CR 1/4)"},
+		{rosterEncounter, "The Bridge", "Social"},
+	}
+	for i, expected := range want {
+		if entries[i].category != expected.category || entries[i].name != expected.name || entries[i].detail != expected.detail {
+			t.Errorf("entry %d = %#v, want category=%q name=%q detail=%q", i, entries[i], expected.category, expected.name, expected.detail)
+		}
+	}
+}
+
+func TestParseRosterSectionRejectsUnrecognizedRows(t *testing.T) {
+	md := `# Notes
+## Encounter: The Bridge
+- **Mira** attacks from the west.
+
+## Solution
+- **Mira** is secretly the traitor.
+
+| Name | Role |
+| --- | --- |
+| Fabricated | Row |
+`
+	if entries := parseRosterSection(md); len(entries) != 0 {
+		t.Fatalf("unrecognized prose and arbitrary tables must not create roster rows: %#v", entries)
+	}
+}
+
+func TestParseRosterSectionAcceptsNameOnlyNPCIdentity(t *testing.T) {
+	entries := parseRosterSection("## NPCs\n- **Ivo**\n")
+	if len(entries) != 1 || entries[0].category != rosterNPC || entries[0].name != "Ivo" {
+		t.Fatalf("name-only NPC identity bullet should be retained, got %#v", entries)
+	}
+}
+
+func TestDMSidebarWideUsesExplicitWideClass(t *testing.T) {
+	headingCounter := 0
+	got := markdownToHTMLWithID(nil, "> DM Sidebar Wide: Use the full page for this reference.\n", t.TempDir(), "sec-test", &headingCounter, make(map[string]bool), 2, nil, "")
+	if !strings.Contains(got, `<div class="dm-sidebar-wide">`) {
+		t.Fatalf("explicit wide DM sidebar should use the wide class, got:\n%s", got)
+	}
+	if strings.Contains(got, `<div class="dm-sidebar">`) {
+		t.Fatalf("wide DM sidebar must not fall back to the narrow class, got:\n%s", got)
 	}
 }
 
@@ -867,6 +1185,9 @@ func TestGenerateAdventureRoster_Wrapper(t *testing.T) {
 	if got := strings.Count(out, `<div class="roster-wrap">`); got != 1 {
 		t.Errorf("expected exactly 1 .roster-wrap, got %d. Output:\n%s", got, out)
 	}
+	if strings.Contains(out, "table-page") {
+		t.Error("generated roster tables must not be promoted by the Markdown table renderer")
+	}
 	// All three h3 headings must be inside the wrapper. The h2
 	// ("Apéndice F") and the three h3 headings are the proof that
 	// the wrap did not eat the body of the function.
@@ -921,7 +1242,7 @@ func TestFlushTable_WrapsInTableWrap(t *testing.T) {
 		},
 		{
 			name: "table with code cell",
-			md: "| A | B |\n|---|---|\n| `code` | normal |\n",
+			md:   "| A | B |\n|---|---|\n| `code` | normal |\n",
 		},
 	}
 	for _, tt := range tests {
@@ -949,8 +1270,14 @@ func TestFlushTable_WrapsInTableWrap(t *testing.T) {
 					probeEnd = len(rest)
 				}
 				blockStart := rest[divIdx:probeEnd]
-				if !strings.Contains(blockStart, `class="table-wrap"`) {
+				if !strings.Contains(blockStart, `class="table-wrap`) {
 					t.Errorf("table at offset %d not wrapped in .table-wrap, surrounding div: %q", tblIdx, blockStart)
+				}
+				if !strings.Contains(blockStart, `class="table-wrap table-page"`) {
+					t.Errorf("top-level table should use a table-page wrapper, surrounding div: %q", blockStart)
+				}
+				if !strings.Contains(rest, `</table></div><div class="table-page-boundary" aria-hidden="true"></div>`) {
+					t.Errorf("top-level table should have an immediate page boundary, output: %s", rest)
 				}
 				// Advance past this <table>.
 				rest = rest[tblIdx+len("<table>"):]

@@ -75,12 +75,33 @@ type blockquoteClass int
 const (
 	bqReadAloud blockquoteClass = iota
 	bqDMSidebar
+	bqDMSidebarWide
 	bqChapterSummary
 	bqIntroductionSidebar
 )
 
 // anchorRegistry maps a requested link fragment to the element ID emitted in the HTML.
 type anchorRegistry map[string]string
+
+const (
+	// Markdown rendering is deliberately bounded. Campaign files are trusted
+	// input, but malformed nested cards must not be able to grow the call stack
+	// or allocate without limit.
+	maxBlockquoteDepth = 2
+	maxMarkdownBytes   = 1 << 20
+	maxMarkdownLines   = 10000
+)
+
+type markdownFence struct {
+	delimiter byte
+	length    int
+}
+
+type tableLayoutModel struct {
+	rows       [][]string
+	headers    []string
+	alignments []string
+}
 
 // pdfEnginePriority defines the preferred order of PDF engines.
 var pdfEnginePriority = []string{
@@ -692,7 +713,13 @@ func (c *Compiler) generateShockPointsHTML(shockPoints []struct {
 
 // generateAdventureRoster builds Apéndice F from scanned markdown files
 func (c *Compiler) generateAdventureRoster() string {
-	var npcs, monsters, encounters []string
+	var entries []rosterEntry
+	appendFileEntries := func(path string) {
+		content, err := os.ReadFile(path)
+		if err == nil {
+			entries = append(entries, parseRosterSection(string(content))...)
+		}
+	}
 
 	// chapters/ is the only chapter source — grimorio-areas (legacy
 	// areas/ directory) was removed in v5.0.2 WU7.
@@ -701,11 +728,7 @@ func (c *Compiler) generateAdventureRoster() string {
 		files, _ := os.ReadDir(chaptersDir)
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".md") {
-				content, _ := os.ReadFile(filepath.Join(chaptersDir, f.Name()))
-				n, m, e := extractRosterEntries(string(content))
-				npcs = append(npcs, n...)
-				monsters = append(monsters, m...)
-				encounters = append(encounters, e...)
+				appendFileEntries(filepath.Join(chaptersDir, f.Name()))
 			}
 		}
 	}
@@ -716,9 +739,7 @@ func (c *Compiler) generateAdventureRoster() string {
 		files, _ := os.ReadDir(npcsDir)
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".md") {
-				content, _ := os.ReadFile(filepath.Join(npcsDir, f.Name()))
-				n, _, _ := extractRosterEntries(string(content))
-				npcs = append(npcs, n...)
+				appendFileEntries(filepath.Join(npcsDir, f.Name()))
 			}
 		}
 	}
@@ -729,9 +750,7 @@ func (c *Compiler) generateAdventureRoster() string {
 		files, _ := os.ReadDir(bestiaryDir)
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".md") {
-				content, _ := os.ReadFile(filepath.Join(bestiaryDir, f.Name()))
-				_, m, _ := extractRosterEntries(string(content))
-				monsters = append(monsters, m...)
+				appendFileEntries(filepath.Join(bestiaryDir, f.Name()))
 			}
 		}
 	}
@@ -742,52 +761,44 @@ func (c *Compiler) generateAdventureRoster() string {
 		files, _ := os.ReadDir(encountersDir)
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".md") {
-				content, _ := os.ReadFile(filepath.Join(encountersDir, f.Name()))
-				_, _, e := extractRosterEntries(string(content))
-				encounters = append(encounters, e...)
+				appendFileEntries(filepath.Join(encountersDir, f.Name()))
 			}
 		}
 	}
 
-	if len(npcs) == 0 && len(monsters) == 0 && len(encounters) == 0 {
+	if len(entries) == 0 {
 		return ""
 	}
 
 	var b strings.Builder
 	b.WriteString(`<h2 id="sec-adventure-roster">Apéndice F: Adventure Roster</h2>`)
 
-	if len(npcs) > 0 {
+	if countRosterEntries(entries, rosterNPC) > 0 {
 		b.WriteString(`<h3>NPCs</h3><table><thead><tr><th>Nombre</th><th>Rol</th></tr></thead><tbody>`)
-		for _, n := range npcs {
-			parts := strings.SplitN(n, "|", 2)
-			name := parts[0]
-			role := ""
-			if len(parts) > 1 {
-				role = parts[1]
+		for _, entry := range entries {
+			if entry.category == rosterNPC {
+				fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(entry.name), html.EscapeString(entry.detail))
 			}
-			fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(name), html.EscapeString(role))
 		}
 		b.WriteString(`</tbody></table>`)
 	}
 
-	if len(monsters) > 0 {
+	if countRosterEntries(entries, rosterMonster) > 0 {
 		b.WriteString(`<h3>Monstruos</h3><table><thead><tr><th>Nombre</th><th>CR</th></tr></thead><tbody>`)
-		for _, m := range monsters {
-			parts := strings.SplitN(m, "|", 2)
-			name := parts[0]
-			cr := ""
-			if len(parts) > 1 {
-				cr = parts[1]
+		for _, entry := range entries {
+			if entry.category == rosterMonster {
+				fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(entry.name), html.EscapeString(entry.detail))
 			}
-			fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td></tr>`, html.EscapeString(name), html.EscapeString(cr))
 		}
 		b.WriteString(`</tbody></table>`)
 	}
 
-	if len(encounters) > 0 {
+	if countRosterEntries(entries, rosterEncounter) > 0 {
 		b.WriteString(`<h3>Encuentros</h3><table><thead><tr><th>Nombre</th></tr></thead><tbody>`)
-		for _, e := range encounters {
-			fmt.Fprintf(&b, `<tr><td>%s</td></tr>`, html.EscapeString(e))
+		for _, entry := range entries {
+			if entry.category == rosterEncounter {
+				fmt.Fprintf(&b, `<tr><td>%s</td></tr>`, html.EscapeString(entry.name))
+			}
 		}
 		b.WriteString(`</tbody></table>`)
 	}
@@ -795,44 +806,170 @@ func (c *Compiler) generateAdventureRoster() string {
 	return `<div class="roster-wrap">` + b.String() + `</div>`
 }
 
-// extractRosterEntries parses markdown for roster entities
-func extractRosterEntries(md string) (npcs, monsters, encounters []string) {
-	lines := strings.Split(md, "\n")
-	var inNPCs, inMonsters, inEncounters bool
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		lower := strings.ToLower(trimmed)
+type rosterCategory string
 
-		if strings.HasPrefix(lower, "## ") || strings.HasPrefix(lower, "### ") {
-			inNPCs = strings.Contains(lower, "npc") || strings.Contains(lower, "personaje")
-			inMonsters = strings.Contains(lower, "monstruo") || strings.Contains(lower, "criatura") || strings.Contains(lower, "bestia")
-			inEncounters = strings.Contains(lower, "encuentro")
+const (
+	rosterNPC       rosterCategory = "npc"
+	rosterMonster   rosterCategory = "monster"
+	rosterEncounter rosterCategory = "encounter"
+)
+
+type rosterEntry struct {
+	category rosterCategory
+	name     string
+	detail   string
+}
+
+func countRosterEntries(entries []rosterEntry, category rosterCategory) int {
+	count := 0
+	for _, entry := range entries {
+		if entry.category == category {
+			count++
+		}
+	}
+	return count
+}
+
+func rosterCategoryForHeading(heading string) rosterCategory {
+	lower := strings.ToLower(strings.TrimSpace(heading))
+	switch {
+	case strings.Contains(lower, "npc"), strings.Contains(lower, "personaje"):
+		return rosterNPC
+	case strings.Contains(lower, "monstru"), strings.Contains(lower, "criatura"), strings.Contains(lower, "bestia"):
+		return rosterMonster
+	case lower == "encuentros", lower == "encounters":
+		return rosterEncounter
+	default:
+		return ""
+	}
+}
+
+func isRosterHeading(heading string) bool {
+	lower := strings.ToLower(strings.TrimSpace(heading))
+	return strings.Contains(lower, "adventure roster") || strings.Contains(lower, "roster") || strings.Contains(lower, "apéndice f") || strings.Contains(lower, "apendice f")
+}
+
+func parseRosterBullet(line string) (name, detail string, ok bool) {
+	trimmed := strings.TrimSpace(line)
+	if strings.HasPrefix(trimmed, "- ") {
+		trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "- "))
+	} else if strings.HasPrefix(trimmed, "* ") {
+		trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "* "))
+	} else {
+		return "", "", false
+	}
+	if trimmed == "" || strings.HasPrefix(trimmed, "*") && !strings.HasPrefix(trimmed, "**") {
+		return "", "", false
+	}
+	if match := boldRegex.FindStringSubmatch(trimmed); match != nil {
+		name = strings.TrimSpace(match[1])
+		detail = strings.TrimSpace(strings.TrimPrefix(trimmed, match[0]))
+		detail = strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(detail, "—"), "-"))
+		return name, detail, name != ""
+	}
+	return strings.TrimSpace(trimmed), "", isSimpleRosterTitle(trimmed)
+}
+
+func isSimpleRosterTitle(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" || len(value) > 100 || strings.HasPrefix(value, "[") {
+		return false
+	}
+	if strings.ContainsAny(value, ".?!:") || strings.HasPrefix(value, "*") {
+		return false
+	}
+	return true
+}
+
+func parseBestiaryRosterEntries(lines []string) []rosterEntry {
+	var entries []rosterEntry
+	for i := 0; i < len(lines); i++ {
+		heading := strings.TrimSpace(lines[i])
+		if !strings.HasPrefix(heading, "## ") {
 			continue
 		}
+		name := strings.TrimSpace(strings.TrimPrefix(heading, "## "))
+		end := i + 1
+		for end < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[end]), "## ") {
+			end++
+		}
+		hasType := false
+		challenge := ""
+		for j := i + 1; j < end; j++ {
+			t := strings.TrimSpace(lines[j])
+			if !hasType && strings.HasPrefix(t, "*") && strings.HasSuffix(t, "*") && statBlockSizeRegex.MatchString(t) {
+				hasType = true
+			}
+			groups := splitPropertyGroups(t)
+			if len(groups) == 1 && strings.EqualFold(strings.TrimSuffix(groups[0][0], "."), "Challenge") {
+				challenge = strings.TrimSpace(groups[0][1])
+			}
+		}
+		if hasType && challenge != "" {
+			entries = append(entries, rosterEntry{category: rosterMonster, name: name, detail: challenge})
+		}
+		i = end - 1
+	}
+	return entries
+}
 
-		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
-			item := strings.TrimPrefix(trimmed, "- ")
-			if strings.HasPrefix(trimmed, "* ") {
-				item = strings.TrimPrefix(trimmed, "* ")
-			}
-			item = strings.TrimSpace(item)
-			// Extract bold name
-			if m := boldRegex.FindStringSubmatch(item); m != nil {
-				name := m[1]
-				rest := strings.TrimSpace(strings.TrimPrefix(item, m[0]))
-				rest = strings.TrimPrefix(rest, "—")
-				rest = strings.TrimPrefix(rest, "-")
-				rest = strings.TrimSpace(rest)
-				if inNPCs {
-					npcs = append(npcs, name+"|"+rest)
-				} else if inMonsters {
-					monsters = append(monsters, name+"|"+rest)
-				} else if inEncounters {
-					encounters = append(encounters, name)
+// parseRosterSection parses only bounded, direct roster rows. It deliberately
+// keeps heading state local to this invocation so prose from one source file
+// cannot turn later bullets into roster entries.
+func parseRosterSection(md string) []rosterEntry {
+	lines := strings.Split(md, "\n")
+	var entries []rosterEntry
+	var category rosterCategory
+	rootRoster := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "## ") {
+			heading := strings.TrimSpace(strings.TrimPrefix(trimmed, "## "))
+			rootRoster = isRosterHeading(heading)
+			category = rosterCategoryForHeading(heading)
+			continue
+		}
+		if strings.HasPrefix(trimmed, "### ") {
+			if rootRoster {
+				heading := strings.TrimSpace(strings.TrimPrefix(trimmed, "### "))
+				if strings.Contains(strings.ToLower(heading), "solution") || strings.Contains(strings.ToLower(heading), "solución") {
+					category = ""
+				} else {
+					category = rosterCategoryForHeading(heading)
 				}
-			} else if inEncounters && item != "" {
-				encounters = append(encounters, item)
+			} else {
+				// A subsection ends an H2 roster section. This prevents NPC
+				// roleplaying bullets and encounter prose from leaking in.
+				category = ""
 			}
+			continue
+		}
+		if category == "" || !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "*") {
+			continue
+		}
+		lower := strings.ToLower(trimmed)
+		if strings.Contains(lower, "solution") || strings.Contains(lower, "solución") {
+			continue
+		}
+		name, detail, ok := parseRosterBullet(trimmed)
+		if !ok {
+			continue
+		}
+		entries = append(entries, rosterEntry{category: category, name: name, detail: detail})
+	}
+	return append(entries, parseBestiaryRosterEntries(lines)...)
+}
+
+// extractRosterEntries is the compatibility adapter for older callers.
+func extractRosterEntries(md string) (npcs, monsters, encounters []string) {
+	for _, entry := range parseRosterSection(md) {
+		switch entry.category {
+		case rosterNPC:
+			npcs = append(npcs, entry.name+"|"+entry.detail)
+		case rosterMonster:
+			monsters = append(monsters, entry.name+"|"+entry.detail)
+		case rosterEncounter:
+			encounters = append(encounters, entry.name)
 		}
 	}
 	return
@@ -1079,7 +1216,8 @@ var (
 	// dmSidebarPrefixRe strips DM Sidebar labels from blockquote text.
 	// The trailing colon is OPTIONAL — both `DM Sidebar:` and `DM Sidebar`
 	// (the no-colon variant) must match (REQ-1.4).
-	dmSidebarPrefixRe = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar:?\s*\*{0,2}\s*`)
+	dmSidebarWidePrefixRe = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar Wide:?\s*\*{0,2}\s*`)
+	dmSidebarPrefixRe     = regexp.MustCompile(`(?i)^\*{0,2}(?:#####\s+)?DM Sidebar(?: Wide)?:?\s*\*{0,2}\s*`)
 
 	// linkRegex matches markdown links [text](href).
 	linkRegex = regexp.MustCompile(`\[(?P<text>[^\]]+)\]\((?P<href>[^)]+)\)`)
@@ -1204,6 +1342,10 @@ func classifyBlockquote(lines []string, sectionID, filePath string, c *Compiler)
 					filePath)
 			}
 		}
+		if dmSidebarWidePrefixRe.MatchString(first) {
+			cleaned[0] = dmSidebarWidePrefixRe.ReplaceAllString(first, "")
+			return bqDMSidebarWide, cleaned
+		}
 		cleaned[0] = dmSidebarPrefixRe.ReplaceAllString(first, "")
 		return bqDMSidebar, cleaned
 	}
@@ -1309,6 +1451,24 @@ func detectTraitLine(line string) bool {
 	return strings.HasSuffix(firstLabel, ".")
 }
 
+// processMonsterImage preserves the source path as non-visible metadata. The
+// compiler normally embeds raster images as data URIs, which is ideal for a
+// self-contained PDF but makes it impossible to identify an illustration in
+// generated HTML. Stat blocks use this metadata for source-order inspection
+// and it does not change the rendered image.
+func processMonsterImage(line, baseDir string, seenImages map[string]bool) string {
+	matches := imageRegex.FindStringSubmatch(strings.TrimSpace(line))
+	if len(matches) < 3 {
+		return ""
+	}
+	rendered := processImages(line, baseDir, seenImages)
+	if !strings.Contains(rendered, "<img ") {
+		return rendered
+	}
+	metadata := fmt.Sprintf(`data-source-path="%s" `, html.EscapeString(filepath.ToSlash(matches[2])))
+	return strings.Replace(rendered, "<img ", "<img "+metadata, 1)
+}
+
 // peekHoistableMonsterImage scans forward from startIdx looking for a
 // markdown image whose path's basename starts with `monster-`. If found,
 // returns the rendered <img> HTML and the index of the line AFTER the
@@ -1339,8 +1499,8 @@ func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, see
 		// Skip: blank lines, horizontal rules, and any non-image content.
 		// (Tactical phases, h3 sub-headings, and trait paragraphs inside
 		// the monster section are all kept as-is in the stat block by
-		// parseStatBlock when they appear BEFORE the closing ---; the
-		// peek only runs AFTER parseStatBlock returns. Content after
+		// parseStatBlockWithImages when they appear BEFORE the closing ---; the
+		// peek only runs AFTER parseStatBlockWithImages returns. Content after
 		// the closing --- is conventionally the hero image, possibly
 		// interleaved with commentary that the author placed between.)
 		if t == "" || t == "---" || t == "***" || t == "___" || t == "- - -" {
@@ -1354,7 +1514,7 @@ func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, see
 			imgPath := m[2] // group 1 is alt text, group 2 is the path
 			base := filepath.Base(imgPath)
 			if strings.HasPrefix(base, "monster-") {
-				img := processImages(t, baseDir, seenImages)
+				img := processMonsterImage(t, baseDir, seenImages)
 				if img == "" {
 					// Image was already seen (dedup) or unreadable; advance
 					// past it so the main loop doesn't emit a duplicate.
@@ -1372,6 +1532,38 @@ func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, see
 	return "", 0
 }
 
+// findStatBlockStart locates the type line that opens a stat block and any
+// contiguous monster illustrations immediately before it. Blank lines are
+// allowed between the heading, illustrations, and type line, but unrelated
+// content or a non-monster image makes the heading an ordinary section.
+//
+// The returned image indexes are consumed by parseStatBlockWithImages so the
+// outer Markdown renderer cannot emit them a second time.
+func findStatBlockStart(lines []string, headingIdx int) (typeLineIdx int, imageIndexes []int, ok bool) {
+	for i := headingIdx + 1; i < len(lines); i++ {
+		t := strings.TrimSpace(lines[i])
+		if t == "" {
+			continue
+		}
+		if strings.HasPrefix(t, "## ") {
+			return -1, nil, false
+		}
+		if imageRegex.MatchString(t) {
+			matches := imageRegex.FindStringSubmatch(t)
+			if len(matches) < 3 || !strings.HasPrefix(filepath.Base(matches[2]), "monster-") {
+				return -1, nil, false
+			}
+			imageIndexes = append(imageIndexes, i)
+			continue
+		}
+		if strings.HasPrefix(t, "*") && strings.HasSuffix(t, "*") && statBlockSizeRegex.MatchString(t) {
+			return i, imageIndexes, true
+		}
+		return -1, nil, false
+	}
+	return -1, nil, false
+}
+
 // tryStatBlock peeks ahead from a `## ` heading. If the next non-blank line
 // matches the WotC size+type italic pattern, it renders a full stat block
 // and returns the rendered HTML + the number of lines consumed. Otherwise
@@ -1379,40 +1571,22 @@ func peekHoistableMonsterImage(startIdx int, lines []string, baseDir string, see
 //
 // REQ-2.1, 2.2, 2.5, 2.6, 2.7, 2.10, 2.11, 4.4
 func tryStatBlock(name string, lines []string, startIdx int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
-	// Look for the italic size+type line within the next 3 lines (skipping blanks).
-	endIdx := startIdx + 4
-	if endIdx > len(lines) {
-		endIdx = len(lines)
-	}
-	typeLineIdx := -1
-	for j := startIdx + 1; j < endIdx; j++ {
-		t := strings.TrimSpace(lines[j])
-		if t == "" {
-			continue
-		}
-		// Must be a full italic line (starts and ends with *), and must start
-		// with a recognized size word. The body can contain commas + words.
-		if strings.HasPrefix(t, "*") && strings.HasSuffix(t, "*") && statBlockSizeRegex.MatchString(t) {
-			typeLineIdx = j
-			break
-		}
-		// First non-blank line wasn't a stat-block opener — bail out.
-		break
-	}
-	if typeLineIdx == -1 {
+	typeLineIdx, imageIndexes, ok := findStatBlockStart(lines, startIdx)
+	if !ok {
 		return "", 0
 	}
-	return parseStatBlock(name, lines, typeLineIdx, baseDir, seenImages, reg)
+	return parseStatBlockWithImages(name, lines, typeLineIdx, imageIndexes, baseDir, seenImages, reg)
 }
 
-// parseStatBlock renders a WotC stat block starting at typeLineIdx (the italic
-// size+type line) and consuming up to the next `## ` heading or `---` rule.
-// Returns the rendered HTML and the number of lines consumed (including the
-// `## ` heading line and the italic type line).
-func parseStatBlock(name string, lines []string, typeLineIdx int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
+func parseStatBlockWithImages(name string, lines []string, typeLineIdx int, imageIndexes []int, baseDir string, seenImages map[string]bool, reg anchorRegistry) (string, int) {
 	var b strings.Builder
 	fmt.Fprintf(&b, `<div class="stat-block" data-monster="%s">`, html.EscapeString(name))
 	fmt.Fprintf(&b, `<h2>%s</h2>`, html.EscapeString(name))
+	for _, imageIdx := range imageIndexes {
+		if imageIdx >= 0 && imageIdx < len(lines) {
+			b.WriteString(processMonsterImage(lines[imageIdx], baseDir, seenImages))
+		}
+	}
 
 	// Italic type line → <p class="monster-type">
 	typeLine := strings.TrimSpace(lines[typeLineIdx])
@@ -1596,13 +1770,14 @@ func renderAbilityScoresTable(lines []string, j *int, baseDir string, seenImages
 	*j-- // outer loop will do *j++
 	return b.String()
 }
+
 var headingMarkerRe = regexp.MustCompile(`^#{1,5}\s+`)
 
 // stripBlockquotePrefix removes remaining section/heading markers from blockquote
 // text so that CSS pseudo-elements can provide the visible label.
 func stripBlockquotePrefix(text string, class blockquoteClass) string {
 	switch class {
-	case bqDMSidebar, bqIntroductionSidebar:
+	case bqDMSidebar, bqDMSidebarWide, bqIntroductionSidebar:
 		text = headingMarkerRe.ReplaceAllString(text, "")
 	}
 	return text
@@ -1677,6 +1852,34 @@ func (c *Compiler) markdownToHTMLWithID(md string, baseDir string, sectionID str
 }
 
 func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry, filePath string) string {
+	return renderMarkdownBlocksAtDepth(c, md, baseDir, sectionID, headingCounter, seenImages, compilerVersion, reg, filePath, 0)
+}
+
+// renderMarkdownBlocks is the shared block renderer used by top-level
+// documents and recursive callout bodies. It keeps the existing HTML
+// contracts while making blockquote contents a real Markdown fragment instead
+// of a flattened paragraph.
+func renderMarkdownBlocks(md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry, filePath string) string {
+	return renderMarkdownBlocksAtDepth(nil, md, baseDir, sectionID, headingCounter, seenImages, compilerVersion, reg, filePath, 0)
+}
+
+func renderMarkdownBlocksAtDepth(c *Compiler, md string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry, filePath string, depth int) string {
+	if headingCounter == nil {
+		headingCounter = new(int)
+	}
+	if seenImages == nil {
+		seenImages = make(map[string]bool)
+	}
+	if len(md) > maxMarkdownBytes {
+		return markdownFallback(md)
+	}
+	if len(md) == 0 {
+		return ""
+	}
+	if len(strings.Split(md, "\n")) > maxMarkdownLines {
+		return markdownFallback(md)
+	}
+
 	// Strip character-worksheet div blocks before further processing (v2 only)
 	if compilerVersion == 2 {
 		md = stripCharacterWorksheets(md)
@@ -1707,6 +1910,7 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 
 	// Strip raw HTML tags (except <img>) that would be escaped and rendered as visible text.
 	// Stash <img> tags, strip all remaining HTML tags, then restore <img> tags.
+	md = protectFencedMarkup(md)
 	imgPlaceholder := "__IMG_TAG_PLACEHOLDER__"
 	imgStash := imgTagRegex.FindAllString(md, -1)
 	md = imgTagRegex.ReplaceAllString(md, imgPlaceholder)
@@ -1714,6 +1918,8 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 	for _, imgTag := range imgStash {
 		md = strings.Replace(md, imgPlaceholder, imgTag, 1)
 	}
+	md = strings.ReplaceAll(md, "\x00LT\x00", "<")
+	md = strings.ReplaceAll(md, "\x00GT\x00", ">")
 
 	// Restore explicit anchor tags now that raw tags have been stripped.
 	for i, anchor := range anchorTags {
@@ -1739,6 +1945,7 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 	// Code block state
 	inCodeBlock := false
 	var codeBlockLines []string
+	var activeFence markdownFence
 
 	flushCodeBlock := func() {
 		if len(codeBlockLines) == 0 {
@@ -1752,6 +1959,22 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 		escaped := html.EscapeString(code)
 		out = append(out, fmt.Sprintf(`<pre class="code-block"><code>%s</code></pre>`, escaped))
 	}
+	flushLiteralCodeBlock := func(extra string) {
+		literal := make([]string, 0, len(codeBlockLines)+2)
+		if activeFence.length > 0 {
+			literal = append(literal, strings.Repeat(string(activeFence.delimiter), activeFence.length))
+		}
+		literal = append(literal, codeBlockLines...)
+		if extra != "" {
+			literal = append(literal, extra)
+		}
+		codeBlockLines = nil
+		activeFence = markdownFence{}
+		if len(literal) == 0 {
+			return
+		}
+		out = append(out, fmt.Sprintf("<p>%s</p>", html.EscapeString(strings.Join(literal, "\n"))))
+	}
 
 	flushBlockquote := func() {
 		if len(blockquoteLines) == 0 {
@@ -1759,22 +1982,19 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 		}
 		originalLines := blockquoteLines
 		blockquoteLines = nil
-		text := strings.Join(originalLines, " ")
-		if text == "" {
-			return
-		}
-
 		var className string
+		class := bqReadAloud
+		var cleanedLines []string
 		if compilerVersion == 2 {
-			class, cleanedLines := classifyBlockquote(originalLines, sectionID, filePath, c)
+			class, cleanedLines = classifyBlockquote(originalLines, sectionID, filePath, c)
 			if blockquoteClassOverride >= 0 {
 				class = blockquoteClassOverride
 			}
-			text = strings.Join(cleanedLines, " ")
-			text = stripBlockquotePrefix(text, class)
 			switch class {
 			case bqDMSidebar:
 				className = "dm-sidebar"
+			case bqDMSidebarWide:
+				className = "dm-sidebar-wide"
 			case bqChapterSummary:
 				className = "chapter-summary"
 			case bqIntroductionSidebar:
@@ -1784,12 +2004,26 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 			}
 		} else {
 			// Legacy v1 / helper behavior: all blockquotes are read-aloud.
-			text = readAloudPrefixRe.ReplaceAllString(text, "")
+			cleanedLines = append([]string(nil), originalLines...)
+			if len(cleanedLines) > 0 {
+				cleanedLines[0] = readAloudPrefixRe.ReplaceAllString(cleanedLines[0], "")
+			}
 			className = "read-aloud"
 		}
+		if len(cleanedLines) > 0 {
+			cleanedLines[0] = stripBlockquotePrefix(cleanedLines[0], class)
+		}
 
-		escaped := processInlineText(text, baseDir, seenImages, reg)
-		out = append(out, fmt.Sprintf(`<div class="%s">%s</div>`, className, escaped))
+		body := strings.Join(cleanedLines, "\n")
+		if strings.TrimSpace(body) == "" {
+			return
+		}
+		if depth >= maxBlockquoteDepth {
+			out = append(out, fmt.Sprintf(`<div class="%s"><p>%s</p></div>`, className, html.EscapeString(body)))
+			return
+		}
+		body = renderCalloutBody(c, cleanedLines, baseDir, sectionID, headingCounter, seenImages, compilerVersion, reg, filePath, depth+1)
+		out = append(out, fmt.Sprintf(`<div class="%s">%s</div>`, className, body))
 	}
 
 	flushParagraph := func() {
@@ -1817,22 +2051,21 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 			tableRows = nil
 			return
 		}
-		headers := parseTableRow(tableRows[0])
-		alignments := parseTableAlign(tableRows[1])
+		model := parseTableModel(tableRows)
 		var htmlOut strings.Builder
-		// Wrap every emitted table in a <div class="table-wrap"> so the
-		// CSS rule .table-wrap { column-span: all; break-inside: auto; }
-		// can take over the column-spanning role from the table itself.
-		// Chromium 148's page-break algorithm then splits the wrapper at
-		// row boundaries (the existing tr { break-inside: avoid } rule
-		// protects each row), instead of slicing the table across columns.
-		// See visual-issues-pdf PR 3 / REQ-3.1.
-		htmlOut.WriteString(`<div class="table-wrap">`)
+		// Every top-level Markdown table is a page table. Keeping the marker
+		// outside the wrapper is important: Chromium reliably honors its
+		// break-before even after a table has fragmented over pages.
+		if depth == 0 {
+			htmlOut.WriteString(`<div class="table-wrap table-page">`)
+		} else {
+			htmlOut.WriteString(`<div class="table-wrap">`)
+		}
 		htmlOut.WriteString(`<table><thead><tr>`)
-		for i, h := range headers {
+		for i, h := range model.headers {
 			align := ""
-			if i < len(alignments) {
-				align = alignments[i]
+			if i < len(model.alignments) {
+				align = model.alignments[i]
 			}
 			if align != "" {
 				fmt.Fprintf(&htmlOut, `<th style="text-align:%s">%s</th>`, align, h)
@@ -1841,13 +2074,12 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 			}
 		}
 		htmlOut.WriteString(`</tr></thead><tbody>`)
-		for _, row := range tableRows[2:] {
-			cells := parseTableRow(row)
+		for _, cells := range model.rows {
 			htmlOut.WriteString(`<tr>`)
 			for i, cell := range cells {
 				align := ""
-				if i < len(alignments) {
-					align = alignments[i]
+				if i < len(model.alignments) {
+					align = model.alignments[i]
 				}
 				cellEsc := processInlineText(cell, baseDir, seenImages, reg)
 				if align != "" {
@@ -1860,6 +2092,9 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 		}
 		htmlOut.WriteString(`</tbody></table>`)
 		htmlOut.WriteString(`</div>`)
+		if depth == 0 {
+			htmlOut.WriteString(`<div class="table-page-boundary" aria-hidden="true"></div>`)
+		}
 		out = append(out, htmlOut.String())
 		tableRows = nil
 	}
@@ -1876,6 +2111,38 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 		// Preserve introduction-sidebar marker comments for blockquote disambiguation.
 		if compilerVersion == 2 && introductionSidebarMarkerRegex.MatchString(trimmed) {
 			introSidebarPending = true
+			continue
+		}
+
+		// Fence handling runs before table and blockquote detection so code
+		// examples containing pipes or Markdown markers remain code. Only a
+		// matching delimiter closes a fence; a mismatched delimiter is emitted
+		// literally and releases the parser before subsequent content.
+		if inCodeBlock {
+			if fence, ok := parseMarkdownFence(trimmed); ok {
+				if fence.delimiter == activeFence.delimiter && fence.length >= activeFence.length {
+					flushCodeBlock()
+					inCodeBlock = false
+					activeFence = markdownFence{}
+				} else {
+					flushLiteralCodeBlock(trimmed)
+					inCodeBlock = false
+				}
+				continue
+			}
+			codeBlockLines = append(codeBlockLines, line)
+			continue
+		}
+		if fence, ok := parseMarkdownFence(trimmed); ok {
+			flushParagraph()
+			flushBlockquote()
+			flushTable()
+			if inList {
+				out = append(out, "</ul>")
+				inList = false
+			}
+			inCodeBlock = true
+			activeFence = fence
 			continue
 		}
 
@@ -1933,34 +2200,10 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 			continue
 		}
 
-		// Handle code blocks (```)
-		if strings.HasPrefix(trimmed, "```") {
-			if inCodeBlock {
-				// End code block
-				flushCodeBlock()
-				inCodeBlock = false
-			} else {
-				// Start code block
-				flushParagraph()
-				flushBlockquote()
-				if inList {
-					out = append(out, "</ul>")
-					inList = false
-				}
-				inCodeBlock = true
-			}
-			continue
-		}
-
-		// If we're inside a code block, collect lines
-		if inCodeBlock {
-			codeBlockLines = append(codeBlockLines, line) // Keep original line, not trimmed
-			continue
-		}
-
 		// Handle blockquotes (read-aloud text)
 		if bqMatch := blockquoteRe.FindStringSubmatch(trimmed); bqMatch != nil {
 			flushParagraph()
+			flushTable()
 			if inList {
 				out = append(out, "</ul>")
 				inList = false
@@ -2044,11 +2287,11 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 				// the stat block (typically after the closing --- rule). The
 				// convention guard (`monster-` prefix) prevents scene / npc /
 				// cover images from being hoisted into the wrong block.
-				if imgHTML, newConsumed := peekHoistableMonsterImage(consumed, lines, baseDir, seenImages); imgHTML != "" {
-					if len(out) > 0 && strings.HasSuffix(out[len(out)-1], "</div>") {
+				if imgHTML, newConsumed := peekHoistableMonsterImage(consumed, lines, baseDir, seenImages); newConsumed > consumed {
+					if imgHTML != "" && len(out) > 0 && strings.HasSuffix(out[len(out)-1], "</div>") {
 						out[len(out)-1] = strings.TrimSuffix(out[len(out)-1], "</div>") + imgHTML + "</div>"
-						consumed = newConsumed
 					}
+					consumed = newConsumed
 				}
 
 				// Parser returns the absolute index of the line AFTER the block.
@@ -2141,6 +2384,39 @@ func markdownToHTMLWithID(c *Compiler, md string, baseDir string, sectionID stri
 	return result
 }
 
+// renderCalloutBody renders the Markdown fragment inside a callout while
+// sharing image de-duplication, heading IDs, and link resolution with its
+// parent document. Keeping this as a separate boundary makes recursive
+// blockquotes explicit and gives overflow a safe, readable fallback.
+func renderCalloutBody(c *Compiler, lines []string, baseDir string, sectionID string, headingCounter *int, seenImages map[string]bool, compilerVersion int, reg anchorRegistry, filePath string, depth int) string {
+	body := strings.Join(lines, "\n")
+	if strings.TrimSpace(body) == "" {
+		return ""
+	}
+	if depth > maxBlockquoteDepth {
+		return markdownFallback(body)
+	}
+	return renderMarkdownBlocksAtDepth(c, body, baseDir, sectionID, headingCounter, seenImages, compilerVersion, reg, filePath, depth)
+}
+
+func markdownFallback(md string) string {
+	if len(md) > maxMarkdownBytes {
+		md = string([]rune(md)[:maxMarkdownRunes(md, maxMarkdownBytes)])
+	}
+	return fmt.Sprintf("<p>%s</p>", html.EscapeString(md))
+}
+
+func maxMarkdownRunes(value string, maxBytes int) int {
+	if len(value) <= maxBytes {
+		return len([]rune(value))
+	}
+	runes := []rune(value)
+	for len(string(runes)) > maxBytes {
+		runes = runes[:len(runes)-1]
+	}
+	return len(runes)
+}
+
 // headingID returns the emitted id for a heading. In v2 it prefers a stable
 // slug-based ID from the registry when it matches the current section; otherwise
 // it falls back to the legacy counter-based ID.
@@ -2165,6 +2441,53 @@ func headingID(text, sectionID string, compilerVersion int, headingCounter *int,
 
 func isTableRow(line string) bool {
 	return strings.HasPrefix(line, "|") && strings.HasSuffix(line, "|") && strings.Count(line, "|") >= 3
+}
+
+func parseMarkdownFence(line string) (markdownFence, bool) {
+	line = strings.TrimSpace(line)
+	if len(line) < 3 || (line[0] != '`' && line[0] != '~') {
+		return markdownFence{}, false
+	}
+	delimiter := line[0]
+	length := 0
+	for length < len(line) && line[length] == delimiter {
+		length++
+	}
+	if length < 3 {
+		return markdownFence{}, false
+	}
+	return markdownFence{delimiter: delimiter, length: length}, true
+}
+
+// protectFencedMarkup prevents the raw-HTML cleanup pass from treating code
+// such as "if x < 2" or "<seal>" as an HTML tag. It deliberately uses the
+// same matching rule as the renderer and leaves mismatched fences untouched.
+func protectFencedMarkup(md string) string {
+	lines := strings.Split(md, "\n")
+	var active markdownFence
+	for i, line := range lines {
+		trimmed := fenceContent(line)
+		if active.length > 0 {
+			if fence, ok := parseMarkdownFence(trimmed); ok && fence.delimiter == active.delimiter && fence.length >= active.length {
+				active = markdownFence{}
+				continue
+			}
+			lines[i] = strings.ReplaceAll(strings.ReplaceAll(line, "<", "\x00LT\x00"), ">", "\x00GT\x00")
+			continue
+		}
+		if fence, ok := parseMarkdownFence(trimmed); ok {
+			active = fence
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func fenceContent(line string) string {
+	line = strings.TrimSpace(line)
+	for strings.HasPrefix(line, ">") {
+		line = strings.TrimSpace(strings.TrimPrefix(line, ">"))
+	}
+	return line
 }
 
 func isTableSeparator(line string) bool {
@@ -2195,6 +2518,24 @@ func parseTableRow(row string) []string {
 		result = append(result, strings.TrimSpace(p))
 	}
 	return result
+}
+
+func parseTableModel(rows []string) tableLayoutModel {
+	model := tableLayoutModel{}
+	for _, row := range rows {
+		cells := parseTableRow(row)
+		model.rows = append(model.rows, cells)
+	}
+	if len(model.rows) > 0 {
+		model.headers = model.rows[0]
+	}
+	if len(model.rows) > 1 {
+		model.alignments = parseTableAlign(rows[1])
+	}
+	if len(model.rows) > 2 {
+		model.rows = model.rows[2:]
+	}
+	return model
 }
 
 func parseTableAlign(row string) []string {
