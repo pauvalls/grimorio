@@ -327,6 +327,35 @@ table {
   page-break-inside: auto;
 }
 
+/* Complex Markdown tables are promoted by flushTable to a page-level island.
+ * The wrapper spans both campaign columns, but remains fragmentable so a
+ * multi-page table can repeat its header and continue at row boundaries. */
+.table-wrap.table-island {
+  width: 100%;
+  column-span: all;
+  break-before: page;
+  page-break-before: always;
+  break-inside: auto;
+  page-break-inside: auto;
+  overflow: visible;
+}
+
+/* A separate sibling is required after an island. Chromium can otherwise
+ * resume the following two-column content in the final column of the page
+ * containing the table's last fragment. Keep this block in layout (rather
+ * than display:none) so the page break is observable to the print engine. */
+.table-island-boundary {
+  display: block;
+  width: 100%;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  column-span: all;
+  break-before: page;
+  page-break-before: always;
+}
+
 /* Tables inside a card belong to that card's text column. The top-level
  * wrapper still spans the campaign page so long tables can flow, but nested
  * wrappers must not escape their callout and cause horizontal clipping. */
@@ -339,6 +368,27 @@ table {
   column-span: none;
   break-inside: auto;
   page-break-inside: auto;
+}
+
+/* Defensive containment if a future renderer ever emits a marker while
+ * recursively rendering a callout. Nested tables must never force a global
+ * page transition or escape their card. */
+.nested-card .table-island-boundary,
+.read-aloud .table-island-boundary,
+.dm-sidebar .table-island-boundary,
+.chapter-summary .table-island-boundary,
+.introduction-sidebar .table-island-boundary {
+  display: none;
+}
+
+.nested-card .table-wrap.table-island,
+.read-aloud .table-wrap.table-island,
+.dm-sidebar .table-wrap.table-island,
+.chapter-summary .table-wrap.table-island,
+.introduction-sidebar .table-wrap.table-island {
+  column-span: none;
+  break-before: auto;
+  page-break-before: auto;
 }
 
 thead {

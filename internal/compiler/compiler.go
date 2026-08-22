@@ -97,6 +97,38 @@ type markdownFence struct {
 	length    int
 }
 
+// tableLayoutProfile contains the observable, deterministic signals used to
+// decide whether a Markdown table needs a page-level layout island. The
+// profile is deliberately based on source cells rather than rendered HTML so
+// classification does not depend on the PDF engine.
+type tableLayoutProfile struct {
+	columnCount        int
+	maxCellRunes       int
+	maxTokenRunes      int
+	estimatedLines     int
+	maxRowLines        int
+	hasMedia           bool
+	hasCode            bool
+	inconsistentWidths bool
+}
+
+type tableLayoutModel struct {
+	rows         [][]string
+	sourceWidths []int
+	headers      []string
+	alignments   []string
+}
+
+// isComplex reports whether the profile violates any of the conservative
+// simple-table constraints. Boundary values are intentionally complex: a
+// simple table must remain strictly below every size threshold.
+func (p tableLayoutProfile) isComplex() bool {
+	return p.columnCount < 2 || p.columnCount >= 4 ||
+		p.maxCellRunes >= 100 || p.maxTokenRunes >= 32 ||
+		p.hasMedia || p.hasCode || p.inconsistentWidths ||
+		p.estimatedLines >= 48 || p.maxRowLines > 8
+}
+
 // pdfEnginePriority defines the preferred order of PDF engines.
 var pdfEnginePriority = []string{
 	"chromium",
@@ -2045,22 +2077,22 @@ func renderMarkdownBlocksAtDepth(c *Compiler, md string, baseDir string, section
 			tableRows = nil
 			return
 		}
-		headers := parseTableRow(tableRows[0])
-		alignments := parseTableAlign(tableRows[1])
+		model := parseTableModel(tableRows)
+		profile := classifyTableModel(model)
 		var htmlOut strings.Builder
-		// Wrap every emitted table in a <div class="table-wrap"> so the
-		// CSS rule .table-wrap { column-span: all; break-inside: auto; }
-		// can take over the column-spanning role from the table itself.
-		// Chromium 148's page-break algorithm then splits the wrapper at
-		// row boundaries (the existing tr { break-inside: avoid } rule
-		// protects each row), instead of slicing the table across columns.
-		// See visual-issues-pdf PR 3 / REQ-3.1.
-		htmlOut.WriteString(`<div class="table-wrap">`)
+		// Only top-level complex Markdown tables become page islands. Keeping
+		// the marker outside the wrapper is important: Chromium 148 reliably
+		// honors its break-before even after a table has fragmented over pages.
+		if depth == 0 && profile.isComplex() {
+			htmlOut.WriteString(`<div class="table-wrap table-island">`)
+		} else {
+			htmlOut.WriteString(`<div class="table-wrap">`)
+		}
 		htmlOut.WriteString(`<table><thead><tr>`)
-		for i, h := range headers {
+		for i, h := range model.headers {
 			align := ""
-			if i < len(alignments) {
-				align = alignments[i]
+			if i < len(model.alignments) {
+				align = model.alignments[i]
 			}
 			if align != "" {
 				fmt.Fprintf(&htmlOut, `<th style="text-align:%s">%s</th>`, align, h)
@@ -2069,13 +2101,12 @@ func renderMarkdownBlocksAtDepth(c *Compiler, md string, baseDir string, section
 			}
 		}
 		htmlOut.WriteString(`</tr></thead><tbody>`)
-		for _, row := range tableRows[2:] {
-			cells := parseTableRow(row)
+		for _, cells := range model.rows {
 			htmlOut.WriteString(`<tr>`)
 			for i, cell := range cells {
 				align := ""
-				if i < len(alignments) {
-					align = alignments[i]
+				if i < len(model.alignments) {
+					align = model.alignments[i]
 				}
 				cellEsc := processInlineText(cell, baseDir, seenImages, reg)
 				if align != "" {
@@ -2088,6 +2119,9 @@ func renderMarkdownBlocksAtDepth(c *Compiler, md string, baseDir string, section
 		}
 		htmlOut.WriteString(`</tbody></table>`)
 		htmlOut.WriteString(`</div>`)
+		if depth == 0 && profile.isComplex() {
+			htmlOut.WriteString(`<div class="table-island-boundary" aria-hidden="true"></div>`)
+		}
 		out = append(out, htmlOut.String())
 		tableRows = nil
 	}
@@ -2511,6 +2545,114 @@ func parseTableRow(row string) []string {
 		result = append(result, strings.TrimSpace(p))
 	}
 	return result
+}
+
+func parseTableModel(rows []string) tableLayoutModel {
+	model := tableLayoutModel{}
+	for _, row := range rows {
+		cells := parseTableRow(row)
+		model.sourceWidths = append(model.sourceWidths, len(cells))
+		model.rows = append(model.rows, cells)
+	}
+	if len(model.rows) > 0 {
+		model.headers = model.rows[0]
+	}
+	if len(model.rows) > 1 {
+		model.alignments = parseTableAlign(rows[1])
+	}
+	if len(model.rows) > 2 {
+		model.rows = model.rows[2:]
+	}
+	return model
+}
+
+// tableVisibleText removes formatting syntax that is not visible in the
+// rendered cell. It intentionally leaves the link label and code contents,
+// while media is handled as a separate layout signal.
+func tableVisibleText(cell string) string {
+	cell = imageRegex.ReplaceAllString(cell, "")
+	cell = linkRegex.ReplaceAllString(cell, "$1")
+	cell = rawTagRe.ReplaceAllString(cell, "")
+	cell = strings.ReplaceAll(cell, "\\|", "|")
+	cell = strings.ReplaceAll(cell, "\\*", "*")
+	cell = strings.ReplaceAll(cell, "\\_", "_")
+	cell = strings.ReplaceAll(cell, "**", "")
+	cell = strings.ReplaceAll(cell, "__", "")
+	cell = strings.ReplaceAll(cell, "`", "")
+	return strings.TrimSpace(html.UnescapeString(cell))
+}
+
+func tableCellHasMedia(cell string) bool {
+	return imageRegex.MatchString(cell) || strings.Contains(strings.ToLower(cell), "<img")
+}
+
+func tableCellHasCode(cell string) bool {
+	lower := strings.ToLower(cell)
+	return strings.Contains(cell, "`") || strings.Contains(lower, "<code") || strings.Contains(lower, "<pre") || codeAssetRegex.MatchString(cell)
+}
+
+func estimateTableCellLines(cell string) int {
+	visible := []rune(tableVisibleText(cell))
+	if len(visible) == 0 {
+		return 1
+	}
+	// A full-width table has roughly 28 readable characters per cell at the
+	// document's 9pt font. This is a heuristic only; Chromium remains the
+	// authority for final pagination.
+	const charsPerLine = 28
+	return (len(visible) + charsPerLine - 1) / charsPerLine
+}
+
+func classifyTableModel(model tableLayoutModel) tableLayoutProfile {
+	profile := tableLayoutProfile{}
+	profile.columnCount = len(model.headers)
+	for _, width := range model.sourceWidths {
+		if width > profile.columnCount {
+			profile.columnCount = width
+		}
+	}
+	for _, width := range model.sourceWidths {
+		if width != len(model.headers) {
+			profile.inconsistentWidths = true
+		}
+	}
+
+	rows := make([][]string, 0, len(model.rows)+1)
+	rows = append(rows, model.headers)
+	rows = append(rows, model.rows...)
+	for _, row := range rows {
+		rowLines := 1
+		for _, cell := range row {
+			visibleRunes := len([]rune(tableVisibleText(cell)))
+			if visibleRunes > profile.maxCellRunes {
+				profile.maxCellRunes = visibleRunes
+			}
+			for _, token := range strings.Fields(tableVisibleText(cell)) {
+				if tokenRunes := len([]rune(token)); tokenRunes > profile.maxTokenRunes {
+					profile.maxTokenRunes = tokenRunes
+				}
+			}
+			if tableCellHasMedia(cell) {
+				profile.hasMedia = true
+			}
+			if tableCellHasCode(cell) {
+				profile.hasCode = true
+			}
+			if lines := estimateTableCellLines(cell); lines > rowLines {
+				rowLines = lines
+			}
+		}
+		profile.estimatedLines += rowLines
+		if rowLines > profile.maxRowLines {
+			profile.maxRowLines = rowLines
+		}
+	}
+
+	return profile
+}
+
+func classifyTableRows(rows []string) tableLayoutProfile {
+	return classifyTableModel(parseTableModel(rows))
 }
 
 func parseTableAlign(row string) []string {
