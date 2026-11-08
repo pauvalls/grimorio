@@ -657,15 +657,17 @@ problem (campaign name typo, etc.).
 
 Choose the user's preferred export format:
 
-```bash
+`export_campaign` is an MCP tool, not a CLI command:
+
+```
 # PDF (default, most styled)
-grimorio export_campaign --campaign {campaign-name} --format=pdf
+export_campaign(campaign="{campaign-name}", format="pdf")
 
 # Markdown (for version control, Obsidian)
-grimorio export_campaign --campaign {campaign-name} --format=markdown
+export_campaign(campaign="{campaign-name}", format="markdown")
 
 # EPUB (for e-readers)
-grimorio export_campaign --campaign {campaign-name} --format=epub
+export_campaign(campaign="{campaign-name}", format="epub")
 ```
 
 Verify the file exists:
