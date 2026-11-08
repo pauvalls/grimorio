@@ -137,6 +137,7 @@ that is not theirs. Re-run the installer with `sh -s -- --update` if an update e
 git clone https://github.com/pauvalls/grimorio.git
 cd grimorio
 make build     # ./grimorio
+make install   # run install.sh and wire OpenCode
 make test      # tests + coverage
 make lint      # golangci-lint
 ```
