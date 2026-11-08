@@ -6,10 +6,16 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/urfave/cli/v2"
 )
+
+// openCodeDir returns the global OpenCode configuration directory.
+func openCodeDir(home string) string {
+	return filepath.Join(home, ".config", "opencode")
+}
 
 // updateAssets downloads and updates skills or agents from the latest release.
 func updateAssets(assetType string) error {
@@ -69,53 +75,80 @@ func updateAssets(assetType string) error {
 		return err
 	}
 
-	// Determine target directories
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("finding home directory: %w", err)
 	}
 
-	var sourceSubdir, pluginTarget, globalTarget string
-	switch assetType {
-	case "skills":
-		sourceSubdir = filepath.Join(sourceDir, "skills")
-		pluginTarget = filepath.Join(home, ".config", "opencode", "plugins", "grimorio", "skills")
-		globalTarget = "" // Skills only go to plugin dir
-	case "agents":
-		sourceSubdir = filepath.Join(sourceDir, "agents")
-		pluginTarget = filepath.Join(home, ".config", "opencode", "plugins", "grimorio", "agents")
-		globalTarget = filepath.Join(home, ".config", "opencode", "agents")
-	default:
-		return fmt.Errorf("unknown asset type: %s", assetType)
+	targets, err := assetTargets(home, assetType)
+	if err != nil {
+		return err
 	}
 
-	// Verify source exists
+	sourceSubdir := filepath.Join(sourceDir, assetType)
 	if _, err := os.Stat(sourceSubdir); os.IsNotExist(err) {
 		return fmt.Errorf("%s/ not found in release archive — the release may not include %s", assetType, assetType)
 	}
 
-	// Copy to plugin directory
-	fmt.Printf("Copying %s to plugin directory...\n", assetType)
-	if err := copyDir(sourceSubdir, pluginTarget); err != nil {
-		return fmt.Errorf("copying %s to plugin dir: %w", assetType, err)
-	}
-	fmt.Printf("%s updated in plugin directory: %s\n", assetType, pluginTarget)
-
-	// For agents, also copy to global agents directory
-	if assetType == "agents" && globalTarget != "" {
-		fmt.Printf("Copying agents to global agents directory...\n")
-		if err := copyDir(sourceSubdir, globalTarget); err != nil {
-			return fmt.Errorf("copying agents to global dir: %w", err)
+	keep := assetFileFilter(assetType)
+	for _, target := range targets {
+		fmt.Printf("Copying %s to %s...\n", assetType, target)
+		if err := copyDirFiltered(sourceSubdir, target, keep); err != nil {
+			return fmt.Errorf("copying %s to %s: %w", assetType, target, err)
 		}
-		fmt.Printf("Agents updated in global directory: %s\n", globalTarget)
 	}
 
 	fmt.Printf("Successfully updated %s from %s!\n", assetType, release.TagName)
 	return nil
 }
 
+// assetTargets returns every directory where an asset type must be installed.
+//
+// OpenCode V2 discovers skills from ~/.config/opencode/skills and agents from
+// ~/.config/opencode/agents. The legacy plugin directory is still populated so
+// existing V1 installs keep working, but the global V2 directories are the ones
+// that make the assets usable on V2.
+func assetTargets(home, assetType string) ([]string, error) {
+	configDir := openCodeDir(home)
+	legacyDir := filepath.Join(configDir, "plugins", "grimorio")
+
+	switch assetType {
+	case "skills":
+		return []string{
+			filepath.Join(configDir, "skills"),
+			filepath.Join(legacyDir, "skills"),
+		}, nil
+	case "agents":
+		return []string{
+			filepath.Join(configDir, "agents"),
+			filepath.Join(legacyDir, "agents"),
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unknown asset type: %s", assetType)
+}
+
+// assetFileFilter returns a predicate that decides which files inside an asset
+// directory should be installed. Agents are Markdown-only: the repository keeps
+// Go test files next to the agent specs and those must never land in
+// ~/.config/opencode/agents.
+func assetFileFilter(assetType string) func(rel string) bool {
+	if assetType == "agents" {
+		return func(rel string) bool {
+			return strings.HasSuffix(rel, ".md")
+		}
+	}
+	return nil
+}
+
 // copyDir recursively copies a directory tree.
 func copyDir(src, dst string) error {
+	return copyDirFiltered(src, dst, nil)
+}
+
+// copyDirFiltered recursively copies a directory tree, skipping files for which
+// keep returns false. A nil filter copies everything.
+func copyDirFiltered(src, dst string, keep func(rel string) bool) error {
 	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -130,6 +163,10 @@ func copyDir(src, dst string) error {
 
 		if info.IsDir() {
 			return os.MkdirAll(target, info.Mode())
+		}
+
+		if keep != nil && !keep(rel) {
+			return nil
 		}
 
 		// Copy file
@@ -162,7 +199,80 @@ func NewUpdateAgentsCommand() *cli.Command {
 	}
 }
 
-// updateCommands updates the opencode.json configuration with grimorio MCP and command entries.
+// grimorioCommandTemplate is the Markdown command installed as /grimorio.
+// The prompt stays deliberately thin: the grimorio-architect agent owns the
+// workflow, so it must not be duplicated here where it silently goes stale.
+const grimorioCommandTemplate = `---
+description: Generate a complete D&D 5e campaign or one-shot from an idea
+agent: grimorio-architect
+subagent: false
+---
+
+Start the Grimorio campaign generation workflow.
+
+User request: $ARGUMENTS
+
+Follow the mandatory intake (language first), then generate the campaign end-to-end and compile the PDF.
+`
+
+// buildMCPEnvironment returns the environment for the MCP server entry.
+//
+// It never hardcodes user-specific absolute paths: PATH comes from the current
+// environment, the Piper voice is discovered under $HOME, and the remaining
+// tuning values use generic defaults. Values already present in the user's
+// configuration are preserved.
+func buildMCPEnvironment(home string, existing map[string]interface{}) map[string]string {
+	env := make(map[string]string, len(existing))
+	for k, v := range existing {
+		if s, ok := v.(string); ok {
+			env[k] = s
+		}
+	}
+
+	if env["PATH"] == "" {
+		if path := os.Getenv("PATH"); path != "" {
+			env["PATH"] = path
+		} else {
+			env["PATH"] = "/usr/local/bin:/usr/bin:/bin"
+		}
+	}
+
+	// Discover the Piper voice only when the user has one installed.
+	if env["PIPER_MODEL_PATH"] == "" {
+		matches, _ := filepath.Glob(filepath.Join(home, ".local", "share", "piper", "*.onnx"))
+		if len(matches) > 0 {
+			env["PIPER_MODEL_PATH"] = matches[0]
+			if env["PIPER_CONFIG_PATH"] == "" {
+				if _, err := os.Stat(matches[0] + ".json"); err == nil {
+					env["PIPER_CONFIG_PATH"] = matches[0] + ".json"
+				}
+			}
+		}
+	}
+
+	defaults := map[string]string{
+		"PIPER_PORT":           "5000",
+		"PIPER_HOST":           "127.0.0.1",
+		"PIPER_LENGTH_SCALE":   "1.0",
+		"PIPER_VOLUME":         "0.8",
+		"GRIMORIO_TTS_ENABLED": "true",
+		"AUDIO_PLAYER":         "auto",
+	}
+	for k, v := range defaults {
+		if env[k] == "" {
+			env[k] = v
+		}
+	}
+
+	return env
+}
+
+// updateCommands writes the OpenCode V2 integration: the MCP server entry under
+// mcp.servers and the /grimorio command as a Markdown command file.
+//
+// It migrates away from the V1 shapes written by older installers
+// (mcp.grimorio and command.grimorio) so a re-run leaves no duplicate or
+// half-configured state, and it preserves every unrelated setting.
 func updateCommands() error {
 	exePath, err := os.Executable()
 	if err != nil {
@@ -178,248 +288,136 @@ func updateCommands() error {
 		return fmt.Errorf("finding home directory: %w", err)
 	}
 
-	configPath := filepath.Join(home, ".config", "opencode", "opencode.json")
-	fmt.Printf("Updating commands in %s...\n", configPath)
+	configPath := filepath.Join(openCodeDir(home), "opencode.json")
+	fmt.Printf("Updating OpenCode integration in %s...\n", configPath)
 
-	// Read existing config
 	data := map[string]interface{}{}
-	if _, err := os.Stat(configPath); err == nil {
-		content, err := os.ReadFile(configPath)
-		if err != nil {
-			return fmt.Errorf("reading opencode.json: %w", err)
-		}
+	if content, err := os.ReadFile(configPath); err == nil {
 		if len(content) > 0 {
 			if err := json.Unmarshal(content, &data); err != nil {
 				return fmt.Errorf("parsing opencode.json: %w", err)
 			}
 		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("reading opencode.json: %w", err)
 	}
 
-	// Backup existing config
-	backupPath := configPath + ".backup." + time.Now().Format("20060102150405")
 	if _, err := os.Stat(configPath); err == nil {
+		backupPath := configPath + ".backup." + time.Now().Format("20060102150405")
 		if err := copyFile(configPath, backupPath); err != nil {
 			return fmt.Errorf("backing up opencode.json: %w", err)
 		}
 		fmt.Printf("Backup created: %s\n", backupPath)
 	}
 
-	// Build grimorio MCP entry with TTS environment variables
-	grimorioMCP := map[string]interface{}{
-		"command": []string{exePath},
-		"type":    "local",
-		"enabled": true,
-		"env": map[string]string{
-			"PATH":                       "/home/pau/.local/bin:/home/pau/.local/bin/piper:/usr/local/bin:/usr/bin:/bin",
-			"PIPER_MODEL_PATH":            "/home/pau/.local/share/piper/es_ES-davefx-medium.onnx",
-			"PIPER_CONFIG_PATH":           "/home/pau/.local/share/piper/es_ES-davefx-medium.onnx.json",
-			"PIPER_PORT":                  "5000",
-			"PIPER_HOST":                  "127.0.0.1",
-			"PIPER_LENGTH_SCALE":          "1.0",
-			"PIPER_VOLUME":                "0.8",
-			"GRIMORIO_TTS_ENABLED":        "true",
-			"AUDIO_PLAYER":                "auto",
-		},
+	mcpSection := ensureMap(data, "mcp")
+	servers := ensureMap(mcpSection, "servers")
+
+	existingEnv, _ := servers["grimorio"].(map[string]interface{})
+	var previousEnv map[string]interface{}
+	if existingEnv != nil {
+		previousEnv, _ = existingEnv["environment"].(map[string]interface{})
+	}
+	if previousEnv == nil && existingEnv != nil {
+		previousEnv, _ = existingEnv["env"].(map[string]interface{})
 	}
 
-	// Build grimorio command entry
-	grimorioCmd := map[string]interface{}{
-		"description": "Generate a complete D&D 5e campaign or one-shot from an idea (executes in main thread)",
-		"subtask":     false,
-		"template": `Generate a D&D 5e campaign or one-shot from the user's idea.
-
-**Version:** 5.3.0 — Sequential Chapters + WotC Fidelity + Consolidation + Monster Engine
-
-## IMPORTANT: Use the grimorio-architect agent. It handles everything end-to-end.
-
-## 0. Language Intake (Mandatory, First Question)
-
-Before any other question, ask the user:
-
-> **¿En qué idioma prefieres jugar? / What language do you prefer to play in? [es/en]**
-
-Default to "en" if the user skips. The architect stores this and propagates to all sub-agents via LANG: preamble on every delegate call.
-
-## 1. Workflow (5+ Macro-Phases, chapter-sequential, with consolidation + monster engine)
-
-The architect follows this sequence with BLOCKING gates at each macro-phase.
-
-### Macro-Phase 1: Foundation
-- create_campaign(name, setting, title)
-- generate_adventure_bible(...) → canon.json
-- generate_names (all 7 categories: npc, monster, character, city, faction, tavern, item)
-- save_introduction
-- save_setting_guide
-- save_lore
-- GATE: validate_canon → approved (BLOCKING)
-
-### Macro-Phase 2: Prologue + Chapters (sequential, 1 at a time)
-
-**ALWAYS generate a Prologue chapter first (Chapter 0).** The prologue is where the party meets, introduces their characters, and begins the adventure together. It includes social areas, NPC introductions, and roleplay cues.
-
-#### Chapter 0: Prologue (MANDATORY)
-- save_chapter_part(chapter_number=0, part_name="opener", ...) — prologue introduction
-- save_chapter_part(chapter_number=0, part_name="npcs", ...) — key NPCs for party meeting
-- save_chapter_part(chapter_number=0, part_name="encounters", ...) — social encounters
-- save_chapter_part(chapter_number=0, part_name="areas-1", ...) — 3-5 social areas (tavern, road, event)
-- save_chapter_part(chapter_number=0, part_name="closing", ...) — transition to Chapter 1
-- finalize_chapter(chapter_number=0, title="Prologue", is_prologue=true)
-- generate_map + generate_divider for prologue
-- GATE: narrative-custodian (BLOCKING)
-- GATE: WotC format validation (BLOCKING)
-
-#### Chapters 1-N (typically 3 main chapters)
-For each chapter:
-- save_chapter_part(chapter_number, part_name="opener", ...) — chapter introduction, game mode, objectives
-- save_chapter_part(chapter_number, part_name="general-features", ...) — shared environmental properties (ceilings, doors, light, sound)
-- save_chapter_part(chapter_number, part_name="npcs", ...) — chapter NPCs with structured profiles
-- save_chapter_part(chapter_number, part_name="encounters", ...) — combat/social/exploration encounters
-- save_chapter_part(chapter_number, part_name="areas-1", ...) — areas 1-7 (150-600 words each)
-- save_chapter_part(chapter_number, part_name="areas-2", ...) — areas 8-15 if needed
-- save_chapter_part(chapter_number, part_name="closing", ...) — consequences, faction tracker, What's Next? (free prose)
-- finalize_chapter(chapter_number, title, ...)
-- generate_map + generate_divider for this chapter
-- GATE: narrative-custodian (BLOCKING)
-- GATE: WotC format validation (BLOCKING)
-
-**Sequential generation:** Each chapter is built part-by-part (7 parts) instead of monolithically. This maintains coherence and allows incremental validation. Each part is ~1000-2000 words.
-
-**Why prologue + chapters first?** The prologue establishes the party. Chapters are the spatial and narrative skeleton. NPCs, bestiary, encounters, quests, and treasure all anchor to specific chapters and areas.
-
-### Macro-Phase 3: Bestiary & Characters (parallel, anchored to chapters)
-- save_npcs (anchored to chapter/area)
-- save_bestiary (creatures tied to chapter habitats)
-  - **validate_monster** per creature (CR/VD vs DMG cap. 9 + MM 2025) — BLOCKING
-  - **audit_monster_cr(campaign)** whole-bestiary audit — BLOCKING before Macro-Phase 4
-  - For novel creatures: **suggest_monster_cr(target_cr, concept)** → skeleton → flesh out → validate
-- save_encounters (per-chapter, with generate_treasure for hoards)
-- save_quests (main + side + personal)
-- save_characters (pre-gens + generate_character_hooks)
-- save_appendices (consolidated reference)
-- GATE: cross-reference validation (BLOCKING)
-
-### Macro-Phase 4: Art & Living World (parallel)
-- grimorio-artist → batch spec (cover + NPCs + scenes + monsters)
-- generate_image (sequential, 3s delay, force_regenerate=false to use cache)
-- Update markdown references with images
-- generate_random_tables (encounters, rumors, weather, treasure)
-- generate_handouts (summary, quest, lore, faction)
-- generate_treasure (per hoard, SRD-compliant)
-- update_faction_reputation (initial setup)
-- process_consistency_gate (living world batch)
-- GATE: campaign_health_dashboard (score ≥ 70 recommended)
-
-### Macro-Phase 4.5: Consolidation (cross-file coherence) — v5.2
-After Art & Living World, run the consolidator to detect and fix cross-file inconsistencies:
-- delegate(agent=grimorio-consolidator, prompt=...)
-  - detect_inconsistencies (read-only scan)
-  - consolidate_campaign(auto_fix=true) — applies safe fixes (exact duplicate deletion, markdown renames, INDEX link updates)
-  - resolve_ambiguity per open question — user/agent decision
-  - regenerate_index — INDEX.md with breadcrumbs and verified links
-  - verify_campaign_freshness — compare campaign.md against sources
-- GATE: consolidation_report.clean (no critical issues, no open questions)
-
-Safe fixes are auto-applied. Anything ambiguous becomes an AmbiguityQuestion that the user resolves. Everything else (entity name variants, stat block drift, lore contradictions) is normalized before export.
-
-### Macro-Phase 5: Export & Deliver
-- grimorio validate {name} --scope=all (BLOCKING CLI gate)
-- export_campaign --format=pdf (default) | --format=markdown | --format=epub
-- generate_session_prep + generate_flowchart (optional)
-- Final report
-
-The architect reports progress to the user after each macro-phase.
-
-## 2. Available MCP Tools (v5.3)
-
-- Creation: create_campaign, generate_adventure_bible, generate_names
-- Save (monolithic): save_introduction, save_setting_guide, save_lore, save_chapter, save_npcs, save_bestiary, save_encounters, save_maps, save_quests, save_characters, save_appendices
-- Save (sequential, v5.1): save_chapter_part, finalize_chapter — generate chapters part-by-part (7 parts: opener → general-features → npcs → encounters → areas-1 → areas-2 → closing)
-- Assets: generate_image, generate_map, generate_divider, generate_flowchart, generate_random_tables, generate_handouts, generate_treasure, generate_session_prep
-- Validation: validate_canon, check_consistency, process_consistency_gate, evaluate_consequences
-- Consolidation (v5.2): detect_inconsistencies, consolidate_campaign, resolve_ambiguity, regenerate_index, verify_campaign_freshness
-- **Monster engine (v5.3)**: validate_monster, suggest_monster_cr, audit_monster_cr
-- State: update_narrative_state, update_faction_reputation, update_quest_status
-- Quality (v5.0): campaign_health_dashboard, export_campaign
-- Compilation: compile_pdf
-
-## 3. WotC Fidelity Standards (v5.1)
-
-- **Area word count:** 150-600 words per area (WotC reality: avg 300-500)
-- **Boxed text:** 50-400 words (read-aloud text)
-- **Areas per chapter:** 7-15 (flexible, not rigidly 10-15)
-- **Chapter total:** 3000-16000 words
-- **General Features:** Optional section before areas for shared environmental properties
-- **Inline sub-features:** Use ***Name.*** bold-italic pattern for run-in headings
-- **What's Next?:** Free narrative prose (2-3 paragraphs, 100-400 words), not structured fields
-- **Bilingual:** Validators accept both Spanish and English markers
-
-## Final: Report
-After completion, report to the user:
-- Where the PDF was saved
-- What content was generated (including prologue)
-- Campaign health score
-- **Consolidation:** N issues fixed, K questions resolved, INDEX.md regenerated
-- **Monster engine:** N monsters validated, M CR/VD issues fixed by audit
-- Any issues encountered
-
-**DO NOT launch subagents from the command thread — the architect manages all delegation internally.**
-
-
-**DO NOT launch subagents from the command thread — the architect manages all delegation internally.**`,
+	servers["grimorio"] = map[string]interface{}{
+		"type":        "local",
+		"command":     []string{exePath},
+		"disabled":    false,
+		"environment": buildMCPEnvironment(home, previousEnv),
 	}
 
-	// Ensure mcp section exists
-	mcpSection, ok := data["mcp"].(map[string]interface{})
-	if !ok {
-		mcpSection = make(map[string]interface{})
-		data["mcp"] = mcpSection
-	}
-	mcpSection["grimorio"] = grimorioMCP
+	// Migrate the V1 shape: a top-level mcp.grimorio entry would otherwise be
+	// normalized next to the V2 entry and could shadow it.
+	delete(mcpSection, "grimorio")
 
-	// Ensure command section exists
-	cmdSection, ok := data["command"].(map[string]interface{})
-	if !ok {
-		cmdSection = make(map[string]interface{})
-		data["command"] = cmdSection
+	// Migrate the V1 shape: command.grimorio is replaced by the Markdown
+	// command file written below.
+	if legacyCommands, ok := data["command"].(map[string]interface{}); ok {
+		delete(legacyCommands, "grimorio")
+		if len(legacyCommands) == 0 {
+			delete(data, "command")
+		}
 	}
-	cmdSection["grimorio"] = grimorioCmd
 
-	// Write back
+	if err := writeJSONIfChanged(configPath, data); err != nil {
+		return err
+	}
+
+	commandPath := filepath.Join(openCodeDir(home), "commands", "grimorio.md")
+	if err := writeFileIfChanged(commandPath, []byte(grimorioCommandTemplate), 0644); err != nil {
+		return fmt.Errorf("writing command file: %w", err)
+	}
+
+	fmt.Printf("MCP server: mcp.servers.grimorio -> %s\n", exePath)
+	fmt.Printf("Command:   %s\n", commandPath)
+	fmt.Println("Successfully updated OpenCode integration")
+	return nil
+}
+
+// ensureMap returns data[key] as a map, creating it when missing or malformed.
+func ensureMap(data map[string]interface{}, key string) map[string]interface{} {
+	if existing, ok := data[key].(map[string]interface{}); ok {
+		return existing
+	}
+	created := make(map[string]interface{})
+	data[key] = created
+	return created
+}
+
+// writeJSONIfChanged marshals data and writes it only when the bytes differ.
+func writeJSONIfChanged(path string, data map[string]interface{}) error {
 	out, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
-	if err := os.WriteFile(configPath, out, 0644); err != nil {
+	out = append(out, '\n')
+	if err := writeFileIfChanged(path, out, 0644); err != nil {
 		return fmt.Errorf("writing opencode.json: %w", err)
 	}
-
-	fmt.Printf("Successfully updated commands in opencode.json\n")
 	return nil
 }
 
-// updateAll runs all four updates sequentially: binary, skills, agents, commands.
+// writeFileIfChanged writes content only when it differs from what is on disk.
+// This keeps repeated updates from churning mtimes or triggering config reloads.
+func writeFileIfChanged(path string, content []byte, perm os.FileMode) error {
+	if current, err := os.ReadFile(path); err == nil && string(current) == string(content) {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, content, perm)
+}
+
+// updateAll runs every update step. A failing step does not stop the others:
+// a failed download must not leave the local OpenCode integration unfixed.
 func updateAll(currentVersion string) error {
 	fmt.Println("=== Grimorio Full Update ===")
 
-	// Update the binary itself first so the rest of the update uses the new version.
-	fmt.Println("\n--- Updating binary ---")
-	if err := runBinaryUpdate(currentVersion, false); err != nil {
-		return fmt.Errorf("binary update failed: %w", err)
+	steps := []struct {
+		name string
+		run  func() error
+	}{
+		{"commands", updateCommands},
+		{"skills", func() error { return updateAssets("skills") }},
+		{"agents", func() error { return updateAssets("agents") }},
+		{"binary", func() error { return runBinaryUpdate(currentVersion, false) }},
 	}
 
-	fmt.Println("\n--- Updating skills ---")
-	if err := updateAssets("skills"); err != nil {
-		return fmt.Errorf("skills update failed: %w", err)
+	var failures []string
+	for _, step := range steps {
+		fmt.Printf("\n--- Updating %s ---\n", step.name)
+		if err := step.run(); err != nil {
+			fmt.Printf("ERROR updating %s: %v\n", step.name, err)
+			failures = append(failures, fmt.Sprintf("%s: %v", step.name, err))
+		}
 	}
 
-	fmt.Println("\n--- Updating agents ---")
-	if err := updateAssets("agents"); err != nil {
-		return fmt.Errorf("agents update failed: %w", err)
-	}
-
-	fmt.Println("\n--- Updating commands ---")
-	if err := updateCommands(); err != nil {
-		return fmt.Errorf("commands update failed: %w", err)
+	if len(failures) > 0 {
+		return fmt.Errorf("update completed with %d failure(s): %s", len(failures), strings.Join(failures, "; "))
 	}
 
 	fmt.Println("\n=== All updates completed successfully! ===")
@@ -444,9 +442,9 @@ func runBinaryUpdate(currentVersion string, dryRun bool) error {
 	}
 
 	// Detect ALL install dirs (CLI + MCP). The MCP binary lives at
-	// $HOME/.grimorio/grimorio and is the one the opencode MCP server
-	// runs (per `~/.config/opencode/plugins/grimorio/.mcp.json`). Without
-	// this, the MCP server stays on the old version after `grimorio update`.
+	// $HOME/.grimorio/grimorio and is the one the OpenCode MCP server
+	// runs (per mcp.servers.grimorio in opencode.json). Without this, the
+	// MCP server stays on the old version after `grimorio update`.
 	installDirs, err := discoverInstallDirs(exePath, home)
 	if err != nil {
 		return fmt.Errorf("discovering install dirs: %w", err)
@@ -467,7 +465,7 @@ func runBinaryUpdate(currentVersion string, dryRun bool) error {
 func NewUpdateCommandsCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "commands",
-		Usage: "Update Grimorio MCP and command entries in opencode.json",
+		Usage: "Write the Grimorio MCP server entry and /grimorio command into OpenCode",
 		Action: func(cCtx *cli.Context) error {
 			return updateCommands()
 		},
@@ -507,7 +505,7 @@ func findAssetSourceDir(extractDir, assetType string) (string, error) {
 func NewUpdateAllCommand(currentVersion string) *cli.Command {
 	return &cli.Command{
 		Name:  "all",
-		Usage: "Update all Grimorio assets: binary, skills, agents, and commands",
+		Usage: "Update all Grimorio assets: OpenCode integration, skills, agents, and binary",
 		Action: func(cCtx *cli.Context) error {
 			return updateAll(currentVersion)
 		},
