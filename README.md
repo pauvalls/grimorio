@@ -37,11 +37,26 @@ irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 
 **Already installed? Update:**
 ```bash
-grimorio update          # Update binary only
-grimorio update skills   # Update skills
-grimorio update agents   # Update agents
-grimorio update commands # Update opencode.json config
-grimorio update all      # Update everything at once
+grimorio update all      # Recommended: OpenCode integration + skills + agents + binary
+grimorio update          # Binary only
+grimorio update commands # OpenCode config and /grimorio command only
+grimorio update skills   # Skills only
+grimorio update agents   # Agents only
+```
+> ✅ **Safe to repeat.** Every update is idempotent, backs up `opencode.json` before merging, and preserves your unrelated OpenCode settings.
+
+**OpenCode V2 integration.** Both the installer and `grimorio update all` write the native V2 layout:
+
+| What | Where |
+|------|-------|
+| MCP server | `mcp.servers.grimorio` in `~/.config/opencode/opencode.json` |
+| Skills | `~/.config/opencode/skills/grimorio-*` |
+| Agents | `~/.config/opencode/agents/grimorio-*.md` |
+| Command | `~/.config/opencode/commands/grimorio.md` (`/grimorio`) |
+
+Verify the connection:
+```bash
+opencode mcp list   # expect: ✓ grimorio  connected
 ```
 
 Then type in your AI assistant chat:
@@ -172,6 +187,18 @@ Use the campaign_health_dashboard MCP tool from any agent.
 ```bash
 curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh -s -- --update
 ```
+The installer is idempotent: it backs up `opencode.json` before touching it, keeps every
+unrelated setting, and migrates older V1 layouts (`mcp.grimorio`, `command.grimorio`, skills
+under `plugins/grimorio/`) to the V2 layout. It needs `python3` for the config merge; without
+it, the installer prints the exact JSON entry to paste instead of writing invalid JSON.
+
+**Manual check after installing:**
+```bash
+grimorio --version                       # binary
+opencode mcp list                        # ✓ grimorio connected
+ls ~/.config/opencode/skills             # grimorio-* skills
+ls ~/.config/opencode/agents             # grimorio-* agents
+```
 
 **Developers** — Build from source:
 ```bash
@@ -235,11 +262,26 @@ irm https://raw.githubusercontent.com/pauvalls/grimorio/main/install.ps1 | iex
 
 **¿Ya lo tienes instalado? Actualízalo:**
 ```bash
-grimorio update          # Actualizar solo el binario
-grimorio update skills   # Actualizar skills
-grimorio update agents   # Actualizar agents
-grimorio update commands # Actualizar config de opencode.json
-grimorio update all      # Actualizar todo de una
+grimorio update all      # Recomendado: integración OpenCode + skills + agents + binario
+grimorio update          # Solo el binario
+grimorio update commands # Solo config de OpenCode y comando /grimorio
+grimorio update skills   # Solo skills
+grimorio update agents   # Solo agents
+```
+> ✅ **Se puede repetir sin riesgo.** Cada update es idempotente, hace backup de `opencode.json` antes de mergear y respeta tu configuración de OpenCode que no sea de Grimorio.
+
+**Integración con OpenCode V2.** Tanto el instalador como `grimorio update all` escriben el layout nativo de V2:
+
+| Qué | Dónde |
+|-----|-------|
+| Servidor MCP | `mcp.servers.grimorio` en `~/.config/opencode/opencode.json` |
+| Skills | `~/.config/opencode/skills/grimorio-*` |
+| Agents | `~/.config/opencode/agents/grimorio-*.md` |
+| Comando | `~/.config/opencode/commands/grimorio.md` (`/grimorio`) |
+
+Verificá la conexión:
+```bash
+opencode mcp list   # esperado: ✓ grimorio  connected
 ```
 
 Luego escribe en el chat de tu asistente IA:
@@ -369,6 +411,18 @@ Usá la tool MCP campaign_health_dashboard desde cualquier agente.
 **Re-ejecutar instalador** (si `grimorio update` falla):
 ```bash
 curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh -s -- --update
+```
+El instalador es idempotente: hace backup de `opencode.json` antes de tocarlo, conserva toda la
+configuración que no sea de Grimorio y migra los layouts viejos de V1 (`mcp.grimorio`,
+`command.grimorio`, skills en `plugins/grimorio/`) al layout de V2. Necesita `python3` para el
+merge de config; sin él, imprime la entrada JSON exacta para pegar en vez de escribir JSON inválido.
+
+**Chequeo manual después de instalar:**
+```bash
+grimorio --version                       # binario
+opencode mcp list                        # ✓ grimorio connected
+ls ~/.config/opencode/skills             # skills grimorio-*
+ls ~/.config/opencode/agents             # agents grimorio-*
 ```
 
 **Developers** — Compilar desde fuente:
@@ -540,7 +594,20 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ### Update fails / El update falla
 
-If `grimorio update` fails, try re-running the installer:
+If `grimorio update` fails, first check whether the failure is the binary or the OpenCode wiring:
+
+```bash
+grimorio --version            # CLI version
+~/.grimorio/grimorio --version # MCP server version (should match the CLI)
+opencode mcp list             # ✓ grimorio connected
+```
+
+- **MCP server missing** → `grimorio update commands`, then reopen OpenCode.
+- **Versions differ** → `grimorio update` replaces every install dir, not just the CLI.
+- **Config looks wrong** → every merge leaves a timestamped
+  `~/.config/opencode/opencode.json.backup.*` next to the config; restore the one you want.
+
+If the update still fails, re-run the installer:
 ```bash
 curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh -s -- --update
 ```
