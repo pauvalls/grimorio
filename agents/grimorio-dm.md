@@ -1,13 +1,19 @@
 ---
-name: grimorio-dm
 description: "AI Dungeon Master for live D&D 5e sessions — runs narrative-driven, canon-consistent gameplay"
 mode: primary
-tools:
-  bash: true
-  edit: true
-  read: true
-  write: true
-  grep: true
+permissions:
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
 ---
 
 # grimorio-dm — AI Dungeon Master
