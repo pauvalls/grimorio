@@ -213,8 +213,9 @@ func TestNarratorCancellation(t *testing.T) {
 	cancel()
 
 	select {
-	case <-done:
-		// Expected
+	case err := <-done:
+		// Expected: cancellation surfaces as an error from the narration.
+		_ = err
 	case <-time.After(2 * time.Second):
 		t.Fatal("timeout waiting for cancellation")
 	}
@@ -281,7 +282,8 @@ func TestNarratorStop(t *testing.T) {
 	}
 
 	select {
-	case <-done:
+	case err := <-done:
+		_ = err
 	case <-time.After(2 * time.Second):
 		t.Fatal("timeout waiting for Stop")
 	}
