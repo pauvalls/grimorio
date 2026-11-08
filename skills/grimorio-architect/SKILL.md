@@ -1,14 +1,14 @@
 ---
 name: grimorio-architect
 version: "5.3.0"
-description: Orchestrate end-to-end D&D 5e campaign generation via delegate pattern. Chapter-sequential workflow with prologue, sequential parts, consolidation phase, and monster design engine.
+description: Orchestrate end-to-end D&D 5e campaign generation via subagent pattern. Chapter-sequential workflow with prologue, sequential parts, consolidation phase, and monster design engine.
 ---
 
 # Grimorio Architect Skill
 
 **Type:** orchestrator
 **Domain:** D&D 5e campaign generation
-**Scope:** End-to-end campaign creation via delegate pattern
+**Scope:** End-to-end campaign creation via subagent pattern
 **Version:** 5.3.0
 
 > This is the **detailed reference**. The shorter agent prompt at
@@ -31,7 +31,7 @@ default to English if they skip:
 
 - Store the answer as `session_language` in your conversation state.
 - If the user does not answer, set `session_language = "en"`.
-- Every `delegate(agent=..., prompt=...)` call you make MUST prepend the
+- Every `subagent(agent=..., prompt=...)` call you make MUST prepend the
   chosen language to its prompt body using the `LANG:` preamble block. The
   format is a single header line followed by a blank line:
 
@@ -190,7 +190,7 @@ INSTRUCTION: Use names from the pool above. Do NOT create new names.
 ### Step 1.4: Introduction (parallel with 1.5, 1.6)
 
 ```
-delegate(agent="grimorio-introduction", prompt="LANG: en
+subagent(agent="grimorio-introduction", prompt="LANG: en
 
 Generate INTRODUCTION for campaign '{campaign-name}' at {campaign-path}.
 
@@ -203,7 +203,7 @@ Template: internal/compiler/templates/introduction.md.tmpl")
 ### Step 1.5: Setting Guide (DM-only, parallel)
 
 ```
-delegate(agent="grimorio-setting-guide", prompt="LANG: en
+subagent(agent="grimorio-setting-guide", prompt="LANG: en
 
 Generate SETTING GUIDE for '{campaign-name}' at {campaign-path}.
 
@@ -216,7 +216,7 @@ Include: Geography, History, Culture, Factions, Secrets")
 ### Step 1.6: Lore (parallel)
 
 ```
-delegate(agent="grimorio-lore", prompt="LANG: en
+subagent(agent="grimorio-lore", prompt="LANG: en
 
 Generate LORE for '{campaign-name}' at {campaign-path}.
 
@@ -230,7 +230,7 @@ CRITICAL: Read template: internal/compiler/templates/lore.md.tmpl")
 ### GATE 1: Canon Validation
 
 ```
-delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
+subagent(agent="grimorio-narrative-custodian", prompt="LANG: en
 
 Validate Foundation for '{campaign-name}' at {campaign-path}.
 
@@ -261,7 +261,7 @@ moving to the next. This produces self-contained, playable chapters.
 #### Step 2.x.1: Save Chapter
 
 ```
-delegate(agent="grimorio-chapters", prompt="LANG: en
+subagent(agent="grimorio-chapters", prompt="LANG: en
 
 Generate CHAPTER {N} for '{campaign-name}' at {campaign-path}.
 
@@ -307,7 +307,7 @@ MCP: save_chapter(
 #### Step 2.x.2: Generate Maps & Dividers (per chapter)
 
 ```
-delegate(agent="grimorio-cartographer", prompt="LANG: en
+subagent(agent="grimorio-cartographer", prompt="LANG: en
 
 Generate SVG assets for CHAPTER {N} of '{campaign-name}' at {campaign-path}.
 
@@ -324,7 +324,7 @@ MCP: generate_divider (one per chapter)")
 #### GATE 2.x: Per-Chapter Validation (BLOCKING)
 
 ```
-delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
+subagent(agent="grimorio-narrative-custodian", prompt="LANG: en
 
 Validate CHAPTER {N} for '{campaign-name}'.
 
@@ -357,7 +357,7 @@ Now that chapters exist, generate the creatures and characters that inhabit them
 ### Step 3.1: NPCs (anchored to chapters)
 
 ```
-delegate(agent="grimorio-npc", prompt="LANG: en
+subagent(agent="grimorio-npc", prompt="LANG: en
 
 Generate NPCs for '{campaign-name}' at {campaign-path}.
 
@@ -382,7 +382,7 @@ MCP: save_npcs(campaign='{campaign-name}', content={read npcs_and_factions.md})"
 ### Step 3.2: Bestiary (anchored to chapters)
 
 ```
-delegate(agent="grimorio-bestiary", prompt="LANG: en
+subagent(agent="grimorio-bestiary", prompt="LANG: en
 
 Generate BESTIARY for '{campaign-name}' at {campaign-path}.
 
@@ -406,7 +406,7 @@ MCP: save_bestiary(campaign='{campaign-name}', content={read bestiary.md})")
 ### Step 3.3: Encounters (per chapter, anchored to areas)
 
 ```
-delegate(agent="grimorio-encounters", prompt="LANG: en
+subagent(agent="grimorio-encounters", prompt="LANG: en
 
 Generate ENCOUNTERS for '{campaign-name}' at {campaign-path}.
 
@@ -428,7 +428,7 @@ MCP: save_encounters(campaign='{campaign-name}', content={read encounters.md})")
 ### Step 3.4: Quests (parallel with characters)
 
 ```
-delegate(agent="grimorio-quests", prompt="LANG: en
+subagent(agent="grimorio-quests", prompt="LANG: en
 
 Generate QUESTS for '{campaign-name}' at {campaign-path}.
 
@@ -443,7 +443,7 @@ Use MCP create_personal_quest for each PC build")
 ### Step 3.5: Pre-Generated Characters (parallel)
 
 ```
-delegate(agent="grimorio-characters", prompt="LANG: en
+subagent(agent="grimorio-characters", prompt="LANG: en
 
 Generate PRE-GENERATED CHARACTERS for '{campaign-name}' at {campaign-path}.
 
@@ -462,7 +462,7 @@ MCP: save_characters(campaign='{campaign-name}', characters={list})")
 ### Step 3.6: Appendices (consolidated reference)
 
 ```
-delegate(agent="grimorio-appendices", prompt="LANG: en
+subagent(agent="grimorio-appendices", prompt="LANG: en
 
 Generate APPENDICES for '{campaign-name}' at {campaign-path}.
 
@@ -481,7 +481,7 @@ MCP: save_appendices(campaign='{campaign-name}', content={read appendices.md})")
 ### GATE 3: Cross-Reference Validation
 
 ```
-delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
+subagent(agent="grimorio-narrative-custodian", prompt="LANG: en
 
 Validate Bestiary & Characters for '{campaign-name}'.
 
@@ -507,7 +507,7 @@ Return: status + specific fixes")
 ### Step 4.1: Artist Batch Spec
 
 ```
-delegate(agent="grimorio-artist", prompt="LANG: en
+subagent(agent="grimorio-artist", prompt="LANG: en
 
 Prepare image batch spec for '{campaign-name}' at {campaign-path}.
 
@@ -550,7 +550,7 @@ Verify: ls {campaign-path}/assets/*.png
 ### Step 4.3: Update Markdown References
 
 ```
-delegate(agent="grimorio-artist", prompt="LANG: en
+subagent(agent="grimorio-artist", prompt="LANG: en
 
 Update ALL image references for '{campaign-name}' at {campaign-path}.
 
@@ -568,7 +568,7 @@ CRITICAL: Every PNG MUST be referenced in at least one markdown file")
 ### Step 4.4: Living World Tools (parallel)
 
 ```
-delegate(agent="grimorio-integrator", prompt="LANG: en
+subagent(agent="grimorio-integrator", prompt="LANG: en
 
 Generate Living World content for '{campaign-name}' at {campaign-path}.
 
@@ -611,7 +611,7 @@ indicates areas needing attention.
 ### GATE 4: Pre-Export Validation
 
 ```
-delegate(agent="grimorio-narrative-custodian", prompt="LANG: en
+subagent(agent="grimorio-narrative-custodian", prompt="LANG: en
 
 Run PRE-EXPORT validation for '{campaign-name}'.
 
@@ -785,7 +785,7 @@ Building NPCs/bestiary before chapters means they have nowhere to anchor.
 Cross-references float and the narrative coherence gate fails.
 
 ### 2. Inline Content (❌)
-Never write narrative content directly. Always `delegate` to a sub-agent
+Never write narrative content directly. Always `subagent` to a sub-agent
 that reads its template.
 
 ### 3. Skip Validation (❌)
@@ -904,7 +904,7 @@ A score below 70 means the campaign needs work. Don't ship it.
 Runs after Art & Living World, before Export:
 
 ```
-delegate(agent="grimorio-consolidator", prompt="LANG: en
+subagent(agent="grimorio-consolidator", prompt="LANG: en
 
 Run consolidation for '{campaign-name}' at {campaign-path}.
 

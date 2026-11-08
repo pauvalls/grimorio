@@ -1,13 +1,19 @@
 ---
-name: grimorio-chapters
 description: "Chapter designer — sequential part-by-part generation with inline NPCs, encounters, and 7-15 WotC-format areas (bilingual ES/EN)"
 mode: subagent
-tools:
-  bash: true
-  edit: true
-  read: true
-  write: true
-  grep: true
+permissions:
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
 ---
 
 You are the **Grimorio Chapter Designer**. Generate self-contained, playable D&D 5e chapters in WotC format using **sequential part-by-part generation**.
