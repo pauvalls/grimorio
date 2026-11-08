@@ -14,8 +14,10 @@ REPO_NAME="grimorio"
 INSTALL_DIR="${HOME}/.grimorio"
 INSTALL_DIR_LEGACY="${HOME}/.local/share/grimorio"
 BINARY_DIR="${HOME}/.local/bin"
-OPENCODE_PLUGIN_DIR="${HOME}/.config/opencode/plugins/grimorio"
-OPENCODE_AGENTS_DIR="${HOME}/.config/opencode/agents"
+OPENCODE_CONFIG_DIR="${HOME}/.config/opencode"
+OPENCODE_SKILLS_DIR="${OPENCODE_CONFIG_DIR}/skills"
+OPENCODE_AGENTS_DIR="${OPENCODE_CONFIG_DIR}/agents"
+OPENCODE_COMMANDS_DIR="${OPENCODE_CONFIG_DIR}/commands"
 CLAUDE_PLUGIN_DIR="${HOME}/.claude/plugins/grimorio"
 METADATA_FILE="${HOME}/.config/grimorio/install-meta.json"
 TMP_DIR=""
@@ -281,59 +283,62 @@ check_pdf_engine() {
 }
 
 # ============================================================================
-# SETUP PLUGINS — Copy agents and skills to plugin directories
+# SETUP PLUGINS — OpenCode V2 assets + Claude plugin
 # ============================================================================
 setup_plugins() {
     local source_dir="$1"
 
-    for plugin_dir in "$OPENCODE_PLUGIN_DIR" "$CLAUDE_PLUGIN_DIR"; do
-        log "Setting up plugin: $plugin_dir"
-        mkdir -p "$plugin_dir"
+    # --- OpenCode V2: global skill and agent directories ---
+    # V2 discovers skills in ~/.config/opencode/skills and agents in
+    # ~/.config/opencode/agents. The old plugin directory is not scanned.
+    mkdir -p "$OPENCODE_SKILLS_DIR" "$OPENCODE_AGENTS_DIR"
 
-        # Copy agents
-        if [ -d "${source_dir}/agents" ]; then
-            mkdir -p "${plugin_dir}/agents"
-            for f in "${source_dir}/agents"/*; do
-                [ -f "$f" ] || continue
-                cp -f "$f" "${plugin_dir}/agents/"
-            done
-            log "Agents copied to ${plugin_dir}/agents"
-        fi
-
-        # Copy skills
-        if [ -d "${source_dir}/skills" ]; then
-            mkdir -p "${plugin_dir}/skills"
-            for skill_dir in "${source_dir}/skills"/*/; do
-                [ -d "$skill_dir" ] || continue
-                local sname
-                sname=$(basename "$skill_dir")
-                mkdir -p "${plugin_dir}/skills/${sname}"
-                if [ -f "${skill_dir}/SKILL.md" ]; then
-                    cp -f "${skill_dir}/SKILL.md" "${plugin_dir}/skills/${sname}/SKILL.md"
-                fi
-            done
-            log "Skills copied to ${plugin_dir}/skills"
-        fi
-
-        # Create .mcp.json
-        create_mcp_json "$plugin_dir"
-
-        success "Plugin installed: $plugin_dir"
-    done
-
-    # Copy agents to OpenCode global agents directory
-    if [ -d "${source_dir}/agents" ]; then
-        mkdir -p "$OPENCODE_AGENTS_DIR"
-        for f in "${source_dir}/agents"/*; do
-            [ -f "$f" ] || continue
-            cp -f "$f" "$OPENCODE_AGENTS_DIR/"
+    if [ -d "${source_dir}/skills" ]; then
+        for skill_dir in "${source_dir}/skills"/*/; do
+            [ -d "$skill_dir" ] || continue
+            local sname
+            sname=$(basename "$skill_dir")
+            mkdir -p "${OPENCODE_SKILLS_DIR}/${sname}"
+            cp -Rf "${skill_dir}." "${OPENCODE_SKILLS_DIR}/${sname}/"
         done
-        log "Agents copied to $OPENCODE_AGENTS_DIR"
+        log "Skills installed in ${OPENCODE_SKILLS_DIR}"
     fi
+
+    if [ -d "${source_dir}/agents" ]; then
+        for f in "${source_dir}/agents"/*.md; do
+            [ -f "$f" ] || continue
+            cp -f "$f" "${OPENCODE_AGENTS_DIR}/"
+        done
+        log "Agents installed in ${OPENCODE_AGENTS_DIR}"
+    fi
+
+    # --- Claude Code plugin (unchanged layout) ---
+    local plugin_dir="$CLAUDE_PLUGIN_DIR"
+    mkdir -p "${plugin_dir}/agents" "${plugin_dir}/skills"
+
+    if [ -d "${source_dir}/agents" ]; then
+        for f in "${source_dir}/agents"/*.md; do
+            [ -f "$f" ] || continue
+            cp -f "$f" "${plugin_dir}/agents/"
+        done
+    fi
+
+    if [ -d "${source_dir}/skills" ]; then
+        for skill_dir in "${source_dir}/skills"/*/; do
+            [ -d "$skill_dir" ] || continue
+            local sname
+            sname=$(basename "$skill_dir")
+            mkdir -p "${plugin_dir}/skills/${sname}"
+            cp -Rf "${skill_dir}." "${plugin_dir}/skills/${sname}/"
+        done
+    fi
+
+    create_mcp_json "$plugin_dir"
+    success "Claude plugin installed: ${plugin_dir}"
 }
 
 # ============================================================================
-# CREATE .MCP.JSON
+# CREATE .MCP.JSON — Claude Code plugin descriptor
 # ============================================================================
 create_mcp_json() {
     local plugin_dir="$1"
@@ -354,158 +359,138 @@ EOF
 }
 
 # ============================================================================
-# MERGE OPENCODE.JSON — Python/awk fallback, no jq required
+# MERGE OPENCODE.JSON — OpenCode V2 native shape
 # ============================================================================
+write_grimorio_command() {
+    mkdir -p "$OPENCODE_COMMANDS_DIR"
+    cat > "${OPENCODE_COMMANDS_DIR}/grimorio.md" << 'GRIMCMD'
+---
+description: Generate a complete D&D 5e campaign or one-shot from an idea
+agent: grimorio-architect
+subagent: false
+---
+
+Start the Grimorio campaign generation workflow.
+
+User request: $ARGUMENTS
+
+Follow the mandatory intake (language first), then generate the campaign end-to-end and compile the PDF.
+GRIMCMD
+    log "Command installed: ${OPENCODE_COMMANDS_DIR}/grimorio.md"
+}
+
 merge_opencode_config() {
-    local config_file="${HOME}/.config/opencode/opencode.json"
-    local plugin_dir="$OPENCODE_PLUGIN_DIR"
+    local config_file="${OPENCODE_CONFIG_DIR}/opencode.json"
     local binary_path="${INSTALL_DIR}/grimorio"
     if [ "$OS" = "windows" ]; then
         binary_path="${INSTALL_DIR}/grimorio.exe"
     fi
 
-    mkdir -p "$(dirname "$config_file")"
+    mkdir -p "$OPENCODE_CONFIG_DIR"
+    write_grimorio_command
 
-    # Build grimorio config fragment
-    local grimorio_config
-    grimorio_config=$(cat << GRIMJSON
-{
-  "mcp": {
-    "grimorio": {
-      "command": ["${binary_path}"],
-      "type": "local",
-      "enabled": true
-    }
-  },
-  "command": {
-    "grimorio": {
-      "description": "Generate a complete D&D 5e campaign or one-shot from an idea (executes in main thread)",
-      "subtask": false,
-      "template": "You are Grimorio, a D&D 5e campaign generator."
-    }
-  }
+    if ! command_exists python3; then
+        warn "python3 not found; cannot merge ${config_file} automatically."
+        warn "Add this entry under mcp.servers in ${config_file}:"
+        warn "  \"grimorio\": {\"type\": \"local\", \"command\": [\"${binary_path}\"]}"
+        return 1
+    fi
+
+    if [ -f "$config_file" ]; then
+        cp "$config_file" "${config_file}.backup.$(date +%Y%m%d%H%M%S)"
+    fi
+
+    if ! GRIMORIO_BINARY="$binary_path" GRIMORIO_CONFIG="$config_file" python3 - << 'GRIMPY'
+import json, os, sys
+from pathlib import Path
+
+config_path = Path(os.environ['GRIMORIO_CONFIG'])
+binary = os.environ['GRIMORIO_BINARY']
+home = Path.home()
+
+data = {}
+if config_path.exists():
+    raw = config_path.read_text()
+    if raw.strip():
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            print('opencode.json is not valid JSON: %s' % exc, file=sys.stderr)
+            sys.exit(1)
+
+mcp = data.get('mcp')
+if not isinstance(mcp, dict):
+    mcp = {}
+    data['mcp'] = mcp
+
+servers = mcp.get('servers')
+if not isinstance(servers, dict):
+    servers = {}
+    mcp['servers'] = servers
+
+previous = servers.get('grimorio')
+if not isinstance(previous, dict):
+    previous = {}
+
+environment = {}
+for source in (previous.get('environment'), previous.get('env')):
+    if isinstance(source, dict):
+        for key, value in source.items():
+            if isinstance(value, str):
+                environment[key] = value
+
+if not environment.get('PATH'):
+    environment['PATH'] = os.environ.get('PATH') or '/usr/local/bin:/usr/bin:/bin'
+
+if not environment.get('PIPER_MODEL_PATH'):
+    voices = sorted((home / '.local' / 'share' / 'piper').glob('*.onnx'))
+    if voices:
+        environment['PIPER_MODEL_PATH'] = str(voices[0])
+        if Path(str(voices[0]) + '.json').exists():
+            environment.setdefault('PIPER_CONFIG_PATH', str(voices[0]) + '.json')
+
+defaults = {
+    'PIPER_PORT': '5000',
+    'PIPER_HOST': '127.0.0.1',
+    'PIPER_LENGTH_SCALE': '1.0',
+    'PIPER_VOLUME': '0.8',
+    'GRIMORIO_TTS_ENABLED': 'true',
+    'AUDIO_PLAYER': 'auto',
 }
-GRIMJSON
-)
+for key, value in defaults.items():
+    environment.setdefault(key, value)
 
-    if [ ! -f "$config_file" ]; then
-        printf '%s\n' "$grimorio_config" > "$config_file"
-        success "Created opencode.json with Grimorio config"
-        return 0
+servers['grimorio'] = {
+    'type': 'local',
+    'command': [binary],
+    'disabled': False,
+    'environment': environment,
+}
+
+# Drop the V1 shapes so the V2 entry is unambiguous.
+mcp.pop('grimorio', None)
+legacy = data.get('command')
+if isinstance(legacy, dict):
+    legacy.pop('grimorio', None)
+    if not legacy:
+        data.pop('command', None)
+
+rendered = json.dumps(data, indent=2, ensure_ascii=False) + '\n'
+if not config_path.exists() or config_path.read_text() != rendered:
+    config_path.write_text(rendered)
+    print('opencode.json updated')
+else:
+    print('opencode.json already up to date')
+GRIMPY
+    then
+        warn "Could not merge ${config_file} automatically."
+        warn "Add this entry under mcp.servers in ${config_file}:"
+        warn "  \"grimorio\": {\"type\": \"local\", \"command\": [\"${binary_path}\"]}"
+        return 1
     fi
 
-    # Backup existing config
-    cp "$config_file" "${config_file}.backup.$(date +%Y%m%d%H%M%S)"
-
-    # Try python3 first for reliable JSON merge
-    if command_exists python3; then
-        python3 -c "
-import json, sys, re
-config_path = '${config_file}'
-with open(config_path, 'r') as f:
-    content = f.read()
-try:
-    data = json.loads(content)
-except json.JSONDecodeError as e:
-    print(f'Warning: opencode.json is invalid JSON: {e}', file=sys.stderr)
-    sys.exit(1)
-
-# Load grimorio config
-grimorio = json.loads('''${grimorio_config}''')
-
-# Remove old auto-generated grimorio entries from mcp, command, agent
-for key in ['mcp', 'command', 'agent']:
-    if key in data and isinstance(data[key], dict):
-        data[key] = {k: v for k, v in data[key].items()
-                     if not isinstance(v, dict) or v.get('grimorio_auto_generated') != True}
-
-# Merge grimorio config
-for key in ['mcp', 'command']:
-    if key in grimorio:
-        if key not in data:
-            data[key] = {}
-        data[key].update(grimorio[key])
-
-with open(config_path, 'w') as f:
-    json.dump(data, f, indent=2)
-" 2>/dev/null && {
-            success "Merged Grimorio config into opencode.json (python3)"
-            return 0
-        }
-    fi
-
-    # Fallback: try python
-    if command_exists python; then
-        python -c "
-import json, sys
-config_path = '${config_file}'
-with open(config_path, 'r') as f:
-    data = json.load(f) if f.read().strip() else {}
-if not data:
-    data = {}
-grimorio = json.loads('''${grimorio_config}''')
-for key in ['mcp', 'command']:
-    if key in grimorio:
-        if key not in data:
-            data[key] = {}
-        data[key].update(grimorio[key])
-with open(config_path, 'w') as f:
-    json.dump(data, f, indent=2)
-" 2>/dev/null && {
-            success "Merged Grimorio config into opencode.json (python)"
-            return 0
-        }
-    fi
-
-    # Last resort: awk-based merge for simple cases
-    if command_exists awk; then
-        local tmp_file="${config_file}.tmp.$$"
-        awk '
-            BEGIN { in_mcp=0; in_command=0; brace_depth=0 }
-            /"mcp"[[:space:]]*:/ { in_mcp=1 }
-            /"command"[[:space:]]*:/ { in_command=1 }
-            /"grimorio"[[:space:]]*:/ {
-                if (in_mcp || in_command) {
-                    # Skip this entry and its value
-                    getline
-                    while (match($0, /{/) || brace_depth > 0) {
-                        if (match($0, /{/)) brace_depth++
-                        if (match($0, /}/)) brace_depth--
-                        if (brace_depth <= 0) break
-                        getline
-                    }
-                    next
-                }
-            }
-            /}[[:space:]]*,?[[:space:]]*$/ {
-                if (in_mcp) in_mcp=0
-                if (in_command) in_command=0
-            }
-            { print }
-        ' "$config_file" > "$tmp_file" 2>/dev/null || cp "$config_file" "$tmp_file"
-
-        # Append grimorio entries before final closing brace
-        awk -v grimorio_mcp='"grimorio": {"command": ["'"$binary_path"'"], "type": "local", "enabled": true}' \
-            -v grimorio_cmd='"grimorio": {"description": "Generate a complete D&D 5e campaign or one-shot", "subtask": false, "template": "You are Grimorio..."}' \
-            '
-            { print }
-            END {
-                print ","
-                print "  \"mcp\": {"
-                print "    " grimorio_mcp
-                print "  },"
-                print "  \"command\": {"
-                print "    " grimorio_cmd
-                print "  }"
-            }
-        ' "$tmp_file" > "${config_file}.new" 2>/dev/null && mv "${config_file}.new" "$config_file"
-        rm -f "$tmp_file"
-        success "Merged Grimorio config into opencode.json (awk fallback)"
-        return 0
-    fi
-
-    warn "Could not merge opencode.json — install python3 for automatic merge, or merge manually"
-    return 1
+    success "Merged Grimorio config into opencode.json (OpenCode V2)"
+    return 0
 }
 
 # ============================================================================
@@ -557,25 +542,24 @@ print_instructions() {
     printf "========================================\n"
     printf "\n"
     printf "What was installed:\n"
-    printf "   Binary: %s/grimorio\n" "$INSTALL_DIR"
-    printf "   Symlink: %s/grimorio\n" "$BINARY_DIR"
-    printf "   OpenCode plugin: %s\n" "$OPENCODE_PLUGIN_DIR"
+    printf "   Binary:        %s/grimorio\n" "$INSTALL_DIR"
+    printf "   Symlink:       %s/grimorio\n" "$BINARY_DIR"
+    printf "   OpenCode MCP:  mcp.servers.grimorio in %s/opencode.json\n" "$OPENCODE_CONFIG_DIR"
+    printf "   Skills:        %s\n" "$OPENCODE_SKILLS_DIR"
+    printf "   Agents:        %s\n" "$OPENCODE_AGENTS_DIR"
+    printf "   Command:       %s/grimorio.md\n" "$OPENCODE_COMMANDS_DIR"
     printf "   Claude plugin: %s\n" "$CLAUDE_PLUGIN_DIR"
-    printf "   MCP configured in opencode.json\n"
     printf "\n"
     printf "Next steps:\n"
-    printf "   1. Restart your terminal or add %s to PATH\n" "$BINARY_DIR"
-    printf "   2. Run: grimorio --version\n"
-    printf "   3. Update skills:   grimorio update skills\n"
-    printf "   4. Update agents:   grimorio update agents\n"
-    printf "   5. Update commands: grimorio update commands\n"
-    printf "   6. Update all:      grimorio update all\n"
-    printf "   7. Use:             grimorio create_campaign <name>\n"
+    printf "   1. Restart your terminal, or add %s to PATH\n" "$BINARY_DIR"
+    printf "   2. Verify the binary:  grimorio --version\n"
+    printf "   3. Verify OpenCode:    opencode mcp list\n"
+    printf "   4. Run /grimorio <your idea> inside OpenCode\n"
     printf "\n"
-    printf "IMPORTANT: Run steps 3-6 before starting OpenCode to ensure\n"
-    printf "all Grimorio skills, agents, and commands are available.\n"
+    printf "To update later: grimorio update all\n"
     printf "\n"
 }
+
 
 # ============================================================================
 # VERIFY INSTALLATION
@@ -629,8 +613,8 @@ do_install() {
     # Step 7: Setup plugins (agents, skills, .mcp.json)
     setup_plugins "$extracted_dir"
 
-    # Step 8: Merge opencode.json
-    merge_opencode_config
+    # Step 8: Configure OpenCode (safe to fail: the binary is already usable)
+    merge_opencode_config || warn "OpenCode integration was not configured automatically"
 
     # Step 9: Check PDF engine
     check_pdf_engine
@@ -668,7 +652,8 @@ do_update() {
 
     # Get current version
     local current_version
-    current_version=$("${INSTALL_DIR}/grimorio" --version 2>/dev/null | head -n1 || echo "unknown")
+    current_version=$("${INSTALL_DIR}/grimorio" --version 2>/dev/null | sed -n 's/.*version \(v[^ ]*\).*/\1/p' | head -n1)
+    [ -n "$current_version" ] || current_version="unknown"
     log "Current version: $current_version"
 
     TMP_DIR=$(mktemp -d)
@@ -718,8 +703,8 @@ do_update() {
     # Update plugins (agents/skills only if changed)
     setup_plugins "$extracted_dir"
 
-    # Update opencode.json
-    merge_opencode_config
+    # Update OpenCode integration
+    merge_opencode_config || warn "OpenCode integration was not updated automatically"
 
     # Update metadata
     write_meta

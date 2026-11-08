@@ -315,13 +315,22 @@ func TestInstallSh_CopiesAgentsAndSkills(t *testing.T) {
 	}
 }
 
-func TestInstallSh_PluginDirIsOpencode(t *testing.T) {
+func TestInstallSh_UsesOpencodeV2Dirs(t *testing.T) {
 	content, err := os.ReadFile(installShPath())
 	if err != nil {
 		t.Fatalf("failed to read install.sh: %v", err)
 	}
-	if !strings.Contains(string(content), ".config/opencode/plugins/grimorio") {
-		t.Error("install.sh must reference ~/.config/opencode/plugins/grimorio as plugin directory")
+	c := string(content)
+
+	// OpenCode V2 discovers skills, agents and commands in the global config
+	// directory. The V1 plugin directory is not scanned by V2.
+	for _, want := range []string{"OPENCODE_SKILLS_DIR", "OPENCODE_AGENTS_DIR", "OPENCODE_COMMANDS_DIR"} {
+		if !strings.Contains(c, want) {
+			t.Errorf("install.sh must define %s", want)
+		}
+	}
+	if strings.Contains(c, "OPENCODE_PLUGIN_DIR") {
+		t.Error("install.sh must not install OpenCode assets in the V1 plugin directory")
 	}
 }
 
@@ -334,12 +343,11 @@ func TestInstallSh_CopiesAgentsToGlobalDir(t *testing.T) {
 	if !strings.Contains(c, "OPENCODE_AGENTS_DIR") {
 		t.Error("install.sh must define OPENCODE_AGENTS_DIR")
 	}
-	if !strings.Contains(c, ".config/opencode/agents") {
-		t.Error("install.sh must reference ~/.config/opencode/agents for agent installation")
+	if !strings.Contains(c, ".config/opencode") {
+		t.Error("install.sh must reference ~/.config/opencode for agent installation")
 	}
 }
 
-// ---------------------------------------------------------------------------
 // T010: install.ps1 — Windows installer
 // ---------------------------------------------------------------------------
 
@@ -571,41 +579,53 @@ cat "$plugin_dir/.mcp.json"
 	}
 }
 
+// mergeTestScript returns a shell script that loads the merge function with the
+// variables it needs, so the config merge can be exercised in isolation.
+func mergeTestScript(tmpDir string) string {
+	return `
+` + extractFunction(installShPath(), "merge_opencode_config") + `
+` + extractFunction(installShPath(), "write_grimorio_command") + `
+` + extractFunction(installShPath(), "log") + `
+` + extractFunction(installShPath(), "warn") + `
+` + extractFunction(installShPath(), "success") + `
+` + extractFunction(installShPath(), "command_exists") + `
+HOME="` + tmpDir + `"
+OS="linux"
+INSTALL_DIR="$HOME/.grimorio"
+OPENCODE_CONFIG_DIR="$HOME/.config/opencode"
+OPENCODE_COMMANDS_DIR="$OPENCODE_CONFIG_DIR/commands"
+merge_opencode_config
+cat "$HOME/.config/opencode/opencode.json"
+`
+}
+
 func TestMergeOpencodeConfig_CreateNew(t *testing.T) {
 	if _, err := exec.LookPath("python3"); err != nil {
 		t.Skip("python3 not available")
 	}
 
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".config", "opencode")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".config", "opencode"), 0755); err != nil {
 		t.Fatalf("creating config dir: %v", err)
 	}
 
-	script := `
-` + extractFunction(installShPath(), "merge_opencode_config") + `
-` + extractFunction(installShPath(), "log") + `
-` + extractFunction(installShPath(), "warn") + `
-` + extractFunction(installShPath(), "success") + `
-` + extractFunction(installShPath(), "command_exists") + `
-` + extractFunction(installShPath(), "create_mcp_json") + `
-HOME="` + tmpDir + `"
-INSTALL_DIR="$HOME/.grimorio"
-OPENCODE_PLUGIN_DIR="` + tmpDir + `/.config/opencode/plugins/grimorio"
-merge_opencode_config
-cat "$HOME/.config/opencode/opencode.json"
-`
-	cmd := exec.Command("sh", "-c", script)
-	out, err := cmd.CombinedOutput()
+	out, err := exec.Command("sh", "-c", mergeTestScript(tmpDir)).CombinedOutput()
 	if err != nil {
 		t.Fatalf("merge_opencode_config failed: %v\nOutput: %s", err, out)
 	}
 	output := string(out)
-	if !strings.Contains(output, "grimorio") {
+
+	if !strings.Contains(output, "servers") {
+		t.Error("opencode.json must contain mcp.servers")
+	}
+	if !strings.Contains(output, "\"grimorio\"") {
 		t.Error("opencode.json must contain grimorio config")
 	}
-	if !strings.Contains(output, "mcp") {
-		t.Error("opencode.json must contain mcp section")
+	if !strings.Contains(output, "\"environment\"") {
+		t.Error("mcp.servers.grimorio must carry an environment map")
+	}
+	if strings.Contains(output, "\"enabled\": true") {
+		t.Error("opencode.json must use the V2 disabled flag, not the V1 enabled flag")
 	}
 	// Regression test: MCP must point to install dir, not plugin dir
 	if strings.Contains(output, "plugins/grimorio/grimorio") {
@@ -613,6 +633,11 @@ cat "$HOME/.config/opencode/opencode.json"
 	}
 	if !strings.Contains(output, "/.grimorio/grimorio") {
 		t.Error("MCP binary path must point to ~/.grimorio/grimorio")
+	}
+
+	commandPath := filepath.Join(tmpDir, ".config", "opencode", "commands", "grimorio.md")
+	if _, err := os.Stat(commandPath); err != nil {
+		t.Errorf("installer must write the /grimorio command file: %v", err)
 	}
 }
 
@@ -627,39 +652,45 @@ func TestMergeOpencodeConfig_PreservesExisting(t *testing.T) {
 		t.Fatalf("creating config dir: %v", err)
 	}
 
-	existingConfig := `{"custom_key": "custom_value", "mcp": {"other": {"enabled": true}}}`
+	existingConfig := `{
+  "custom_key": "custom_value",
+  "mcp": {
+    "legacy": {"enabled": true},
+    "grimorio": {"command": ["/old/path"], "type": "local", "enabled": true}
+  },
+  "command": {"other": {"template": "keep"}}
+}`
 	configFile := filepath.Join(configDir, "opencode.json")
 	if err := os.WriteFile(configFile, []byte(existingConfig), 0644); err != nil {
 		t.Fatalf("writing existing config: %v", err)
 	}
 
-	script := `
-` + extractFunction(installShPath(), "merge_opencode_config") + `
-` + extractFunction(installShPath(), "log") + `
-` + extractFunction(installShPath(), "warn") + `
-` + extractFunction(installShPath(), "success") + `
-` + extractFunction(installShPath(), "command_exists") + `
-` + extractFunction(installShPath(), "create_mcp_json") + `
-HOME="` + tmpDir + `"
-OPENCODE_PLUGIN_DIR="` + tmpDir + `/.config/opencode/plugins/grimorio"
-merge_opencode_config
-cat "$HOME/.config/opencode/opencode.json"
-`
-	cmd := exec.Command("sh", "-c", script)
-	out, err := cmd.CombinedOutput()
+	out, err := exec.Command("sh", "-c", mergeTestScript(tmpDir)).CombinedOutput()
 	if err != nil {
 		t.Fatalf("merge_opencode_config failed: %v\nOutput: %s", err, out)
 	}
 	output := string(out)
+
 	if !strings.Contains(output, "custom_key") {
 		t.Error("opencode.json must preserve existing custom_key")
+	}
+	if !strings.Contains(output, "legacy") {
+		t.Error("opencode.json must preserve unrelated mcp entries")
+	}
+	if !strings.Contains(output, "servers") {
+		t.Error("opencode.json must contain mcp.servers after merge")
 	}
 	if !strings.Contains(output, "grimorio") {
 		t.Error("opencode.json must contain grimorio config after merge")
 	}
+	if strings.Contains(output, "\"command\": [\n      \"/old/path\"") {
+		t.Error("merge must replace the stale grimorio command path")
+	}
+	if !strings.Contains(output, "\"other\"") {
+		t.Error("merge must preserve unrelated command entries")
+	}
 }
 
-// ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
 
