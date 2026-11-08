@@ -438,23 +438,48 @@ func TestInstallPs1_UsesLocalAppData(t *testing.T) {
 	}
 }
 
-func TestInstallPs1_HasPluginDir(t *testing.T) {
+func TestInstallPs1_UsesOpencodeV2Dirs(t *testing.T) {
 	content, err := os.ReadFile(installPs1Path())
 	if err != nil {
 		t.Fatalf("failed to read install.ps1: %v", err)
 	}
-	if !strings.Contains(string(content), ".config\\opencode\\plugins\\grimorio") && !strings.Contains(string(content), ".config/opencode/plugins/grimorio") {
-		t.Error("install.ps1 must reference opencode plugin directory")
+	c := string(content)
+
+	// OpenCode V2 loads skills, agents and commands from the global config
+	// directory. The V1 plugin directory and .mcp.json are not used.
+	for _, want := range []string{"$SkillsDir", "$AgentsDir", "$CommandsDir"} {
+		if !strings.Contains(c, want) {
+			t.Errorf("install.ps1 must define %s", want)
+		}
+	}
+	if strings.Contains(c, "plugins\\grimorio") || strings.Contains(c, "plugins/grimorio") {
+		t.Error("install.ps1 must not install OpenCode assets in the V1 plugin directory")
+	}
+	if strings.Contains(c, ".mcp.json") {
+		t.Error("install.ps1 must not create the V1 .mcp.json descriptor")
+	}
+	if !strings.Contains(c, "-Filter '*.md'") {
+		t.Error("install.ps1 must install only Markdown agents")
 	}
 }
 
-func TestInstallPs1_HasMCPJson(t *testing.T) {
+func TestInstallPs1_WritesUtf8WithoutBom(t *testing.T) {
 	content, err := os.ReadFile(installPs1Path())
 	if err != nil {
 		t.Fatalf("failed to read install.ps1: %v", err)
 	}
-	if !strings.Contains(string(content), ".mcp.json") {
-		t.Error("install.ps1 must create .mcp.json")
+	c := string(content)
+
+	// Out-File -Encoding utf8 emits a BOM on Windows PowerShell 5.1, and a BOM
+	// in front of '---' breaks Markdown frontmatter discovery.
+	if !strings.Contains(c, "UTF8Encoding($false)") {
+		t.Error("install.ps1 must write UTF-8 without BOM")
+	}
+	if !strings.Contains(c, "WriteAllText") {
+		t.Error("install.ps1 must use File.WriteAllText for BOM-less output")
+	}
+	if !strings.Contains(c, "ConvertTo-Json -Depth 20") {
+		t.Error("install.ps1 must serialize with enough depth to avoid truncating opencode.json")
 	}
 }
 

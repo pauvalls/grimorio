@@ -24,8 +24,10 @@ $ErrorActionPreference = 'Stop'
 $RepoOwner = 'pauvalls'
 $RepoName = 'grimorio'
 $InstallDir = Join-Path $env:LOCALAPPDATA 'Grimorio'
-$PluginDir = Join-Path $env:USERPROFILE '.config\opencode\plugins\grimorio'
-$AgentsDir = Join-Path $env:USERPROFILE '.config\opencode\agents'
+$OpenCodeDir = Join-Path $env:USERPROFILE '.config\opencode'
+$SkillsDir = Join-Path $OpenCodeDir 'skills'
+$AgentsDir = Join-Path $OpenCodeDir 'agents'
+$CommandsDir = Join-Path $OpenCodeDir 'commands'
 $BinaryName = 'grimorio.exe'
 
 # ============================================================================
@@ -227,153 +229,229 @@ function Install-Binary {
 }
 
 # ============================================================================
-# SETUP PLUGINS
+# OPENCODE V2 ASSETS — skills, agents and the /grimorio command
 # ============================================================================
+function Write-Utf8NoBom {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Content
+    )
+
+    $parent = Split-Path -Parent $Path
+    if ($parent -and -not (Test-Path $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+
+    # Out-File -Encoding utf8 writes a BOM on Windows PowerShell 5.1, and a
+    # BOM in front of the '---' breaks Markdown frontmatter detection.
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
+}
+
+function Write-GrimorioCommand {
+    $commandPath = Join-Path $CommandsDir 'grimorio.md'
+    $content = @'
+---
+description: Generate a complete D&D 5e campaign or one-shot from an idea
+agent: grimorio-architect
+subagent: false
+---
+
+Start the Grimorio campaign generation workflow.
+
+User request: $ARGUMENTS
+
+Follow the mandatory intake (language first), then generate the campaign end-to-end and compile the PDF.
+'@
+    Write-Utf8NoBom -Path $commandPath -Content ($content + "`n")
+    Write-Log "Command installed: $commandPath"
+}
+
 function Install-Plugins {
     param([string]$SourceDir)
 
-    if (-not (Test-Path $PluginDir)) {
-        New-Item -ItemType Directory -Path $PluginDir -Force | Out-Null
+    # OpenCode V2 loads skills from ~/.config/opencode/skills, agents from
+    # ~/.config/opencode/agents and commands from ~/.config/opencode/commands.
+    # Nothing is loaded from a plugin directory.
+    foreach ($dir in @($SkillsDir, $AgentsDir, $CommandsDir)) {
+        if (-not (Test-Path $dir)) {
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        }
     }
 
-    # Copy agents
     $agentsSource = Join-Path $SourceDir 'agents'
     if (Test-Path $agentsSource) {
-        $agentsTarget = Join-Path $PluginDir 'agents'
-        if (-not (Test-Path $agentsTarget)) {
-            New-Item -ItemType Directory -Path $agentsTarget -Force | Out-Null
-        }
-        Get-ChildItem -Path $agentsSource -File | ForEach-Object {
-            Copy-Item -Path $_.FullName -Destination $agentsTarget -Force
-        }
-        Write-Log "Agents copied to $agentsTarget"
-    }
-
-    # Copy skills
-    $skillsSource = Join-Path $SourceDir 'skills'
-    if (Test-Path $skillsSource) {
-        $skillsTarget = Join-Path $PluginDir 'skills'
-        if (-not (Test-Path $skillsTarget)) {
-            New-Item -ItemType Directory -Path $skillsTarget -Force | Out-Null
-        }
-        Get-ChildItem -Path $skillsSource -Directory | ForEach-Object {
-            $skillName = $_.Name
-            $skillTargetDir = Join-Path $skillsTarget $skillName
-            if (-not (Test-Path $skillTargetDir)) {
-                New-Item -ItemType Directory -Path $skillTargetDir -Force | Out-Null
-            }
-            $skillFile = Join-Path $_.FullName 'SKILL.md'
-            if (Test-Path $skillFile) {
-                Copy-Item -Path $skillFile -Destination $skillTargetDir -Force
-            }
-        }
-        Write-Log "Skills copied to $skillsTarget"
-    }
-
-    # Create .mcp.json
-    $binaryPath = Join-Path $InstallDir $BinaryName
-    $mcpJson = @{
-        grimorio = @{
-            command = $binaryPath
-            args    = @()
-            env     = @{}
-        }
-    } | ConvertTo-Json -Depth 3
-
-    $mcpPath = Join-Path $PluginDir '.mcp.json'
-    $mcpJson | Out-File -FilePath $mcpPath -Encoding utf8 -Force
-    Write-Log "Created .mcp.json"
-
-    # Copy agents to OpenCode global agents directory
-    if (Test-Path $agentsSource) {
-        if (-not (Test-Path $AgentsDir)) {
-            New-Item -ItemType Directory -Path $AgentsDir -Force | Out-Null
-        }
-        Get-ChildItem -Path $agentsSource -File | ForEach-Object {
+        # Markdown only: the repository keeps Go test files next to the specs.
+        Get-ChildItem -Path $agentsSource -File -Filter '*.md' | ForEach-Object {
             Copy-Item -Path $_.FullName -Destination $AgentsDir -Force
         }
         Write-Log "Agents copied to $AgentsDir"
     }
+
+    $skillsSource = Join-Path $SourceDir 'skills'
+    if (Test-Path $skillsSource) {
+        Get-ChildItem -Path $skillsSource -Directory | ForEach-Object {
+            Copy-Item -Path $_.FullName -Destination $SkillsDir -Recurse -Force
+        }
+        Write-Log "Skills copied to $SkillsDir"
+    }
 }
 
 # ============================================================================
-# MERGE OPENCODE.JSON
+# MERGE OPENCODE.JSON — OpenCode V2 native shape
 # ============================================================================
+function ConvertTo-HashtableDeep {
+    param($InputObject)
+
+    if ($null -eq $InputObject) { return $null }
+
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        $result = @{}
+        foreach ($key in @($InputObject.Keys)) {
+            $result[$key] = ConvertTo-HashtableDeep $InputObject[$key]
+        }
+        return $result
+    }
+
+    if ($InputObject -is [System.Management.Automation.PSCustomObject]) {
+        $result = @{}
+        foreach ($prop in $InputObject.PSObject.Properties) {
+            $result[$prop.Name] = ConvertTo-HashtableDeep $prop.Value
+        }
+        return $result
+    }
+
+    if ($InputObject -is [System.Collections.IEnumerable] -and -not ($InputObject -is [string])) {
+        return @($InputObject | ForEach-Object { ConvertTo-HashtableDeep $_ })
+    }
+
+    return $InputObject
+}
+
+function Build-McpEnvironment {
+    param([hashtable]$Existing)
+
+    $environment = @{}
+    if ($Existing) {
+        foreach ($key in $Existing.Keys) {
+            if ($null -ne $Existing[$key]) {
+                $environment[$key] = [string]$Existing[$key]
+            }
+        }
+    }
+
+    if (-not $environment.ContainsKey('PATH')) {
+        if ($env:PATH) {
+            $environment['PATH'] = $env:PATH
+        }
+        else {
+            $environment['PATH'] = "$env:SystemRoot\System32;$env:SystemRoot"
+        }
+    }
+
+    if (-not $environment.ContainsKey('PIPER_MODEL_PATH')) {
+        $piperDir = Join-Path $env:USERPROFILE '.local\share\piper'
+        if (Test-Path $piperDir) {
+            $voice = Get-ChildItem -Path $piperDir -Filter '*.onnx' -File | Select-Object -First 1
+            if ($voice) {
+                $environment['PIPER_MODEL_PATH'] = $voice.FullName
+                if (Test-Path ($voice.FullName + '.json')) {
+                    $environment['PIPER_CONFIG_PATH'] = $voice.FullName + '.json'
+                }
+            }
+        }
+    }
+
+    $defaults = [ordered]@{
+        'PIPER_PORT'           = '5000'
+        'PIPER_HOST'           = '127.0.0.1'
+        'PIPER_LENGTH_SCALE'   = '1.0'
+        'PIPER_VOLUME'         = '0.8'
+        'GRIMORIO_TTS_ENABLED' = 'true'
+        'AUDIO_PLAYER'         = 'auto'
+    }
+    foreach ($key in $defaults.Keys) {
+        if (-not $environment.ContainsKey($key)) {
+            $environment[$key] = $defaults[$key]
+        }
+    }
+
+    return $environment
+}
+
 function Merge-OpenCodeConfig {
-    $configDir = Join-Path $env:USERPROFILE '.config\opencode'
-    $configFile = Join-Path $configDir 'opencode.json'
+    $configFile = Join-Path $OpenCodeDir 'opencode.json'
     $binaryPath = Join-Path $InstallDir $BinaryName
 
-    $grimorioConfig = @{
-        mcp = @{
-            grimorio = @{
-                command = @($binaryPath)
-                type    = 'local'
-                enabled = $true
+    if (-not (Test-Path $OpenCodeDir)) {
+        New-Item -ItemType Directory -Path $OpenCodeDir -Force | Out-Null
+    }
+
+    Write-GrimorioCommand
+
+    $data = @{}
+
+    if (Test-Path $configFile) {
+        $backupPath = "${configFile}.backup.$(Get-Date -Format 'yyyyMMddHHmmss')"
+        Copy-Item -Path $configFile -Destination $backupPath -Force
+
+        try {
+            $raw = Get-Content $configFile -Raw
+            if ($raw -and $raw.Trim().Length -gt 0) {
+                $data = ConvertTo-HashtableDeep ($raw | ConvertFrom-Json)
             }
         }
-        command = @{
-            grimorio = @{
-                description = 'Generate a complete D&D 5e campaign or one-shot from an idea (executes in main thread)'
-                subtask     = $false
-                template    = 'You are Grimorio, a D&D 5e campaign generator.'
-            }
+        catch {
+            # Never overwrite a config we cannot parse: hand-edited files and
+            # JSONC are common. Leave it untouched and print the entry instead.
+            Write-Warn "opencode.json is not valid JSON; leaving it untouched."
+            Write-Warn "Add this entry under mcp.servers manually:"
+            Write-Warn ('  "grimorio": { "type": "local", "command": ["' + $binaryPath + '"] }')
+            return
         }
     }
 
-    if (-not (Test-Path $configFile)) {
-        if (-not (Test-Path $configDir)) {
-            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-        }
-        $grimorioConfig | ConvertTo-Json -Depth 5 | Out-File -FilePath $configFile -Encoding utf8 -Force
-        Write-Success "Created opencode.json with Grimorio config"
-        return
+    if (-not ($data -is [hashtable])) { $data = @{} }
+    if (-not $data.ContainsKey('mcp') -or -not ($data['mcp'] -is [hashtable])) { $data['mcp'] = @{} }
+    if (-not $data['mcp'].ContainsKey('servers') -or -not ($data['mcp']['servers'] -is [hashtable])) {
+        $data['mcp']['servers'] = @{}
     }
 
-    # Backup existing config
-    $backupPath = "${configFile}.backup.$(Get-Date -Format 'yyyyMMddHHmmss')"
-    Copy-Item -Path $configFile -Destination $backupPath -Force
-
-    try {
-        $existingConfig = Get-Content $configFile -Raw | ConvertFrom-Json
-    }
-    catch {
-        Write-Warn "opencode.json is invalid JSON, creating fresh config"
-        $grimorioConfig | ConvertTo-Json -Depth 5 | Out-File -FilePath $configFile -Encoding utf8 -Force
-        return
-    }
-
-    # Remove old auto-generated grimorio entries
-    foreach ($key in @('mcp', 'command', 'agent')) {
-        if ($existingConfig.PSObject.Properties[$key]) {
-            $section = $existingConfig.$key
-            if ($section -is [PSCustomObject]) {
-                $toRemove = @()
-                foreach ($prop in $section.PSObject.Properties) {
-                    if ($prop.Name -like '*grimorio*' -and $prop.Value.PSObject.Properties['grimorio_auto_generated']) {
-                        $toRemove += $prop.Name
-                    }
-                }
-                foreach ($name in $toRemove) {
-                    $section.PSObject.Properties.Remove($name)
+    # Preserve environment values the user already configured.
+    $previousEnv = @{}
+    $existingServer = $data['mcp']['servers']['grimorio']
+    if ($existingServer -is [hashtable]) {
+        foreach ($sourceKey in @('environment', 'env')) {
+            if ($existingServer.ContainsKey($sourceKey) -and $existingServer[$sourceKey] -is [hashtable]) {
+                foreach ($key in $existingServer[$sourceKey].Keys) {
+                    $previousEnv[$key] = $existingServer[$sourceKey][$key]
                 }
             }
         }
     }
 
-    # Merge grimorio config
-    foreach ($key in @('mcp', 'command')) {
-        if (-not $existingConfig.PSObject.Properties[$key]) {
-            $existingConfig | Add-Member -NotePropertyName $key -NotePropertyValue (New-Object PSCustomObject) -Force
-        }
-        $grimorioSection = $grimorioConfig.$key
-        foreach ($prop in $grimorioSection.PSObject.Properties) {
-            $existingConfig.$key | Add-Member -NotePropertyName $prop.Name -NotePropertyValue $prop.Value -Force
+    $data['mcp']['servers']['grimorio'] = @{
+        type        = 'local'
+        command     = @($binaryPath)
+        disabled    = $false
+        environment = Build-McpEnvironment -Existing $previousEnv
+    }
+
+    # Migrate the V1 shapes so the V2 entry is unambiguous.
+    $data['mcp'].Remove('grimorio')
+
+    if ($data.ContainsKey('command') -and $data['command'] -is [hashtable]) {
+        $data['command'].Remove('grimorio')
+        if ($data['command'].Count -eq 0) {
+            $data.Remove('command')
         }
     }
 
-    $existingConfig | ConvertTo-Json -Depth 5 | Out-File -FilePath $configFile -Encoding utf8 -Force
-    Write-Success "Merged Grimorio config into opencode.json"
+    $json = $data | ConvertTo-Json -Depth 20
+    Write-Utf8NoBom -Path $configFile -Content ($json + "`n")
+
+    Write-Success "Merged Grimorio config into opencode.json (OpenCode V2)"
+    Write-Log "MCP server: mcp.servers.grimorio -> $binaryPath"
 }
 
 # ============================================================================
@@ -478,19 +556,19 @@ function Show-Instructions {
     Write-Host "========================================" -ForegroundColor Green
     Write-Host ""
     Write-Host "What was installed:"
-    Write-Host "   Binary: $InstallDir\$BinaryName"
-    Write-Host "   Plugin: $PluginDir"
-    Write-Host "   MCP configured in opencode.json"
+    Write-Host "   Binary:        $InstallDir\$BinaryName"
+    Write-Host "   OpenCode MCP:  mcp.servers.grimorio in $OpenCodeDir\opencode.json"
+    Write-Host "   Skills:        $SkillsDir"
+    Write-Host "   Agents:        $AgentsDir"
+    Write-Host "   Command:       $CommandsDir\grimorio.md"
     Write-Host ""
     Write-Host "Next steps:"
     Write-Host "   1. Restart your terminal or run: refreshenv"
-    Write-Host "   2. Run: grimorio --version"
-    Write-Host "   3. Update skills:   grimorio update skills"
-    Write-Host "   4. Update agents:   grimorio update agents"
-    Write-Host "   5. Use:             grimorio create_campaign <name>"
+    Write-Host "   2. Verify the binary:  grimorio --version"
+    Write-Host "   3. Verify OpenCode:    opencode mcp list"
+    Write-Host "   4. Run /grimorio <your idea> inside OpenCode"
     Write-Host ""
-    Write-Host "IMPORTANT: Run steps 3 and 4 before starting OpenCode to ensure"
-    Write-Host "all Grimorio skills and agents are available."
+    Write-Host "To update later: grimorio update all"
     Write-Host ""
 }
 
