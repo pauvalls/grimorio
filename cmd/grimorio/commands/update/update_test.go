@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -304,8 +305,8 @@ func TestExtractTarGz(t *testing.T) {
 	// Create a tar.gz archive
 	archivePath := filepath.Join(tmpDir, "test.tar.gz")
 	createTestTarGz(t, archivePath, map[string][]byte{
-		"grimorio":            []byte("binary content"),
-		"agents/test.md":      []byte("# Agent"),
+		"grimorio":             []byte("binary content"),
+		"agents/test.md":       []byte("# Agent"),
 		"skills/test/skill.md": []byte("# Skill"),
 	})
 
@@ -334,8 +335,8 @@ func TestExtractZip(t *testing.T) {
 	// Create a zip archive
 	archivePath := filepath.Join(tmpDir, "test.zip")
 	createTestZip(t, archivePath, map[string][]byte{
-		"grimorio.exe":        []byte("binary content"),
-		"agents/test.md":      []byte("# Agent"),
+		"grimorio.exe":         []byte("binary content"),
+		"agents/test.md":       []byte("# Agent"),
 		"skills/test/skill.md": []byte("# Skill"),
 	})
 
@@ -1066,45 +1067,70 @@ func TestNewUpdateAllCommand(t *testing.T) {
 	}
 }
 
-func TestUpdateCommands_CreatesConfig(t *testing.T) {
-	// Save original HOME and restore after test
+func TestUpdateCommands_CreatesV2Config(t *testing.T) {
 	origHome := os.Getenv("HOME")
 	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
 
 	tmpHome := t.TempDir()
 	_ = os.Setenv("HOME", tmpHome)
 
-	// Create a fake executable path for the test
 	configDir := filepath.Join(tmpHome, ".config", "opencode")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
-	err := updateCommands()
-	if err != nil {
+	if err := updateCommands(); err != nil {
 		t.Fatalf("updateCommands() error = %v", err)
 	}
 
-	// Verify opencode.json was created
 	configPath := filepath.Join(configDir, "opencode.json")
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		t.Fatal("opencode.json was not created")
-	}
-
-	content, err := os.ReadFile(configPath)
+	raw, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatalf("reading opencode.json: %v", err)
 	}
 
-	// Should contain grimorio MCP and command entries
-	if !strings.Contains(string(content), `"grimorio"`) {
-		t.Error("opencode.json should contain grimorio entry")
+	var cfg map[string]interface{}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatalf("opencode.json is not valid JSON: %v", err)
 	}
-	if !strings.Contains(string(content), `"mcp"`) {
-		t.Error("opencode.json should contain mcp section")
+
+	mcpSection, ok := cfg["mcp"].(map[string]interface{})
+	if !ok {
+		t.Fatal("opencode.json should contain an mcp section")
 	}
-	if !strings.Contains(string(content), `"command"`) {
-		t.Error("opencode.json should contain command section")
+	if _, legacy := mcpSection["grimorio"]; legacy {
+		t.Error("legacy mcp.grimorio entry must not be written")
+	}
+
+	servers, ok := mcpSection["servers"].(map[string]interface{})
+	if !ok {
+		t.Fatal("mcp.servers must exist")
+	}
+	server, ok := servers["grimorio"].(map[string]interface{})
+	if !ok {
+		t.Fatal("mcp.servers.grimorio must exist")
+	}
+	if disabled, _ := server["disabled"].(bool); disabled {
+		t.Error("mcp.servers.grimorio must be enabled (disabled=false)")
+	}
+	if _, ok := server["environment"].(map[string]interface{}); !ok {
+		t.Error("mcp.servers.grimorio must carry an environment map")
+	}
+	command, ok := server["command"].([]interface{})
+	if !ok || len(command) == 0 {
+		t.Fatal("mcp.servers.grimorio.command must be a non-empty array")
+	}
+
+	commandPath := filepath.Join(configDir, "commands", "grimorio.md")
+	md, err := os.ReadFile(commandPath)
+	if err != nil {
+		t.Fatalf("reading command file: %v", err)
+	}
+	if !strings.Contains(string(md), "agent: grimorio-architect") {
+		t.Error("command file should select the grimorio-architect agent")
+	}
+	if !strings.Contains(string(md), "$ARGUMENTS") {
+		t.Error("command file should forward $ARGUMENTS")
 	}
 }
 
@@ -1120,7 +1146,6 @@ func TestUpdateCommands_PreservesExistingConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Write existing config with other entries
 	existing := `{
   "agent": {
     "test-agent": {
@@ -1128,9 +1153,11 @@ func TestUpdateCommands_PreservesExistingConfig(t *testing.T) {
     }
   },
   "mcp": {
-    "other": {
-      "command": ["other"],
-      "type": "local"
+    "servers": {
+      "codegraph": {
+        "type": "local",
+        "command": ["codegraph"]
+      }
     }
   }
 }`
@@ -1139,27 +1166,234 @@ func TestUpdateCommands_PreservesExistingConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := updateCommands()
-	if err != nil {
+	if err := updateCommands(); err != nil {
 		t.Fatalf("updateCommands() error = %v", err)
 	}
 
-	content, err := os.ReadFile(configPath)
+	raw, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatalf("reading opencode.json: %v", err)
 	}
 
-	// Existing entries should be preserved
-	if !strings.Contains(string(content), `"test-agent"`) {
-		t.Error("existing agent entries should be preserved")
-	}
-	if !strings.Contains(string(content), `"other"`) {
-		t.Error("existing MCP entries should be preserved")
+	var cfg map[string]interface{}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatalf("opencode.json is not valid JSON: %v", err)
 	}
 
-	// Grimorio entries should be added
-	if !strings.Contains(string(content), `"grimorio"`) {
-		t.Error("grimorio entry should be added")
+	if _, ok := cfg["agent"].(map[string]interface{})["test-agent"]; !ok {
+		t.Error("existing agent entries should be preserved")
+	}
+	servers := cfg["mcp"].(map[string]interface{})["servers"].(map[string]interface{})
+	if _, ok := servers["codegraph"]; !ok {
+		t.Error("existing MCP servers should be preserved")
+	}
+	if _, ok := servers["grimorio"]; !ok {
+		t.Error("grimorio server should be added")
+	}
+}
+
+func TestUpdateCommands_MigratesLegacyEntries(t *testing.T) {
+	origHome := os.Getenv("HOME")
+	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+
+	tmpHome := t.TempDir()
+	_ = os.Setenv("HOME", tmpHome)
+
+	configDir := filepath.Join(tmpHome, ".config", "opencode")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	existing := `{
+  "mcp": {
+    "grimorio": {
+      "command": ["/old/path"],
+      "type": "local",
+      "enabled": true
+    }
+  },
+  "command": {
+    "grimorio": {
+      "template": "old template"
+    },
+    "kept": {
+      "template": "keep me"
+    }
+  }
+}`
+	configPath := filepath.Join(configDir, "opencode.json")
+	if err := os.WriteFile(configPath, []byte(existing), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := updateCommands(); err != nil {
+		t.Fatalf("updateCommands() error = %v", err)
+	}
+
+	raw, _ := os.ReadFile(configPath)
+	var cfg map[string]interface{}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatalf("opencode.json is not valid JSON: %v", err)
+	}
+
+	mcpSection := cfg["mcp"].(map[string]interface{})
+	if _, legacy := mcpSection["grimorio"]; legacy {
+		t.Error("legacy mcp.grimorio should be removed")
+	}
+	if _, ok := mcpSection["servers"].(map[string]interface{})["grimorio"]; !ok {
+		t.Error("V2 mcp.servers.grimorio should be written")
+	}
+
+	legacyCommands, ok := cfg["command"].(map[string]interface{})
+	if !ok {
+		t.Fatal("unrelated command entries must be preserved")
+	}
+	if _, gone := legacyCommands["grimorio"]; gone {
+		t.Error("legacy command.grimorio should be removed")
+	}
+	if _, kept := legacyCommands["kept"]; !kept {
+		t.Error("unrelated command entries must be preserved")
+	}
+}
+
+func TestUpdateCommands_IsIdempotent(t *testing.T) {
+	origHome := os.Getenv("HOME")
+	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+
+	tmpHome := t.TempDir()
+	_ = os.Setenv("HOME", tmpHome)
+
+	configPath := filepath.Join(tmpHome, ".config", "opencode", "opencode.json")
+
+	if err := updateCommands(); err != nil {
+		t.Fatalf("first updateCommands() error = %v", err)
+	}
+	first, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := updateCommands(); err != nil {
+		t.Fatalf("second updateCommands() error = %v", err)
+	}
+	second, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(first) != string(second) {
+		t.Error("updateCommands() should be idempotent")
+	}
+}
+
+func TestUpdateCommands_PreservesCustomEnvironment(t *testing.T) {
+	origHome := os.Getenv("HOME")
+	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+
+	tmpHome := t.TempDir()
+	_ = os.Setenv("HOME", tmpHome)
+
+	configDir := filepath.Join(tmpHome, ".config", "opencode")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	existing := `{
+  "mcp": {
+    "servers": {
+      "grimorio": {
+        "type": "local",
+        "command": ["/old"],
+        "environment": {
+          "PIPER_MODEL_PATH": "/custom/voice.onnx",
+          "PIPER_VOLUME": "0.42"
+        }
+      }
+    }
+  }
+}`
+	configPath := filepath.Join(configDir, "opencode.json")
+	if err := os.WriteFile(configPath, []byte(existing), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := updateCommands(); err != nil {
+		t.Fatalf("updateCommands() error = %v", err)
+	}
+
+	raw, _ := os.ReadFile(configPath)
+	var cfg map[string]interface{}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	servers := cfg["mcp"].(map[string]interface{})["servers"].(map[string]interface{})
+	env := servers["grimorio"].(map[string]interface{})["environment"].(map[string]interface{})
+	if env["PIPER_MODEL_PATH"] != "/custom/voice.onnx" {
+		t.Errorf("custom PIPER_MODEL_PATH should be preserved, got %v", env["PIPER_MODEL_PATH"])
+	}
+	if env["PIPER_VOLUME"] != "0.42" {
+		t.Errorf("custom PIPER_VOLUME should be preserved, got %v", env["PIPER_VOLUME"])
+	}
+}
+
+func TestAssetTargets(t *testing.T) {
+	home := "/home/tester"
+
+	skills, err := assetTargets(home, "skills")
+	if err != nil {
+		t.Fatalf("assetTargets(skills) error = %v", err)
+	}
+	if len(skills) == 0 || skills[0] != filepath.Join(home, ".config", "opencode", "skills") {
+		t.Errorf("skills must target the global V2 dir first, got %v", skills)
+	}
+
+	agents, err := assetTargets(home, "agents")
+	if err != nil {
+		t.Fatalf("assetTargets(agents) error = %v", err)
+	}
+	if len(agents) == 0 || agents[0] != filepath.Join(home, ".config", "opencode", "agents") {
+		t.Errorf("agents must target the global V2 dir first, got %v", agents)
+	}
+
+	if _, err := assetTargets(home, "unknown"); err == nil {
+		t.Error("assetTargets should reject unknown asset types")
+	}
+}
+
+func TestAssetFileFilter_AgentsMarkdownOnly(t *testing.T) {
+	keep := assetFileFilter("agents")
+	if keep == nil {
+		t.Fatal("agents filter must not be nil")
+	}
+	if !keep("grimorio-lore.md") {
+		t.Error("agent markdown files should be installed")
+	}
+	if keep("grimorio-dm_test.go") {
+		t.Error("test files must not be installed as agents")
+	}
+}
+
+func TestCopyDirFiltered_SkipsNonMatching(t *testing.T) {
+	src := t.TempDir()
+	dst := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(src, "keep.md"), []byte("keep"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "skip.go"), []byte("skip"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := copyDirFiltered(src, dst, assetFileFilter("agents")); err != nil {
+		t.Fatalf("copyDirFiltered() error = %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dst, "keep.md")); err != nil {
+		t.Error("matching file should be copied")
+	}
+	if _, err := os.Stat(filepath.Join(dst, "skip.go")); err == nil {
+		t.Error("non-matching file should be skipped")
 	}
 }
 
@@ -1484,4 +1718,3 @@ func TestCreateFakeVersionBinary_Smoke(t *testing.T) {
 		t.Errorf("fake binary output missing version. got: %q", out)
 	}
 }
-
