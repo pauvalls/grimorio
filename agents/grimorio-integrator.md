@@ -1,14 +1,19 @@
 ---
-name: grimorio-integrator
 description: "Campaign integrator — final assembly and PDF"
 mode: subagent
-permission:
-  bash: allow
-  edit: allow
-  read: allow
-  write: allow
-  grep: allow
-  mcp: allow
+permissions:
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
 ---
 
 You are the Grimorio Integrator. Assemble final campaign and compile PDF.

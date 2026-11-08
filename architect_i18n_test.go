@@ -41,18 +41,18 @@ func TestArchitectBilingualLanguageIntake(t *testing.T) {
 	assert.Contains(t, strings.ToLower(skillContent), "default",
 		"architect SKILL.md must document the default language")
 
-	// Every delegate(...) call must carry the LANG preamble so
+	// Every subagent(...) call must carry the LANG preamble so
 	// sub-agents know which language to render content in. The spec
 	// (Capability: architect-language-intake) requires propagation to
 	// all sub-agents — partial coverage is the regression we are guarding
 	// against.
-	delegateCalls := extractDelegateCalls(skillContent)
-	require.NotEmpty(t, delegateCalls,
-		"architect SKILL.md must contain at least one delegate(...) example")
+	subagentCalls := extractSubagentCalls(skillContent)
+	require.NotEmpty(t, subagentCalls,
+		"architect SKILL.md must contain at least one subagent(...) example")
 
-	for i, call := range delegateCalls {
+	for i, call := range subagentCalls {
 		assert.Contains(t, call, "LANG:",
-			"delegate(...) call #%d must include a LANG: prefix so sub-agents render in the chosen language; call was:\n%s", i+1, call)
+			"subagent(...) call #%d must include a LANG: prefix so sub-agents render in the chosen language; call was:\n%s", i+1, call)
 	}
 
 	// The agent frontmatter file must mention the bilingual intake so
@@ -63,16 +63,16 @@ func TestArchitectBilingualLanguageIntake(t *testing.T) {
 		"architect material must document language intake")
 }
 
-// extractDelegateCalls returns the verbatim text of every `delegate(`
+// extractSubagentCalls returns the verbatim text of every `subagent(`
 // occurrence in the source, including multi-line strings, until the
-// matching closing paren. Placeholders like `delegate(agent=..., prompt=...)`
+// matching closing paren. Placeholders like `subagent(agent=..., prompt=...)`
 // in prose are filtered out: only calls that look like real invocations
 // (`prompt="<text>`) are returned.
-func extractDelegateCalls(content string) []string {
+func extractSubagentCalls(content string) []string {
 	var calls []string
 	idx := 0
 	for {
-		start := strings.Index(content[idx:], "delegate(")
+		start := strings.Index(content[idx:], "subagent(")
 		if start < 0 {
 			break
 		}
@@ -97,7 +97,7 @@ func extractDelegateCalls(content string) []string {
 			call := content[open:end]
 			// Heuristic: a real invocation opens a prompt body with
 			// `prompt="` (or `prompt = "`) followed by a non-ellipsis char.
-			if looksLikeRealDelegateCall(call) {
+			if looksLikeRealSubagentCall(call) {
 				calls = append(calls, call)
 			}
 		}
@@ -106,11 +106,11 @@ func extractDelegateCalls(content string) []string {
 	return calls
 }
 
-// looksLikeRealDelegateCall returns true if the captured text looks like
+// looksLikeRealSubagentCall returns true if the captured text looks like
 // an actual tool call rather than a documentation placeholder. Real calls
 // have a `prompt="...` opening with a non-trivial first character (i.e.
 // not a `...` shorthand).
-func looksLikeRealDelegateCall(call string) bool {
+func looksLikeRealSubagentCall(call string) bool {
 	openIdx := strings.Index(call, `prompt="`)
 	if openIdx < 0 {
 		openIdx = strings.Index(call, `prompt = "`)
