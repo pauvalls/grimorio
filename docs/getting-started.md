@@ -16,23 +16,22 @@ lang: en/es
 ## Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh
 ```
 
 This installs:
-- Go 1.24+ (if missing)
-- Chrome/Chromium/Edge or wkhtmltopdf (for PDF compilation)
-- Grimorio binary to `~/.local/bin/grimorio`
-- Plugin files to your AI assistant's plugin directory
+- The Grimorio binary in `~/.grimorio/grimorio`, symlinked to `~/.local/bin/grimorio`
+- The OpenCode integration: `mcp.servers.grimorio`, skills, agents and the `/grimorio` command
+- Nothing else. It checks for a PDF engine but never installs one.
 
 ## Requirements
 
-| Dependency | Auto-installed | Purpose |
-|------------|---------------|---------|
-| Go 1.24+ | ✅ Yes | Build the MCP server binary |
-| Chrome/Chromium | ⚠️ Check install | Compile HTML to PDF (preferred) |
-| wkhtmltopdf | ⚠️ Fallback | Compile HTML to PDF (legacy) |
-| Git | ❌ Must have | Clone the repository |
+| Dependency | Needed for | Notes |
+|------------|-----------|-------|
+| Python 3 | Install and update | Merges `opencode.json` without corrupting it |
+| Chrome / Chromium | PDF compilation | Preferred engine |
+| wkhtmltopdf | PDF compilation | Fallback only, if Chrome is not available |
+| Go 1.24+ | Building from source | Not needed for a normal install |
 
 ## Your First Campaign
 
@@ -76,12 +75,12 @@ You can also pre-fill the answers with a template: Urban Fantasy, Gothic Horror,
 
 ## Next Steps
 
-- **[Session Tutorial](session-tutorial.md)** — Run your first session
-- **[Character Creation](character-creation.md)** — Generate PCs
-- **[Session Generator](session-generator.md)** — Adapt sessions to your party
-- **[PDF Compiler](../features/pdf-compiler.md)** — Customize PDF output
-- **[MCP Tools](../features/mcp-tools.md)** — Full tool reference
-- **[Architecture](../features/architecture.md)** — How Grimorio works
+- **[Session Tutorial](tutorials/session-tutorial.md)** — Run your first session
+- **[Character Creation](tutorials/character-creation.md)** — Generate PCs
+- **[Session Generator](tutorials/session-generator.md)** — Adapt sessions to your party
+- **[PDF Compiler](features/pdf-compiler.md)** — Customize PDF output
+- **[MCP Tools](features/mcp-tools.md)** — Full tool reference
+- **[Architecture](features/architecture.md)** — How Grimorio works
 
 ## Validate your campaign
 
@@ -108,17 +107,13 @@ read the **[La Hoja de Vlad walkthrough](walkthroughs/la-hoja-de-vlad.md)**.
 
 ## Export to Other Formats
 
-In addition to PDF, you can export your campaign to:
+In addition to PDF, the `export_campaign` MCP tool can export your campaign as:
 
-```bash
-# Concatenated Markdown (canonical file order)
-grimorio export_campaign --campaign my-campaign --format=markdown
+- **Markdown** — concatenated in canonical file order, good for git or Obsidian
+- **EPUB 3** — a valid e-reader format (OPF, NCX, XHTML)
 
-# EPUB 3 (valid e-reader format with OPF, NCX, XHTML)
-grimorio export_campaign --campaign my-campaign --format=epub
-```
-
-PDF remains the default and most-styled output. Markdown is great for sharing in version control or editing in Obsidian. EPUB is for e-readers and mobile reading.
+There is no `grimorio export_campaign` CLI command: ask the agent instead, for example
+"export my-campaign as markdown". PDF remains the default and most-styled output.
 
 ## Check Campaign Health
 
@@ -175,23 +170,22 @@ export CAMPAIGN_ROOT="/path/to/your/campaigns"
 ## Instalación Rápida
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/pauvalls/grimorio/main/install.sh | sh
 ```
 
 Esto instala:
-- Go 1.24+ (si falta)
-- Chrome/Chromium/Edge o wkhtmltopdf (para compilar PDFs)
-- Binario de Grimorio en `~/.local/bin/grimorio`
-- Archivos del plugin en el directorio de plugins de tu asistente IA
+- El binario de Grimorio en `~/.grimorio/grimorio`, enlazado en `~/.local/bin/grimorio`
+- La integración con OpenCode: `mcp.servers.grimorio`, skills, agents y el comando `/grimorio`
+- Nada más. Verifica si hay un motor de PDF, pero no lo instala.
 
 ## Requisitos
 
-| Dependencia | Auto-instalado | Propósito |
-|------------|---------------|---------|
-| Go 1.24+ | ✅ Sí | Compilar el binario del servidor MCP |
-| Chrome/Chromium | ⚠️ Verificar instalación | Compilar HTML a PDF (preferido) |
-| wkhtmltopdf | ⚠️ Fallback | Compilar HTML a PDF (legacy) |
-| Git | ❌ Debes tenerlo | Clonar el repositorio |
+| Dependencia | Para qué | Notas |
+|-------------|----------|-------|
+| Python 3 | Instalar y actualizar | Fusiona `opencode.json` sin corromperlo |
+| Chrome / Chromium | Compilar el PDF | Motor preferido |
+| wkhtmltopdf | Compilar el PDF | Solo como respaldo si no hay Chrome |
+| Go 1.24+ | Compilar desde el código fuente | No hace falta para una instalación normal |
 
 ## Tu Primera Campaña
 
@@ -235,12 +229,12 @@ También podés pre-rellenar las respuestas con un template: Urban Fantasy, Goth
 
 ## Próximos Pasos
 
-- **[Tutorial de Sesión](session-tutorial.md)** — Ejecuta tu primera sesión
-- **[Creación de Personajes](character-creation.md)** — Genera PJs
-- **[Generador de Sesiones](session-generator.md)** — Adapta sesiones a tu grupo
-- **[Compilador PDF](../features/pdf-compiler.md)** — Personaliza el PDF
-- **[Herramientas MCP](../features/mcp-tools.md)** — Referencia completa de herramientas
-- **[Arquitectura](../features/architecture.md)** — Cómo funciona Grimorio
+- **[Tutorial de Sesión](tutorials/session-tutorial.md)** — Ejecuta tu primera sesión
+- **[Creación de Personajes](tutorials/character-creation.md)** — Genera PJs
+- **[Generador de Sesiones](tutorials/session-generator.md)** — Adapta sesiones a tu grupo
+- **[Compilador PDF](features/pdf-compiler.md)** — Personaliza el PDF
+- **[Herramientas MCP](features/mcp-tools.md)** — Referencia completa de herramientas
+- **[Arquitectura](features/architecture.md)** — Cómo funciona Grimorio
 
 ## Validá tu Campaña
 
@@ -268,17 +262,13 @@ el **[walkthrough de La Hoja de Vlad](walkthroughs/la-hoja-de-vlad.md)**.
 
 ## Exportá a Otros Formatos
 
-Además de PDF, podés exportar tu campaña a:
+Además de PDF, la tool MCP `export_campaign` puede exportar tu campaña como:
 
-```bash
-# Markdown concatenado (orden canónico de archivos)
-grimorio export_campaign --campaign mi-campana --format=markdown
+- **Markdown** — concatenado en orden canónico de archivos, ideal para git u Obsidian
+- **EPUB 3** — formato válido de e-reader (OPF, NCX, XHTML)
 
-# EPUB 3 (formato válido de e-reader con OPF, NCX, XHTML)
-grimorio export_campaign --campaign mi-campana --format=epub
-```
-
-PDF sigue siendo el default y el más estilizado. Markdown es ideal para compartir en control de versiones o editar en Obsidian. EPUB es para e-readers y lectura móvil.
+No existe un comando CLI `grimorio export_campaign`: hay que pedírselo al agente, por ejemplo
+"exportá mi-campana como markdown". PDF sigue siendo el default y el más estilizado.
 
 ## Chequeá la Salud de Campaña
 
