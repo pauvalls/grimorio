@@ -138,6 +138,7 @@ con `sh -s -- --update`.
 git clone https://github.com/pauvalls/grimorio.git
 cd grimorio
 make build     # ./grimorio
+make install   # ejecuta install.sh y configura OpenCode
 make test      # tests + cobertura
 make lint      # golangci-lint
 ```

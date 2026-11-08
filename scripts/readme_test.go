@@ -11,6 +11,10 @@ func readmePath() string {
 	return filepath.Join(repoRoot(), "README.md")
 }
 
+func readmeEsPath() string {
+	return filepath.Join(repoRoot(), "README.es.md")
+}
+
 // ---------------------------------------------------------------------------
 // T015: README tests
 // ---------------------------------------------------------------------------
@@ -84,17 +88,29 @@ func TestREADME_HasRequirementsWkhtmltopdf(t *testing.T) {
 	}
 }
 
-func TestREADME_HasSpanishAndEnglish(t *testing.T) {
-	content, err := os.ReadFile(readmePath())
+func TestREADME_HasLanguageSwitcher(t *testing.T) {
+	en, err := os.ReadFile(readmePath())
 	if err != nil {
 		t.Fatalf("failed to read README.md: %v", err)
 	}
-	c := string(content)
-	if !strings.Contains(c, "## 🇬🇧 English") {
-		t.Error("README must have English section")
+	es, err := os.ReadFile(readmeEsPath())
+	if err != nil {
+		t.Fatalf("failed to read README.es.md: %v", err)
 	}
-	if !strings.Contains(c, "## 🇪🇸 Español") {
-		t.Error("README must have Spanish section")
+
+	if !strings.Contains(string(en), "](README.es.md)") {
+		t.Error("README.md must link to README.es.md")
+	}
+	if !strings.Contains(string(es), "](README.md)") {
+		t.Error("README.es.md must link back to README.md")
+	}
+
+	// Both files must stay entry points, not full manuals: the docs index
+	// carries the depth.
+	for name, content := range map[string]string{"README.md": string(en), "README.es.md": string(es)} {
+		if lines := strings.Count(content, "\n"); lines > 250 {
+			t.Errorf("%s grew to %d lines; keep the README an entry point and move detail to docs/", name, lines)
+		}
 	}
 }
 
