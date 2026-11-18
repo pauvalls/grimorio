@@ -1,4 +1,5 @@
 # 📜 Grimorio
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/6727cb79-95cb-48c1-9920-16574abd29e6" />
 
 **AI-powered D&D 5e campaign and one-shot generator for OpenCode.**
 
